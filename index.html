@@ -452,7 +452,7 @@
 <div class="view" id="view-campanas">
   <div class="panel" style="margin-bottom:14px;">
     <h3>Cargar reparto de campaña (PDF)</h3>
-    <p class="hint" style="margin-bottom:10px;">Sube el PDF de reparto de campaña. El sistema solo lee y guarda el contenido (código, campaña, participante, SKU, producto, área, cantidad y desglose) — el archivo PDF en sí <b>no</b> se guarda ni se sube a ningún lado.</p>
+    <p class="hint" style="margin-bottom:10px;">Sube el PDF de reparto de campaña. El sistema solo lee y guarda el contenido (código, campaña, participante, SKU, producto, área, cantidad y desglose) — el archivo PDF en sí <b>no</b> se guarda ni se sube a ningún lado. Todo se guarda en MAYÚSCULAS.</p>
     <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
       <div class="field" style="margin:0; max-width:340px;"><label>Archivo PDF</label><input type="file" id="camp-pdf-input" accept="application/pdf"></div>
       <button class="btn btn-primary" id="btn-procesar-pdf">Procesar PDF</button>
@@ -460,22 +460,49 @@
     <div class="msg" id="camp-msg"></div>
     <div id="camp-preview-wrap" style="display:none; margin-top:14px;">
       <p class="hint" id="camp-preview-resumen" style="margin-bottom:8px;"></p>
+      <div class="field" style="max-width:220px;"><label>Fecha de transacción</label><input type="date" id="camp-fecha-transaccion"></div>
       <div class="hist-wrap" style="max-height:400px;">
         <table><thead><tr><th>Código</th><th>Campaña</th><th>Participante</th><th>SKU</th><th>Producto</th><th>Área</th><th>Cantidad</th><th>Desglose</th></tr></thead><tbody id="camp-preview-body"></tbody></table>
       </div>
       <button class="btn btn-primary" id="btn-guardar-campana" style="margin-top:12px;">Guardar en base de datos</button>
     </div>
   </div>
+
+  <div class="panel" style="margin-bottom:14px;">
+    <h3>Registros de campañas cargadas</h3>
+    <p class="hint" style="margin-bottom:10px;">Cada carga guardada genera un correlativo. El detalle (todas las filas) solo se consulta cuando presionas "Ver detalle", para no gastar lecturas de más.</p>
+    <div class="hist-wrap" style="max-height:500px;">
+      <table><thead><tr><th>Correlativo</th><th>Campaña</th><th>Código</th><th>Fecha transacción</th><th>SKU distintos</th><th>Total filas</th><th>Cargado por</th><th>Detalle</th></tr></thead><tbody id="camp-reg-body"></tbody></table>
+      <div class="empty-state" id="camp-reg-empty">Aún no hay campañas guardadas.</div>
+    </div>
+    <button class="btn" id="btn-reg-cargar-mas" style="margin-top:10px; display:none;">Cargar más registros</button>
+  </div>
+
+  <div class="panel" id="camp-detalle-panel" style="display:none; margin-bottom:14px;">
+    <h3 id="camp-detalle-titulo">Detalle de campaña</h3>
+    <div class="hist-wrap" style="max-height:600px;">
+      <table><thead><tr><th>Participante</th><th>SKU</th><th>Producto</th><th>Área</th><th>Cantidad</th><th>Desglose</th></tr></thead><tbody id="camp-detalle-body"></tbody></table>
+    </div>
+  </div>
+
   <div class="panel">
-    <h3>Consultar campañas guardadas</h3>
+    <h3>Buscar en todo el historial</h3>
+    <p class="hint" style="margin-bottom:10px;">Llena uno o más filtros. Elige si deben cumplirse TODOS (Y) o CUALQUIERA (O).</p>
     <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
-      <div class="field" style="margin:0; max-width:260px;"><label>Código de campaña</label><input type="text" id="camp-buscar-codigo" class="upper" placeholder="EJ. CAMP-03290262-158"></div>
-      <div class="field" style="margin:0; max-width:220px;"><label>Participante (opcional)</label><input type="text" id="camp-buscar-participante" class="upper" placeholder="EJ. HUAYCÁN"></div>
+      <div class="field" style="margin:0; max-width:200px;"><label>Tienda / Participante</label><input type="text" id="camp-f-tienda" class="upper" placeholder="EJ. HUAYCÁN"></div>
+      <div class="field" style="margin:0; max-width:180px;"><label>SKU</label><input type="text" id="camp-f-sku" class="upper" placeholder="EJ. TP24"></div>
+      <div class="field" style="margin:0; max-width:220px;"><label>Descripción (contiene)</label><input type="text" id="camp-f-desc" class="upper" placeholder="EJ. ESCOBA"></div>
+      <div class="field" style="margin:0; max-width:170px;"><label>Fecha de transacción</label><input type="date" id="camp-f-fecha"></div>
+      <div class="field" style="margin:0; max-width:150px;">
+        <label>Condición</label>
+        <select id="camp-f-condicion"><option value="AND">Cumplir TODOS (Y)</option><option value="OR">Cumplir CUALQUIERA (O)</option></select>
+      </div>
       <button class="btn btn-primary" id="btn-buscar-campana">Buscar</button>
     </div>
+    <div class="msg" id="camp-buscar-msg"></div>
     <div class="hist-wrap" style="max-height:600px;">
-      <table><thead><tr><th>Código</th><th>Campaña</th><th>Participante</th><th>SKU</th><th>Producto</th><th>Área</th><th>Cantidad</th><th>Desglose</th></tr></thead><tbody id="camp-buscar-body"></tbody></table>
-      <div class="empty-state" id="camp-buscar-empty">Ingresa un código de campaña y presiona "Buscar".</div>
+      <table><thead><tr><th>Correlativo</th><th>Campaña</th><th>Participante</th><th>SKU</th><th>Producto</th><th>Área</th><th>Cantidad</th><th>Desglose</th><th>Fecha</th></tr></thead><tbody id="camp-buscar-body"></tbody></table>
+      <div class="empty-state" id="camp-buscar-empty">Llena al menos un filtro y presiona "Buscar".</div>
     </div>
   </div>
 </div>
@@ -574,8 +601,8 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v29';
-const APP_UPDATED = '25/08/2026 17:15';
+const APP_VERSION = 'v30';
+const APP_UPDATED = '25/08/2026 19:20';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -596,6 +623,8 @@ const movimientosRef = db.collection('movimientos');
 const usuariosRef = db.collection('usuarios');
 const retirosCampanaRef = db.collection('retiros_campana');
 const campanaItemsRef = db.collection('campana_items');
+const campanaRegistrosRef = db.collection('campana_registros');
+const contadoresRef = db.collection('contadores');
 const kardexRef = db.collection('kardex');
 const contadorRef = db.collection('contadores').doc('global');
 
@@ -778,6 +807,7 @@ function startListeners(){
       return `<tr><td>${d.pallet_codigo||''}</td><td>${d.producto||''}</td><td>${d.descripcion||''}</td><td>${fmtMoney(d.costo)}</td><td>${d.cantidad}</td><td>${d.usuario||''}</td><td>${fecha}</td></tr>`;
     }).join('');
   }, onErr);
+  cargarRegistrosCampana(true);
 }
 
 function renderAll(){
@@ -1919,10 +1949,36 @@ $('btn-cargar-bitacora').addEventListener('click', async ()=>{
 
 /* -------------------- Campañas (PDF) -------------------- */
 let campParsedRows = [];
+let campRegLastDoc = null;
+let campRegCache = {}; // correlativo -> filas de detalle ya cargadas (cache en memoria)
 
+function todayLocalStr(){
+  const d = new Date();
+  const tz = d.getTimezoneOffset();
+  const local = new Date(d.getTime() - tz*60000);
+  return local.toISOString().slice(0,10);
+}
+
+// Genera el siguiente correlativo de forma atómica (transacción sobre un contador).
+async function generarCorrelativoCampana(){
+  const counterRef = contadoresRef.doc('campana_registros');
+  const siguiente = await db.runTransaction(async (tx)=>{
+    const snap = await tx.get(counterRef);
+    const actual = snap.exists ? (snap.data().ultimo || 0) : 0;
+    const nuevo = actual + 1;
+    tx.set(counterRef, {ultimo: nuevo}, {merge:true});
+    return nuevo;
+  });
+  return 'REG-' + String(siguiente).padStart(5,'0');
+}
+
+// Extrae filas usando la POSICIÓN X de cada palabra para saber a qué columna
+// pertenece (SKU / Producto / Área / Cantidad / Desglose), en vez de adivinar
+// por texto plano. Así una celda con salto de línea (SKU o Producto partidos
+// en 2 líneas) no se mezcla con la fila siguiente. Todo el texto se guarda en MAYÚSCULAS.
 async function extractPdfRows(arrayBuffer){
   const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
-  let colBounds = null; // {sku, producto, area, cantidad, desglose, verificado} = x izquierdo de cada columna
+  let colBounds = null;
   const rows = [];
   let codigo = '', campana = '', participante = '';
   let currentRow = null;
@@ -1940,7 +1996,6 @@ async function extractPdfRows(arrayBuffer){
     return best;
   }
 
-  // Cierra la fila que se venía armando (si tiene SKU y Área) y la agrega al resultado.
   function finalizeCurrentRow(){
     if(currentRow && currentRow.sku && currentRow.area) rows.push(currentRow);
     currentRow = null;
@@ -1954,7 +2009,6 @@ async function extractPdfRows(arrayBuffer){
       .filter(it=> it.str && it.str.trim() !== '');
     if(items.length === 0) continue;
 
-    // Recalibrar columnas si esta página trae la fila de encabezado
     const headerFound = {};
     items.forEach(it=>{
       const n = norm(it.str);
@@ -1967,7 +2021,6 @@ async function extractPdfRows(arrayBuffer){
     });
     if(Object.keys(headerFound).length >= 4) colBounds = headerFound;
 
-    // Agrupar en sub-líneas físicas por coordenada Y
     const lineGroups = [];
     const TOL = 2.5;
     items.slice().forEach(it=>{
@@ -1982,25 +2035,22 @@ async function extractPdfRows(arrayBuffer){
       const fullText = g.items.map(it=>it.str).join(' ').replace(/\s+/g,' ').trim();
       if(!fullText) continue;
 
-      if(/^Campaña:/i.test(fullText)){ finalizeCurrentRow(); campana = fullText.replace(/^Campaña:\s*/i,'').trim(); continue; }
-      if(/^C[oó]digo:/i.test(fullText)){ finalizeCurrentRow(); codigo = fullText.replace(/^C[oó]digo:\s*/i,'').trim(); continue; }
-      if(/^Participante:/i.test(fullText)){ finalizeCurrentRow(); participante = fullText.replace(/^Participante:\s*/i,'').trim(); continue; }
+      if(/^Campaña:/i.test(fullText)){ finalizeCurrentRow(); campana = fullText.replace(/^Campaña:\s*/i,'').trim().toUpperCase(); continue; }
+      if(/^C[oó]digo:/i.test(fullText)){ finalizeCurrentRow(); codigo = fullText.replace(/^C[oó]digo:\s*/i,'').trim().toUpperCase(); continue; }
+      if(/^Participante:/i.test(fullText)){ finalizeCurrentRow(); participante = fullText.replace(/^Participante:\s*/i,'').trim().toUpperCase(); continue; }
       if(/^RESUMEN TOTAL/i.test(fullText)){ finalizeCurrentRow(); stop = true; break; }
       if(/^SKU\s+Producto/i.test(fullText)) continue;
       if(/^P[aá]gina\s+\d+\s+de\s+\d+$/i.test(fullText)) continue;
-      if(!colBounds) continue; // aún no vimos encabezado de tabla, no sabemos columnas
+      if(!colBounds) continue;
 
       const bucket = {sku:[], producto:[], area:[], cantidad:[], desglose:[], verificado:[], other:[]};
       g.items.forEach(it=> bucket[assignColumn(it.x)].push(it.str));
-      const skuTxt = bucket.sku.join(' ').replace(/\s+/g,' ').trim();
-      const prodTxt = bucket.producto.join(' ').replace(/\s+/g,' ').trim();
-      const areaTxt = bucket.area.join(' ').replace(/\s+/g,' ').trim();
+      const skuTxt = bucket.sku.join(' ').replace(/\s+/g,' ').trim().toUpperCase();
+      const prodTxt = bucket.producto.join(' ').replace(/\s+/g,' ').trim().toUpperCase();
+      const areaTxt = bucket.area.join(' ').replace(/\s+/g,' ').trim().toUpperCase();
       const cantTxt = bucket.cantidad.join(' ').replace(/\s+/g,' ').trim();
-      const desgTxt = bucket.desglose.join(' ').replace(/\s+/g,' ').trim();
+      const desgTxt = bucket.desglose.join(' ').replace(/\s+/g,' ').trim().toUpperCase();
 
-      // La línea que trae Área+Cantidad es SIEMPRE la primera línea de una fila
-      // (nueva fila). Las líneas siguientes sin Área son continuación del SKU/Producto
-      // de esa misma fila (celda con salto de línea) y se van pegando.
       const esInicioDeFila = /\d/.test(areaTxt) && /\d/.test(cantTxt);
       if(esInicioDeFila){
         finalizeCurrentRow();
@@ -2041,8 +2091,9 @@ $('btn-procesar-pdf').addEventListener('click', async ()=>{
     }
     campParsedRows = rows;
     const participantes = new Set(rows.map(r=>r.participante)).size;
-    const codigos = new Set(rows.map(r=>r.codigo)).size;
-    $('camp-preview-resumen').textContent = `${rows.length} filas encontradas · ${participantes} participante(s) · ${codigos} código(s) de campaña. El PDF no se guarda — solo esta información, al presionar "Guardar en base de datos".`;
+    const skuDistintos = new Set(rows.map(r=>r.sku)).size;
+    $('camp-preview-resumen').textContent = `${rows.length} filas encontradas · ${skuDistintos} SKU distintos · ${participantes} participante(s). El PDF no se guarda — solo esta información, al presionar "Guardar en base de datos".`;
+    $('camp-fecha-transaccion').value = todayLocalStr();
     $('camp-preview-body').innerHTML = rows.slice(0,300).map(r=>
       `<tr><td>${r.codigo}</td><td>${r.campana}</td><td>${r.participante}</td><td>${r.sku}</td><td>${r.producto}</td><td>${r.area}</td><td>${r.cantidad}</td><td>${r.desglose}</td></tr>`
     ).join('') + (rows.length>300 ? `<tr><td colspan="8" style="text-align:center; color:var(--ink-soft);">… y ${rows.length-300} filas más (se guardarán todas)</td></tr>` : '');
@@ -2058,28 +2109,51 @@ $('btn-procesar-pdf').addEventListener('click', async ()=>{
 
 $('btn-guardar-campana').addEventListener('click', async ()=>{
   if(!campParsedRows.length){ showMsg('camp-msg','err','No hay filas procesadas para guardar.'); return; }
+  const fecha = $('camp-fecha-transaccion').value;
+  if(!fecha){ showMsg('camp-msg','err','Ingresa la fecha de transacción.'); return; }
   $('btn-guardar-campana').disabled = true;
   showMsg('camp-msg','ok','Guardando en la base de datos…');
   try{
+    const correlativo = await generarCorrelativoCampana();
+    const skuDistintos = new Set(campParsedRows.map(r=>r.sku)).size;
+    const participantesSet = new Set(campParsedRows.map(r=>r.participante));
+
+    await campanaRegistrosRef.doc(correlativo).set({
+      correlativo,
+      campana: campParsedRows[0].campana,
+      codigo: campParsedRows[0].codigo,
+      fecha_transaccion: fecha,
+      sku_distintos: skuDistintos,
+      total_filas: campParsedRows.length,
+      participantes: participantesSet.size,
+      usuario: currentUserAlias,
+      fecha_carga: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
     const CHUNK = 400;
     for(let i=0; i<campParsedRows.length; i+=CHUNK){
       const batch = db.batch();
       campParsedRows.slice(i, i+CHUNK).forEach(r=>{
         const docRef = campanaItemsRef.doc();
         batch.set(docRef, {
+          correlativo,
           codigo: r.codigo, campana: r.campana, participante: r.participante,
           sku: r.sku, producto: r.producto, area: r.area, cantidad: r.cantidad, desglose: r.desglose,
+          fecha_transaccion: fecha,
           usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
       });
       await batch.commit();
     }
-    await logAccion('campana_pdf_cargada', {detalle:`Se guardaron ${campParsedRows.length} filas de campaña (código ${campParsedRows[0].codigo})`});
-    showMsg('camp-msg','ok', `¡Guardado! ${campParsedRows.length} filas almacenadas.`);
-    showToast(`Campaña guardada: ${campParsedRows.length} filas.`,'ok');
+    await logAccion('campana_pdf_cargada', {detalle:`Correlativo ${correlativo}: se guardaron ${campParsedRows.length} filas de campaña (código ${campParsedRows[0].codigo})`});
+    showMsg('camp-msg','ok', `¡Guardado! Correlativo ${correlativo} — ${campParsedRows.length} filas almacenadas.`);
+    showToast(`Campaña guardada: ${correlativo}`,'ok');
     campParsedRows = [];
     $('camp-preview-wrap').style.display = 'none';
     $('camp-pdf-input').value = '';
+    campRegLastDoc = null;
+    $('camp-reg-body').innerHTML = '';
+    cargarRegistrosCampana(true);
   }catch(err){
     console.error(err);
     showMsg('camp-msg','err','Error al guardar: '+err.message);
@@ -2088,26 +2162,132 @@ $('btn-guardar-campana').addEventListener('click', async ()=>{
   }
 });
 
-$('btn-buscar-campana').addEventListener('click', async ()=>{
-  const codigo = $('camp-buscar-codigo').value.trim().toUpperCase();
-  const participante = $('camp-buscar-participante').value.trim().toUpperCase();
-  if(!codigo){ showToast('Ingresa un código de campaña.','err'); return; }
-  $('btn-buscar-campana').disabled = true;
+function fmtFechaCorta(d){
+  if(!d) return '';
+  return d;
+}
+
+async function cargarRegistrosCampana(reset){
+  if(reset){ campRegLastDoc = null; $('camp-reg-body').innerHTML=''; }
   try{
-    const snap = await campanaItemsRef.where('codigo','==',codigo).limit(2000).get();
-    let docs = snap.docs.map(d=>d.data());
-    if(participante) docs = docs.filter(d=> (d.participante||'').toUpperCase().includes(participante));
+    let q = campanaRegistrosRef.orderBy('fecha_carga','desc').limit(20);
+    if(campRegLastDoc) q = q.startAfter(campRegLastDoc);
+    const snap = await q.get();
+    if(snap.empty && reset){
+      $('camp-reg-empty').style.display = 'block';
+      $('btn-reg-cargar-mas').style.display = 'none';
+      return;
+    }
+    $('camp-reg-empty').style.display = 'none';
+    snap.docs.forEach(doc=>{
+      const r = doc.data();
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${r.correlativo}</td><td>${r.campana||''}</td><td>${r.codigo||''}</td><td>${fmtFechaCorta(r.fecha_transaccion)}</td><td>${r.sku_distintos!=null?r.sku_distintos:''}</td><td>${r.total_filas!=null?r.total_filas:''}</td><td>${r.usuario||''}</td><td><button class="btn btn-sm btn-ver-detalle-campana" data-correlativo="${r.correlativo}" data-campana="${(r.campana||'').replace(/"/g,'&quot;')}">Ver detalle</button></td>`;
+      $('camp-reg-body').appendChild(tr);
+    });
+    campRegLastDoc = snap.docs.length ? snap.docs[snap.docs.length-1] : campRegLastDoc;
+    $('btn-reg-cargar-mas').style.display = (snap.docs.length === 20) ? 'inline-block' : 'none';
+  }catch(err){
+    console.error(err);
+    showToast('Error al cargar registros de campañas: '+err.message,'err');
+  }
+}
+
+$('btn-reg-cargar-mas').addEventListener('click', ()=> cargarRegistrosCampana(false));
+
+$('camp-reg-body').addEventListener('click', async (ev)=>{
+  const btn = ev.target.closest('.btn-ver-detalle-campana');
+  if(!btn) return;
+  const correlativo = btn.dataset.correlativo;
+  const campana = btn.dataset.campana;
+  btn.disabled = true;
+  btn.textContent = 'Cargando…';
+  try{
+    let filas = campRegCache[correlativo];
+    if(!filas){
+      const snap = await campanaItemsRef.where('correlativo','==',correlativo).limit(3000).get();
+      filas = snap.docs.map(d=>d.data());
+      campRegCache[correlativo] = filas;
+    }
+    $('camp-detalle-titulo').textContent = `Detalle de ${correlativo} — ${campana}`;
+    $('camp-detalle-body').innerHTML = filas.map(r=>
+      `<tr><td>${r.participante||''}</td><td>${r.sku||''}</td><td>${r.producto||''}</td><td>${r.area||''}</td><td>${r.cantidad!=null?r.cantidad:''}</td><td>${r.desglose||''}</td></tr>`
+    ).join('') || '<tr><td colspan="6" style="text-align:center;">Sin filas.</td></tr>';
+    $('camp-detalle-panel').style.display = 'block';
+    $('camp-detalle-panel').scrollIntoView({behavior:'smooth', block:'start'});
+  }catch(err){
+    console.error(err);
+    showToast('Error al cargar el detalle: '+err.message,'err');
+  }finally{
+    btn.disabled = false;
+    btn.textContent = 'Ver detalle';
+  }
+});
+
+$('btn-buscar-campana').addEventListener('click', async ()=>{
+  const tienda = $('camp-f-tienda').value.trim().toUpperCase();
+  const sku = $('camp-f-sku').value.trim().toUpperCase();
+  const desc = $('camp-f-desc').value.trim().toUpperCase();
+  const fecha = $('camp-f-fecha').value;
+  const condicion = $('camp-f-condicion').value; // 'AND' | 'OR'
+
+  if(!tienda && !sku && !desc && !fecha){
+    showToast('Llena al menos un filtro para buscar.','err');
+    return;
+  }
+
+  $('btn-buscar-campana').disabled = true;
+  const bmsg = $('camp-buscar-msg');
+  bmsg.className = 'msg'; bmsg.style.display='none'; bmsg.innerHTML='';
+  try{
+    const LIMITE = 3000;
+    let snap;
+    // Si la condición es Y (AND) y hay fecha, podemos filtrar por fecha del lado del
+    // servidor (barato) porque toda fila resultante DEBE cumplir esa fecha de todos modos.
+    // Si la condición es O (OR), NO se puede pre-filtrar por fecha sin perder resultados
+    // que cumplan otro criterio en otra fecha, así que se trae un lote acotado reciente.
+    if(condicion === 'AND' && fecha){
+      snap = await campanaItemsRef.where('fecha_transaccion','==', fecha).limit(LIMITE).get();
+    }else{
+      snap = await campanaItemsRef.orderBy('timestamp','desc').limit(LIMITE).get();
+    }
+
+    const checks = (row)=>{
+      const arr = [];
+      if(tienda) arr.push((row.participante||'').includes(tienda));
+      if(sku) arr.push((row.sku||'').includes(sku));
+      if(desc) arr.push((row.producto||'').includes(desc));
+      if(fecha) arr.push((row.fecha_transaccion||'') === fecha);
+      if(arr.length === 0) return true;
+      return condicion === 'AND' ? arr.every(Boolean) : arr.some(Boolean);
+    };
+
+    const docs = snap.docs.map(d=>d.data()).filter(checks);
+
     if(docs.length === 0){
       $('camp-buscar-body').innerHTML = '';
       $('camp-buscar-empty').style.display = 'block';
       $('camp-buscar-empty').textContent = 'No se encontraron registros para ese filtro.';
     }else{
       $('camp-buscar-empty').style.display = 'none';
-      $('camp-buscar-body').innerHTML = docs.map(r=>
-        `<tr><td>${r.codigo||''}</td><td>${r.campana||''}</td><td>${r.participante||''}</td><td>${r.sku||''}</td><td>${r.producto||''}</td><td>${r.area||''}</td><td>${r.cantidad!=null?r.cantidad:''}</td><td>${r.desglose||''}</td></tr>`
+      $('camp-buscar-body').innerHTML = docs.slice(0,1000).map(r=>
+        `<tr><td>${r.correlativo||''}</td><td>${r.campana||''}</td><td>${r.participante||''}</td><td>${r.sku||''}</td><td>${r.producto||''}</td><td>${r.area||''}</td><td>${r.cantidad!=null?r.cantidad:''}</td><td>${r.desglose||''}</td><td>${r.fecha_transaccion||''}</td></tr>`
       ).join('');
+      const avisos = [];
+      if(snap.docs.length === LIMITE){
+        avisos.push(`Se revisaron los ${LIMITE} registros más recientes; si no encuentras lo que buscas, acota más con la fecha.`);
+      }
+      if(docs.length > 1000){
+        avisos.push(`Se encontraron ${docs.length} coincidencias, mostrando las primeras 1000.`);
+      }
+      if(avisos.length){
+        bmsg.className = 'msg ok';
+        bmsg.innerHTML = avisos.join('<br>');
+        bmsg.style.display = 'block';
+      }
     }
   }catch(err){
+    console.error(err);
     showToast('Error al buscar: '+err.message,'err');
   }finally{
     $('btn-buscar-campana').disabled = false;
