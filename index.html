@@ -220,7 +220,7 @@
       </div>
       <div class="panel">
         <h3>Bloques y nichos</h3>
-        <p class="hint" style="margin-bottom:10px;">Cada nicho se crea con 4 posiciones de rack (01-04) y 10 de piso (05-14). Solo se puede eliminar el último nicho creado, y solo si está vacío.</p>
+        <p class="hint" style="margin-bottom:10px;">Nicho de 2 niveles: 4 posiciones de rack (2 arriba, 2 abajo) + 10 de piso. Nicho de 3 niveles: 6 de rack (2 arriba, 2 medio, 2 abajo) + 10 de piso. Solo se puede eliminar el último nicho creado de cada bloque, y solo si está vacío.</p>
         <div id="bloques-list"></div>
       </div>
     </div>
@@ -724,7 +724,8 @@ $('btn-crear-bloque').addEventListener('click', async ()=>{
   }catch(err){ showMsg('bloque-msg','err',err.message); }
 });
 
-async function agregarNicho(bloqueId, bloqueNombre){
+async function agregarNicho(bloqueId, bloqueNombre, niveles){
+  niveles = (niveles===3) ? 3 : 2;
   try{
     let letra;
     await db.runTransaction(async tx=>{
@@ -732,21 +733,27 @@ async function agregarNicho(bloqueId, bloqueNombre){
       const data = cSnap.exists ? cSnap.data() : {};
       const nichoIndex = data.nicho_index || 0;
       letra = indexToLetter(nichoIndex);
-      tx.set(nichosRef.doc(letra), { bloque_id: bloqueId, orden: nichoIndex, pos_visual: nichoIndex, tipo:'rack_piso', creado_en: firebase.firestore.FieldValue.serverTimestamp() });
-      const rackDefs = [[`${letra}01`,'arriba'],[`${letra}02`,'arriba'],[`${letra}03`,'abajo'],[`${letra}04`,'abajo']];
-      rackDefs.forEach(([codigo,nivel])=>{
-        tx.set(posicionesRef.doc(codigo), { tipo:'rack', nicho:letra, bloque_id:bloqueId, nivel, estado:'vacio', bloqueada:false, pallet_codigo:null, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
-      });
-      for(let i=0;i<5;i++){
-        const izq=5+i, der=10+i;
-        [[izq,'izq'],[der,'der']].forEach(([num,columna])=>{
+      tx.set(nichosRef.doc(letra), { bloque_id: bloqueId, orden: nichoIndex, pos_visual: nichoIndex, tipo:'rack_piso', niveles, creado_en: firebase.firestore.FieldValue.serverTimestamp() });
+      const nombresNivel = niveles===3 ? ['arriba','medio','abajo'] : ['arriba','abajo'];
+      let num = 1;
+      nombresNivel.forEach(nombreNivel=>{
+        for(let c=0;c<2;c++){
           const codigo = `${letra}${String(num).padStart(2,'0')}`;
+          tx.set(posicionesRef.doc(codigo), { tipo:'rack', nicho:letra, bloque_id:bloqueId, nivel:nombreNivel, estado:'vacio', bloqueada:false, pallet_codigo:null, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
+          num++;
+        }
+      });
+      const rackCount = niveles*2;
+      for(let i=0;i<5;i++){
+        const izq = rackCount+1+i, der = rackCount+6+i;
+        [[izq,'izq'],[der,'der']].forEach(([n,columna])=>{
+          const codigo = `${letra}${String(n).padStart(2,'0')}`;
           tx.set(posicionesRef.doc(codigo), { tipo:'piso', nicho:letra, bloque_id:bloqueId, nivel:null, fila:i, columna, estado:'vacio', bloqueada:false, pallet_codigo:null, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
         });
       }
       tx.set(contadorRef, { nicho_index: nichoIndex+1 }, {merge:true});
     });
-    await logAccion('nicho_creado', {detalle:`Nicho ${letra} creado en ${bloqueNombre} (4 rack + 10 piso)`});
+    await logAccion('nicho_creado', {detalle:`Nicho ${letra} (${niveles} niveles) creado en ${bloqueNombre} (${niveles*2} rack + 10 piso)`});
     showToast(`Registro creado: nicho ${letra} en ${bloqueNombre}.`,'ok');
   }catch(err){ showToast('Error: '+err.message,'err'); }
 }
@@ -828,23 +835,27 @@ function renderBloqueForms(){
   if(entries.length===0){ list.innerHTML = '<div class="empty-state">Aún no hay bloques. Crea el primero arriba.</div>'; return; }
   list.innerHTML = entries.map(([id, b])=>{
     const nichosDelBloque = Object.entries(nichos).filter(([l,n])=>n.bloque_id===id);
-    const soloPisoCount = nichosDelBloque.filter(([l,n])=>n.tipo==='solo_piso').length;
-    const rackCount = nichosDelBloque.length - soloPisoCount;
-    const posDelBloque = rackCount*14 + soloPisoCount*12;
+    let rackTotal = 0, pisoTotal = 0;
+    nichosDelBloque.forEach(([l,n])=>{
+      if(n.tipo==='solo_piso'){ pisoTotal += 12; }
+      else { rackTotal += (n.niveles||2)*2; pisoTotal += 10; }
+    });
+    const posDelBloque = rackTotal + pisoTotal;
     const ultimoDeEsteBloque = getUltimoNichoDeBloque(id);
     return `<div class="bloque-card">
       <div class="bh">
         <b>${b.nombre}</b>
         <div class="actions">
           ${ultimoDeEsteBloque ? `<button class="btn btn-danger btn-sm" data-del-nicho="${ultimoDeEsteBloque}" data-nombre="${b.nombre}">🗑 Eliminar nicho ${ultimoDeEsteBloque}</button>` : ''}
-          <button class="btn btn-ghost btn-sm" data-add-nicho="${id}" data-nombre="${b.nombre}">+ Agregar nicho</button>
-          <button class="btn btn-ghost btn-sm" data-add-piso="${id}" data-nombre="${b.nombre}">+ Agregar piso (sin rack)</button>
+          <button class="btn btn-ghost btn-sm" data-add-nicho="${id}" data-nombre="${b.nombre}" data-niveles="2">+ Nicho (2 niveles)</button>
+          <button class="btn btn-ghost btn-sm" data-add-nicho="${id}" data-nombre="${b.nombre}" data-niveles="3">+ Nicho (3 niveles)</button>
+          <button class="btn btn-ghost btn-sm" data-add-piso="${id}" data-nombre="${b.nombre}">+ Piso (sin rack)</button>
         </div>
       </div>
-      <div class="meta">${nichosDelBloque.length} nicho(s) · ${posDelBloque} posiciones (${rackCount*4} rack + ${rackCount*10 + soloPisoCount*12} piso)</div>
+      <div class="meta">${nichosDelBloque.length} nicho(s) · ${posDelBloque} posiciones (${rackTotal} rack + ${pisoTotal} piso)</div>
     </div>`;
   }).join('');
-  list.querySelectorAll('[data-add-nicho]').forEach(btn=> btn.onclick = () => agregarNicho(btn.dataset.addNicho, btn.dataset.nombre));
+  list.querySelectorAll('[data-add-nicho]').forEach(btn=> btn.onclick = () => agregarNicho(btn.dataset.addNicho, btn.dataset.nombre, parseInt(btn.dataset.niveles)));
   list.querySelectorAll('[data-add-piso]').forEach(btn=> btn.onclick = () => agregarNichoSoloPiso(btn.dataset.addPiso, btn.dataset.nombre));
   list.querySelectorAll('[data-del-nicho]').forEach(btn=> btn.onclick = () => eliminarNicho(btn.dataset.delNicho, btn.dataset.nombre));
 }
@@ -885,11 +896,13 @@ function buildBloquesMarkup(interactive, showReorder){
       }
       let rackHTML = '';
       if(!esSoloPiso){
-        const arriba = Object.entries(posiciones).filter(([id,p])=>p.nicho===letra && p.nivel==='arriba').sort((a,b2)=>a[0].localeCompare(b2[0]));
-        const abajo = Object.entries(posiciones).filter(([id,p])=>p.nicho===letra && p.nivel==='abajo').sort((a,b2)=>a[0].localeCompare(b2[0]));
-        rackHTML = `<div class="nicho-section-label">Rack</div>
-          <div class="nicho-row">${arriba.map(([id,p])=>fn(id,p)).join('')}</div>
-          <div class="nicho-row">${abajo.map(([id,p])=>fn(id,p)).join('')}</div>`;
+        const nivelesNicho = ndata.niveles || 2;
+        const nombresNivel = nivelesNicho===3 ? ['arriba','medio','abajo'] : ['arriba','abajo'];
+        const filasRack = nombresNivel.map(nombreNivel=>{
+          const items = Object.entries(posiciones).filter(([id,p])=>p.nicho===letra && p.nivel===nombreNivel).sort((a,b2)=>a[0].localeCompare(b2[0]));
+          return `<div class="nicho-row">${items.map(([id,p])=>fn(id,p)).join('')}</div>`;
+        }).join('');
+        rackHTML = `<div class="nicho-section-label">Rack</div>${filasRack}`;
       }
       const reorderHTML = showReorder ? `<div class="nicho-reorder">
         <button type="button" class="btn-reorder" data-move-nicho="${letra}" data-bloque="${bid}" data-dir="1" ${idxEnBloque===nichosDelBloque.length-1?'disabled':''}>◀</button>
