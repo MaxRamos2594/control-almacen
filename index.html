@@ -531,8 +531,8 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v25';
-const APP_UPDATED = '25/08/2026 15:30';
+const APP_VERSION = 'v26';
+const APP_UPDATED = '25/08/2026 15:45';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -939,11 +939,19 @@ function sortBloquesEntries(){
 }
 function computeDisplayLetters(){
   const map = {};
-  let idx = 0;
+  let idxAlfa = 0;
+  let idxPiso = 0;
   sortBloquesEntries().forEach(([bid])=>{
     const nichosDelBloque = Object.entries(nichos).filter(([l,n])=>n.bloque_id===bid)
       .sort((a,b2)=> (a[1].pos_visual ?? a[1].orden) - (b2[1].pos_visual ?? b2[1].orden));
-    nichosDelBloque.forEach(([letra])=>{ map[letra] = indexToLetter(idx++); });
+    nichosDelBloque.forEach(([letra,n])=>{
+      if(n.tipo === 'solo_piso'){
+        idxPiso++;
+        map[letra] = `P-${idxPiso}`;
+      }else{
+        map[letra] = indexToLetter(idxAlfa++);
+      }
+    });
   });
   return map;
 }
