@@ -460,7 +460,8 @@
     <div class="msg" id="camp-msg"></div>
     <div id="camp-preview-wrap" style="display:none; margin-top:14px;">
       <p class="hint" id="camp-preview-resumen" style="margin-bottom:8px;"></p>
-      <div class="field" style="max-width:220px;"><label>Fecha de transacción</label><input type="date" id="camp-fecha-transaccion"></div>
+      <div class="field" style="max-width:220px;"><label>Fecha de transacción *</label><input type="date" id="camp-fecha-transaccion" required></div>
+      <p class="hint" style="margin-bottom:8px; color:var(--red, #8A332A);">* Obligatorio. Debes ingresarla tú antes de guardar.</p>
       <div class="hist-wrap" style="max-height:400px;">
         <table><thead><tr><th>Código</th><th>Campaña</th><th>Participante</th><th>SKU</th><th>Producto</th><th>Área</th><th>Cantidad</th><th>Desglose</th></tr></thead><tbody id="camp-preview-body"></tbody></table>
       </div>
@@ -470,16 +471,26 @@
 
   <div class="panel" style="margin-bottom:14px;">
     <h3>Registros de campañas cargadas</h3>
-    <p class="hint" style="margin-bottom:10px;">Cada carga guardada genera un correlativo. El detalle (todas las filas) solo se consulta cuando presionas "Ver detalle", para no gastar lecturas de más.</p>
+    <p class="hint" style="margin-bottom:10px;">Cada carga guardada genera un correlativo. El detalle (todas las filas) solo se consulta cuando presionas "Ver detalle", para no gastar lecturas de más. Al eliminar un registro se borra su detalle y la cabecera queda marcada como INVALIDADA (no se borra el correlativo).</p>
+    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
+      <div class="field" style="margin:0; max-width:200px;">
+        <label>Mostrar</label>
+        <select id="camp-reg-filtro-estado"><option value="ACTIVO">Activos</option><option value="INVALIDADO">Invalidados</option></select>
+      </div>
+      <button class="btn btn-ghost" id="btn-limpiar-legacy" style="margin-left:auto;">🧹 Eliminar registros antiguos sin correlativo</button>
+    </div>
     <div class="hist-wrap" style="max-height:500px;">
-      <table><thead><tr><th>Correlativo</th><th>Campaña</th><th>Código</th><th>Fecha transacción</th><th>SKU distintos</th><th>Total filas</th><th>Cargado por</th><th>Detalle</th></tr></thead><tbody id="camp-reg-body"></tbody></table>
+      <table><thead><tr><th>Correlativo</th><th>Campaña</th><th>Código</th><th>Fecha transacción</th><th>SKU distintos</th><th>Total filas</th><th>Cargado por</th><th>Detalle</th><th>Acción</th></tr></thead><tbody id="camp-reg-body"></tbody></table>
       <div class="empty-state" id="camp-reg-empty">Aún no hay campañas guardadas.</div>
     </div>
     <button class="btn" id="btn-reg-cargar-mas" style="margin-top:10px; display:none;">Cargar más registros</button>
   </div>
 
   <div class="panel" id="camp-detalle-panel" style="display:none; margin-bottom:14px;">
-    <h3 id="camp-detalle-titulo">Detalle de campaña</h3>
+    <h3 id="camp-detalle-titulo" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+      <span id="camp-detalle-titulo-text">Detalle de campaña</span>
+      <button class="btn btn-sm btn-ghost" id="btn-ocultar-detalle">Ocultar detalle ✕</button>
+    </h3>
     <div class="hist-wrap" style="max-height:600px;">
       <table><thead><tr><th>Participante</th><th>SKU</th><th>Producto</th><th>Área</th><th>Cantidad</th><th>Desglose</th></tr></thead><tbody id="camp-detalle-body"></tbody></table>
     </div>
@@ -601,8 +612,8 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v30';
-const APP_UPDATED = '25/08/2026 19:20';
+const APP_VERSION = 'v31';
+const APP_UPDATED = '25/08/2026 20:40';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -2093,12 +2104,12 @@ $('btn-procesar-pdf').addEventListener('click', async ()=>{
     const participantes = new Set(rows.map(r=>r.participante)).size;
     const skuDistintos = new Set(rows.map(r=>r.sku)).size;
     $('camp-preview-resumen').textContent = `${rows.length} filas encontradas · ${skuDistintos} SKU distintos · ${participantes} participante(s). El PDF no se guarda — solo esta información, al presionar "Guardar en base de datos".`;
-    $('camp-fecha-transaccion').value = todayLocalStr();
+    $('camp-fecha-transaccion').value = '';
     $('camp-preview-body').innerHTML = rows.slice(0,300).map(r=>
       `<tr><td>${r.codigo}</td><td>${r.campana}</td><td>${r.participante}</td><td>${r.sku}</td><td>${r.producto}</td><td>${r.area}</td><td>${r.cantidad}</td><td>${r.desglose}</td></tr>`
     ).join('') + (rows.length>300 ? `<tr><td colspan="8" style="text-align:center; color:var(--ink-soft);">… y ${rows.length-300} filas más (se guardarán todas)</td></tr>` : '');
     $('camp-preview-wrap').style.display = 'block';
-    showMsg('camp-msg','ok', `PDF procesado: ${rows.length} filas listas para guardar.`);
+    showMsg('camp-msg','ok', `PDF procesado: ${rows.length} filas. Ingresa la fecha de transacción antes de guardar.`);
   }catch(err){
     console.error(err);
     showMsg('camp-msg','err','Error al procesar el PDF: '+err.message);
@@ -2110,7 +2121,7 @@ $('btn-procesar-pdf').addEventListener('click', async ()=>{
 $('btn-guardar-campana').addEventListener('click', async ()=>{
   if(!campParsedRows.length){ showMsg('camp-msg','err','No hay filas procesadas para guardar.'); return; }
   const fecha = $('camp-fecha-transaccion').value;
-  if(!fecha){ showMsg('camp-msg','err','Ingresa la fecha de transacción.'); return; }
+  if(!fecha){ showMsg('camp-msg','err','Ingresa la fecha de transacción — es obligatoria.'); $('camp-fecha-transaccion').focus(); return; }
   $('btn-guardar-campana').disabled = true;
   showMsg('camp-msg','ok','Guardando en la base de datos…');
   try{
@@ -2126,6 +2137,7 @@ $('btn-guardar-campana').addEventListener('click', async ()=>{
       sku_distintos: skuDistintos,
       total_filas: campParsedRows.length,
       participantes: participantesSet.size,
+      estado: 'ACTIVO',
       usuario: currentUserAlias,
       fecha_carga: firebase.firestore.FieldValue.serverTimestamp()
     });
@@ -2151,8 +2163,7 @@ $('btn-guardar-campana').addEventListener('click', async ()=>{
     campParsedRows = [];
     $('camp-preview-wrap').style.display = 'none';
     $('camp-pdf-input').value = '';
-    campRegLastDoc = null;
-    $('camp-reg-body').innerHTML = '';
+    $('camp-reg-filtro-estado').value = 'ACTIVO';
     cargarRegistrosCampana(true);
   }catch(err){
     console.error(err);
@@ -2169,58 +2180,150 @@ function fmtFechaCorta(d){
 
 async function cargarRegistrosCampana(reset){
   if(reset){ campRegLastDoc = null; $('camp-reg-body').innerHTML=''; }
+  const estado = $('camp-reg-filtro-estado').value;
   try{
-    let q = campanaRegistrosRef.orderBy('fecha_carga','desc').limit(20);
+    let q = campanaRegistrosRef.where('estado','==', estado).orderBy('fecha_carga','desc').limit(20);
     if(campRegLastDoc) q = q.startAfter(campRegLastDoc);
     const snap = await q.get();
     if(snap.empty && reset){
       $('camp-reg-empty').style.display = 'block';
+      $('camp-reg-empty').textContent = estado === 'ACTIVO' ? 'Aún no hay campañas guardadas.' : 'No hay registros invalidados.';
       $('btn-reg-cargar-mas').style.display = 'none';
       return;
     }
     $('camp-reg-empty').style.display = 'none';
+    const puedeEliminar = currentPermisos.admin || currentPermisos.eliminar;
     snap.docs.forEach(doc=>{
       const r = doc.data();
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${r.correlativo}</td><td>${r.campana||''}</td><td>${r.codigo||''}</td><td>${fmtFechaCorta(r.fecha_transaccion)}</td><td>${r.sku_distintos!=null?r.sku_distintos:''}</td><td>${r.total_filas!=null?r.total_filas:''}</td><td>${r.usuario||''}</td><td><button class="btn btn-sm btn-ver-detalle-campana" data-correlativo="${r.correlativo}" data-campana="${(r.campana||'').replace(/"/g,'&quot;')}">Ver detalle</button></td>`;
+      const accionHtml = r.estado === 'ACTIVO'
+        ? (puedeEliminar ? `<button class="btn btn-sm btn-ghost btn-invalidar-campana" data-correlativo="${r.correlativo}">Eliminar</button>` : '')
+        : `<span class="hint">Invalidado${r.invalidado_por ? ' por '+r.invalidado_por : ''}</span>`;
+      tr.innerHTML = `<td>${r.correlativo}</td><td>${r.campana||''}</td><td>${r.codigo||''}</td><td>${fmtFechaCorta(r.fecha_transaccion)}</td><td>${r.sku_distintos!=null?r.sku_distintos:''}</td><td>${r.total_filas!=null?r.total_filas:''}</td><td>${r.usuario||''}</td><td><button class="btn btn-sm btn-ver-detalle-campana" data-correlativo="${r.correlativo}" data-campana="${(r.campana||'').replace(/"/g,'&quot;')}">Ver detalle</button></td><td>${accionHtml}</td>`;
       $('camp-reg-body').appendChild(tr);
     });
     campRegLastDoc = snap.docs.length ? snap.docs[snap.docs.length-1] : campRegLastDoc;
     $('btn-reg-cargar-mas').style.display = (snap.docs.length === 20) ? 'inline-block' : 'none';
   }catch(err){
     console.error(err);
-    showToast('Error al cargar registros de campañas: '+err.message,'err');
+    if(err.code === 'failed-precondition'){
+      showToast('Firestore necesita un índice para este filtro (una sola vez). Revisa la consola del navegador (F12): el error trae un enlace para crearlo con un clic.','err');
+    }else{
+      showToast('Error al cargar registros de campañas: '+err.message,'err');
+    }
   }
 }
 
+$('camp-reg-filtro-estado').addEventListener('change', ()=> cargarRegistrosCampana(true));
 $('btn-reg-cargar-mas').addEventListener('click', ()=> cargarRegistrosCampana(false));
 
+$('btn-ocultar-detalle').addEventListener('click', ()=>{
+  $('camp-detalle-panel').style.display = 'none';
+});
+
 $('camp-reg-body').addEventListener('click', async (ev)=>{
-  const btn = ev.target.closest('.btn-ver-detalle-campana');
-  if(!btn) return;
-  const correlativo = btn.dataset.correlativo;
-  const campana = btn.dataset.campana;
-  btn.disabled = true;
-  btn.textContent = 'Cargando…';
-  try{
-    let filas = campRegCache[correlativo];
-    if(!filas){
-      const snap = await campanaItemsRef.where('correlativo','==',correlativo).limit(3000).get();
-      filas = snap.docs.map(d=>d.data());
-      campRegCache[correlativo] = filas;
+  const btnVer = ev.target.closest('.btn-ver-detalle-campana');
+  const btnInv = ev.target.closest('.btn-invalidar-campana');
+
+  if(btnVer){
+    const correlativo = btnVer.dataset.correlativo;
+    const campana = btnVer.dataset.campana;
+    btnVer.disabled = true;
+    btnVer.textContent = 'Cargando…';
+    try{
+      let filas = campRegCache[correlativo];
+      if(!filas){
+        const snap = await campanaItemsRef.where('correlativo','==',correlativo).limit(3000).get();
+        filas = snap.docs.map(d=>d.data());
+        campRegCache[correlativo] = filas;
+      }
+      $('camp-detalle-titulo-text').textContent = `Detalle de ${correlativo} — ${campana}`;
+      $('camp-detalle-body').innerHTML = filas.map(r=>
+        `<tr><td>${r.participante||''}</td><td>${r.sku||''}</td><td>${r.producto||''}</td><td>${r.area||''}</td><td>${r.cantidad!=null?r.cantidad:''}</td><td>${r.desglose||''}</td></tr>`
+      ).join('') || '<tr><td colspan="6" style="text-align:center;">Sin filas.</td></tr>';
+      $('camp-detalle-panel').style.display = 'block';
+      $('camp-detalle-panel').scrollIntoView({behavior:'smooth', block:'start'});
+    }catch(err){
+      console.error(err);
+      showToast('Error al cargar el detalle: '+err.message,'err');
+    }finally{
+      btnVer.disabled = false;
+      btnVer.textContent = 'Ver detalle';
     }
-    $('camp-detalle-titulo').textContent = `Detalle de ${correlativo} — ${campana}`;
-    $('camp-detalle-body').innerHTML = filas.map(r=>
-      `<tr><td>${r.participante||''}</td><td>${r.sku||''}</td><td>${r.producto||''}</td><td>${r.area||''}</td><td>${r.cantidad!=null?r.cantidad:''}</td><td>${r.desglose||''}</td></tr>`
-    ).join('') || '<tr><td colspan="6" style="text-align:center;">Sin filas.</td></tr>';
-    $('camp-detalle-panel').style.display = 'block';
-    $('camp-detalle-panel').scrollIntoView({behavior:'smooth', block:'start'});
+    return;
+  }
+
+  if(btnInv){
+    const correlativo = btnInv.dataset.correlativo;
+    if(!(currentPermisos.admin || currentPermisos.eliminar)){ showToast('No tienes permiso para eliminar registros.','err'); return; }
+    const ok = confirm(`¿Eliminar el detalle de ${correlativo}? Se borrarán todas sus filas y la cabecera quedará marcada como INVALIDADA. Esta acción no se puede deshacer.`);
+    if(!ok) return;
+    btnInv.disabled = true;
+    btnInv.textContent = 'Eliminando…';
+    try{
+      const snap = await campanaItemsRef.where('correlativo','==',correlativo).limit(3000).get();
+      const CHUNK = 400;
+      const docs = snap.docs;
+      for(let i=0; i<docs.length; i+=CHUNK){
+        const batch = db.batch();
+        docs.slice(i, i+CHUNK).forEach(d=> batch.delete(d.ref));
+        await batch.commit();
+      }
+      await campanaRegistrosRef.doc(correlativo).set({
+        estado: 'INVALIDADO',
+        invalidado_por: currentUserAlias,
+        invalidado_en: firebase.firestore.FieldValue.serverTimestamp()
+      }, {merge:true});
+      delete campRegCache[correlativo];
+      if($('camp-detalle-titulo-text').textContent.includes(correlativo)){
+        $('camp-detalle-panel').style.display = 'none';
+      }
+      await logAccion('campana_pdf_invalidada', {detalle:`Se invalidó ${correlativo} y se eliminaron ${docs.length} filas de detalle`});
+      showToast(`${correlativo} invalidado (${docs.length} filas eliminadas).`,'ok');
+      cargarRegistrosCampana(true);
+    }catch(err){
+      console.error(err);
+      showToast('Error al eliminar: '+err.message,'err');
+      btnInv.disabled = false;
+      btnInv.textContent = 'Eliminar';
+    }
+    return;
+  }
+});
+
+$('btn-limpiar-legacy').addEventListener('click', async ()=>{
+  if(!(currentPermisos.admin || currentPermisos.eliminar)){ showToast('No tienes permiso para esta acción.','err'); return; }
+  const ok = confirm('Esto elimina definitivamente las filas de campaña que fueron cargadas ANTES de que existiera el correlativo (sin campo "correlativo"). No afecta a los registros REG-xxxxx normales. ¿Continuar?');
+  if(!ok) return;
+  $('btn-limpiar-legacy').disabled = true;
+  $('btn-limpiar-legacy').textContent = 'Limpiando…';
+  try{
+    let lastDoc = null;
+    let totalEliminados = 0;
+    const PAGE = 500;
+    for(let iter=0; iter<20; iter++){
+      let q = campanaItemsRef.orderBy(firebase.firestore.FieldPath.documentId()).limit(PAGE);
+      if(lastDoc) q = q.startAfter(lastDoc);
+      const snap = await q.get();
+      if(snap.empty) break;
+      const orphans = snap.docs.filter(d => !d.data().correlativo);
+      if(orphans.length){
+        const batch = db.batch();
+        orphans.forEach(d=> batch.delete(d.ref));
+        await batch.commit();
+        totalEliminados += orphans.length;
+      }
+      lastDoc = snap.docs[snap.docs.length-1];
+      if(snap.docs.length < PAGE) break;
+    }
+    await logAccion('campana_legacy_limpieza', {detalle:`Se eliminaron ${totalEliminados} filas antiguas sin correlativo`});
+    showToast(`Listo: se eliminaron ${totalEliminados} filas antiguas sin correlativo.`,'ok');
   }catch(err){
     console.error(err);
-    showToast('Error al cargar el detalle: '+err.message,'err');
+    showToast('Error al limpiar registros antiguos: '+err.message,'err');
   }finally{
-    btn.disabled = false;
-    btn.textContent = 'Ver detalle';
+    $('btn-limpiar-legacy').disabled = false;
+    $('btn-limpiar-legacy').textContent = '🧹 Eliminar registros antiguos sin correlativo';
   }
 });
 
