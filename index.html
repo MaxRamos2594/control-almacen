@@ -83,6 +83,11 @@
 
   .bloques-scroll{overflow-x:auto; padding-bottom:8px;}
   .bloque-row{margin-bottom:20px;}
+  .pasillo-divider{
+    text-align:center; color:#8A6D3B; font-size:11px; font-weight:700; letter-spacing:.15em; text-transform:uppercase;
+    padding:8px 0; margin:-6px 0 20px; border-top:2px dashed #C9A227; border-bottom:2px dashed #C9A227;
+    background:repeating-linear-gradient(135deg,#FFF6DA,#FFF6DA 10px,#FDEFC0 10px,#FDEFC0 20px);
+  }
   .bloque-title{font-family:var(--mono); font-size:12px; font-weight:700; color:#fff; background:var(--ink); display:inline-block; padding:3px 10px; border-radius:3px; margin-bottom:8px;}
   .nichos-line{display:flex; flex-direction:row-reverse; gap:12px; padding:4px 2px 10px;}
   .nicho{border:2px solid var(--frame-blue); border-radius:5px; background:#F5F6F8; padding:5px; width:68px; flex-shrink:0;}
@@ -220,7 +225,7 @@
       </div>
       <div class="panel">
         <h3>Bloques y nichos</h3>
-        <p class="hint" style="margin-bottom:10px;">Nicho de 2 niveles: 4 posiciones de rack (2 arriba, 2 abajo) + 10 de piso. Nicho de 3 niveles: 6 de rack (2 arriba, 2 medio, 2 abajo) + 10 de piso. Solo se puede eliminar el último nicho creado de cada bloque, y solo si está vacío.</p>
+        <p class="hint" style="margin-bottom:10px;">Nicho de 2 niveles: 4 posiciones de rack (2 arriba, 2 abajo) + 10 de piso. Nicho de 3 niveles: 6 de rack (2 arriba, 2 medio, 2 abajo) + 10 de piso. Puedes eliminar cualquier nicho vacío (abre "Seleccionar nichos para eliminar" en cada bloque) — las letras visibles se reacomodan automáticamente.</p>
         <div id="bloques-list"></div>
       </div>
     </div>
@@ -656,7 +661,7 @@ async function logAccion(tipo, extra){
   }, extra||{}));
 }
 function moduloOf(tipo){
-  if(['bloque_creado','nicho_creado','nicho_eliminado','nicho_reordenado','nicho_renombrado'].includes(tipo)) return 'diseno';
+  if(['bloque_creado','nicho_creado','nicho_eliminado','nicho_reordenado','nicho_renombrado','pasillo_actualizado'].includes(tipo)) return 'diseno';
   if(['ingreso','movimiento','retiro','producto_agregado','transferencia','retiro_campana'].includes(tipo)) return 'movimientos';
   if(['bloqueo','desbloqueo'].includes(tipo)) return 'bloqueo';
   if(['producto_registrado'].includes(tipo)) return 'productos';
@@ -668,7 +673,7 @@ function tipoLabel(tipo){
     ingreso:'Entrada de pallet', movimiento:'Movimiento', retiro:'Salida (pallet completo)',
     retiro_campana:'Salida (campaña)', producto_agregado:'Adición de producto', transferencia:'Transferencia entre pallets',
     bloqueo:'Bloqueo de posición', desbloqueo:'Desbloqueo de posición',
-    bloque_creado:'Bloque creado', nicho_creado:'Nicho creado', nicho_eliminado:'Nicho eliminado', nicho_reordenado:'Nicho reordenado', nicho_renombrado:'Nicho renombrado',
+    bloque_creado:'Bloque creado', nicho_creado:'Nicho creado', nicho_eliminado:'Nicho eliminado', nicho_reordenado:'Nicho reordenado', nicho_renombrado:'Nicho renombrado', pasillo_actualizado:'Pasillo actualizado',
     producto_registrado:'Producto registrado', permisos_actualizados:'Permisos actualizados',
     sesion_cerrada:'Cierre de sesión', sesion_cerrada_inactividad:'Cierre por inactividad', sesion_iniciada:'Inicio de sesión'
   };
@@ -803,61 +808,76 @@ async function moverNicho(bloqueId, letra, direccion){
   }catch(err){ showToast('Error al mover: '+err.message,'err'); }
 }
 
-async function eliminarNicho(letra, bloqueNombre){
-  const posDelNicho = Object.entries(posiciones).filter(([id,p])=>p.nicho===letra);
-  if(posDelNicho.some(([id,p])=>p.estado==='ocupado')){
-    showToast('No se puede eliminar: hay posiciones ocupadas en este nicho.','err'); return;
-  }
-  if(!confirm(`¿Eliminar el nicho ${letra} de ${bloqueNombre} y sus 14 posiciones? Esta acción no se puede deshacer.`)) return;
-  const esUltimoGlobal = (letra === getUltimoNichoGlobal());
-  try{
-    await db.runTransaction(async tx=>{
-      const cSnap = await tx.get(contadorRef);
-      const data = cSnap.exists ? cSnap.data() : {};
-      tx.delete(nichosRef.doc(letra));
-      posDelNicho.forEach(([id])=> tx.delete(posicionesRef.doc(id)));
-      if(esUltimoGlobal){
-        tx.set(contadorRef, { nicho_index: Math.max((data.nicho_index||1)-1, 0) }, {merge:true});
-      }
-    });
-    await logAccion('nicho_eliminado', {detalle:`Nicho ${letra} eliminado de ${bloqueNombre}`});
-    showToast(`Nicho ${letra} eliminado.`,'ok');
-  }catch(err){ showToast('Error: '+err.message,'err'); }
-}
-
 function renderBloqueForms(){
   const list = $('bloques-list');
-  const entries = Object.entries(bloques).sort((a,b)=>{
-    const ta = a[1].creado_en ? a[1].creado_en.toMillis() : 0;
-    const tb = b[1].creado_en ? b[1].creado_en.toMillis() : 0;
-    return ta - tb;
-  });
+  const entries = sortBloquesEntries();
+  const displayLetters = computeDisplayLetters();
   if(entries.length===0){ list.innerHTML = '<div class="empty-state">Aún no hay bloques. Crea el primero arriba.</div>'; return; }
   list.innerHTML = entries.map(([id, b])=>{
-    const nichosDelBloque = Object.entries(nichos).filter(([l,n])=>n.bloque_id===id);
+    const nichosDelBloque = Object.entries(nichos).filter(([l,n])=>n.bloque_id===id)
+      .sort((a,b2)=> (a[1].pos_visual ?? a[1].orden) - (b2[1].pos_visual ?? b2[1].orden));
     let rackTotal = 0, pisoTotal = 0;
     nichosDelBloque.forEach(([l,n])=>{
       if(n.tipo==='solo_piso'){ pisoTotal += 12; }
       else { rackTotal += (n.niveles||2)*2; pisoTotal += 10; }
     });
     const posDelBloque = rackTotal + pisoTotal;
-    const ultimoDeEsteBloque = getUltimoNichoDeBloque(id);
+    const filasNicho = nichosDelBloque.map(([letra,n])=>{
+      const ocupado = Object.entries(posiciones).some(([pid,p])=>p.nicho===letra && p.estado==='ocupado');
+      const tipoTxt = n.tipo==='solo_piso' ? 'Solo piso (12)' : `${(n.niveles||2)} niveles (${(n.niveles||2)*2} rack + 10 piso)`;
+      return `<label style="display:flex; align-items:center; gap:8px; padding:4px 0; font-size:12px; ${ocupado?'color:#AAA;':''}">
+        <input type="checkbox" class="nicho-check" data-bloque="${id}" data-letra="${letra}" ${ocupado?'disabled title="Tiene posiciones ocupadas"':''} style="width:auto;">
+        <b style="font-family:var(--mono);">${displayLetters[letra]||letra}</b> — ${tipoTxt} ${ocupado?' · ocupado':''}
+      </label>`;
+    }).join('');
     return `<div class="bloque-card">
       <div class="bh">
         <b>${b.nombre}</b>
         <div class="actions">
-          ${ultimoDeEsteBloque ? `<button class="btn btn-danger btn-sm" data-del-nicho="${ultimoDeEsteBloque}" data-nombre="${b.nombre}">🗑 Eliminar nicho ${ultimoDeEsteBloque}</button>` : ''}
           <button class="btn btn-ghost btn-sm" data-add-nicho="${id}" data-nombre="${b.nombre}" data-niveles="2">+ Nicho (2 niveles)</button>
           <button class="btn btn-ghost btn-sm" data-add-nicho="${id}" data-nombre="${b.nombre}" data-niveles="3">+ Nicho (3 niveles)</button>
           <button class="btn btn-ghost btn-sm" data-add-piso="${id}" data-nombre="${b.nombre}">+ Piso (sin rack)</button>
+          <button class="btn btn-ghost btn-sm" data-toggle-pasillo="${id}" data-valor="${b.pasillo ? 'false':'true'}">${b.pasillo ? '✕ Quitar pasillo' : '╱ Agregar pasillo debajo'}</button>
         </div>
       </div>
       <div class="meta">${nichosDelBloque.length} nicho(s) · ${posDelBloque} posiciones (${rackTotal} rack + ${pisoTotal} piso)</div>
+      ${nichosDelBloque.length>0 ? `
+      <details style="margin-top:8px;">
+        <summary style="cursor:pointer; font-size:11px; color:var(--ink-soft);">Seleccionar nichos para eliminar</summary>
+        <div style="margin-top:6px; max-height:180px; overflow-y:auto; border-top:1px solid var(--line); padding-top:6px;">${filasNicho}</div>
+        <button class="btn btn-danger btn-sm" data-del-selected="${id}" style="width:100%; margin-top:8px;">🗑 Eliminar nichos seleccionados</button>
+      </details>` : ''}
     </div>`;
   }).join('');
   list.querySelectorAll('[data-add-nicho]').forEach(btn=> btn.onclick = () => agregarNicho(btn.dataset.addNicho, btn.dataset.nombre, parseInt(btn.dataset.niveles)));
   list.querySelectorAll('[data-add-piso]').forEach(btn=> btn.onclick = () => agregarNichoSoloPiso(btn.dataset.addPiso, btn.dataset.nombre));
-  list.querySelectorAll('[data-del-nicho]').forEach(btn=> btn.onclick = () => eliminarNicho(btn.dataset.delNicho, btn.dataset.nombre));
+  list.querySelectorAll('[data-toggle-pasillo]').forEach(btn=> btn.onclick = () => togglePasillo(btn.dataset.togglePasillo, btn.dataset.valor==='true'));
+  list.querySelectorAll('[data-del-selected]').forEach(btn=> btn.onclick = () => eliminarNichosSeleccionados(btn.dataset.delSelected));
+}
+
+async function togglePasillo(bloqueId, valor){
+  try{
+    await bloquesRef.doc(bloqueId).update({ pasillo: valor });
+    await logAccion('pasillo_actualizado', {detalle:`Pasillo ${valor?'agregado':'quitado'} en bloque`});
+    showToast(`Pasillo ${valor?'agregado':'quitado'}.`,'ok');
+  }catch(err){ showToast('Error: '+err.message,'err'); }
+}
+
+async function eliminarNichosSeleccionados(bloqueId){
+  const checks = document.querySelectorAll(`.nicho-check[data-bloque="${bloqueId}"]:checked`);
+  const letras = [...checks].map(cb=>cb.dataset.letra);
+  if(letras.length===0){ showToast('Selecciona al menos un nicho para eliminar.','err'); return; }
+  if(!confirm(`¿Eliminar ${letras.length} nicho(s) (${letras.join(', ')}) y todas sus posiciones? Esta acción no se puede deshacer. Las letras visibles de los demás nichos se reacomodarán automáticamente.`)) return;
+  try{
+    await db.runTransaction(async tx=>{
+      letras.forEach(letra=>{
+        tx.delete(nichosRef.doc(letra));
+        Object.entries(posiciones).filter(([id,p])=>p.nicho===letra).forEach(([id])=> tx.delete(posicionesRef.doc(id)));
+      });
+    });
+    await logAccion('nicho_eliminado', {detalle:`Nichos eliminados: ${letras.join(', ')}`});
+    showToast(`${letras.length} nicho(s) eliminado(s).`,'ok');
+  }catch(err){ showToast('Error: '+err.message,'err'); }
 }
 
 /* -------------------- Render de grillas -------------------- */
@@ -869,19 +889,32 @@ function slotReadonlyHTML(id, data){
   const cls = ['slot','readonly', data.tipo==='piso'?'piso-slot':'', data.estado==='ocupado'?'ocupado':'', data.bloqueada?'bloqueada':''].join(' ').trim();
   return `<div class="${cls}">${data.bloqueada?'🔒':id.slice(-2)}</div>`;
 }
-function buildBloquesMarkup(interactive, showReorder){
-  const bloqueEntries = Object.entries(bloques).sort((a,b)=>{
+function sortBloquesEntries(){
+  return Object.entries(bloques).sort((a,b)=>{
     const ta = a[1].creado_en ? a[1].creado_en.toMillis() : 0;
     const tb = b[1].creado_en ? b[1].creado_en.toMillis() : 0;
     return ta - tb;
   });
-  let letraVisualIndex = 0;
+}
+function computeDisplayLetters(){
+  const map = {};
+  let idx = 0;
+  sortBloquesEntries().forEach(([bid])=>{
+    const nichosDelBloque = Object.entries(nichos).filter(([l,n])=>n.bloque_id===bid)
+      .sort((a,b2)=> (a[1].pos_visual ?? a[1].orden) - (b2[1].pos_visual ?? b2[1].orden));
+    nichosDelBloque.forEach(([letra])=>{ map[letra] = indexToLetter(idx++); });
+  });
+  return map;
+}
+function buildBloquesMarkup(interactive, showReorder){
+  const bloqueEntries = sortBloquesEntries();
+  const displayLetters = computeDisplayLetters();
   return bloqueEntries.map(([bid, b])=>{
     const nichosDelBloque = Object.entries(nichos).filter(([l,n])=>n.bloque_id===bid)
       .sort((a,b2)=> (a[1].pos_visual ?? a[1].orden) - (b2[1].pos_visual ?? b2[1].orden));
     const fn = interactive ? slotHTML : slotReadonlyHTML;
     const nichosHTML = nichosDelBloque.map(([letra, ndata], idxEnBloque)=>{
-      const letraVisual = indexToLetter(letraVisualIndex++);
+      const letraVisual = displayLetters[letra] || letra;
       const esSoloPiso = ndata.tipo === 'solo_piso';
       const filaCount = esSoloPiso ? 6 : 5;
       const pisoRows = [];
@@ -916,7 +949,8 @@ function buildBloquesMarkup(interactive, showReorder){
         ${pisoRows.join('')}
       </div>`;
     }).join('');
-    return `<div class="bloque-row"><div class="bloque-title">${b.nombre}</div><div class="nichos-line">${nichosHTML || '<span class="empty-state">Sin nichos aún</span>'}</div></div>`;
+    const pasilloHTML = b.pasillo ? `<div class="pasillo-divider">╱╱╱ PASILLO ╱╱╱</div>` : '';
+    return `<div class="bloque-row"><div class="bloque-title">${b.nombre}</div><div class="nichos-line">${nichosHTML || '<span class="empty-state">Sin nichos aún</span>'}</div></div>${pasilloHTML}`;
   }).join('') || '<div class="empty-state">Aún no hay bloques configurados.</div>';
 }
 function renderPreviewGrid(){
