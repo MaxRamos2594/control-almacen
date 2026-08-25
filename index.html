@@ -154,8 +154,8 @@
   .toast.ok{background:var(--green);}
   .toast.err{background:var(--red);}
 
-  .filters-grid{display:grid; grid-template-columns:repeat(5,1fr) auto; gap:10px; align-items:end;}
-  @media (max-width:1050px){ .filters-grid{grid-template-columns:1fr 1fr;} }
+  .filters-grid{display:grid; grid-template-columns:repeat(6,1fr) auto; gap:10px; align-items:end;}
+  @media (max-width:1200px){ .filters-grid{grid-template-columns:1fr 1fr;} }
 
   /* ---- MÓVIL ---- */
   @media (max-width:640px){
@@ -334,16 +334,17 @@
       <div class="field"><label>Código</label><input type="text" id="pr-codigo" class="upper" placeholder="COD."></div>
       <div class="field"><label>Descripción</label><input type="text" id="pr-desc" class="upper"></div>
       <div class="field"><label>Costo</label><input type="number" id="pr-costo" step="0.01" min="0"></div>
+      <div class="field"><label>Proveedor</label><input type="text" id="pr-proveedor" class="upper" placeholder="EJ. DISTRIBUIDORA XYZ"></div>
       <div class="field"><label>Empaque 1 (unidades)</label><input type="number" id="pr-emp1" step="1" min="0" placeholder="EJ. 24"></div>
       <div class="field"><label>Empaque 2 (unidades)</label><input type="number" id="pr-emp2" step="1" min="0" placeholder="EJ. 48"></div>
       <button class="btn btn-primary" id="btn-guardar-producto" style="width:100%;">Guardar producto</button>
       <div class="msg" id="pr-msg"></div>
-      <p class="hint" style="margin-top:8px;">Si el código ya existe, solo un usuario con permiso de edición/eliminación puede modificarlo.</p>
+      <p class="hint" id="pr-load-hint" style="margin-top:8px;">Si escribes un código ya existente, sus datos se cargan aquí automáticamente para que los actualices (requiere permiso de edición/eliminación).</p>
     </div>
     <div class="panel">
       <h3>Catálogo de productos</h3>
       <div class="hist-wrap" style="max-height:600px;">
-        <table><thead><tr><th>Código</th><th>Descripción</th><th>Costo</th><th>Empaque 1</th><th>Empaque 2</th><th>Creado</th><th>Usuario</th></tr></thead><tbody id="prod-body"></tbody></table>
+        <table><thead><tr><th>Código</th><th>Descripción</th><th>Costo</th><th>Proveedor</th><th>Empaque 1</th><th>Empaque 2</th><th>Creado</th><th>Usuario</th></tr></thead><tbody id="prod-body"></tbody></table>
         <div class="empty-state" id="prod-empty">Sin productos registrados aún.</div>
       </div>
     </div>
@@ -359,6 +360,7 @@
       <table><thead><tr><th>Código</th><th>Descripción</th><th>Cantidad total</th><th>Costo unitario</th><th>Costo total</th><th></th></tr></thead><tbody id="inv-body"></tbody></table>
       <div class="empty-state" id="inv-empty">Sin inventario todavía.</div>
     </div>
+    <div class="total-line" style="font-size:15px; margin-top:12px;"><span><b>TOTAL VALORIZADO DEL ALMACÉN</b></span><span id="inv-total-valorizado"><b>0.00</b></span></div>
   </div>
 </div>
 
@@ -407,6 +409,7 @@
     <div class="filters-grid">
       <div class="field" style="margin:0;"><label>Usuario</label><input type="text" id="bit-usuario" placeholder="correo"></div>
       <div class="field" style="margin:0;"><label>Código (pallet/posición)</label><input type="text" id="bit-codigo" class="upper" placeholder="CD0005 o A03"></div>
+      <div class="field" style="margin:0;"><label>Código de producto</label><input type="text" id="bit-producto" class="upper" placeholder="EJ. 17891"></div>
       <div class="field" style="margin:0;"><label>Desde</label><input type="date" id="bit-desde"></div>
       <div class="field" style="margin:0;"><label>Hasta</label><input type="date" id="bit-hasta"></div>
       <div class="field" style="margin:0;"><label>Módulo</label>
@@ -1040,7 +1043,7 @@ async function agregarProductoAPallet(codigoPallet, prodEl, descEl, costoEl, can
         tx.set(productosRef.doc(producto), { descripcion, costo, empaque1:null, empaque2:null, creado_en: firebase.firestore.FieldValue.serverTimestamp(), creado_por: currentUserEmail });
       }
       tx.set(kardexRef.doc(), {
-        producto, descripcion, costo, cantidad, tipo:'ingreso', pallet_codigo: codigoPallet,
+        producto, descripcion, costo, cantidad, tipo:'ingreso', motivo:'Producto agregado a pallet', pallet_codigo: codigoPallet, posicion: null,
         usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
       });
     });
@@ -1060,7 +1063,7 @@ async function retirarPallet(posId, codigo){
       itemsDelPallet.forEach(it=>{
         tx.set(kardexRef.doc(), {
           producto: it.producto, descripcion: it.descripcion, costo: it.costo, cantidad: it.cantidad,
-          tipo:'salida', pallet_codigo: codigo, usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          tipo:'salida', motivo:'Retiro de pallet completo', pallet_codigo: codigo, posicion: posId, usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
       });
     });
@@ -1199,7 +1202,7 @@ $('btn-crear-pallet').addEventListener('click', async ()=>{
       items.forEach(it=>{
         tx.set(kardexRef.doc(), {
           producto: it.producto, descripcion: it.descripcion, costo: it.costo, cantidad: it.cantidad,
-          tipo:'ingreso', pallet_codigo: codigo, usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          tipo:'ingreso', motivo:'Pallet creado', pallet_codigo: codigo, posicion: destino, usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
       });
     });
@@ -1233,6 +1236,19 @@ $('btn-mover').addEventListener('click', async ()=>{
       tx.update(destinoRef, { estado:'ocupado', pallet_codigo:codigo, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
       tx.update(palletRef, { posicion_actual: destinoId, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
       tx.set(movimientosRef.doc(), { pallet_codigo:codigo, origen:origenId, destino:destinoId, tipo:'movimiento', usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+      const itemsPallet = palletSnap.data().items || [];
+      itemsPallet.forEach(it=>{
+        tx.set(kardexRef.doc(), {
+          producto: it.producto, descripcion: it.descripcion, costo: it.costo, cantidad: it.cantidad,
+          tipo:'salida', motivo:'Movimiento de pallet - salida', pallet_codigo: codigo, posicion: origenId,
+          usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        tx.set(kardexRef.doc(), {
+          producto: it.producto, descripcion: it.descripcion, costo: it.costo, cantidad: it.cantidad,
+          tipo:'ingreso', motivo:'Movimiento de pallet - entrada', pallet_codigo: codigo, posicion: destinoId,
+          usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
     });
     showMsg('mv-msg','ok',`Pallet ${codigo} movido de ${origenId} a ${destinoId}.`);
     showToast(`Pallet ${codigo} movido a ${destinoId}.`,'ok');
@@ -1295,11 +1311,11 @@ $('btn-transferir').addEventListener('click', async ()=>{
       tx.update(destinoRef, { items: destinoItems, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
       tx.set(movimientosRef.doc(), { tipo:'transferencia', pallet_codigo:producto, origen, destino, usuario: currentUserAlias, detalle:`${cantidad} de ${producto}`, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
       tx.set(kardexRef.doc(), {
-        producto, descripcion, costo, cantidad, tipo:'salida', pallet_codigo: origen,
+        producto, descripcion, costo, cantidad, tipo:'salida', motivo:'Transferencia entre pallets - salida', pallet_codigo: origen, posicion: null,
         usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
       });
       tx.set(kardexRef.doc(), {
-        producto, descripcion, costo, cantidad, tipo:'ingreso', pallet_codigo: destino,
+        producto, descripcion, costo, cantidad, tipo:'ingreso', motivo:'Transferencia entre pallets - entrada', pallet_codigo: destino, posicion: null,
         usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
       });
     });
@@ -1332,6 +1348,9 @@ function renderInventario(){
   const body = $('inv-body'); if(!body) return;
   const inv = computeInventario();
   const entries = Object.entries(inv).sort((a,b)=>a[0].localeCompare(b[0]));
+  let totalValorizado = 0;
+  entries.forEach(([,data])=>{ totalValorizado += data.costoTotal; });
+  $('inv-total-valorizado').innerHTML = `<b>S/ ${fmtMoney(totalValorizado)}</b>`;
   if(entries.length===0){ body.innerHTML=''; $('inv-empty').style.display='block'; return; }
   $('inv-empty').style.display='none';
   body.innerHTML = entries.map(([codigo,data])=>{
@@ -1359,6 +1378,8 @@ $('btn-exportar-inventario').addEventListener('click', ()=>{
     'Código': codigo, 'Descripción': data.descripcion||'', 'Cantidad total': data.total,
     'Costo unitario': data.costo, 'Costo total': data.costoTotal
   }));
+  const totalValorizado = entries.reduce((acc,[,d])=>acc+d.costoTotal, 0);
+  filas.push({ 'Código':'', 'Descripción':'', 'Cantidad total':'', 'Costo unitario':'TOTAL VALORIZADO', 'Costo total': totalValorizado });
   const ws = XLSX.utils.json_to_sheet(filas);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Inventario');
@@ -1391,13 +1412,36 @@ function renderProductosTabla(){
   $('prod-empty').style.display='none';
   body.innerHTML = entries.map(([codigo,p])=>{
     const fecha = p.creado_en ? p.creado_en.toDate().toLocaleString('es-PE') : '—';
-    return `<tr><td>${codigo}</td><td>${p.descripcion||''}</td><td>${fmtMoney(p.costo)}</td><td>${p.empaque1 ?? ''}</td><td>${p.empaque2 ?? ''}</td><td>${fecha}</td><td>${p.creado_por||''}</td></tr>`;
+    return `<tr><td>${codigo}</td><td>${p.descripcion||''}</td><td>${fmtMoney(p.costo)}</td><td>${p.proveedor||''}</td><td>${p.empaque1 ?? ''}</td><td>${p.empaque2 ?? ''}</td><td>${fecha}</td><td>${p.creado_por||''}</td></tr>`;
   }).join('');
 }
+function limpiarFormularioProducto(){
+  $('pr-codigo').value=''; $('pr-desc').value=''; $('pr-costo').value=''; $('pr-proveedor').value=''; $('pr-emp1').value=''; $('pr-emp2').value='';
+  $('pr-load-hint').textContent = 'Si escribes un código ya existente, sus datos se cargan aquí automáticamente para que los actualices (requiere permiso de edición/eliminación).';
+  $('pr-load-hint').style.color = '';
+}
+$('pr-codigo').addEventListener('blur', ()=>{
+  const codigo = $('pr-codigo').value.trim().toUpperCase(); $('pr-codigo').value = codigo;
+  if(!codigo) return;
+  const p = productos[codigo];
+  if(p){
+    $('pr-desc').value = p.descripcion || '';
+    $('pr-costo').value = p.costo ?? '';
+    $('pr-proveedor').value = p.proveedor || '';
+    $('pr-emp1').value = p.empaque1 ?? '';
+    $('pr-emp2').value = p.empaque2 ?? '';
+    $('pr-load-hint').textContent = `✓ Se cargaron los datos actuales de ${codigo}. Modifica lo que necesites y guarda.`;
+    $('pr-load-hint').style.color = '#245C46';
+  }else{
+    $('pr-load-hint').textContent = `${codigo} no existe todavía — se creará como producto nuevo.`;
+    $('pr-load-hint').style.color = '';
+  }
+});
 $('btn-guardar-producto').addEventListener('click', async ()=>{
   const codigo = $('pr-codigo').value.trim().toUpperCase();
   const descripcion = $('pr-desc').value.trim().toUpperCase();
   const costo = parseFloat($('pr-costo').value);
+  const proveedor = $('pr-proveedor').value.trim().toUpperCase();
   const empaque1raw = $('pr-emp1').value.trim();
   const empaque2raw = $('pr-emp2').value.trim();
   const empaque1 = empaque1raw ? parseInt(empaque1raw, 10) : null;
@@ -1413,14 +1457,14 @@ $('btn-guardar-producto').addEventListener('click', async ()=>{
   }
   try{
     if(existente){
-      await productosRef.doc(codigo).update({ descripcion, costo, empaque1, empaque2, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
+      await productosRef.doc(codigo).update({ descripcion, costo, proveedor, empaque1, empaque2, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
     }else{
-      await productosRef.doc(codigo).set({ descripcion, costo, empaque1, empaque2, creado_en: firebase.firestore.FieldValue.serverTimestamp(), creado_por: currentUserEmail });
+      await productosRef.doc(codigo).set({ descripcion, costo, proveedor, empaque1, empaque2, creado_en: firebase.firestore.FieldValue.serverTimestamp(), creado_por: currentUserEmail });
     }
     await logAccion('producto_registrado', {pallet_codigo:codigo, detalle:`Producto ${codigo} ${existente?'actualizado':'creado'} en catálogo`});
     showMsg('pr-msg','ok', `Producto ${codigo} guardado.`);
     showToast(`Producto ${codigo} guardado en el catálogo.`,'ok');
-    $('pr-codigo').value=''; $('pr-desc').value=''; $('pr-costo').value=''; $('pr-emp1').value=''; $('pr-emp2').value='';
+    limpiarFormularioProducto();
   }catch(err){ showMsg('pr-msg','err', err.message); }
 });
 
@@ -1489,7 +1533,7 @@ $('btn-retirar-campana').addEventListener('click', async ()=>{
         });
         tx.set(kardexRef.doc(), {
           producto: rt.producto, descripcion: rt.descripcion, costo: rt.costo, cantidad: rt.cantidad,
-          tipo:'salida', pallet_codigo: codigo, usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          tipo:'salida', motivo:'Retiro campaña', pallet_codigo: codigo, posicion: null, usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
       });
     });
@@ -1523,7 +1567,8 @@ $('btn-cargar-kardex').addEventListener('click', async ()=>{
     body.innerHTML = rows.map(d=>{
       const fecha = d.timestamp ? d.timestamp.toDate().toLocaleString('es-PE') : '…';
       const signo = d.tipo==='ingreso' ? '+' : '−';
-      return `<tr><td>${fecha}</td><td>${d.usuario||''}</td><td>${d.pallet_codigo||''}</td><td>${d.producto}</td><td>${d.descripcion||''}</td><td>${d.tipo==='ingreso'?'Ingreso':'Salida'}</td><td>${signo}${d.cantidad}</td><td>${d.saldo}</td></tr>`;
+      const tipoLabelKx = d.motivo || (d.tipo==='ingreso'?'Ingreso':'Salida');
+      return `<tr><td>${fecha}</td><td>${d.usuario||''}</td><td>${d.pallet_codigo||''}</td><td>${d.producto}</td><td>${d.descripcion||''}</td><td>${tipoLabelKx}</td><td>${signo}${d.cantidad}</td><td>${d.saldo}</td></tr>`;
     }).join('');
   }catch(err){ showToast('Error al cargar kardex: '+err.message,'err'); }
   finally{ $('btn-cargar-kardex').disabled = false; }
@@ -1540,10 +1585,11 @@ $('btn-cargar-bitacora').addEventListener('click', async ()=>{
     const snap = await movimientosRef.orderBy('timestamp','desc').limit(500).get();
     const usuarioF = $('bit-usuario').value.trim().toLowerCase();
     const codigoF = $('bit-codigo').value.trim().toLowerCase();
+    const productoF = $('bit-producto').value.trim().toLowerCase();
     const desdeF = $('bit-desde').value;
     const hastaF = $('bit-hasta').value;
     const moduloF = $('bit-modulo').value;
-    const activeFilters = !!(usuarioF || codigoF || desdeF || hastaF || moduloF);
+    const activeFilters = !!(usuarioF || codigoF || productoF || desdeF || hastaF || moduloF);
     const rows = [];
     snap.forEach(doc=>{
       const d = doc.data();
@@ -1554,6 +1600,7 @@ $('btn-cargar-bitacora').addEventListener('click', async ()=>{
           const campos = [d.pallet_codigo, d.origen, d.destino, d.detalle].map(v=>(v||'').toLowerCase());
           if(campos.some(v=>v.includes(codigoF))) matched = true;
         }
+        if(!matched && productoF && d.detalle && d.detalle.toLowerCase().includes(productoF)) matched = true;
         if(!matched && (desdeF||hastaF) && d.timestamp){
           const t = d.timestamp.toDate(); let ok = true;
           if(desdeF && t < parseLocalDate(desdeF)) ok=false;
