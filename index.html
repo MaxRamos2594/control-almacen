@@ -11,6 +11,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <style>
   :root{
@@ -222,6 +223,7 @@
   <button data-tab="pallets" id="tab-pallets">Pallets</button>
   <button data-tab="rotulos" id="tab-rotulos">Rótulos PDF</button>
   <button data-tab="retiros" id="tab-retiros">Retiros Campaña</button>
+  <button data-tab="campanas" id="tab-campanas">Campañas (PDF)</button>
   <button data-tab="kardex" id="tab-kardex">Kardex</button>
   <button data-tab="bitacora" id="tab-bitacora">Bitácora</button>
   <button data-tab="usuarios" id="tab-usuarios">Usuarios</button>
@@ -446,6 +448,38 @@
   </div>
 </div>
 
+<!-- CAMPAÑAS (PDF) -->
+<div class="view" id="view-campanas">
+  <div class="panel" style="margin-bottom:14px;">
+    <h3>Cargar reparto de campaña (PDF)</h3>
+    <p class="hint" style="margin-bottom:10px;">Sube el PDF de reparto de campaña. El sistema solo lee y guarda el contenido (código, campaña, participante, SKU, producto, área, cantidad y desglose) — el archivo PDF en sí <b>no</b> se guarda ni se sube a ningún lado.</p>
+    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
+      <div class="field" style="margin:0; max-width:340px;"><label>Archivo PDF</label><input type="file" id="camp-pdf-input" accept="application/pdf"></div>
+      <button class="btn btn-primary" id="btn-procesar-pdf">Procesar PDF</button>
+    </div>
+    <div class="msg" id="camp-msg"></div>
+    <div id="camp-preview-wrap" style="display:none; margin-top:14px;">
+      <p class="hint" id="camp-preview-resumen" style="margin-bottom:8px;"></p>
+      <div class="hist-wrap" style="max-height:400px;">
+        <table><thead><tr><th>Código</th><th>Campaña</th><th>Participante</th><th>SKU</th><th>Producto</th><th>Área</th><th>Cantidad</th><th>Desglose</th></tr></thead><tbody id="camp-preview-body"></tbody></table>
+      </div>
+      <button class="btn btn-primary" id="btn-guardar-campana" style="margin-top:12px;">Guardar en base de datos</button>
+    </div>
+  </div>
+  <div class="panel">
+    <h3>Consultar campañas guardadas</h3>
+    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
+      <div class="field" style="margin:0; max-width:260px;"><label>Código de campaña</label><input type="text" id="camp-buscar-codigo" class="upper" placeholder="EJ. CAMP-03290262-158"></div>
+      <div class="field" style="margin:0; max-width:220px;"><label>Participante (opcional)</label><input type="text" id="camp-buscar-participante" class="upper" placeholder="EJ. HUAYCÁN"></div>
+      <button class="btn btn-primary" id="btn-buscar-campana">Buscar</button>
+    </div>
+    <div class="hist-wrap" style="max-height:600px;">
+      <table><thead><tr><th>Código</th><th>Campaña</th><th>Participante</th><th>SKU</th><th>Producto</th><th>Área</th><th>Cantidad</th><th>Desglose</th></tr></thead><tbody id="camp-buscar-body"></tbody></table>
+      <div class="empty-state" id="camp-buscar-empty">Ingresa un código de campaña y presiona "Buscar".</div>
+    </div>
+  </div>
+</div>
+
 <!-- KARDEX -->
 <div class="view" id="view-kardex">
   <div class="panel">
@@ -498,6 +532,7 @@
     <div class="field"><label><input type="checkbox" id="us-inventario" style="width:auto; margin-right:6px;">Inventario</label></div>
     <div class="field"><label><input type="checkbox" id="us-pallets" style="width:auto; margin-right:6px;">Pallets</label></div>
     <div class="field"><label><input type="checkbox" id="us-retiros" style="width:auto; margin-right:6px;">Retiros Campaña</label></div>
+    <div class="field"><label><input type="checkbox" id="us-campanas" style="width:auto; margin-right:6px;">Campañas (PDF)</label></div>
     <div class="field"><label><input type="checkbox" id="us-kardex" style="width:auto; margin-right:6px;">Kardex</label></div>
     <div class="field"><label><input type="checkbox" id="us-bitacora" style="width:auto; margin-right:6px;">Bitácora</label></div>
     <p class="hint" style="margin:10px 0 4px;">Permiso adicional (aplica dentro de los módulos ya marcados):</p>
@@ -539,8 +574,8 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v27';
-const APP_UPDATED = '25/08/2026 16:10';
+const APP_VERSION = 'v28';
+const APP_UPDATED = '25/08/2026 16:45';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -560,6 +595,7 @@ const productosRef = db.collection('productos');
 const movimientosRef = db.collection('movimientos');
 const usuariosRef = db.collection('usuarios');
 const retirosCampanaRef = db.collection('retiros_campana');
+const campanaItemsRef = db.collection('campana_items');
 const kardexRef = db.collection('kardex');
 const contadorRef = db.collection('contadores').doc('global');
 
@@ -613,7 +649,7 @@ async function loadPermisos(user){
   let snap = await usuariosRef.doc(email).get();
   if(!snap.exists){
     if(email === ADMIN_EMAIL){
-      await usuariosRef.doc(email).set({ email, alias:'Administrador', permisos:{diseno:true, movimientos:true, productos:true, inventario:true, pallets:true, retiros:true, kardex:true, bitacora:true, eliminar:true, admin:true}, creado_en: firebase.firestore.FieldValue.serverTimestamp() });
+      await usuariosRef.doc(email).set({ email, alias:'Administrador', permisos:{diseno:true, movimientos:true, productos:true, inventario:true, pallets:true, retiros:true, campanas:true, kardex:true, bitacora:true, eliminar:true, admin:true}, creado_en: firebase.firestore.FieldValue.serverTimestamp() });
       snap = await usuariosRef.doc(email).get();
     }else{
       showToast('No tienes permisos asignados. Contacta al administrador.','err');
@@ -642,6 +678,7 @@ function applyPermisosUI(){
     inventario: admin || !!p.inventario,
     pallets: admin || !!p.pallets,
     retiros: admin || !!p.retiros,
+    campanas: admin || !!p.campanas,
     kardex: admin || !!p.kardex,
     bitacora: admin || !!p.bitacora,
     usuarios: admin
@@ -1880,6 +1917,188 @@ $('btn-cargar-bitacora').addEventListener('click', async ()=>{
   finally{ $('btn-cargar-bitacora').disabled = false; }
 });
 
+/* -------------------- Campañas (PDF) -------------------- */
+let campParsedRows = [];
+
+async function extractPdfLines(arrayBuffer){
+  const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+  const allLines = [];
+  for(let p=1; p<=pdf.numPages; p++){
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    const items = content.items
+      .map(it=>({str: it.str, x: it.transform[4], y: it.transform[5]}))
+      .filter(it=> it.str && it.str.trim() !== '');
+    const lineGroups = [];
+    const TOL = 2.5;
+    items.forEach(it=>{
+      let grp = lineGroups.find(g=> Math.abs(g.y - it.y) <= TOL);
+      if(!grp){ grp = {y: it.y, items: []}; lineGroups.push(grp); }
+      grp.items.push(it);
+    });
+    lineGroups.sort((a,b)=> b.y - a.y);
+    lineGroups.forEach(g=>{
+      g.items.sort((a,b)=> a.x - b.x);
+      const text = g.items.map(it=>it.str).join(' ').replace(/\s+/g,' ').trim();
+      if(text) allLines.push(text);
+    });
+  }
+  return allLines;
+}
+
+function skuProductoSplit(chunksIn){
+  let chunks = chunksIn.slice();
+  if(chunks.length === 0) return {sku:'', producto:''};
+  let i = 0;
+  const skuParts = [];
+  while(i < chunks.length && chunks[i].trim() !== '' && !/\s/.test(chunks[i].trim())){
+    skuParts.push(chunks[i].trim());
+    i++;
+  }
+  if(skuParts.length === 0){
+    const firstChunk = chunks[0];
+    const sp = firstChunk.indexOf(' ');
+    if(sp > 0){
+      skuParts.push(firstChunk.slice(0, sp));
+      chunks = [firstChunk.slice(sp+1), ...chunks.slice(1)];
+      i = 0;
+    }else{
+      skuParts.push(firstChunk);
+      i = 1;
+    }
+  }
+  const producto = chunks.slice(i).join(' ').replace(/\s+/g,' ').trim();
+  return { sku: skuParts.join(''), producto };
+}
+
+function parseCampanaLines(lines){
+  const rowRegex = /(\d{1,3}\s*-\s*P\s*-\s*\d{1,3})\s*([\d.,]+)\s*und\.?\s+(.+)$/i;
+  const headerRegex = /^SKU\s+Producto\b/i;
+  const paginaRegex = /^P[aá]gina\s+\d+\s+de\s+\d+$/i;
+  let codigo = '', campana = '', participante = '';
+  let buffer = [];
+  const rows = [];
+  for(const raw of lines){
+    const line = raw.trim();
+    if(!line) continue;
+    if(/^RESUMEN TOTAL/i.test(line)) break;
+    if(/^Campaña:/i.test(line)){ campana = line.replace(/^Campaña:\s*/i,'').trim(); buffer=[]; continue; }
+    if(/^C[oó]digo:/i.test(line)){ codigo = line.replace(/^C[oó]digo:\s*/i,'').trim(); buffer=[]; continue; }
+    if(/^Participante:/i.test(line)){ participante = line.replace(/^Participante:\s*/i,'').trim(); buffer=[]; continue; }
+    if(headerRegex.test(line)) continue;
+    if(paginaRegex.test(line)) continue;
+    const m = line.match(rowRegex);
+    if(m){
+      const area = m[1].replace(/\s+/g,'');
+      const cantidad = Number(m[2].replace(/,/g,''));
+      const desglose = m[3].trim();
+      const prefix = line.slice(0, m.index).trim();
+      const chunks = buffer.slice();
+      if(prefix) chunks.push(prefix);
+      const {sku, producto} = skuProductoSplit(chunks);
+      if(sku){
+        rows.push({ codigo, campana, participante, sku, producto, area, cantidad, desglose });
+      }
+      buffer = [];
+    }else{
+      buffer.push(line);
+    }
+  }
+  return rows;
+}
+
+$('btn-procesar-pdf').addEventListener('click', async ()=>{
+  const file = $('camp-pdf-input').files[0];
+  if(!file){ showMsg('camp-msg','err','Selecciona un archivo PDF primero.'); return; }
+  if(!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf'){ showMsg('camp-msg','err','El archivo debe ser un PDF.'); return; }
+  $('btn-procesar-pdf').disabled = true;
+  showMsg('camp-msg','ok','Procesando PDF, un momento…');
+  try{
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const arrayBuffer = await file.arrayBuffer();
+    const lines = await extractPdfLines(arrayBuffer);
+    const rows = parseCampanaLines(lines);
+    if(rows.length === 0){
+      showMsg('camp-msg','err','No se encontraron filas reconocibles en el PDF. Verifica que sea un reparto de campaña con el formato esperado.');
+      $('camp-preview-wrap').style.display = 'none';
+      campParsedRows = [];
+      return;
+    }
+    campParsedRows = rows;
+    const participantes = new Set(rows.map(r=>r.participante)).size;
+    const codigos = new Set(rows.map(r=>r.codigo)).size;
+    $('camp-preview-resumen').textContent = `${rows.length} filas encontradas · ${participantes} participante(s) · ${codigos} código(s) de campaña. El PDF no se guarda — solo esta información, al presionar "Guardar en base de datos".`;
+    $('camp-preview-body').innerHTML = rows.slice(0,300).map(r=>
+      `<tr><td>${r.codigo}</td><td>${r.campana}</td><td>${r.participante}</td><td>${r.sku}</td><td>${r.producto}</td><td>${r.area}</td><td>${r.cantidad}</td><td>${r.desglose}</td></tr>`
+    ).join('') + (rows.length>300 ? `<tr><td colspan="8" style="text-align:center; color:var(--ink-soft);">… y ${rows.length-300} filas más (se guardarán todas)</td></tr>` : '');
+    $('camp-preview-wrap').style.display = 'block';
+    showMsg('camp-msg','ok', `PDF procesado: ${rows.length} filas listas para guardar.`);
+  }catch(err){
+    console.error(err);
+    showMsg('camp-msg','err','Error al procesar el PDF: '+err.message);
+  }finally{
+    $('btn-procesar-pdf').disabled = false;
+  }
+});
+
+$('btn-guardar-campana').addEventListener('click', async ()=>{
+  if(!campParsedRows.length){ showMsg('camp-msg','err','No hay filas procesadas para guardar.'); return; }
+  $('btn-guardar-campana').disabled = true;
+  showMsg('camp-msg','ok','Guardando en la base de datos…');
+  try{
+    const CHUNK = 400;
+    for(let i=0; i<campParsedRows.length; i+=CHUNK){
+      const batch = db.batch();
+      campParsedRows.slice(i, i+CHUNK).forEach(r=>{
+        const docRef = campanaItemsRef.doc();
+        batch.set(docRef, {
+          codigo: r.codigo, campana: r.campana, participante: r.participante,
+          sku: r.sku, producto: r.producto, area: r.area, cantidad: r.cantidad, desglose: r.desglose,
+          usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+      await batch.commit();
+    }
+    await logAccion('campana_pdf_cargada', {detalle:`Se guardaron ${campParsedRows.length} filas de campaña (código ${campParsedRows[0].codigo})`});
+    showMsg('camp-msg','ok', `¡Guardado! ${campParsedRows.length} filas almacenadas.`);
+    showToast(`Campaña guardada: ${campParsedRows.length} filas.`,'ok');
+    campParsedRows = [];
+    $('camp-preview-wrap').style.display = 'none';
+    $('camp-pdf-input').value = '';
+  }catch(err){
+    console.error(err);
+    showMsg('camp-msg','err','Error al guardar: '+err.message);
+  }finally{
+    $('btn-guardar-campana').disabled = false;
+  }
+});
+
+$('btn-buscar-campana').addEventListener('click', async ()=>{
+  const codigo = $('camp-buscar-codigo').value.trim().toUpperCase();
+  const participante = $('camp-buscar-participante').value.trim().toUpperCase();
+  if(!codigo){ showToast('Ingresa un código de campaña.','err'); return; }
+  $('btn-buscar-campana').disabled = true;
+  try{
+    const snap = await campanaItemsRef.where('codigo','==',codigo).limit(2000).get();
+    let docs = snap.docs.map(d=>d.data());
+    if(participante) docs = docs.filter(d=> (d.participante||'').toUpperCase().includes(participante));
+    if(docs.length === 0){
+      $('camp-buscar-body').innerHTML = '';
+      $('camp-buscar-empty').style.display = 'block';
+      $('camp-buscar-empty').textContent = 'No se encontraron registros para ese filtro.';
+    }else{
+      $('camp-buscar-empty').style.display = 'none';
+      $('camp-buscar-body').innerHTML = docs.map(r=>
+        `<tr><td>${r.codigo||''}</td><td>${r.campana||''}</td><td>${r.participante||''}</td><td>${r.sku||''}</td><td>${r.producto||''}</td><td>${r.area||''}</td><td>${r.cantidad!=null?r.cantidad:''}</td><td>${r.desglose||''}</td></tr>`
+      ).join('');
+    }
+  }catch(err){
+    showToast('Error al buscar: '+err.message,'err');
+  }finally{
+    $('btn-buscar-campana').disabled = false;
+  }
+});
+
 /* -------------------- Paneles colapsables -------------------- */
 function setupCollapsiblePanels(){
   document.querySelectorAll('.panel > h3').forEach(h3=>{
@@ -1914,7 +2133,7 @@ function resetInactivityTimer(){
   document.addEventListener(evt, resetInactivityTimer, {passive:true});
 });
 
-const US_CHECK_IDS = ['us-diseno','us-movimientos','us-productos','us-inventario','us-pallets','us-retiros','us-kardex','us-bitacora','us-eliminar','us-admin'];
+const US_CHECK_IDS = ['us-diseno','us-movimientos','us-productos','us-inventario','us-pallets','us-retiros','us-campanas','us-kardex','us-bitacora','us-eliminar','us-admin'];
 function limpiarFormularioUsuario(){
   $('us-email').value=''; $('us-alias').value='';
   US_CHECK_IDS.forEach(id=>{ $(id).checked=false; });
@@ -1936,6 +2155,7 @@ $('us-email').addEventListener('blur', async ()=>{
       $('us-inventario').checked = !!p.inventario;
       $('us-pallets').checked = !!p.pallets;
       $('us-retiros').checked = !!p.retiros;
+      $('us-campanas').checked = !!p.campanas;
       $('us-kardex').checked = !!p.kardex;
       $('us-bitacora').checked = !!p.bitacora;
       $('us-eliminar').checked = !!p.eliminar;
@@ -1959,6 +2179,7 @@ $('btn-guardar-usuario').addEventListener('click', async ()=>{
     diseno: $('us-diseno').checked, movimientos: $('us-movimientos').checked,
     productos: $('us-productos').checked, inventario: $('us-inventario').checked,
     pallets: $('us-pallets').checked, retiros: $('us-retiros').checked,
+    campanas: $('us-campanas').checked,
     kardex: $('us-kardex').checked, bitacora: $('us-bitacora').checked,
     eliminar: $('us-eliminar').checked, admin: $('us-admin').checked
   };
