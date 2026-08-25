@@ -1,0 +1,1634 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control de Almacén — Layout y Movimientos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+  :root{
+    --ink:#1B2430; --ink-soft:#4A5568; --bg:#E9EBEE; --panel:#FFFFFF;
+    --line:#D3D7DC; --line-strong:#AFB6BF;
+    --lacre:#B8471F; --lacre-bg:#E9A47D; --lacre-line:#8C3416;
+    --frame-blue:#1F4E79;
+    --green:#3C8B6B; --green-bg:#E1EFE9;
+    --red:#C4483A; --red-bg:#F8E4E1; --neon:#39FF14;
+    --blue:#2E5F8A; --blue-bg:#E4ECF3;
+    --mono:'IBM Plex Mono', monospace; --sans:'IBM Plex Sans', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans); font-size:14px; line-height:1.4;}
+  header{background:var(--ink); color:#fff; padding:12px 20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;}
+  header h1{font-family:var(--mono); font-size:15px; font-weight:600; margin:0; display:flex; align-items:center; gap:10px;}
+  header h1 .tag{background:var(--lacre); color:#fff; font-size:10px; padding:2px 6px; border-radius:3px;}
+  .status{display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:12px;}
+  .dot{width:8px; height:8px; border-radius:50%; background:var(--red);}
+  .dot.live{background:var(--green); box-shadow:0 0 0 3px rgba(60,139,107,.25);}
+  .userbox{display:flex; align-items:center; gap:10px; font-size:12px;}
+  .userbox b{font-family:var(--mono);}
+  .link-btn{background:none; border:none; color:#B8C0CC; text-decoration:underline; cursor:pointer; font-size:12px;}
+
+  nav.tabs{display:flex; gap:2px; background:#1B2430; padding:0 12px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none;}
+  nav.tabs::-webkit-scrollbar{display:none;}
+  nav.tabs button{background:transparent; border:none; color:#B8C0CC; padding:12px 16px; font-weight:600; font-size:13px; cursor:pointer; border-bottom:3px solid transparent; white-space:nowrap; flex-shrink:0;}
+  nav.tabs button.active{color:#fff; border-bottom-color:var(--lacre);}
+  nav.tabs button.hidden-perm{display:none;}
+
+  .view{display:none; padding:14px;}
+  .view.active{display:block;}
+
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:16px;}
+  .panel h3{margin:0 0 12px; font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); font-weight:600; display:flex; justify-content:space-between; align-items:center;}
+  .panel.collapsed h3{margin-bottom:0;}
+  .panel.collapsed > *:not(h3){display:none;}
+  .collapse-toggle{background:none; border:1px solid var(--line-strong); border-radius:3px; width:20px; height:20px; line-height:1; cursor:pointer; color:var(--ink-soft); font-size:11px; flex-shrink:0;}
+  .collapse-toggle:hover{background:var(--blue-bg);}
+  .field{margin-bottom:12px;}
+  .field label{display:block; font-size:11px; color:var(--ink-soft); margin-bottom:4px;}
+  .field select, .field input{width:100%; padding:7px 9px; border:1px solid var(--line-strong); border-radius:4px; font-family:var(--sans); font-size:13px; background:#fff;}
+  .field input[readonly]{background:#F2F1EC; color:var(--ink-soft);}
+  .field .hint{font-size:10px; color:var(--ink-soft); margin-top:3px;}
+  .hint{font-size:11px; color:var(--ink-soft);}
+  .btn{border:none; border-radius:5px; padding:9px 16px; font-weight:600; font-size:13px; cursor:pointer;}
+  .btn:hover{filter:brightness(.93);}
+  .btn-primary{background:var(--blue); color:#fff;}
+  .btn-amber{background:var(--lacre); color:#fff;}
+  .btn-ghost{background:transparent; border:1px solid var(--line-strong); color:var(--ink);}
+  .btn-danger{background:var(--red); color:#fff;}
+  .btn-dark{background:#000; color:#fff;}
+  .btn-sm{padding:4px 9px; font-size:11px; border-radius:4px;}
+  .btn:disabled{opacity:.45; cursor:not-allowed;}
+  .msg{font-size:12px; padding:8px 10px; border-radius:5px; margin-top:10px; display:none;}
+  .msg.ok{background:var(--green-bg); color:#245C46; display:block;}
+  .msg.err{background:var(--red-bg); color:#8A332A; display:block;}
+  .hidden-perm{display:none !important;}
+
+  #login-screen{max-width:380px; margin:80px auto; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:28px;}
+  #login-screen h2{margin-top:0; font-family:var(--mono); font-size:16px;}
+
+  #diseno-grid{display:grid; grid-template-columns:320px 1fr; gap:14px;}
+  @media (max-width:900px){ #diseno-grid{grid-template-columns:1fr;} }
+  .bloque-card{border:1px solid var(--line); border-radius:6px; padding:10px 12px; margin-bottom:10px; background:#FAFBFC;}
+  .bloque-card .bh{display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap;}
+  .bloque-card .bh b{font-family:var(--mono); font-size:13px;}
+  .bloque-card .meta{font-size:11px; color:var(--ink-soft); margin-top:4px;}
+  .bloque-card .actions{display:flex; gap:6px;}
+
+  .bloques-scroll{overflow-x:auto; padding-bottom:8px;}
+  .bloque-row{margin-bottom:20px;}
+  .bloque-title{font-family:var(--mono); font-size:12px; font-weight:700; color:#fff; background:var(--ink); display:inline-block; padding:3px 10px; border-radius:3px; margin-bottom:8px;}
+  .nichos-line{display:flex; flex-direction:row-reverse; gap:12px; padding:4px 2px 10px;}
+  .nicho{border:2px solid var(--frame-blue); border-radius:5px; background:#F5F6F8; padding:5px; width:68px; flex-shrink:0;}
+  .nicho-section-label{font-size:8px; color:var(--ink-soft); text-align:center; text-transform:uppercase; margin:3px 0 2px;}
+  .nicho-row{display:flex; gap:3px; margin-bottom:3px;}
+  .nicho-row:last-child{margin-bottom:0;}
+  .nicho-label{text-align:center; font-family:var(--mono); font-size:11px; font-weight:700; color:#fff; background:var(--frame-blue); border-radius:3px; margin-top:5px; padding:2px 0;}
+  .nicho-reorder{display:flex; justify-content:space-between; margin-bottom:4px; gap:3px;}
+  .btn-reorder{background:var(--frame-blue); color:#fff; border:none; border-radius:3px; flex:1; height:18px; font-size:10px; cursor:pointer; line-height:1;}
+  .btn-reorder:hover{background:var(--blue);}
+  .btn-reorder:disabled{opacity:.3; cursor:not-allowed;}
+  .nicho.solo-piso{border-color:var(--green);}
+  .slot{
+    width:26px; height:24px; border-radius:3px; border:1px solid var(--lacre-line); background:var(--lacre-bg);
+    cursor:pointer; display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:8px;
+    color:#4A2410; transition:transform .08s;
+  }
+  .slot:hover{transform:scale(1.12); z-index:2;}
+  .slot.piso-slot{background:var(--green-bg); border-color:var(--green); color:var(--ink-soft);}
+  .slot.ocupado{background:#FCEFD6; border-color:#8A5A18; color:#5A3A0F;}
+  .slot.piso-slot.ocupado{background:#F6D9A0; border-color:#8A5A18;}
+  .slot.selected{outline:2px solid var(--blue); outline-offset:1px;}
+  .slot.match{outline:2px solid var(--neon); outline-offset:1px; box-shadow:0 0 8px var(--neon); animation:pulse 1s infinite; background:var(--neon) !important; color:#0A3D00 !important; font-weight:700;}
+  .slot.dim{opacity:.25;}
+  .slot.readonly{cursor:default;}
+  .slot.bloqueada{ background:#000; border-color:#000; color:#fff; cursor:not-allowed; }
+  @keyframes pulse{0%,100%{outline-color:var(--neon); box-shadow:0 0 8px var(--neon); background:var(--neon);}50%{outline-color:transparent; box-shadow:0 0 0 transparent; background:#B6FF9E;}}
+
+  .tooltip{position:fixed; background:var(--ink); color:#fff; padding:8px 10px; border-radius:5px; font-family:var(--mono); font-size:11px; pointer-events:none; z-index:60; display:none; max-width:240px; line-height:1.5;}
+  .tooltip b{color:var(--lacre-bg);}
+  #ctx-menu{position:fixed; background:#fff; border:1px solid var(--line-strong); border-radius:5px; box-shadow:0 4px 14px rgba(0,0,0,.15); display:none; z-index:70; overflow:hidden;}
+  #ctx-menu button{display:block; width:100%; text-align:left; background:none; border:none; padding:9px 14px; font-size:12px; cursor:pointer;}
+  #ctx-menu button:hover{background:var(--blue-bg);}
+
+  #mov-grid{display:grid; grid-template-columns:230px 1fr 340px; gap:14px; align-items:start;}
+  @media (max-width:1150px){ #mov-grid{grid-template-columns:1fr;} }
+  .legend{display:flex; gap:14px; font-size:11px; margin-bottom:10px; flex-wrap:wrap;}
+  .legend span{display:inline-flex; align-items:center; gap:5px;}
+  .sw{width:11px; height:11px; border-radius:2px; display:inline-block;}
+
+  .subtabs{display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap;}
+  .subtabs button{flex:1; min-width:90px; padding:7px; border:1px solid var(--line-strong); background:#fff; border-radius:5px; font-size:12px; font-weight:600; cursor:pointer; color:var(--ink-soft);}
+  .subtabs button.active{background:var(--blue); color:#fff; border-color:var(--blue);}
+
+  table{width:100%; border-collapse:collapse; font-size:12px;}
+  th{text-align:left; padding:6px 4px; color:var(--ink-soft); font-weight:600; border-bottom:1px solid var(--line); font-size:10px; text-transform:uppercase;}
+  td{padding:6px 4px; border-bottom:1px solid var(--line); font-family:var(--mono); font-size:11px;}
+  .hist-wrap{max-height:420px; overflow-y:auto;}
+  .items-table input{width:100%; padding:4px 6px; font-size:11px; border:1px solid var(--line-strong); border-radius:3px; font-family:var(--mono);}
+  .items-table input[readonly]{background:#EFEFEF;}
+  .items-table td{padding:3px;}
+  .item-card{border:1px solid var(--line-strong); border-radius:6px; padding:8px; margin-bottom:8px; background:#FAFBFC;}
+  .item-card .row1{display:flex; gap:6px; align-items:center; margin-bottom:6px;}
+  .item-card .row1 input{flex:1;}
+  .item-card .row-desc{margin-bottom:6px;}
+  .item-card .row-desc input{width:100%;}
+  .item-card .row2{display:flex; gap:6px;}
+  .item-card .row2 > div{flex:1; min-width:0;}
+  .item-card .row2 label{font-size:9px; color:var(--ink-soft); display:block; margin-bottom:2px;}
+  .item-card input{padding:6px 8px; font-size:12px; border:1px solid var(--line-strong); border-radius:4px; font-family:var(--mono); width:100%;}
+  .item-card input[readonly]{background:#EFEFEF;}
+  .rm-row{background:var(--red); color:#fff; border:none; border-radius:3px; width:20px; height:20px; cursor:pointer; font-size:11px; line-height:1;}
+  .empty-state{text-align:center; color:var(--ink-soft); font-size:12px; padding:16px 0;}
+  .total-line{font-family:var(--mono); font-size:12px; margin-top:8px; padding-top:8px; border-top:1px solid var(--line); display:flex; justify-content:space-between;}
+  .mini-form{border-top:1px solid var(--line); margin-top:12px; padding-top:10px;}
+  .mini-form label{font-size:11px; color:var(--ink-soft); display:block; margin-bottom:6px;}
+
+  #toast-container{position:fixed; bottom:16px; right:16px; z-index:100; display:flex; flex-direction:column; gap:8px;}
+  .toast{padding:10px 14px; border-radius:6px; font-size:12px; color:#fff; box-shadow:0 4px 12px rgba(0,0,0,.2); max-width:280px;}
+  .toast.ok{background:var(--green);}
+  .toast.err{background:var(--red);}
+
+  .filters-grid{display:grid; grid-template-columns:repeat(5,1fr) auto; gap:10px; align-items:end;}
+  @media (max-width:1050px){ .filters-grid{grid-template-columns:1fr 1fr;} }
+
+  /* ---- MÓVIL ---- */
+  @media (max-width:640px){
+    header{padding:10px 12px; gap:4px;}
+    header h1{font-size:12px; gap:6px;}
+    header h1 .tag{display:none;}
+    header > div{width:100%; justify-content:space-between; flex-wrap:wrap; gap:6px;}
+    .status{font-size:10px;}
+    .userbox{font-size:10px; gap:6px;}
+    .userbox b{max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+    .view{padding:8px;}
+    .panel{padding:12px;}
+    #mov-grid, #diseno-grid{gap:8px;}
+    .filters-grid{grid-template-columns:1fr;}
+    .slot{width:24px; height:24px;}
+    .nicho{width:62px;}
+  }
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <h2>Ingresar al sistema</h2>
+  <div class="field"><label>Correo</label><input type="email" id="login-email" placeholder="tucorreo@empresa.com"></div>
+  <div class="field"><label>Contraseña</label><input type="password" id="login-pass"></div>
+  <button class="btn btn-primary" id="login-btn" style="width:100%;">Ingresar</button>
+  <div class="msg" id="login-msg"></div>
+</div>
+
+<div id="app-shell" style="display:none;">
+<header>
+  <h1>CONTROL DE ALMACÉN <span class="tag">LAYOUT + MOVIMIENTOS</span></h1>
+  <div style="display:flex; align-items:center; gap:18px;">
+    <div class="status"><span class="dot" id="dot"></span><span id="status-text">Conectando…</span></div>
+    <div class="userbox"><b id="user-email-label"></b><button class="link-btn" id="btn-logout">Cerrar sesión</button></div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button class="active" data-tab="diseno" id="tab-diseno">Diseño de Layout</button>
+  <button data-tab="mov" id="tab-mov">Movimientos</button>
+  <button data-tab="productos" id="tab-productos">Productos</button>
+  <button data-tab="inventario" id="tab-inventario">Inventario</button>
+  <button data-tab="pallets" id="tab-pallets">Pallets</button>
+  <button data-tab="retiros" id="tab-retiros">Retiros Campaña</button>
+  <button data-tab="kardex" id="tab-kardex">Kardex</button>
+  <button data-tab="bitacora" id="tab-bitacora">Bitácora</button>
+  <button data-tab="usuarios" id="tab-usuarios">Usuarios</button>
+</nav>
+
+<!-- DISEÑO -->
+<div class="view active" id="view-diseno">
+  <div id="diseno-grid">
+    <div>
+      <div class="panel" style="margin-bottom:14px;">
+        <h3>Nuevo bloque</h3>
+        <div class="field"><label>Nombre del bloque</label><input type="text" id="bloque-nombre" class="upper" placeholder="EJ. BLOQUE B"></div>
+        <button class="btn btn-primary" id="btn-crear-bloque" style="width:100%;">Crear bloque</button>
+        <div class="msg" id="bloque-msg"></div>
+      </div>
+      <div class="panel">
+        <h3>Bloques y nichos</h3>
+        <p class="hint" style="margin-bottom:10px;">Cada nicho se crea con 4 posiciones de rack (01-04) y 10 de piso (05-14). Solo se puede eliminar el último nicho creado, y solo si está vacío.</p>
+        <div id="bloques-list"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Vista previa del layout</h3>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--lacre-bg); border:1px solid var(--lacre-line);"></i>Rack vacío</span>
+        <span><i class="sw" style="background:var(--green-bg); border:1px solid var(--green);"></i>Piso vacío</span>
+        <span><i class="sw" style="background:#FCEFD6; border:1px solid #8A5A18;"></i>Ocupado</span>
+        <span><i class="sw" style="background:#000;"></i>Bloqueado</span>
+      </div>
+      <div class="bloques-scroll" id="preview-bloques"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MOVIMIENTOS -->
+<div class="view" id="view-mov">
+  <div id="mov-grid">
+    <div class="panel">
+      <h3>Filtros</h3>
+      <div class="field"><label>Buscar (pallet o producto)</label><input type="text" id="f-buscar" class="upper" placeholder="CD0005 O PRODUCTO"></div>
+      <div class="field"><label>Bloque</label><select id="f-bloque"><option value="">Todos</option></select></div>
+      <div class="field"><label>Estado</label>
+        <select id="f-estado"><option value="">Todos</option><option value="ocupado">Ocupado</option><option value="vacio">Vacío</option><option value="bloqueado">Bloqueado</option></select>
+      </div>
+      <button class="btn btn-ghost" id="btn-clear-filters" style="width:100%;">Limpiar filtros</button>
+      <h3 style="margin-top:20px;">Resumen</h3>
+      <div id="resumen" style="font-family:var(--mono); font-size:12px; color:var(--ink-soft);"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Layout del almacén</h3>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--lacre-bg); border:1px solid var(--lacre-line);"></i>Rack vacío</span>
+        <span><i class="sw" style="background:var(--green-bg); border:1px solid var(--green);"></i>Piso vacío</span>
+        <span><i class="sw" style="background:#FCEFD6; border:1px solid #8A5A18;"></i>Ocupado</span>
+        <span><i class="sw" style="background:#000;"></i>Bloqueado</span>
+        <span><i class="sw" style="background:#fff; border:2px solid var(--blue);"></i>Seleccionado</span>
+        <span><i class="sw" style="background:#fff; border:2px solid var(--neon); box-shadow:0 0 4px var(--neon);"></i>Coincide búsqueda</span>
+      </div>
+      <p class="hint">Clic en una posición para ver detalle y bloquear/desbloquear, o clic derecho para el mismo menú.</p>
+      <div class="bloques-scroll" id="mov-bloques"></div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:14px;">
+      <div class="panel hidden-perm" id="op-panel">
+        <div class="subtabs">
+          <button class="active" id="subtab-crear">Nuevo pallet</button>
+          <button id="subtab-mover">Mover pallet</button>
+          <button id="subtab-transferir">Transferir producto</button>
+          <button id="subtab-retirar-campana">Retirar (campaña)</button>
+        </div>
+
+        <div id="panel-crear">
+          <div class="field"><label>Código de pallet</label><input type="text" id="cp-codigo" class="upper" placeholder="CD0000"><div class="hint">Formato obligatorio: CD + 4 dígitos, ej. CD0005</div></div>
+          <div class="field"><label>Posición destino</label><input list="dl-cp-destino" id="cp-destino" class="upper" placeholder="Escribe o elige un código"><datalist id="dl-cp-destino"></datalist></div>
+          <label style="font-size:11px; color:var(--ink-soft); display:block; margin-bottom:4px;">Productos</label>
+          <div id="cp-items-body"></div>
+          <button class="btn btn-ghost btn-sm" id="btn-add-item" style="margin-top:8px;">+ Producto</button>
+          <button class="btn btn-amber" id="btn-crear-pallet" style="width:100%; margin-top:12px;">Crear pallet y ubicar</button>
+          <div class="msg" id="cp-msg"></div>
+        </div>
+
+        <div id="panel-mover" style="display:none;">
+          <div class="field"><label>Posición origen (ocupada)</label><input list="dl-mv-origen" id="mv-origen" class="upper" placeholder="Escribe o elige un código"><datalist id="dl-mv-origen"></datalist></div>
+          <div class="field"><label>Pallet</label><input type="text" id="mv-codigo" readonly></div>
+          <div class="field"><label>Posición destino</label><input list="dl-mv-destino" id="mv-destino" class="upper" placeholder="Escribe o elige un código"><datalist id="dl-mv-destino"></datalist></div>
+          <button class="btn btn-amber" id="btn-mover" style="width:100%;">Mover pallet</button>
+          <div class="msg" id="mv-msg"></div>
+        </div>
+
+        <div id="panel-transferir" style="display:none;">
+          <div class="field"><label>Pallet origen</label>
+            <div style="display:flex; gap:6px;">
+              <input list="dl-pallets" id="tr-origen" class="upper" placeholder="CD0000" style="flex:1;">
+              <button type="button" class="btn btn-ghost btn-sm" id="btn-tr-cambiar" style="display:none;">Cambiar</button>
+            </div>
+          </div>
+          <div class="field"><label>Producto a transferir</label><select id="tr-producto"><option value="">Elige pallet origen primero…</option></select></div>
+          <div class="field"><label>Cantidad a transferir</label><input type="number" id="tr-cantidad" min="0" step="1"></div>
+          <div class="field"><label>Pallet destino</label><input list="dl-pallets" id="tr-destino" class="upper" placeholder="CD0000"></div>
+          <button class="btn btn-amber" id="btn-transferir" style="width:100%;">Transferir</button>
+          <div class="msg" id="tr-msg"></div>
+        </div>
+
+        <div id="panel-retirar-campana" style="display:none;">
+          <div class="field"><label>Pallet</label><input list="dl-pallets" id="rc-pallet" class="upper" placeholder="CD0000"></div>
+          <p class="hint" style="margin-bottom:8px;">Indica la cantidad a retirar en cada producto que quieras sacar. Deja en 0 los que no quieras tocar.</p>
+          <table class="items-table" id="rc-table" style="display:none;">
+            <thead><tr><th>Producto</th><th>Desc.</th><th>Disp.</th><th>Retirar</th></tr></thead>
+            <tbody id="rc-items-body"></tbody>
+          </table>
+          <button class="btn btn-danger" id="btn-retirar-campana" style="width:100%; margin-top:10px;">Retirar seleccionados</button>
+          <div class="msg" id="rc-msg"></div>
+        </div>
+        <datalist id="dl-pallets"></datalist>
+      </div>
+
+      <div class="panel" id="detalle-panel" style="display:none;">
+        <h3>Detalle de posición</h3>
+        <div id="detalle-content"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PRODUCTOS -->
+<div class="view" id="view-productos">
+  <div style="display:grid; grid-template-columns:340px 1fr; gap:14px;">
+    <div class="panel hidden-perm" id="prod-form-panel">
+      <h3>Registrar / actualizar producto</h3>
+      <div class="field"><label>Código</label><input type="text" id="pr-codigo" class="upper" placeholder="COD."></div>
+      <div class="field"><label>Descripción</label><input type="text" id="pr-desc" class="upper"></div>
+      <div class="field"><label>Costo</label><input type="number" id="pr-costo" step="0.01" min="0"></div>
+      <div class="field"><label>Empaque 1 (unidades)</label><input type="number" id="pr-emp1" step="1" min="0" placeholder="EJ. 24"></div>
+      <div class="field"><label>Empaque 2 (unidades)</label><input type="number" id="pr-emp2" step="1" min="0" placeholder="EJ. 48"></div>
+      <button class="btn btn-primary" id="btn-guardar-producto" style="width:100%;">Guardar producto</button>
+      <div class="msg" id="pr-msg"></div>
+      <p class="hint" style="margin-top:8px;">Si el código ya existe, solo un usuario con permiso de edición/eliminación puede modificarlo.</p>
+    </div>
+    <div class="panel">
+      <h3>Catálogo de productos</h3>
+      <div class="hist-wrap" style="max-height:600px;">
+        <table><thead><tr><th>Código</th><th>Descripción</th><th>Costo</th><th>Empaque 1</th><th>Empaque 2</th><th>Creado</th><th>Usuario</th></tr></thead><tbody id="prod-body"></tbody></table>
+        <div class="empty-state" id="prod-empty">Sin productos registrados aún.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- INVENTARIO -->
+<div class="view" id="view-inventario">
+  <div class="panel">
+    <h3><span style="display:flex; align-items:center; gap:10px;"><span>Inventario (acumulado por producto)</span><button class="btn btn-primary btn-sm" id="btn-exportar-inventario" type="button">⬇ Exportar a Excel</button></span></h3>
+    <p class="hint" style="margin-bottom:10px;">Suma la cantidad de cada producto en todos los pallets activos del almacén. Haz clic en "Ver detalle" para ver en qué pallets y posiciones está.</p>
+    <div class="hist-wrap" style="max-height:600px;">
+      <table><thead><tr><th>Código</th><th>Descripción</th><th>Cantidad total</th><th>Costo unitario</th><th>Costo total</th><th></th></tr></thead><tbody id="inv-body"></tbody></table>
+      <div class="empty-state" id="inv-empty">Sin inventario todavía.</div>
+    </div>
+  </div>
+</div>
+
+<!-- PALLETS -->
+<div class="view" id="view-pallets">
+  <div class="panel">
+    <h3>Pallets en el almacén</h3>
+    <div class="hist-wrap" style="max-height:600px;">
+      <table><thead><tr><th>Código pallet</th><th>Posición</th><th>Nicho</th><th>Bloque</th><th>Productos</th></tr></thead><tbody id="pallets-body"></tbody></table>
+      <div class="empty-state" id="pallets-empty">Sin pallets todavía.</div>
+    </div>
+  </div>
+</div>
+
+<!-- RETIROS CAMPAÑA -->
+<div class="view" id="view-retiros">
+  <div class="panel">
+    <h3>Retiros para campaña</h3>
+    <p class="hint" style="margin-bottom:10px;">Historial de cada producto retirado de un pallet para campaña (últimos 300).</p>
+    <div class="hist-wrap" style="max-height:600px;">
+      <table><thead><tr><th>Pallet</th><th>Código</th><th>Descripción</th><th>Costo</th><th>Cantidad</th><th>Usuario</th><th>Fecha y hora</th></tr></thead><tbody id="retiros-body"></tbody></table>
+      <div class="empty-state" id="retiros-empty">Sin retiros registrados todavía.</div>
+    </div>
+  </div>
+</div>
+
+<!-- KARDEX -->
+<div class="view" id="view-kardex">
+  <div class="panel">
+    <h3>Kardex por producto</h3>
+    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
+      <div class="field" style="margin:0; max-width:220px;"><label>Código de producto</label><input type="text" id="kx-codigo" class="upper" placeholder="EJ. 17891"></div>
+      <button class="btn btn-primary" id="btn-cargar-kardex">Cargar</button>
+    </div>
+    <div class="hist-wrap" style="max-height:600px;">
+      <table><thead><tr><th>Fecha</th><th>Usuario</th><th>Pallet</th><th>Código</th><th>Descripción</th><th>Tipo</th><th>Cantidad</th><th>Saldo</th></tr></thead><tbody id="kx-body"></tbody></table>
+      <div class="empty-state" id="kx-empty">Ingresa un código y presiona "Cargar".</div>
+    </div>
+  </div>
+</div>
+
+<!-- BITÁCORA -->
+<div class="view" id="view-bitacora">
+  <div class="panel">
+    <h3>Bitácora / Historial</h3>
+    <div class="filters-grid">
+      <div class="field" style="margin:0;"><label>Usuario</label><input type="text" id="bit-usuario" placeholder="correo"></div>
+      <div class="field" style="margin:0;"><label>Código (pallet/posición)</label><input type="text" id="bit-codigo" class="upper" placeholder="CD0005 o A03"></div>
+      <div class="field" style="margin:0;"><label>Desde</label><input type="date" id="bit-desde"></div>
+      <div class="field" style="margin:0;"><label>Hasta</label><input type="date" id="bit-hasta"></div>
+      <div class="field" style="margin:0;"><label>Módulo</label>
+        <select id="bit-modulo"><option value="">Todos</option><option value="diseno">Diseño</option><option value="movimientos">Movimientos</option><option value="bloqueo">Bloqueo</option><option value="productos">Productos</option><option value="usuarios">Usuarios</option></select>
+      </div>
+      <button class="btn btn-primary" id="btn-cargar-bitacora">Cargar</button>
+    </div>
+    <p class="hint" style="margin:10px 0;">Si usas más de un filtro, se muestran los registros que cumplan con cualquiera de ellos (OR). Sin filtros, se cargan los últimos 500.</p>
+    <div class="hist-wrap">
+      <table><thead><tr><th>Acción</th><th>Pallet</th><th>De</th><th>A</th><th>Detalle</th><th>Usuario</th><th>Cuándo</th></tr></thead><tbody id="bit-body"></tbody></table>
+      <div class="empty-state" id="bit-empty">Presiona "Cargar" para ver la bitácora.</div>
+    </div>
+  </div>
+</div>
+
+<!-- USUARIOS -->
+<div class="view" id="view-usuarios">
+  <div class="panel" style="max-width:520px;">
+    <h3>Asignar permisos a un usuario</h3>
+    <p class="hint" style="margin-bottom:12px;">Primero crea la cuenta en Firebase Console → Authentication → Add user. Luego asigna aquí sus permisos.</p>
+    <div class="field"><label>Correo del usuario</label><input type="email" id="us-email" placeholder="empleado@empresa.com"></div>
+    <div class="field"><label>Alias / nombre para mostrar</label><input type="text" id="us-alias" class="upper" placeholder="EJ. JUAN P."></div>
+    <p class="hint" style="margin:10px 0 4px;">Acceso por módulo (pestaña):</p>
+    <div class="field"><label><input type="checkbox" id="us-diseno" style="width:auto; margin-right:6px;">Diseño de Layout</label></div>
+    <div class="field"><label><input type="checkbox" id="us-movimientos" style="width:auto; margin-right:6px;">Movimientos</label></div>
+    <div class="field"><label><input type="checkbox" id="us-productos" style="width:auto; margin-right:6px;">Productos</label></div>
+    <div class="field"><label><input type="checkbox" id="us-inventario" style="width:auto; margin-right:6px;">Inventario</label></div>
+    <div class="field"><label><input type="checkbox" id="us-pallets" style="width:auto; margin-right:6px;">Pallets</label></div>
+    <div class="field"><label><input type="checkbox" id="us-retiros" style="width:auto; margin-right:6px;">Retiros Campaña</label></div>
+    <div class="field"><label><input type="checkbox" id="us-kardex" style="width:auto; margin-right:6px;">Kardex</label></div>
+    <div class="field"><label><input type="checkbox" id="us-bitacora" style="width:auto; margin-right:6px;">Bitácora</label></div>
+    <p class="hint" style="margin:10px 0 4px;">Permiso adicional (aplica dentro de los módulos ya marcados):</p>
+    <div class="field"><label><input type="checkbox" id="us-eliminar" style="width:auto; margin-right:6px;">Puede editar/eliminar/bloquear registros</label></div>
+    <button class="btn btn-primary" id="btn-guardar-usuario" style="width:100%;">Guardar permisos</button>
+    <div class="msg" id="us-msg"></div>
+  </div>
+</div>
+
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+<div id="ctx-menu"></div>
+<div id="toast-container"></div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyB_AivwLAzq5IYdHUxNfh6hHqtCbhatPKg",
+  authDomain: "layout-e25cc.firebaseapp.com",
+  projectId: "layout-e25cc",
+  storageBucket: "layout-e25cc.firebasestorage.app",
+  messagingSenderId: "649129212982",
+  appId: "1:649129212982:web:b8661781085817515f56c97"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+const $ = (id) => document.getElementById(id);
+const ADMIN_EMAIL = 'mramos@corporaciongrit.com';
+
+const bloquesRef = db.collection('bloques');
+const nichosRef = db.collection('nichos');
+const posicionesRef = db.collection('posiciones');
+const palletsRef = db.collection('pallets');
+const productosRef = db.collection('productos');
+const movimientosRef = db.collection('movimientos');
+const usuariosRef = db.collection('usuarios');
+const retirosCampanaRef = db.collection('retiros_campana');
+const kardexRef = db.collection('kardex');
+const contadorRef = db.collection('contadores').doc('global');
+
+let bloques = {}, nichos = {}, posiciones = {}, pallets = {}, productos = {};
+let currentPermisos = {};
+let currentUserEmail = '';
+let currentUserAlias = '';
+let listenersStarted = false;
+
+function showToast(text, type='ok'){
+  const t = document.createElement('div'); t.className = 'toast '+type; t.textContent = text;
+  $('toast-container').appendChild(t); setTimeout(()=>t.remove(), 4500);
+}
+function showMsg(id, type, text){
+  const el = $(id); el.className = 'msg '+type; el.textContent = text; el.style.display='block';
+  setTimeout(()=>{ el.style.display='none'; }, 5000);
+}
+document.addEventListener('input', (e)=>{
+  if(e.target.classList && e.target.classList.contains('upper')){
+    const pos = e.target.selectionStart;
+    e.target.value = e.target.value.toUpperCase();
+    e.target.setSelectionRange(pos,pos);
+  }
+});
+
+/* -------------------- Login -------------------- */
+$('login-btn').addEventListener('click', async ()=>{
+  const email = $('login-email').value.trim();
+  const pass = $('login-pass').value;
+  if(!email || !pass){ showMsg('login-msg','err','Ingresa correo y contraseña.'); return; }
+  try{ await auth.signInWithEmailAndPassword(email, pass); }
+  catch(err){ showMsg('login-msg','err', mapAuthError(err)); }
+});
+function mapAuthError(err){
+  if(['auth/invalid-credential','auth/wrong-password','auth/user-not-found'].includes(err.code)) return 'Correo o contraseña incorrectos.';
+  if(err.code==='auth/invalid-email') return 'Correo inválido.';
+  return 'Error: '+err.message;
+}
+$('btn-logout').addEventListener('click', async ()=>{
+  try{ await logAccion('sesion_cerrada', {detalle:'Cierre de sesión manual'}); }catch(e){}
+  await auth.signOut();
+});
+
+auth.onAuthStateChanged(async (user)=>{
+  if(user){ await loadPermisos(user); resetInactivityTimer(); }
+  else{ if(inactivityTimer) clearTimeout(inactivityTimer); $('login-screen').style.display='block'; $('app-shell').style.display='none'; }
+});
+
+async function loadPermisos(user){
+  const email = user.email;
+  let snap = await usuariosRef.doc(email).get();
+  if(!snap.exists){
+    if(email === ADMIN_EMAIL){
+      await usuariosRef.doc(email).set({ email, alias:'Administrador', permisos:{diseno:true, movimientos:true, productos:true, inventario:true, pallets:true, retiros:true, kardex:true, bitacora:true, eliminar:true, admin:true}, creado_en: firebase.firestore.FieldValue.serverTimestamp() });
+      snap = await usuariosRef.doc(email).get();
+    }else{
+      showToast('No tienes permisos asignados. Contacta al administrador.','err');
+      await auth.signOut(); return;
+    }
+  }
+  currentPermisos = snap.data().permisos || {};
+  currentUserEmail = email;
+  currentUserAlias = snap.data().alias || email;
+  $('user-email-label').textContent = currentUserAlias;
+  applyPermisosUI();
+  $('login-screen').style.display='none';
+  $('app-shell').style.display='block';
+  if(!listenersStarted){ listenersStarted = true; startListeners(); }
+  await logAccion('sesion_iniciada', {detalle:'Inicio de sesión'});
+  showToast('Login correcto.','ok');
+}
+
+function applyPermisosUI(){
+  const p = currentPermisos;
+  const admin = !!p.admin;
+  const map = {
+    diseno: admin || !!p.diseno,
+    mov: admin || !!p.movimientos,
+    productos: admin || !!p.productos,
+    inventario: admin || !!p.inventario,
+    pallets: admin || !!p.pallets,
+    retiros: admin || !!p.retiros,
+    kardex: admin || !!p.kardex,
+    bitacora: admin || !!p.bitacora,
+    usuarios: admin
+  };
+  Object.entries(map).forEach(([tab, allowed])=>{
+    const btn = $('tab-'+tab);
+    if(btn) btn.classList.toggle('hidden-perm', !allowed);
+  });
+  $('op-panel').classList.toggle('hidden-perm', !map.mov);
+  $('prod-form-panel').classList.toggle('hidden-perm', !map.productos);
+  const activeBtn = document.querySelector('nav.tabs button.active');
+  const activeTab = activeBtn ? activeBtn.dataset.tab : null;
+  if(!activeTab || !map[activeTab]){
+    const firstAllowed = Object.keys(map).find(k=>map[k]);
+    if(firstAllowed) switchTab(firstAllowed);
+  }
+}
+
+function switchTab(name){
+  document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
+  $('tab-'+name).classList.add('active');
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  $('view-'+name).classList.add('active');
+}
+document.querySelectorAll('nav.tabs button').forEach(btn=> btn.addEventListener('click', ()=> switchTab(btn.dataset.tab)));
+
+function setSubtab(name){
+  ['crear','mover','transferir','retirar-campana'].forEach(n=>{
+    $('subtab-'+n).classList.toggle('active', n===name);
+    $('panel-'+n).style.display = (n===name) ? 'block' : 'none';
+  });
+}
+$('subtab-crear').addEventListener('click', ()=>setSubtab('crear'));
+$('subtab-mover').addEventListener('click', ()=>setSubtab('mover'));
+$('subtab-transferir').addEventListener('click', ()=>setSubtab('transferir'));
+$('subtab-retirar-campana').addEventListener('click', ()=>setSubtab('retirar-campana'));
+
+/* -------------------- Utilidades -------------------- */
+function indexToLetter(n){ n=n+1; let s=''; while(n>0){ n--; s=String.fromCharCode(65+(n%26))+s; n=Math.floor(n/26);} return s; }
+function fmtMoney(v){ return (v===null||v===undefined||isNaN(v)) ? '-' : Number(v).toFixed(2); }
+function getUltimoNichoGlobal(){
+  let maxOrden=-1, letra=null;
+  Object.entries(nichos).forEach(([l,n])=>{ if(n.orden>maxOrden){ maxOrden=n.orden; letra=l; } });
+  return letra;
+}
+function getUltimoNichoDeBloque(bloqueId){
+  let maxOrden=-1, letra=null;
+  Object.entries(nichos).forEach(([l,n])=>{ if(n.bloque_id===bloqueId && n.orden>maxOrden){ maxOrden=n.orden; letra=l; } });
+  return letra;
+}
+async function logAccion(tipo, extra){
+  await movimientosRef.add(Object.assign({
+    tipo, pallet_codigo:null, origen:null, destino:null,
+    usuario: currentUserAlias || 'desconocido',
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  }, extra||{}));
+}
+function moduloOf(tipo){
+  if(['bloque_creado','nicho_creado','nicho_eliminado','nicho_reordenado','nicho_renombrado'].includes(tipo)) return 'diseno';
+  if(['ingreso','movimiento','retiro','producto_agregado','transferencia','retiro_campana'].includes(tipo)) return 'movimientos';
+  if(['bloqueo','desbloqueo'].includes(tipo)) return 'bloqueo';
+  if(['producto_registrado'].includes(tipo)) return 'productos';
+  if(['permisos_actualizados','sesion_cerrada','sesion_cerrada_inactividad','sesion_iniciada'].includes(tipo)) return 'usuarios';
+  return '';
+}
+function tipoLabel(tipo){
+  const map = {
+    ingreso:'Entrada de pallet', movimiento:'Movimiento', retiro:'Salida (pallet completo)',
+    retiro_campana:'Salida (campaña)', producto_agregado:'Adición de producto', transferencia:'Transferencia entre pallets',
+    bloqueo:'Bloqueo de posición', desbloqueo:'Desbloqueo de posición',
+    bloque_creado:'Bloque creado', nicho_creado:'Nicho creado', nicho_eliminado:'Nicho eliminado', nicho_reordenado:'Nicho reordenado', nicho_renombrado:'Nicho renombrado',
+    producto_registrado:'Producto registrado', permisos_actualizados:'Permisos actualizados',
+    sesion_cerrada:'Cierre de sesión', sesion_cerrada_inactividad:'Cierre por inactividad', sesion_iniciada:'Inicio de sesión'
+  };
+  return map[tipo] || tipo || '';
+}
+
+/* -------------------- Listeners -------------------- */
+let readyCount = 0;
+function checkReady(){ readyCount++; if(readyCount>=5){ $('dot').classList.add('live'); $('status-text').textContent='Sincronizado en vivo'; } }
+function onErr(err){ $('status-text').textContent='Error de conexión'; $('dot').classList.remove('live'); console.error(err); }
+
+function startListeners(){
+  bloquesRef.onSnapshot(snap=>{ bloques={}; snap.forEach(d=>bloques[d.id]=d.data()); checkReady(); renderAll(); }, onErr);
+  nichosRef.onSnapshot(snap=>{ nichos={}; snap.forEach(d=>nichos[d.id]=d.data()); checkReady(); renderAll(); }, onErr);
+  posicionesRef.onSnapshot(snap=>{ posiciones={}; snap.forEach(d=>posiciones[d.id]=d.data()); checkReady(); renderAll(); }, onErr);
+  palletsRef.onSnapshot(snap=>{ pallets={}; snap.forEach(d=>pallets[d.id]=d.data()); checkReady(); renderAll(); }, onErr);
+  productosRef.onSnapshot(snap=>{ productos={}; snap.forEach(d=>productos[d.id]=d.data()); checkReady(); renderProductosTabla(); }, onErr);
+  retirosCampanaRef.orderBy('timestamp','desc').limit(300).onSnapshot(snap=>{
+    const body = $('retiros-body');
+    if(snap.empty){ body.innerHTML=''; $('retiros-empty').style.display='block'; return; }
+    $('retiros-empty').style.display='none';
+    body.innerHTML = snap.docs.map(doc=>{
+      const d = doc.data();
+      const fecha = d.timestamp ? d.timestamp.toDate().toLocaleString('es-PE') : '…';
+      return `<tr><td>${d.pallet_codigo||''}</td><td>${d.producto||''}</td><td>${d.descripcion||''}</td><td>${fmtMoney(d.costo)}</td><td>${d.cantidad}</td><td>${d.usuario||''}</td><td>${fecha}</td></tr>`;
+    }).join('');
+  }, onErr);
+}
+
+function renderAll(){
+  renderBloqueForms();
+  renderPreviewGrid();
+  renderMovGrid();
+  renderFiltroBloques();
+  renderSelects();
+  renderResumen();
+  renderInventario();
+  renderPalletsTabla();
+  if(selectedPosId && posiciones[selectedPosId]){ renderDetalle(selectedPosId, posiciones[selectedPosId]); }
+  applyFilters();
+}
+
+/* -------------------- DISEÑO -------------------- */
+$('btn-crear-bloque').addEventListener('click', async ()=>{
+  const nombre = $('bloque-nombre').value.trim().toUpperCase();
+  if(!nombre){ showMsg('bloque-msg','err','Ingresa un nombre de bloque.'); return; }
+  try{
+    await bloquesRef.add({ nombre, creado_en: firebase.firestore.FieldValue.serverTimestamp() });
+    await logAccion('bloque_creado', {detalle:`Bloque ${nombre} creado`});
+    $('bloque-nombre').value='';
+    showMsg('bloque-msg','ok','Bloque creado.');
+    showToast(`Registro creado: bloque ${nombre}.`,'ok');
+  }catch(err){ showMsg('bloque-msg','err',err.message); }
+});
+
+async function agregarNicho(bloqueId, bloqueNombre){
+  try{
+    let letra;
+    await db.runTransaction(async tx=>{
+      const cSnap = await tx.get(contadorRef);
+      const data = cSnap.exists ? cSnap.data() : {};
+      const nichoIndex = data.nicho_index || 0;
+      letra = indexToLetter(nichoIndex);
+      tx.set(nichosRef.doc(letra), { bloque_id: bloqueId, orden: nichoIndex, pos_visual: nichoIndex, tipo:'rack_piso', creado_en: firebase.firestore.FieldValue.serverTimestamp() });
+      const rackDefs = [[`${letra}01`,'arriba'],[`${letra}02`,'arriba'],[`${letra}03`,'abajo'],[`${letra}04`,'abajo']];
+      rackDefs.forEach(([codigo,nivel])=>{
+        tx.set(posicionesRef.doc(codigo), { tipo:'rack', nicho:letra, bloque_id:bloqueId, nivel, estado:'vacio', bloqueada:false, pallet_codigo:null, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
+      });
+      for(let i=0;i<5;i++){
+        const izq=5+i, der=10+i;
+        [[izq,'izq'],[der,'der']].forEach(([num,columna])=>{
+          const codigo = `${letra}${String(num).padStart(2,'0')}`;
+          tx.set(posicionesRef.doc(codigo), { tipo:'piso', nicho:letra, bloque_id:bloqueId, nivel:null, fila:i, columna, estado:'vacio', bloqueada:false, pallet_codigo:null, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
+        });
+      }
+      tx.set(contadorRef, { nicho_index: nichoIndex+1 }, {merge:true});
+    });
+    await logAccion('nicho_creado', {detalle:`Nicho ${letra} creado en ${bloqueNombre} (4 rack + 10 piso)`});
+    showToast(`Registro creado: nicho ${letra} en ${bloqueNombre}.`,'ok');
+  }catch(err){ showToast('Error: '+err.message,'err'); }
+}
+
+async function agregarNichoSoloPiso(bloqueId, bloqueNombre){
+  try{
+    let letra;
+    await db.runTransaction(async tx=>{
+      const cSnap = await tx.get(contadorRef);
+      const data = cSnap.exists ? cSnap.data() : {};
+      const nichoIndex = data.nicho_index || 0;
+      letra = indexToLetter(nichoIndex);
+      tx.set(nichosRef.doc(letra), { bloque_id: bloqueId, orden: nichoIndex, pos_visual: nichoIndex, tipo:'solo_piso', creado_en: firebase.firestore.FieldValue.serverTimestamp() });
+      for(let i=0;i<6;i++){
+        const izq=1+i, der=7+i;
+        [[izq,'izq'],[der,'der']].forEach(([num,columna])=>{
+          const codigo = `${letra}${String(num).padStart(2,'0')}`;
+          tx.set(posicionesRef.doc(codigo), { tipo:'piso', nicho:letra, bloque_id:bloqueId, nivel:null, fila:i, columna, estado:'vacio', bloqueada:false, pallet_codigo:null, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
+        });
+      }
+      tx.set(contadorRef, { nicho_index: nichoIndex+1 }, {merge:true});
+    });
+    await logAccion('nicho_creado', {detalle:`Nicho ${letra} (solo piso, 12 posiciones) creado en ${bloqueNombre}`});
+    showToast(`Registro creado: nicho ${letra} (solo piso) en ${bloqueNombre}.`,'ok');
+  }catch(err){ showToast('Error: '+err.message,'err'); }
+}
+
+async function moverNicho(bloqueId, letra, direccion){
+  const nichosBloque = Object.entries(nichos)
+    .filter(([l,n])=>n.bloque_id===bloqueId)
+    .sort((a,b)=> (a[1].pos_visual ?? a[1].orden) - (b[1].pos_visual ?? b[1].orden));
+  const idx = nichosBloque.findIndex(([l])=>l===letra);
+  const swapIdx = idx + direccion;
+  if(idx<0){ showToast('No se encontró el nicho a mover.','err'); return; }
+  if(swapIdx<0 || swapIdx>=nichosBloque.length){ showToast('Ese nicho ya está en el extremo de su bloque.','err'); return; }
+  const [letraA, dataA] = nichosBloque[idx];
+  const [letraB, dataB] = nichosBloque[swapIdx];
+  const posA = dataA.pos_visual ?? dataA.orden ?? 0;
+  const posB = dataB.pos_visual ?? dataB.orden ?? 0;
+  try{
+    await db.runTransaction(async tx=>{
+      tx.update(nichosRef.doc(letraA), { pos_visual: posB });
+      tx.update(nichosRef.doc(letraB), { pos_visual: posA });
+    });
+    await logAccion('nicho_reordenado', {detalle:`Nichos ${letraA} y ${letraB} intercambiaron posición`});
+    showToast(`${letraA} y ${letraB} intercambiaron de lugar.`,'ok');
+  }catch(err){ showToast('Error al mover: '+err.message,'err'); }
+}
+
+async function eliminarNicho(letra, bloqueNombre){
+  const posDelNicho = Object.entries(posiciones).filter(([id,p])=>p.nicho===letra);
+  if(posDelNicho.some(([id,p])=>p.estado==='ocupado')){
+    showToast('No se puede eliminar: hay posiciones ocupadas en este nicho.','err'); return;
+  }
+  if(!confirm(`¿Eliminar el nicho ${letra} de ${bloqueNombre} y sus 14 posiciones? Esta acción no se puede deshacer.`)) return;
+  const esUltimoGlobal = (letra === getUltimoNichoGlobal());
+  try{
+    await db.runTransaction(async tx=>{
+      const cSnap = await tx.get(contadorRef);
+      const data = cSnap.exists ? cSnap.data() : {};
+      tx.delete(nichosRef.doc(letra));
+      posDelNicho.forEach(([id])=> tx.delete(posicionesRef.doc(id)));
+      if(esUltimoGlobal){
+        tx.set(contadorRef, { nicho_index: Math.max((data.nicho_index||1)-1, 0) }, {merge:true});
+      }
+    });
+    await logAccion('nicho_eliminado', {detalle:`Nicho ${letra} eliminado de ${bloqueNombre}`});
+    showToast(`Nicho ${letra} eliminado.`,'ok');
+  }catch(err){ showToast('Error: '+err.message,'err'); }
+}
+
+function renderBloqueForms(){
+  const list = $('bloques-list');
+  const entries = Object.entries(bloques).sort((a,b)=>{
+    const ta = a[1].creado_en ? a[1].creado_en.toMillis() : 0;
+    const tb = b[1].creado_en ? b[1].creado_en.toMillis() : 0;
+    return ta - tb;
+  });
+  if(entries.length===0){ list.innerHTML = '<div class="empty-state">Aún no hay bloques. Crea el primero arriba.</div>'; return; }
+  list.innerHTML = entries.map(([id, b])=>{
+    const nichosDelBloque = Object.entries(nichos).filter(([l,n])=>n.bloque_id===id);
+    const soloPisoCount = nichosDelBloque.filter(([l,n])=>n.tipo==='solo_piso').length;
+    const rackCount = nichosDelBloque.length - soloPisoCount;
+    const posDelBloque = rackCount*14 + soloPisoCount*12;
+    const ultimoDeEsteBloque = getUltimoNichoDeBloque(id);
+    return `<div class="bloque-card">
+      <div class="bh">
+        <b>${b.nombre}</b>
+        <div class="actions">
+          ${ultimoDeEsteBloque ? `<button class="btn btn-danger btn-sm" data-del-nicho="${ultimoDeEsteBloque}" data-nombre="${b.nombre}">🗑 Eliminar nicho ${ultimoDeEsteBloque}</button>` : ''}
+          <button class="btn btn-ghost btn-sm" data-add-nicho="${id}" data-nombre="${b.nombre}">+ Agregar nicho</button>
+          <button class="btn btn-ghost btn-sm" data-add-piso="${id}" data-nombre="${b.nombre}">+ Agregar piso (sin rack)</button>
+        </div>
+      </div>
+      <div class="meta">${nichosDelBloque.length} nicho(s) · ${posDelBloque} posiciones (${rackCount*4} rack + ${rackCount*10 + soloPisoCount*12} piso)</div>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('[data-add-nicho]').forEach(btn=> btn.onclick = () => agregarNicho(btn.dataset.addNicho, btn.dataset.nombre));
+  list.querySelectorAll('[data-add-piso]').forEach(btn=> btn.onclick = () => agregarNichoSoloPiso(btn.dataset.addPiso, btn.dataset.nombre));
+  list.querySelectorAll('[data-del-nicho]').forEach(btn=> btn.onclick = () => eliminarNicho(btn.dataset.delNicho, btn.dataset.nombre));
+}
+
+/* -------------------- Render de grillas -------------------- */
+function slotHTML(id, data){
+  const cls = ['slot', data.tipo==='piso'?'piso-slot':'', data.estado==='ocupado'?'ocupado':'', data.bloqueada?'bloqueada':''].join(' ').trim();
+  return `<div class="${cls}" data-id="${id}" id="slot-${id}">${data.bloqueada?'🔒':id.slice(-2)}</div>`;
+}
+function slotReadonlyHTML(id, data){
+  const cls = ['slot','readonly', data.tipo==='piso'?'piso-slot':'', data.estado==='ocupado'?'ocupado':'', data.bloqueada?'bloqueada':''].join(' ').trim();
+  return `<div class="${cls}">${data.bloqueada?'🔒':id.slice(-2)}</div>`;
+}
+function buildBloquesMarkup(interactive, showReorder){
+  const bloqueEntries = Object.entries(bloques).sort((a,b)=>{
+    const ta = a[1].creado_en ? a[1].creado_en.toMillis() : 0;
+    const tb = b[1].creado_en ? b[1].creado_en.toMillis() : 0;
+    return ta - tb;
+  });
+  let letraVisualIndex = 0;
+  return bloqueEntries.map(([bid, b])=>{
+    const nichosDelBloque = Object.entries(nichos).filter(([l,n])=>n.bloque_id===bid)
+      .sort((a,b2)=> (a[1].pos_visual ?? a[1].orden) - (b2[1].pos_visual ?? b2[1].orden));
+    const fn = interactive ? slotHTML : slotReadonlyHTML;
+    const nichosHTML = nichosDelBloque.map(([letra, ndata], idxEnBloque)=>{
+      const letraVisual = indexToLetter(letraVisualIndex++);
+      const esSoloPiso = ndata.tipo === 'solo_piso';
+      const filaCount = esSoloPiso ? 6 : 5;
+      const pisoRows = [];
+      for(let i=0;i<filaCount;i++){
+        const izqEntry = Object.entries(posiciones).find(([id,p])=> p.nicho===letra && p.tipo==='piso' && p.fila===i && (p.columna ? p.columna==='izq' : Number(id.slice(-2))<10));
+        const derEntry = Object.entries(posiciones).find(([id,p])=> p.nicho===letra && p.tipo==='piso' && p.fila===i && (p.columna ? p.columna==='der' : Number(id.slice(-2))>=10));
+        let rowHtml = '<div class="nicho-row">';
+        if(izqEntry) rowHtml += fn(izqEntry[0], izqEntry[1]);
+        if(derEntry) rowHtml += fn(derEntry[0], derEntry[1]);
+        rowHtml += '</div>';
+        pisoRows.push(rowHtml);
+      }
+      let rackHTML = '';
+      if(!esSoloPiso){
+        const arriba = Object.entries(posiciones).filter(([id,p])=>p.nicho===letra && p.nivel==='arriba').sort((a,b2)=>a[0].localeCompare(b2[0]));
+        const abajo = Object.entries(posiciones).filter(([id,p])=>p.nicho===letra && p.nivel==='abajo').sort((a,b2)=>a[0].localeCompare(b2[0]));
+        rackHTML = `<div class="nicho-section-label">Rack</div>
+          <div class="nicho-row">${arriba.map(([id,p])=>fn(id,p)).join('')}</div>
+          <div class="nicho-row">${abajo.map(([id,p])=>fn(id,p)).join('')}</div>`;
+      }
+      const reorderHTML = showReorder ? `<div class="nicho-reorder">
+        <button type="button" class="btn-reorder" data-move-nicho="${letra}" data-bloque="${bid}" data-dir="1" ${idxEnBloque===nichosDelBloque.length-1?'disabled':''}>◀</button>
+        <button type="button" class="btn-reorder" data-move-nicho="${letra}" data-bloque="${bid}" data-dir="-1" ${idxEnBloque===0?'disabled':''}>▶</button>
+      </div>` : '';
+      return `<div class="nicho${esSoloPiso?' solo-piso':''}">
+        ${reorderHTML}
+        ${rackHTML}
+        <div class="nicho-label">${letraVisual}</div>
+        <div class="nicho-section-label">Piso</div>
+        ${pisoRows.join('')}
+      </div>`;
+    }).join('');
+    return `<div class="bloque-row"><div class="bloque-title">${b.nombre}</div><div class="nichos-line">${nichosHTML || '<span class="empty-state">Sin nichos aún</span>'}</div></div>`;
+  }).join('') || '<div class="empty-state">Aún no hay bloques configurados.</div>';
+}
+function renderPreviewGrid(){
+  $('preview-bloques').innerHTML = buildBloquesMarkup(false, true);
+  $('preview-bloques').querySelectorAll('[data-move-nicho]').forEach(btn=>{
+    btn.onclick = () => moverNicho(btn.dataset.bloque, btn.dataset.moveNicho, parseInt(btn.dataset.dir));
+  });
+}
+function renderMovGrid(){ $('mov-bloques').innerHTML = buildBloquesMarkup(true, false); attachSlotEvents(); }
+
+function attachSlotEvents(){
+  document.querySelectorAll('#view-mov .slot').forEach(el=>{
+    el.onclick = () => selectSlot(el.dataset.id);
+    el.oncontextmenu = (e) => showContextMenu(e, el.dataset.id);
+    el.onmouseenter = e => showTooltip(e, el.dataset.id);
+    el.onmouseleave = hideTooltip;
+    el.onmousemove = e => positionTooltip(e);
+  });
+}
+function showTooltip(e,id){
+  const p = posiciones[id]; if(!p) return;
+  const tt = $('tooltip');
+  if(p.bloqueada){ tt.innerHTML = `<b>${id}</b><br>Bloqueada`; }
+  else if(p.estado==='ocupado'){
+    const pal = pallets[p.pallet_codigo]; const n = pal && pal.items ? pal.items.length : 0;
+    tt.innerHTML = `<b>${id}</b><br>Pallet: ${p.pallet_codigo}<br>${n} producto(s)`;
+  } else { tt.innerHTML = `<b>${id}</b><br>Vacío`; }
+  tt.style.display='block'; positionTooltip(e);
+}
+function positionTooltip(e){ const tt=$('tooltip'); tt.style.left=(e.clientX+12)+'px'; tt.style.top=(e.clientY+12)+'px'; }
+function hideTooltip(){ $('tooltip').style.display='none'; }
+
+/* -------------------- Bloqueo de posiciones -------------------- */
+function showContextMenu(e, id){
+  e.preventDefault();
+  const puede = currentPermisos.admin || currentPermisos.eliminar || currentPermisos.movimientos;
+  if(!puede) return;
+  const p = posiciones[id]; if(!p) return;
+  if(!p.bloqueada && p.estado==='ocupado') return;
+  const menu = $('ctx-menu');
+  menu.innerHTML = p.bloqueada ? `<button data-a="d">Desbloquear ${id}</button>` : `<button data-a="b">Bloquear ${id}</button>`;
+  menu.style.left = e.clientX+'px'; menu.style.top = e.clientY+'px'; menu.style.display='block';
+  menu.querySelector('button').onclick = () => { togglePosicionBloqueo(id, !p.bloqueada); menu.style.display='none'; };
+}
+document.addEventListener('click', (e)=>{ if(!e.target.closest('#ctx-menu')) $('ctx-menu').style.display='none'; });
+
+async function togglePosicionBloqueo(id, bloquear){
+  try{
+    const p = posiciones[id];
+    if(bloquear && p.estado==='ocupado'){ showToast('No puedes bloquear una posición ocupada.','err'); return; }
+    await posicionesRef.doc(id).update({ bloqueada: bloquear, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
+    await logAccion(bloquear?'bloqueo':'desbloqueo', {origen:id, detalle:`Posición ${id} ${bloquear?'bloqueada':'desbloqueada'}`});
+    showToast(`Posición ${id} ${bloquear?'bloqueada':'desbloqueada'}.`,'ok');
+  }catch(err){ showToast('Error: '+err.message,'err'); }
+}
+
+/* -------------------- Selección y detalle -------------------- */
+let selectedPosId = null;
+function selectSlot(id){
+  selectedPosId = id;
+  const p = posiciones[id];
+  document.querySelectorAll('#view-mov .slot').forEach(el=>el.classList.remove('selected'));
+  const el = $('slot-'+id); if(el) el.classList.add('selected');
+  renderDetalle(id, p);
+  if(p.bloqueada) return;
+  if(p.estado==='ocupado'){
+    setSubtab('mover');
+    $('mv-origen').value = id;
+    fillMoverFromOrigen(id);
+    if(p.pallet_codigo){
+      cargarPalletEnRetiroCampana(p.pallet_codigo);
+      fijarOrigenTransferir(p.pallet_codigo);
+    }
+  } else {
+    $('cp-destino').value = id;
+    $('mv-destino').value = id;
+  }
+}
+
+function renderDetalle(id, p){
+  const panel = $('detalle-panel'); const content = $('detalle-content');
+  panel.style.display = 'block';
+  const puedeMov = currentPermisos.admin || currentPermisos.movimientos;
+  const puedeEliminar = currentPermisos.admin || currentPermisos.eliminar;
+  const puedeBloquear = currentPermisos.admin || currentPermisos.eliminar || currentPermisos.movimientos;
+
+  if(p.bloqueada){
+    content.innerHTML = `<div style="font-family:var(--mono); font-size:13px;">${id}</div><div class="empty-state">🔒 Posición bloqueada — no se puede asignar.</div>
+      ${puedeBloquear ? `<button class="btn btn-ghost btn-sm" id="btn-toggle-lock" style="width:100%;">Desbloquear posición</button>` : ''}`;
+    if(puedeBloquear) $('btn-toggle-lock').onclick = () => togglePosicionBloqueo(id, false);
+    return;
+  }
+  if(p.estado !== 'ocupado'){
+    content.innerHTML = `<div style="font-family:var(--mono); font-size:13px; margin-bottom:8px;"><b>${id}</b></div>
+      <div style="text-align:center; background:var(--green-bg); border:2px dashed var(--green); border-radius:8px; padding:22px 10px; margin-bottom:10px;">
+        <div style="font-size:34px; line-height:1;">✅</div>
+        <div style="font-size:16px; font-weight:700; color:#245C46; margin-top:8px; letter-spacing:.03em;">POSICIÓN VACÍA</div>
+        <div style="font-size:11px; color:var(--ink-soft); margin-top:4px;">Disponible para asignar un pallet</div>
+      </div>
+      ${puedeBloquear ? `<button class="btn btn-dark btn-sm" id="btn-toggle-lock" style="width:100%;">🔒 Bloquear posición</button>` : ''}`;
+    if(puedeBloquear) $('btn-toggle-lock').onclick = () => togglePosicionBloqueo(id, true);
+    return;
+  }
+
+  const pal = pallets[p.pallet_codigo];
+  if(!pal){ content.innerHTML = `<div class="empty-state">Cargando datos del pallet…</div>`; return; }
+  let totalCant=0, totalCosto=0;
+  const rows = (pal.items||[]).map(it=>{
+    totalCant += Number(it.cantidad)||0;
+    totalCosto += (Number(it.cantidad)||0)*(Number(it.costo)||0);
+    return `<tr><td>${it.producto}</td><td>${it.descripcion||''}</td><td>${it.cantidad}</td><td>${fmtMoney(it.costo)}</td></tr>`;
+  }).join('');
+  content.innerHTML = `
+    <div style="font-family:var(--mono); font-size:13px; margin-bottom:6px;"><b>${id}</b> · Pallet ${p.pallet_codigo}</div>
+    <table><thead><tr><th>Producto</th><th>Desc.</th><th>Cant.</th><th>Costo u.</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="total-line"><span>Total cantidad</span><span>${totalCant}</span></div>
+    <div class="total-line"><span>Valor total</span><span>${fmtMoney(totalCosto)}</span></div>
+    ${puedeMov ? `
+    <div class="mini-form">
+      <label>Agregar producto a este pallet</label>
+      <div class="field" style="margin-bottom:6px;"><input type="text" id="dap-producto" class="upper" placeholder="CÓDIGO DE PRODUCTO"></div>
+      <div class="field" style="margin-bottom:6px;"><input type="text" id="dap-desc" placeholder="DESCRIPCIÓN" style="width:100%;"></div>
+      <div style="display:flex; gap:6px; margin-bottom:6px;">
+        <div class="field" style="margin:0; flex:1; min-width:0;"><input type="number" id="dap-cantidad" placeholder="CANTIDAD" step="1"></div>
+        <div class="field" style="margin:0; flex:1; min-width:0;"><input type="number" id="dap-costo" placeholder="COSTO" step="0.01"></div>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="dap-btn" style="width:100%;">+ Agregar al pallet</button>
+    </div>` : ''}
+    ${puedeEliminar ? `<button class="btn btn-danger btn-sm" style="width:100%; margin-top:10px;" id="btn-retirar-pallet">Retirar pallet (liberar posición)</button>` : ''}
+  `;
+  if(puedeMov){
+    const dapProducto = content.querySelector('#dap-producto');
+    const dapDesc = content.querySelector('#dap-desc');
+    const dapCosto = content.querySelector('#dap-costo');
+    const dapLookup = ()=>{
+      const code = dapProducto.value.trim().toUpperCase(); dapProducto.value = code;
+      if(code && productos[code]){
+        dapDesc.value = productos[code].descripcion; dapCosto.value = productos[code].costo;
+        dapDesc.readOnly = true; dapCosto.readOnly = true;
+      } else { dapDesc.value=''; dapCosto.value=''; dapDesc.readOnly = false; dapCosto.readOnly = false; }
+    };
+    dapProducto.addEventListener('change', dapLookup);
+    dapProducto.addEventListener('blur', dapLookup);
+    content.querySelector('#dap-btn').onclick = () => agregarProductoAPallet(p.pallet_codigo, dapProducto, dapDesc, dapCosto, content.querySelector('#dap-cantidad'));
+  }
+  if(puedeEliminar){ content.querySelector('#btn-retirar-pallet').onclick = () => retirarPallet(id, p.pallet_codigo); }
+}
+
+async function agregarProductoAPallet(codigoPallet, prodEl, descEl, costoEl, cantEl){
+  const producto = prodEl.value.trim().toUpperCase();
+  const cantidad = parseFloat(cantEl.value);
+  if(!producto){ showToast('Ingresa el código del producto.','err'); return; }
+  if(isNaN(cantidad) || cantidad<=0){ showToast('Cantidad inválida.','err'); return; }
+  // Si ya existe en el catálogo, sus datos maestros son intocables: se ignora lo escrito en pantalla.
+  let descripcion, costo;
+  if(productos[producto]){ descripcion = productos[producto].descripcion; costo = productos[producto].costo; }
+  else{
+    descripcion = descEl.value.trim().toUpperCase();
+    costo = parseFloat(costoEl.value);
+    if(!descripcion){ showToast('Ingresa la descripción del producto nuevo.','err'); return; }
+    if(isNaN(costo) || costo<0){ showToast('Costo inválido.','err'); return; }
+  }
+  try{
+    await db.runTransaction(async tx=>{
+      const palletRef = palletsRef.doc(codigoPallet);
+      const snap = await tx.get(palletRef);
+      if(!snap.exists) throw new Error('Pallet no encontrado.');
+      let items = (snap.data().items||[]).slice();
+      const idx = items.findIndex(it=>it.producto===producto);
+      if(idx>=0){ items[idx] = Object.assign({}, items[idx], {cantidad: Number(items[idx].cantidad)+cantidad}); }
+      else{ items.push({producto, descripcion, cantidad, costo}); }
+      tx.update(palletRef, { items, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
+      if(!productos[producto]){
+        tx.set(productosRef.doc(producto), { descripcion, costo, empaque1:null, empaque2:null, creado_en: firebase.firestore.FieldValue.serverTimestamp(), creado_por: currentUserEmail });
+      }
+      tx.set(kardexRef.doc(), {
+        producto, descripcion, costo, cantidad, tipo:'ingreso', pallet_codigo: codigoPallet,
+        usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    });
+    await logAccion('producto_agregado', {pallet_codigo:codigoPallet, detalle:`+${cantidad} de ${producto} en ${codigoPallet}`});
+    showToast(`Producto ${producto} agregado a ${codigoPallet}.`,'ok');
+  }catch(err){ showToast('Error: '+err.message,'err'); }
+}
+
+async function retirarPallet(posId, codigo){
+  if(!confirm(`¿Retirar el pallet ${codigo} y liberar la posición ${posId}? Esta acción no se puede deshacer.`)) return;
+  const itemsDelPallet = (pallets[codigo] && pallets[codigo].items) ? pallets[codigo].items.slice() : [];
+  try{
+    await db.runTransaction(async tx=>{
+      const posRef = posicionesRef.doc(posId); const palRef = palletsRef.doc(codigo);
+      tx.update(posRef, { estado:'vacio', pallet_codigo:null, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
+      tx.delete(palRef);
+      itemsDelPallet.forEach(it=>{
+        tx.set(kardexRef.doc(), {
+          producto: it.producto, descripcion: it.descripcion, costo: it.costo, cantidad: it.cantidad,
+          tipo:'salida', pallet_codigo: codigo, usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+    });
+    await logAccion('retiro', {pallet_codigo:codigo, origen:posId, detalle:`Pallet ${codigo} retirado de ${posId}`});
+    showToast(`Pallet ${codigo} retirado.`,'ok');
+    $('detalle-panel').style.display='none';
+  }catch(err){ showToast('Error: '+err.message,'err'); }
+}
+
+/* -------------------- Filtros/selects -------------------- */
+function renderFiltroBloques(){
+  const sel = $('f-bloque'); const current = sel.value;
+  sel.innerHTML = '<option value="">Todos</option>' + Object.entries(bloques).map(([id,b])=>`<option value="${id}">${b.nombre}</option>`).join('');
+  sel.value = current;
+}
+function renderSelects(){
+  const ocupadas = Object.entries(posiciones).filter(([id,p])=>p.estado==='ocupado' && !p.bloqueada);
+  const vacias = Object.entries(posiciones).filter(([id,p])=>p.estado==='vacio' && !p.bloqueada);
+  $('dl-cp-destino').innerHTML = vacias.map(([id])=>`<option value="${id}">`).join('');
+  $('dl-mv-destino').innerHTML = vacias.map(([id])=>`<option value="${id}">`).join('');
+  $('dl-mv-origen').innerHTML = ocupadas.map(([id,p])=>`<option value="${id}">${p.pallet_codigo}</option>`).join('');
+  $('dl-pallets').innerHTML = Object.keys(pallets).map(c=>`<option value="${c}">`).join('');
+}
+function renderResumen(){
+  const total = Object.keys(posiciones).length;
+  const ocupadas = Object.values(posiciones).filter(p=>p.estado==='ocupado').length;
+  const bloqueadas = Object.values(posiciones).filter(p=>p.bloqueada).length;
+  const totalBloques = Object.keys(bloques).length;
+  const totalNichos = Object.keys(nichos).length;
+  const pct = total ? Math.round((ocupadas/total)*100) : 0;
+  $('resumen').innerHTML = `Bloques: ${totalBloques}<br>Nichos: ${totalNichos}<br>Posiciones: ${total}<br>Ocupadas: ${ocupadas} (${pct}%)<br>Bloqueadas: ${bloqueadas}`;
+}
+['f-buscar','f-bloque','f-estado'].forEach(id=>{ $(id).addEventListener('input', applyFilters); $(id).addEventListener('change', applyFilters); });
+$('btn-clear-filters').addEventListener('click', ()=>{ $('f-buscar').value=''; $('f-bloque').value=''; $('f-estado').value=''; applyFilters(); });
+function applyFilters(){
+  const buscar = $('f-buscar').value.trim().toLowerCase();
+  const bloque = $('f-bloque').value;
+  const estado = $('f-estado').value;
+  Object.entries(posiciones).forEach(([id,p])=>{
+    const el = $('slot-'+id); if(!el) return;
+    el.classList.remove('dim','match');
+    let visible = true;
+    if(bloque && p.bloque_id !== bloque) visible = false;
+    if(estado==='bloqueado' && !p.bloqueada) visible = false;
+    else if(estado==='ocupado' && p.estado!=='ocupado') visible = false;
+    else if(estado==='vacio' && (p.estado!=='vacio' || p.bloqueada)) visible = false;
+    let isMatch = false;
+    if(buscar){
+      const codeMatch = id.toLowerCase().includes(buscar) || (p.pallet_codigo||'').toLowerCase().includes(buscar);
+      let itemMatch = false;
+      if(p.estado==='ocupado' && pallets[p.pallet_codigo] && pallets[p.pallet_codigo].items){
+        itemMatch = pallets[p.pallet_codigo].items.some(it => (it.producto||'').toLowerCase().includes(buscar) || (it.descripcion||'').toLowerCase().includes(buscar));
+      }
+      isMatch = codeMatch || itemMatch;
+      if(!isMatch) visible = false;
+    }
+    if(!visible) el.classList.add('dim');
+    if(isMatch) el.classList.add('match');
+  });
+}
+
+/* -------------------- Crear pallet (con catálogo de productos) -------------------- */
+function addItemRow(){
+  const row = document.createElement('div');
+  row.className = 'item-card';
+  row.innerHTML = `
+    <div class="row1">
+      <input type="text" class="it-producto upper" placeholder="CÓDIGO DE PRODUCTO">
+      <button class="rm-row" type="button">×</button>
+    </div>
+    <div class="row-desc"><input type="text" class="it-desc upper" placeholder="DESCRIPCIÓN"></div>
+    <div class="row2">
+      <div><label>Cantidad</label><input type="number" class="it-cant" min="0" step="1"></div>
+      <div><label>Costo</label><input type="number" class="it-costo" min="0" step="0.01"></div>
+    </div>`;
+  row.querySelector('.rm-row').onclick = () => row.remove();
+  const itLookup = (e)=>{
+    const code = e.target.value.trim().toUpperCase(); e.target.value = code;
+    const descEl = row.querySelector('.it-desc'); const costoEl = row.querySelector('.it-costo');
+    if(code && productos[code]){
+      descEl.value = productos[code].descripcion; costoEl.value = productos[code].costo;
+      descEl.readOnly = true; costoEl.readOnly = true;
+    } else { descEl.readOnly = false; costoEl.readOnly = false; }
+  };
+  row.querySelector('.it-producto').addEventListener('change', itLookup);
+  row.querySelector('.it-producto').addEventListener('blur', itLookup);
+  $('cp-items-body').appendChild(row);
+}
+$('btn-add-item').addEventListener('click', addItemRow);
+addItemRow();
+
+const PALLET_REGEX = /^CD\d{4}$/;
+$('btn-crear-pallet').addEventListener('click', async ()=>{
+  const codigo = $('cp-codigo').value.trim().toUpperCase();
+  const destino = $('cp-destino').value.trim().toUpperCase();
+  if(!PALLET_REGEX.test(codigo)){ showMsg('cp-msg','err','El código debe tener el formato CD0000 (CD + 4 dígitos).'); return; }
+  if(!destino || !posiciones[destino]){ showMsg('cp-msg','err','Selecciona una posición destino válida.'); return; }
+  if(posiciones[destino].bloqueada){ showMsg('cp-msg','err','Esa posición está bloqueada.'); return; }
+  const rows = [...$('cp-items-body').querySelectorAll('.item-card')];
+  const items = [];
+  for(const r of rows){
+    const producto = r.querySelector('.it-producto').value.trim().toUpperCase();
+    const descripcion = r.querySelector('.it-desc').value.trim().toUpperCase();
+    const cantidad = parseFloat(r.querySelector('.it-cant').value);
+    const costo = parseFloat(r.querySelector('.it-costo').value);
+    if(!producto) continue;
+    if(isNaN(cantidad) || cantidad<=0){ showMsg('cp-msg','err',`Cantidad inválida para ${producto}.`); return; }
+    // Si el producto ya existe en el catálogo, sus datos maestros son intocables: se ignora lo escrito y se usa el catálogo.
+    let descFinal = descripcion, costoFinal = costo;
+    if(productos[producto]){ descFinal = productos[producto].descripcion; costoFinal = productos[producto].costo; }
+    else{
+      if(!descripcion){ showMsg('cp-msg','err',`Falta la descripción para el producto nuevo ${producto}.`); return; }
+      if(isNaN(costo) || costo<0){ showMsg('cp-msg','err',`Costo inválido para ${producto}.`); return; }
+    }
+    items.push({producto, descripcion: descFinal, cantidad, costo: costoFinal});
+  }
+  if(items.length===0){ showMsg('cp-msg','err','Agrega al menos un producto.'); return; }
+
+  $('btn-crear-pallet').disabled = true;
+  try{
+    await db.runTransaction(async tx=>{
+      const palletRef = palletsRef.doc(codigo);
+      const destinoRef = posicionesRef.doc(destino);
+      const [palletSnap, destinoSnap] = await Promise.all([tx.get(palletRef), tx.get(destinoRef)]);
+      if(palletSnap.exists) throw new Error('Ya existe un pallet con ese código. Usa "Mover pallet" o "Transferir producto".');
+      if(!destinoSnap.exists) throw new Error('Posición destino no encontrada.');
+      if(destinoSnap.data().estado !== 'vacio' || destinoSnap.data().bloqueada) throw new Error('La posición destino ya no está disponible.');
+      tx.set(palletRef, { items, posicion_actual: destino, estado:'activo', creado_en: firebase.firestore.FieldValue.serverTimestamp(), actualizado: firebase.firestore.FieldValue.serverTimestamp() });
+      tx.update(destinoRef, { estado:'ocupado', pallet_codigo: codigo, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
+      items.forEach(it=>{
+        if(!productos[it.producto]){
+          tx.set(productosRef.doc(it.producto), {descripcion:it.descripcion, costo:it.costo, empaque1:null, empaque2:null, creado_en: firebase.firestore.FieldValue.serverTimestamp(), creado_por: currentUserEmail});
+        }
+      });
+      tx.set(movimientosRef.doc(), { pallet_codigo: codigo, origen:null, destino, tipo:'ingreso', usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+      items.forEach(it=>{
+        tx.set(kardexRef.doc(), {
+          producto: it.producto, descripcion: it.descripcion, costo: it.costo, cantidad: it.cantidad,
+          tipo:'ingreso', pallet_codigo: codigo, usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+    });
+    showMsg('cp-msg','ok',`Pallet ${codigo} creado en ${destino}.`);
+    showToast(`Registro creado: pallet ${codigo} en ${destino}.`,'ok');
+    $('cp-codigo').value=''; $('cp-destino').value=''; $('cp-items-body').innerHTML=''; addItemRow();
+  }catch(err){ showMsg('cp-msg','err', err.message); }
+  finally{ $('btn-crear-pallet').disabled = false; }
+});
+
+/* -------------------- Mover pallet -------------------- */
+$('mv-origen').addEventListener('input', e => { if(posiciones[e.target.value.toUpperCase()]) fillMoverFromOrigen(e.target.value.toUpperCase()); });
+function fillMoverFromOrigen(id){ const p = posiciones[id]; if(!p) return; $('mv-codigo').value = p.pallet_codigo || ''; }
+$('btn-mover').addEventListener('click', async ()=>{
+  const origenId = $('mv-origen').value.trim().toUpperCase();
+  const destinoId = $('mv-destino').value.trim().toUpperCase();
+  const codigo = $('mv-codigo').value;
+  if(!posiciones[origenId] || posiciones[origenId].estado!=='ocupado'){ showMsg('mv-msg','err','Selecciona una posición de origen válida y ocupada.'); return; }
+  if(!posiciones[destinoId] || posiciones[destinoId].estado!=='vacio' || posiciones[destinoId].bloqueada){ showMsg('mv-msg','err','Selecciona una posición destino válida y disponible.'); return; }
+  if(origenId === destinoId){ showMsg('mv-msg','err','Origen y destino no pueden ser iguales.'); return; }
+  if(!codigo){ showMsg('mv-msg','err','No se detectó un pallet en el origen.'); return; }
+  $('btn-mover').disabled = true;
+  try{
+    await db.runTransaction(async tx=>{
+      const origenRef = posicionesRef.doc(origenId); const destinoRef = posicionesRef.doc(destinoId); const palletRef = palletsRef.doc(codigo);
+      const [origenSnap, destinoSnap, palletSnap] = await Promise.all([tx.get(origenRef), tx.get(destinoRef), tx.get(palletRef)]);
+      if(!origenSnap.exists || !destinoSnap.exists || !palletSnap.exists) throw new Error('Datos no encontrados.');
+      if(origenSnap.data().estado!=='ocupado' || origenSnap.data().pallet_codigo!==codigo) throw new Error('El origen cambió. Vuelve a intentar.');
+      if(destinoSnap.data().estado!=='vacio' || destinoSnap.data().bloqueada) throw new Error('El destino ya no está disponible.');
+      tx.update(origenRef, { estado:'vacio', pallet_codigo:null, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
+      tx.update(destinoRef, { estado:'ocupado', pallet_codigo:codigo, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
+      tx.update(palletRef, { posicion_actual: destinoId, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
+      tx.set(movimientosRef.doc(), { pallet_codigo:codigo, origen:origenId, destino:destinoId, tipo:'movimiento', usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+    });
+    showMsg('mv-msg','ok',`Pallet ${codigo} movido de ${origenId} a ${destinoId}.`);
+    showToast(`Pallet ${codigo} movido a ${destinoId}.`,'ok');
+    $('mv-origen').value=''; $('mv-destino').value=''; $('mv-codigo').value='';
+  }catch(err){ showMsg('mv-msg','err', err.message); }
+  finally{ $('btn-mover').disabled = false; }
+});
+
+/* -------------------- Transferir producto entre pallets -------------------- */
+function cargarProductosDeOrigenTransferir(code){
+  const pal = pallets[code]; const sel = $('tr-producto');
+  if(pal && pal.items && pal.items.length){
+    sel.innerHTML = pal.items.map(it=>`<option value="${it.producto}">${it.producto} (disp: ${it.cantidad})</option>`).join('');
+  } else { sel.innerHTML = '<option value="">Pallet no encontrado o sin productos</option>'; }
+}
+function fijarOrigenTransferir(code){
+  $('tr-origen').value = code;
+  $('tr-origen').readOnly = true;
+  $('btn-tr-cambiar').style.display = 'inline-block';
+  cargarProductosDeOrigenTransferir(code);
+}
+$('btn-tr-cambiar').addEventListener('click', ()=>{
+  $('tr-origen').readOnly = false;
+  $('tr-origen').value = '';
+  $('btn-tr-cambiar').style.display = 'none';
+  $('tr-producto').innerHTML = '<option value="">Elige pallet origen primero…</option>';
+});
+$('tr-origen').addEventListener('change', ()=>{
+  const code = $('tr-origen').value.trim().toUpperCase(); $('tr-origen').value = code;
+  cargarProductosDeOrigenTransferir(code);
+});
+$('btn-transferir').addEventListener('click', async ()=>{
+  const origen = $('tr-origen').value.trim().toUpperCase();
+  const destino = $('tr-destino').value.trim().toUpperCase();
+  const producto = $('tr-producto').value;
+  const cantidad = parseFloat($('tr-cantidad').value);
+  if(!pallets[origen]){ showMsg('tr-msg','err','Pallet origen no encontrado.'); return; }
+  if(!pallets[destino]){ showMsg('tr-msg','err','Pallet destino no encontrado.'); return; }
+  if(origen===destino){ showMsg('tr-msg','err','Origen y destino no pueden ser el mismo pallet.'); return; }
+  if(!producto){ showMsg('tr-msg','err','Selecciona el producto a transferir.'); return; }
+  if(isNaN(cantidad) || cantidad<=0){ showMsg('tr-msg','err','Cantidad inválida.'); return; }
+  $('btn-transferir').disabled = true;
+  try{
+    await db.runTransaction(async tx=>{
+      const origenRef = palletsRef.doc(origen); const destinoRef = palletsRef.doc(destino);
+      const [origenSnap, destinoSnap] = await Promise.all([tx.get(origenRef), tx.get(destinoRef)]);
+      if(!origenSnap.exists || !destinoSnap.exists) throw new Error('Pallet no encontrado.');
+      let origenItems = (origenSnap.data().items||[]).slice();
+      let destinoItems = (destinoSnap.data().items||[]).slice();
+      const idxO = origenItems.findIndex(it=>it.producto===producto);
+      if(idxO<0) throw new Error('Ese producto ya no está en el pallet origen.');
+      const disponible = Number(origenItems[idxO].cantidad);
+      if(cantidad>disponible) throw new Error('No hay suficiente cantidad disponible en el origen.');
+      const {descripcion, costo} = origenItems[idxO];
+      if(cantidad===disponible){ origenItems.splice(idxO,1); } else { origenItems[idxO] = Object.assign({}, origenItems[idxO], {cantidad: disponible-cantidad}); }
+      const idxD = destinoItems.findIndex(it=>it.producto===producto);
+      if(idxD>=0){ destinoItems[idxD] = Object.assign({}, destinoItems[idxD], {cantidad: Number(destinoItems[idxD].cantidad)+cantidad}); }
+      else{ destinoItems.push({producto, descripcion, cantidad, costo}); }
+      tx.update(origenRef, { items: origenItems, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
+      tx.update(destinoRef, { items: destinoItems, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
+      tx.set(movimientosRef.doc(), { tipo:'transferencia', pallet_codigo:producto, origen, destino, usuario: currentUserAlias, detalle:`${cantidad} de ${producto}`, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+      tx.set(kardexRef.doc(), {
+        producto, descripcion, costo, cantidad, tipo:'salida', pallet_codigo: origen,
+        usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      tx.set(kardexRef.doc(), {
+        producto, descripcion, costo, cantidad, tipo:'ingreso', pallet_codigo: destino,
+        usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    });
+    showMsg('tr-msg','ok',`Se transfirieron ${cantidad} de ${producto} de ${origen} a ${destino}.`);
+    showToast(`Transferencia realizada: ${producto}.`,'ok');
+    $('tr-origen').value=''; $('tr-origen').readOnly=false; $('btn-tr-cambiar').style.display='none';
+    $('tr-destino').value=''; $('tr-cantidad').value=''; $('tr-producto').innerHTML='<option value="">Elige pallet origen primero…</option>';
+  }catch(err){ showMsg('tr-msg','err', err.message); }
+  finally{ $('btn-transferir').disabled = false; }
+});
+
+/* -------------------- Inventario acumulado -------------------- */
+function computeInventario(){
+  const inv = {};
+  Object.entries(pallets).forEach(([codigoPallet, p])=>{
+    (p.items||[]).forEach(it=>{
+      if(!inv[it.producto]) inv[it.producto] = { descripcion: it.descripcion, total:0, detalle:[] };
+      inv[it.producto].total += Number(it.cantidad)||0;
+      inv[it.producto].detalle.push({ pallet: codigoPallet, posicion: p.posicion_actual, cantidad: it.cantidad });
+    });
+  });
+  Object.keys(inv).forEach(codigo=>{
+    const costo = productos[codigo] ? Number(productos[codigo].costo)||0 : 0;
+    inv[codigo].costo = costo;
+    inv[codigo].costoTotal = costo * inv[codigo].total;
+  });
+  return inv;
+}
+function renderInventario(){
+  const body = $('inv-body'); if(!body) return;
+  const inv = computeInventario();
+  const entries = Object.entries(inv).sort((a,b)=>a[0].localeCompare(b[0]));
+  if(entries.length===0){ body.innerHTML=''; $('inv-empty').style.display='block'; return; }
+  $('inv-empty').style.display='none';
+  body.innerHTML = entries.map(([codigo,data])=>{
+    const detId = `inv-det-${codigo}`;
+    const detalleFilas = data.detalle.map(d=>`<tr><td>${d.pallet}</td><td>${d.posicion||'—'}</td><td>${d.cantidad}</td></tr>`).join('');
+    return `<tr><td>${codigo}</td><td>${data.descripcion||''}</td><td>${data.total}</td><td>${fmtMoney(data.costo)}</td><td>${fmtMoney(data.costoTotal)}</td><td><button class="btn btn-ghost btn-sm" data-toggle-inv="${detId}">Ver detalle</button></td></tr>
+    <tr id="${detId}" style="display:none;"><td colspan="6">
+      <table style="margin-top:4px;"><thead><tr><th>Pallet</th><th>Posición</th><th>Cantidad</th></tr></thead><tbody>${detalleFilas}</tbody></table>
+    </td></tr>`;
+  }).join('');
+  body.querySelectorAll('[data-toggle-inv]').forEach(btn=>{
+    btn.onclick = () => {
+      const row = document.getElementById(btn.dataset.toggleInv);
+      const showing = row.style.display !== 'none';
+      row.style.display = showing ? 'none' : 'table-row';
+      btn.textContent = showing ? 'Ver detalle' : 'Ocultar detalle';
+    };
+  });
+}
+$('btn-exportar-inventario').addEventListener('click', ()=>{
+  const inv = computeInventario();
+  const entries = Object.entries(inv).sort((a,b)=>a[0].localeCompare(b[0]));
+  if(entries.length===0){ showToast('No hay inventario para exportar.','err'); return; }
+  const filas = entries.map(([codigo,data])=>({
+    'Código': codigo, 'Descripción': data.descripcion||'', 'Cantidad total': data.total,
+    'Costo unitario': data.costo, 'Costo total': data.costoTotal
+  }));
+  const ws = XLSX.utils.json_to_sheet(filas);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Inventario');
+  XLSX.writeFile(wb, `inventario_${new Date().toISOString().slice(0,10)}.xlsx`);
+  showToast('Inventario exportado.','ok');
+});
+
+/* -------------------- Tabla de pallets -------------------- */
+function renderPalletsTabla(){
+  const body = $('pallets-body'); if(!body) return;
+  const entries = Object.entries(pallets).sort((a,b)=>a[0].localeCompare(b[0]));
+  if(entries.length===0){ body.innerHTML=''; $('pallets-empty').style.display='block'; return; }
+  $('pallets-empty').style.display='none';
+  body.innerHTML = entries.map(([codigo,p])=>{
+    const posId = p.posicion_actual;
+    const posData = posId ? posiciones[posId] : null;
+    const nicho = posData ? posData.nicho : '—';
+    const bloqueNombre = posData && posData.bloque_id && bloques[posData.bloque_id] ? bloques[posData.bloque_id].nombre : '—';
+    const nProductos = (p.items||[]).length;
+    return `<tr><td>${codigo}</td><td>${posId||'—'}</td><td>${nicho||'—'}</td><td>${bloqueNombre}</td><td>${nProductos} producto(s)</td></tr>`;
+  }).join('');
+}
+
+/* -------------------- Catálogo de productos -------------------- */
+function renderProductosTabla(){
+  const entries = Object.entries(productos).sort((a,b)=> a[0].localeCompare(b[0]));
+  const body = $('prod-body');
+  if(!body) return;
+  if(entries.length===0){ body.innerHTML=''; $('prod-empty').style.display='block'; return; }
+  $('prod-empty').style.display='none';
+  body.innerHTML = entries.map(([codigo,p])=>{
+    const fecha = p.creado_en ? p.creado_en.toDate().toLocaleString('es-PE') : '—';
+    return `<tr><td>${codigo}</td><td>${p.descripcion||''}</td><td>${fmtMoney(p.costo)}</td><td>${p.empaque1 ?? ''}</td><td>${p.empaque2 ?? ''}</td><td>${fecha}</td><td>${p.creado_por||''}</td></tr>`;
+  }).join('');
+}
+$('btn-guardar-producto').addEventListener('click', async ()=>{
+  const codigo = $('pr-codigo').value.trim().toUpperCase();
+  const descripcion = $('pr-desc').value.trim().toUpperCase();
+  const costo = parseFloat($('pr-costo').value);
+  const empaque1raw = $('pr-emp1').value.trim();
+  const empaque2raw = $('pr-emp2').value.trim();
+  const empaque1 = empaque1raw ? parseInt(empaque1raw, 10) : null;
+  const empaque2 = empaque2raw ? parseInt(empaque2raw, 10) : null;
+  if(!codigo){ showMsg('pr-msg','err','Ingresa el código.'); return; }
+  if(!descripcion){ showMsg('pr-msg','err','Ingresa la descripción.'); return; }
+  if(isNaN(costo) || costo<0){ showMsg('pr-msg','err','Costo inválido.'); return; }
+  if(empaque1raw && (isNaN(empaque1) || empaque1<0)){ showMsg('pr-msg','err','Empaque 1 debe ser un número entero.'); return; }
+  if(empaque2raw && (isNaN(empaque2) || empaque2<0)){ showMsg('pr-msg','err','Empaque 2 debe ser un número entero.'); return; }
+  const existente = productos[codigo];
+  if(existente && !(currentPermisos.admin || currentPermisos.eliminar)){
+    showMsg('pr-msg','err','Ese código ya existe. Necesitas permiso de edición/eliminación para modificarlo.'); return;
+  }
+  try{
+    if(existente){
+      await productosRef.doc(codigo).update({ descripcion, costo, empaque1, empaque2, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
+    }else{
+      await productosRef.doc(codigo).set({ descripcion, costo, empaque1, empaque2, creado_en: firebase.firestore.FieldValue.serverTimestamp(), creado_por: currentUserEmail });
+    }
+    await logAccion('producto_registrado', {pallet_codigo:codigo, detalle:`Producto ${codigo} ${existente?'actualizado':'creado'} en catálogo`});
+    showMsg('pr-msg','ok', `Producto ${codigo} guardado.`);
+    showToast(`Producto ${codigo} guardado en el catálogo.`,'ok');
+    $('pr-codigo').value=''; $('pr-desc').value=''; $('pr-costo').value=''; $('pr-emp1').value=''; $('pr-emp2').value='';
+  }catch(err){ showMsg('pr-msg','err', err.message); }
+});
+
+/* -------------------- Retirar productos de un pallet (campaña) -------------------- */
+function cargarPalletEnRetiroCampana(code){
+  $('rc-pallet').value = code;
+  const pal = pallets[code];
+  const table = $('rc-table'); const body = $('rc-items-body');
+  if(pal && pal.items && pal.items.length){
+    table.style.display = 'table';
+    body.innerHTML = pal.items.map(it=>`<tr>
+      <td>${it.producto}</td><td>${it.descripcion||''}</td><td>${it.cantidad}</td>
+      <td><input type="number" class="rc-cant" data-producto="${it.producto}" data-max="${it.cantidad}" min="0" max="${it.cantidad}" step="1" value="0" style="width:60px;"></td>
+    </tr>`).join('');
+  }else{ table.style.display='none'; body.innerHTML=''; }
+}
+$('rc-pallet').addEventListener('change', ()=>{
+  const code = $('rc-pallet').value.trim().toUpperCase();
+  cargarPalletEnRetiroCampana(code);
+});
+$('btn-retirar-campana').addEventListener('click', async ()=>{
+  const codigo = $('rc-pallet').value.trim().toUpperCase();
+  if(!pallets[codigo]){ showMsg('rc-msg','err','Pallet no encontrado.'); return; }
+  const inputs = [...document.querySelectorAll('.rc-cant')];
+  const retiros = [];
+  for(const inp of inputs){
+    const cant = parseFloat(inp.value);
+    const max = parseFloat(inp.dataset.max);
+    if(cant > 0){
+      if(cant > max){ showMsg('rc-msg','err',`La cantidad de ${inp.dataset.producto} excede lo disponible.`); return; }
+      const itemActual = (pallets[codigo].items||[]).find(it=>it.producto===inp.dataset.producto) || {};
+      retiros.push({producto: inp.dataset.producto, cantidad: cant, descripcion: itemActual.descripcion||'', costo: itemActual.costo||0});
+    }
+  }
+  if(retiros.length===0){ showMsg('rc-msg','err','Indica al menos una cantidad a retirar.'); return; }
+  $('btn-retirar-campana').disabled = true;
+  try{
+    await db.runTransaction(async tx=>{
+      const palletRef = palletsRef.doc(codigo);
+      const snap = await tx.get(palletRef);
+      if(!snap.exists) throw new Error('Pallet no encontrado.');
+      let items = (snap.data().items||[]).slice();
+      retiros.forEach(rt=>{
+        const idx = items.findIndex(it=>it.producto===rt.producto);
+        if(idx>=0){
+          const nueva = Number(items[idx].cantidad) - rt.cantidad;
+          if(nueva<=0){ items.splice(idx,1); } else { items[idx] = Object.assign({}, items[idx], {cantidad: nueva}); }
+        }
+      });
+      if(items.length===0){
+        const posId = snap.data().posicion_actual;
+        if(posId){ tx.update(posicionesRef.doc(posId), { estado:'vacio', pallet_codigo:null, actualizado: firebase.firestore.FieldValue.serverTimestamp() }); }
+        tx.delete(palletRef);
+      }else{
+        tx.update(palletRef, { items, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
+      }
+      tx.set(movimientosRef.doc(), {
+        tipo:'retiro_campana', pallet_codigo:codigo, origen:null, destino:null,
+        detalle: retiros.map(r=>`${r.cantidad} de ${r.producto}`).join(', '),
+        usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      retiros.forEach(rt=>{
+        tx.set(retirosCampanaRef.doc(), {
+          pallet_codigo: codigo, producto: rt.producto, descripcion: rt.descripcion, costo: rt.costo,
+          cantidad: rt.cantidad, usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        tx.set(kardexRef.doc(), {
+          producto: rt.producto, descripcion: rt.descripcion, costo: rt.costo, cantidad: rt.cantidad,
+          tipo:'salida', pallet_codigo: codigo, usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+    });
+    showMsg('rc-msg','ok','Retiro registrado.');
+    showToast(`Productos retirados de ${codigo}.`,'ok');
+    $('rc-pallet').value=''; $('rc-table').style.display='none'; $('rc-items-body').innerHTML='';
+  }catch(err){ showMsg('rc-msg','err', err.message); }
+  finally{ $('btn-retirar-campana').disabled = false; }
+});
+
+/* -------------------- Kardex por producto -------------------- */
+$('btn-cargar-kardex').addEventListener('click', async ()=>{
+  const codigo = $('kx-codigo').value.trim().toUpperCase();
+  if(!codigo){ showToast('Ingresa un código de producto.','err'); return; }
+  $('btn-cargar-kardex').disabled = true;
+  try{
+    const snap = await kardexRef.orderBy('timestamp','asc').limit(3000).get();
+    let saldo = 0;
+    const rows = [];
+    snap.forEach(doc=>{
+      const d = doc.data();
+      if(d.producto !== codigo) return;
+      const delta = d.tipo==='ingreso' ? Number(d.cantidad)||0 : -(Number(d.cantidad)||0);
+      saldo += delta;
+      rows.push(Object.assign({}, d, {saldo}));
+    });
+    rows.reverse();
+    const body = $('kx-body');
+    if(rows.length===0){ body.innerHTML=''; $('kx-empty').style.display='block'; $('kx-empty').textContent=`Sin movimientos para el código ${codigo}.`; return; }
+    $('kx-empty').style.display='none';
+    body.innerHTML = rows.map(d=>{
+      const fecha = d.timestamp ? d.timestamp.toDate().toLocaleString('es-PE') : '…';
+      const signo = d.tipo==='ingreso' ? '+' : '−';
+      return `<tr><td>${fecha}</td><td>${d.usuario||''}</td><td>${d.pallet_codigo||''}</td><td>${d.producto}</td><td>${d.descripcion||''}</td><td>${d.tipo==='ingreso'?'Ingreso':'Salida'}</td><td>${signo}${d.cantidad}</td><td>${d.saldo}</td></tr>`;
+    }).join('');
+  }catch(err){ showToast('Error al cargar kardex: '+err.message,'err'); }
+  finally{ $('btn-cargar-kardex').disabled = false; }
+});
+
+/* -------------------- Bitácora bajo demanda -------------------- */
+function parseLocalDate(str){ // "YYYY-MM-DD" -> medianoche LOCAL (evita el corrimiento por UTC)
+  const [y,m,d] = str.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
+$('btn-cargar-bitacora').addEventListener('click', async ()=>{
+  $('btn-cargar-bitacora').disabled = true;
+  try{
+    const snap = await movimientosRef.orderBy('timestamp','desc').limit(500).get();
+    const usuarioF = $('bit-usuario').value.trim().toLowerCase();
+    const codigoF = $('bit-codigo').value.trim().toLowerCase();
+    const desdeF = $('bit-desde').value;
+    const hastaF = $('bit-hasta').value;
+    const moduloF = $('bit-modulo').value;
+    const activeFilters = !!(usuarioF || codigoF || desdeF || hastaF || moduloF);
+    const rows = [];
+    snap.forEach(doc=>{
+      const d = doc.data();
+      let matched = !activeFilters;
+      if(!matched){
+        if(usuarioF && d.usuario && d.usuario.toLowerCase().includes(usuarioF)) matched = true;
+        if(!matched && codigoF){
+          const campos = [d.pallet_codigo, d.origen, d.destino, d.detalle].map(v=>(v||'').toLowerCase());
+          if(campos.some(v=>v.includes(codigoF))) matched = true;
+        }
+        if(!matched && (desdeF||hastaF) && d.timestamp){
+          const t = d.timestamp.toDate(); let ok = true;
+          if(desdeF && t < parseLocalDate(desdeF)) ok=false;
+          if(hastaF){ const end=parseLocalDate(hastaF); end.setHours(23,59,59,999); if(t>end) ok=false; }
+          if(ok) matched = true;
+        }
+        if(!matched && moduloF && moduloOf(d.tipo)===moduloF) matched = true;
+      }
+      if(matched) rows.push(d);
+    });
+    const body = $('bit-body');
+    if(rows.length===0){ body.innerHTML=''; $('bit-empty').style.display='block'; $('bit-empty').textContent='Sin resultados para esos filtros.'; return; }
+    $('bit-empty').style.display='none';
+    body.innerHTML = rows.map(d=>{
+      const fecha = d.timestamp ? d.timestamp.toDate().toLocaleString('es-PE') : '…';
+      return `<tr><td>${tipoLabel(d.tipo)}</td><td>${d.pallet_codigo||'—'}</td><td>${d.origen||'—'}</td><td>${d.destino||'—'}</td><td>${d.detalle||''}</td><td>${d.usuario||''}</td><td>${fecha}</td></tr>`;
+    }).join('');
+  }catch(err){ showToast('Error al cargar bitácora: '+err.message,'err'); }
+  finally{ $('btn-cargar-bitacora').disabled = false; }
+});
+
+/* -------------------- Paneles colapsables -------------------- */
+function setupCollapsiblePanels(){
+  document.querySelectorAll('.panel > h3').forEach(h3=>{
+    if(h3.querySelector('.collapse-toggle')) return;
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'collapse-toggle'; btn.textContent = '▾';
+    btn.title = 'Ocultar/mostrar sección';
+    h3.appendChild(btn);
+    btn.addEventListener('click', ()=>{
+      const panel = h3.parentElement;
+      panel.classList.toggle('collapsed');
+      btn.textContent = panel.classList.contains('collapsed') ? '▸' : '▾';
+    });
+  });
+}
+setupCollapsiblePanels();
+
+/* -------------------- Cierre de sesión por inactividad -------------------- */
+const INACTIVITY_LIMIT_MS = 20 * 60 * 1000;
+let inactivityTimer = null;
+function resetInactivityTimer(){
+  if(inactivityTimer) clearTimeout(inactivityTimer);
+  if(!auth.currentUser) return;
+  inactivityTimer = setTimeout(async ()=>{
+    try{ await logAccion('sesion_cerrada_inactividad', {detalle:'Cierre de sesión automático por 20 minutos de inactividad'}); }
+    catch(e){ console.error(e); }
+    await auth.signOut();
+    showToast('Tu sesión se cerró por 20 minutos de inactividad.','err');
+  }, INACTIVITY_LIMIT_MS);
+}
+['mousemove','keydown','click','scroll','touchstart'].forEach(evt=>{
+  document.addEventListener(evt, resetInactivityTimer, {passive:true});
+});
+
+$('btn-guardar-usuario').addEventListener('click', async ()=>{
+  const email = $('us-email').value.trim();
+  const alias = $('us-alias').value.trim().toUpperCase();
+  if(!email){ showMsg('us-msg','err','Ingresa el correo del usuario.'); return; }
+  const permisos = {
+    diseno: $('us-diseno').checked, movimientos: $('us-movimientos').checked,
+    productos: $('us-productos').checked, inventario: $('us-inventario').checked,
+    pallets: $('us-pallets').checked, retiros: $('us-retiros').checked,
+    kardex: $('us-kardex').checked, bitacora: $('us-bitacora').checked,
+    eliminar: $('us-eliminar').checked, admin: false
+  };
+  try{
+    const datos = { email, permisos, actualizado: firebase.firestore.FieldValue.serverTimestamp() };
+    if(alias) datos.alias = alias;
+    await usuariosRef.doc(email).set(datos, {merge:true});
+    await logAccion('permisos_actualizados', {detalle:`Permisos actualizados para ${email}${alias?' ('+alias+')':''}`});
+    showMsg('us-msg','ok', `Permisos guardados para ${email}.`);
+    showToast(`Permisos actualizados para ${email}.`,'ok');
+    $('us-email').value=''; $('us-alias').value='';
+    ['us-diseno','us-movimientos','us-productos','us-inventario','us-pallets','us-retiros','us-kardex','us-bitacora','us-eliminar'].forEach(id=>{ $(id).checked=false; });
+  }catch(err){ showMsg('us-msg','err', err.message); }
+});
+</script>
+</body>
+</html>
