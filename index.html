@@ -10,6 +10,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
   :root{
@@ -200,6 +201,7 @@
   <button data-tab="productos" id="tab-productos">Productos</button>
   <button data-tab="inventario" id="tab-inventario">Inventario</button>
   <button data-tab="pallets" id="tab-pallets">Pallets</button>
+  <button data-tab="rotulos" id="tab-rotulos">Rótulos PDF</button>
   <button data-tab="retiros" id="tab-retiros">Retiros Campaña</button>
   <button data-tab="kardex" id="tab-kardex">Kardex</button>
   <button data-tab="bitacora" id="tab-bitacora">Bitácora</button>
@@ -371,6 +373,38 @@
     <div class="hist-wrap" style="max-height:600px;">
       <table><thead><tr><th>Código pallet</th><th>Posición</th><th>Nicho</th><th>Bloque</th><th>Productos</th></tr></thead><tbody id="pallets-body"></tbody></table>
       <div class="empty-state" id="pallets-empty">Sin pallets todavía.</div>
+    </div>
+  </div>
+</div>
+
+<!-- RÓTULOS PDF -->
+<div class="view" id="view-rotulos">
+  <div style="display:grid; grid-template-columns:360px 1fr; gap:14px;">
+    <div class="panel">
+      <h3>Generar rótulos de pallet (PDF)</h3>
+      <div class="field"><label>Empresa / encabezado</label><input type="text" id="rot-empresa" class="upper" placeholder="EJ. CD VENEZUELA" value="CD VENEZUELA"></div>
+      <div class="field"><label>Subtítulo (opcional)</label><input type="text" id="rot-subtitulo" class="upper" placeholder="EJ. ALMACÉN CENTRAL"></div>
+      <div class="field"><label>Código desde</label><input type="text" id="rot-desde" class="upper" placeholder="CD0001"></div>
+      <div class="field"><label>Código hasta</label><input type="text" id="rot-hasta" class="upper" placeholder="CD0010"></div>
+      <button class="btn btn-primary" id="btn-generar-rotulos" style="width:100%;">⬇ Generar PDF</button>
+      <div class="msg" id="rot-msg"></div>
+      <p class="hint" style="margin-top:8px;">Un rótulo grande por página, listo para imprimir y pegar en el pallet. Ambos códigos deben tener el mismo prefijo de letras (ej. CD0001 a CD0010). Máximo 300 por generación.</p>
+    </div>
+    <div class="panel">
+      <h3>Vista previa del diseño</h3>
+      <div style="border:3px solid var(--ink); border-radius:8px; max-width:380px; margin:0 auto; overflow:hidden; font-family:var(--sans);">
+        <div style="background:var(--ink); color:#fff; text-align:center; padding:14px 10px;">
+          <div id="rot-preview-empresa" style="font-size:18px; font-weight:700; letter-spacing:.04em;">CD VENEZUELA</div>
+          <div id="rot-preview-subtitulo" style="font-size:11px; color:#B8C0CC; margin-top:2px;"></div>
+        </div>
+        <div style="text-align:center; padding:38px 10px; background:#fff;">
+          <div style="font-family:var(--mono); font-size:44px; font-weight:700; letter-spacing:.03em;">CD0001</div>
+        </div>
+        <div style="border-top:2px solid var(--ink); padding:8px 14px; display:flex; justify-content:space-between; font-size:11px; color:var(--ink-soft);">
+          <span>Control de Almacén</span>
+          <span id="rot-preview-fecha"></span>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -648,7 +682,7 @@ function startListeners(){
   nichosRef.onSnapshot(snap=>{ nichos={}; snap.forEach(d=>nichos[d.id]=d.data()); checkReady(); renderAll(); }, onErr);
   posicionesRef.onSnapshot(snap=>{ posiciones={}; snap.forEach(d=>posiciones[d.id]=d.data()); checkReady(); renderAll(); }, onErr);
   palletsRef.onSnapshot(snap=>{ pallets={}; snap.forEach(d=>pallets[d.id]=d.data()); checkReady(); renderAll(); }, onErr);
-  productosRef.onSnapshot(snap=>{ productos={}; snap.forEach(d=>productos[d.id]=d.data()); checkReady(); renderProductosTabla(); }, onErr);
+  productosRef.onSnapshot(snap=>{ productos={}; snap.forEach(d=>productos[d.id]=d.data()); checkReady(); renderProductosTabla(); renderInventario(); }, onErr);
   retirosCampanaRef.orderBy('timestamp','desc').limit(300).onSnapshot(snap=>{
     const body = $('retiros-body');
     if(snap.empty){ body.innerHTML=''; $('retiros-empty').style.display='block'; return; }
@@ -1572,6 +1606,72 @@ $('btn-cargar-kardex').addEventListener('click', async ()=>{
     }).join('');
   }catch(err){ showToast('Error al cargar kardex: '+err.message,'err'); }
   finally{ $('btn-cargar-kardex').disabled = false; }
+});
+
+/* -------------------- Rótulos PDF -------------------- */
+function actualizarPreviewRotulo(){
+  $('rot-preview-empresa').textContent = $('rot-empresa').value.trim() || 'CD VENEZUELA';
+  $('rot-preview-subtitulo').textContent = $('rot-subtitulo').value.trim();
+  $('rot-preview-fecha').textContent = new Date().toLocaleDateString('es-PE');
+}
+['rot-empresa','rot-subtitulo'].forEach(id=> $(id).addEventListener('input', actualizarPreviewRotulo));
+actualizarPreviewRotulo();
+
+function generarRangoCodigos(desde, hasta){
+  const m1 = desde.match(/^([A-Z]+)(\d+)$/);
+  const m2 = hasta.match(/^([A-Z]+)(\d+)$/);
+  if(!m1 || !m2) return { error: 'Los códigos deben tener el formato LETRAS+NÚMEROS, ej. CD0001.' };
+  if(m1[1] !== m2[1]) return { error: 'El código "desde" y "hasta" deben tener el mismo prefijo de letras.' };
+  const prefijo = m1[1];
+  const width = m1[2].length;
+  const n1 = parseInt(m1[2],10), n2 = parseInt(m2[2],10);
+  if(n2 < n1) return { error: 'El código "hasta" debe ser mayor o igual al "desde".' };
+  if(n2 - n1 + 1 > 300) return { error: 'Máximo 300 códigos por generación.' };
+  const codes = [];
+  for(let n=n1; n<=n2; n++){ codes.push(prefijo + String(n).padStart(width,'0')); }
+  return { codes };
+}
+
+$('btn-generar-rotulos').addEventListener('click', ()=>{
+  const empresa = $('rot-empresa').value.trim().toUpperCase() || 'CD VENEZUELA';
+  const subtitulo = $('rot-subtitulo').value.trim().toUpperCase();
+  const desde = $('rot-desde').value.trim().toUpperCase();
+  const hasta = $('rot-hasta').value.trim().toUpperCase();
+  if(!desde || !hasta){ showMsg('rot-msg','err','Ingresa el código desde y hasta.'); return; }
+  const resultado = generarRangoCodigos(desde, hasta);
+  if(resultado.error){ showMsg('rot-msg','err', resultado.error); return; }
+  const codes = resultado.codes;
+  try{
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'mm', format:'a4' });
+    const fecha = new Date().toLocaleDateString('es-PE');
+    codes.forEach((code, idx)=>{
+      if(idx>0) doc.addPage();
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const boxW = 170, boxH = 110;
+      const boxX = (pageW-boxW)/2, boxY = (pageH-boxH)/2;
+      doc.setDrawColor(27,36,48); doc.setLineWidth(1.2);
+      doc.rect(boxX, boxY, boxW, boxH);
+      doc.setFillColor(27,36,48);
+      doc.rect(boxX, boxY, boxW, 22, 'F');
+      doc.setTextColor(255,255,255);
+      doc.setFont('helvetica','bold'); doc.setFontSize(18);
+      doc.text(empresa, pageW/2, boxY+11, {align:'center'});
+      if(subtitulo){ doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.text(subtitulo, pageW/2, boxY+18, {align:'center'}); }
+      doc.setTextColor(20,20,20);
+      doc.setFont('courier','bold'); doc.setFontSize(46);
+      doc.text(code, pageW/2, boxY+68, {align:'center'});
+      doc.setDrawColor(27,36,48); doc.setLineWidth(0.5);
+      doc.line(boxX, boxY+boxH-14, boxX+boxW, boxY+boxH-14);
+      doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(60,60,60);
+      doc.text('Control de Almacén', boxX+6, boxY+boxH-6);
+      doc.text(fecha, boxX+boxW-6, boxY+boxH-6, {align:'right'});
+    });
+    doc.save(`rotulos_${desde}_a_${hasta}.pdf`);
+    showMsg('rot-msg','ok', `${codes.length} rótulo(s) generado(s).`);
+    showToast(`PDF generado con ${codes.length} rótulo(s).`,'ok');
+  }catch(err){ showMsg('rot-msg','err', 'Error al generar el PDF: '+err.message); }
 });
 
 /* -------------------- Bitácora bajo demanda -------------------- */
