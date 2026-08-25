@@ -106,11 +106,16 @@
     color:#4A2410; transition:transform .08s;
   }
   .slot:hover{transform:scale(1.12); z-index:2;}
-  .slot.piso-slot{background:var(--green-bg); border-color:var(--green); color:var(--ink-soft);}
-  .slot.ocupado{background:#FCEFD6; border-color:#8A5A18; color:#5A3A0F;}
-  .slot.piso-slot.ocupado{background:#F6D9A0; border-color:#8A5A18;}
+  .slot.piso-slot{background:#EDEDED; border-color:#C4C4C4; color:#6B6B6B;}
+  .slot.ocupado{background:#1E5F3E; border-color:#123D28; color:#fff;}
+  .slot.piso-slot.ocupado{background:#1E5F3E; border-color:#123D28; color:#fff;}
   .slot.selected{outline:2px solid var(--blue); outline-offset:1px;}
   .slot.match{outline:2px solid var(--neon); outline-offset:1px; box-shadow:0 0 8px var(--neon); animation:pulse 1s infinite; background:var(--neon) !important; color:#0A3D00 !important; font-weight:700;}
+  .slot.vacio-glow{animation:vacioGlow 1.4s infinite;}
+  @keyframes vacioGlow{
+    0%,100%{outline:2px solid #F5C518; outline-offset:1px; box-shadow:0 0 6px #F5C518;}
+    50%{outline:2px solid transparent; box-shadow:0 0 0 transparent;}
+  }
   .slot.dim{opacity:.25;}
   .slot.readonly{cursor:default;}
   .slot.bloqueada{ background:#000; border-color:#000; color:#fff; cursor:not-allowed; }
@@ -242,8 +247,8 @@
       <h3>Vista previa del layout</h3>
       <div class="legend">
         <span><i class="sw" style="background:var(--lacre-bg); border:1px solid var(--lacre-line);"></i>Rack vacío</span>
-        <span><i class="sw" style="background:var(--green-bg); border:1px solid var(--green);"></i>Piso vacío</span>
-        <span><i class="sw" style="background:#FCEFD6; border:1px solid #8A5A18;"></i>Ocupado</span>
+        <span><i class="sw" style="background:#EDEDED; border:1px solid #C4C4C4;"></i>Piso vacío</span>
+        <span><i class="sw" style="background:#1E5F3E; border:1px solid #123D28;"></i>Ocupado</span>
         <span><i class="sw" style="background:#000;"></i>Bloqueado</span>
       </div>
       <div class="bloques-scroll" id="preview-bloques"></div>
@@ -270,11 +275,12 @@
       <h3>Layout del almacén</h3>
       <div class="legend">
         <span><i class="sw" style="background:var(--lacre-bg); border:1px solid var(--lacre-line);"></i>Rack vacío</span>
-        <span><i class="sw" style="background:var(--green-bg); border:1px solid var(--green);"></i>Piso vacío</span>
-        <span><i class="sw" style="background:#FCEFD6; border:1px solid #8A5A18;"></i>Ocupado</span>
+        <span><i class="sw" style="background:#EDEDED; border:1px solid #C4C4C4;"></i>Piso vacío</span>
+        <span><i class="sw" style="background:#1E5F3E; border:1px solid #123D28;"></i>Ocupado</span>
         <span><i class="sw" style="background:#000;"></i>Bloqueado</span>
         <span><i class="sw" style="background:#fff; border:2px solid var(--blue);"></i>Seleccionado</span>
         <span><i class="sw" style="background:#fff; border:2px solid var(--neon); box-shadow:0 0 4px var(--neon);"></i>Coincide búsqueda</span>
+        <span><i class="sw" style="background:#fff; border:2px solid #F5C518; box-shadow:0 0 4px #F5C518;"></i>Vacío disponible (sin filtros)</span>
       </div>
       <p class="hint">Clic en una posición para ver detalle y bloquear/desbloquear, o clic derecho para el mismo menú.</p>
       <div class="bloques-scroll" id="mov-bloques"></div>
@@ -359,6 +365,7 @@
     </div>
     <div class="panel">
       <h3>Catálogo de productos</h3>
+      <div class="field" style="max-width:320px;"><label>Buscar (código o descripción que contengan)</label><input type="text" id="prod-buscar" class="upper" placeholder="EJ. SANDALIA o 06TP"></div>
       <div class="hist-wrap" style="max-height:600px;">
         <table><thead><tr><th>Código</th><th>Descripción</th><th>Costo</th><th>Proveedor</th><th>Empaque 1</th><th>Empaque 2</th><th>Creado</th><th>Usuario</th></tr></thead><tbody id="prod-body"></tbody></table>
         <div class="empty-state" id="prod-empty">Sin productos registrados aún.</div>
@@ -372,6 +379,7 @@
   <div class="panel">
     <h3><span style="display:flex; align-items:center; gap:10px;"><span>Inventario (acumulado por producto)</span><button class="btn btn-primary btn-sm" id="btn-exportar-inventario" type="button">⬇ Exportar a Excel</button></span></h3>
     <p class="hint" style="margin-bottom:10px;">Suma la cantidad de cada producto en todos los pallets activos del almacén. Haz clic en "Ver detalle" para ver en qué pallets y posiciones está.</p>
+    <div class="field" style="max-width:320px;"><label>Buscar (código o descripción que contengan)</label><input type="text" id="inv-buscar" class="upper" placeholder="EJ. SANDALIA o 06TP"></div>
     <div class="hist-wrap" style="max-height:600px;">
       <table><thead><tr><th>Código</th><th>Descripción</th><th>Cantidad total</th><th>Costo unitario</th><th>Costo total</th><th></th></tr></thead><tbody id="inv-body"></tbody></table>
       <div class="empty-state" id="inv-empty">Sin inventario todavía.</div>
@@ -531,8 +539,8 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v26';
-const APP_UPDATED = '25/08/2026 15:45';
+const APP_VERSION = 'v27';
+const APP_UPDATED = '25/08/2026 16:10';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -674,6 +682,7 @@ $('subtab-retirar-campana').addEventListener('click', ()=>setSubtab('retirar-cam
 /* -------------------- Utilidades -------------------- */
 function indexToLetter(n){ n=n+1; let s=''; while(n>0){ n--; s=String.fromCharCode(65+(n%26))+s; n=Math.floor(n/26);} return s; }
 function fmtMoney(v){ return (v===null||v===undefined||isNaN(v)) ? '-' : Number(v).toFixed(2); }
+function fmtMoneyComma(v){ return (v===null||v===undefined||isNaN(v)) ? '-' : Number(v).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
 function getUltimoNichoGlobal(){
   let maxOrden=-1, letra=null;
   Object.entries(nichos).forEach(([l,n])=>{ if(n.orden>maxOrden){ maxOrden=n.orden; letra=l; } });
@@ -1142,6 +1151,7 @@ function renderDetalle(id, p){
     };
     dapProducto.addEventListener('change', dapLookup);
     dapProducto.addEventListener('blur', dapLookup);
+    wireProductoAutocomplete(dapProducto);
     content.querySelector('#dap-btn').onclick = () => agregarProductoAPallet(p.pallet_codigo, dapProducto, dapDesc, dapCosto, content.querySelector('#dap-cantidad'));
   }
   if(puedeEliminar){ content.querySelector('#btn-retirar-pallet').onclick = () => retirarPallet(id, p.pallet_codigo); }
@@ -1234,9 +1244,10 @@ function applyFilters(){
   const buscar = $('f-buscar').value.trim().toLowerCase();
   const bloque = $('f-bloque').value;
   const estado = $('f-estado').value;
+  const sinFiltros = !buscar && !bloque && !estado;
   Object.entries(posiciones).forEach(([id,p])=>{
     const el = $('slot-'+id); if(!el) return;
-    el.classList.remove('dim','match');
+    el.classList.remove('dim','match','vacio-glow');
     let visible = true;
     if(bloque && p.bloque_id !== bloque) visible = false;
     if(estado==='bloqueado' && !p.bloqueada) visible = false;
@@ -1254,10 +1265,25 @@ function applyFilters(){
     }
     if(!visible) el.classList.add('dim');
     if(isMatch) el.classList.add('match');
+    if(sinFiltros && p.estado==='vacio' && !p.bloqueada) el.classList.add('vacio-glow');
   });
 }
 
 /* -------------------- Crear pallet (con catálogo de productos) -------------------- */
+let _datalistProductosCounter = 0;
+function wireProductoAutocomplete(inputEl){
+  const dlId = 'dl-prod-' + (_datalistProductosCounter++);
+  const datalist = document.createElement('datalist');
+  datalist.id = dlId;
+  document.body.appendChild(datalist);
+  inputEl.setAttribute('list', dlId);
+  inputEl.addEventListener('input', ()=>{
+    const val = inputEl.value.trim().toUpperCase();
+    if(val.length < 3){ datalist.innerHTML=''; return; }
+    const matches = Object.keys(productos).filter(c=>c.includes(val)).slice(0,20);
+    datalist.innerHTML = matches.map(c=>`<option value="${c}">${productos[c].descripcion||''}</option>`).join('');
+  });
+}
 function addItemRow(){
   const row = document.createElement('div');
   row.className = 'item-card';
@@ -1281,6 +1307,7 @@ function addItemRow(){
     } else { descEl.readOnly = false; costoEl.readOnly = false; }
   };
   row.querySelector('.it-producto').addEventListener('change', itLookup);
+  wireProductoAutocomplete(row.querySelector('.it-producto'));
   row.querySelector('.it-producto').addEventListener('blur', itLookup);
   $('cp-items-body').appendChild(row);
 }
@@ -1479,11 +1506,15 @@ function computeInventario(){
 function renderInventario(){
   const body = $('inv-body'); if(!body) return;
   const inv = computeInventario();
-  const entries = Object.entries(inv).sort((a,b)=>a[0].localeCompare(b[0]));
+  const buscar = ($('inv-buscar') ? $('inv-buscar').value.trim().toLowerCase() : '');
+  let entries = Object.entries(inv).sort((a,b)=>a[0].localeCompare(b[0]));
+  if(buscar){
+    entries = entries.filter(([codigo,data])=> codigo.toLowerCase().includes(buscar) || (data.descripcion||'').toLowerCase().includes(buscar));
+  }
   let totalValorizado = 0;
   entries.forEach(([,data])=>{ totalValorizado += data.costoTotal; });
-  $('inv-total-valorizado').innerHTML = `<b>S/ ${fmtMoney(totalValorizado)}</b>`;
-  if(entries.length===0){ body.innerHTML=''; $('inv-empty').style.display='block'; return; }
+  $('inv-total-valorizado').innerHTML = `<b>S/ ${fmtMoneyComma(totalValorizado)}</b>`;
+  if(entries.length===0){ body.innerHTML=''; $('inv-empty').style.display='block'; $('inv-empty').textContent = buscar ? 'Sin resultados para esa búsqueda.' : 'Sin inventario todavía.'; return; }
   $('inv-empty').style.display='none';
   body.innerHTML = entries.map(([codigo,data])=>{
     const detId = `inv-det-${codigo}`;
@@ -1502,6 +1533,7 @@ function renderInventario(){
     };
   });
 }
+$('inv-buscar').addEventListener('input', renderInventario);
 $('btn-exportar-inventario').addEventListener('click', ()=>{
   const inv = computeInventario();
   const entries = Object.entries(inv).sort((a,b)=>a[0].localeCompare(b[0]));
@@ -1537,16 +1569,21 @@ function renderPalletsTabla(){
 
 /* -------------------- Catálogo de productos -------------------- */
 function renderProductosTabla(){
-  const entries = Object.entries(productos).sort((a,b)=> a[0].localeCompare(b[0]));
+  let entries = Object.entries(productos).sort((a,b)=> a[0].localeCompare(b[0]));
+  const buscar = ($('prod-buscar') ? $('prod-buscar').value.trim().toLowerCase() : '');
+  if(buscar){
+    entries = entries.filter(([codigo,p])=> codigo.toLowerCase().includes(buscar) || (p.descripcion||'').toLowerCase().includes(buscar));
+  }
   const body = $('prod-body');
   if(!body) return;
-  if(entries.length===0){ body.innerHTML=''; $('prod-empty').style.display='block'; return; }
+  if(entries.length===0){ body.innerHTML=''; $('prod-empty').style.display='block'; $('prod-empty').textContent = buscar ? 'Sin resultados para esa búsqueda.' : 'Sin productos registrados aún.'; return; }
   $('prod-empty').style.display='none';
   body.innerHTML = entries.map(([codigo,p])=>{
     const fecha = p.creado_en ? p.creado_en.toDate().toLocaleString('es-PE') : '—';
     return `<tr><td>${codigo}</td><td>${p.descripcion||''}</td><td>${fmtMoney(p.costo)}</td><td>${p.proveedor||''}</td><td>${p.empaque1 ?? ''}</td><td>${p.empaque2 ?? ''}</td><td>${fecha}</td><td>${p.creado_por||''}</td></tr>`;
   }).join('');
 }
+$('prod-buscar').addEventListener('input', renderProductosTabla);
 function limpiarFormularioProducto(){
   $('pr-codigo').value=''; $('pr-desc').value=''; $('pr-costo').value=''; $('pr-proveedor').value=''; $('pr-emp1').value=''; $('pr-emp2').value='';
   $('pr-load-hint').textContent = 'Si escribes un código ya existente, sus datos se cargan aquí automáticamente para que los actualices (requiere permiso de edición/eliminación).';
