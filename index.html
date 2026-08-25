@@ -440,6 +440,8 @@
     <div class="field"><label><input type="checkbox" id="us-bitacora" style="width:auto; margin-right:6px;">Bitácora</label></div>
     <p class="hint" style="margin:10px 0 4px;">Permiso adicional (aplica dentro de los módulos ya marcados):</p>
     <div class="field"><label><input type="checkbox" id="us-eliminar" style="width:auto; margin-right:6px;">Puede editar/eliminar/bloquear registros</label></div>
+    <div class="field"><label><input type="checkbox" id="us-admin" style="width:auto; margin-right:6px;"><b>Administrador (acceso total a todo, incluida esta pestaña)</b></label></div>
+    <p class="hint" id="us-load-hint" style="margin-bottom:8px;">Al escribir un correo ya existente, sus permisos actuales se cargan automáticamente aquí para que no se sobreescriban por accidente.</p>
     <button class="btn btn-primary" id="btn-guardar-usuario" style="width:100%;">Guardar permisos</button>
     <div class="msg" id="us-msg"></div>
   </div>
@@ -1607,16 +1609,53 @@ function resetInactivityTimer(){
   document.addEventListener(evt, resetInactivityTimer, {passive:true});
 });
 
+const US_CHECK_IDS = ['us-diseno','us-movimientos','us-productos','us-inventario','us-pallets','us-retiros','us-kardex','us-bitacora','us-eliminar','us-admin'];
+function limpiarFormularioUsuario(){
+  $('us-email').value=''; $('us-alias').value='';
+  US_CHECK_IDS.forEach(id=>{ $(id).checked=false; });
+  $('us-load-hint').textContent = 'Al escribir un correo ya existente, sus permisos actuales se cargan automáticamente aquí para que no se sobreescriban por accidente.';
+  $('us-load-hint').style.color = '';
+}
+$('us-email').addEventListener('blur', async ()=>{
+  const email = $('us-email').value.trim();
+  if(!email) return;
+  try{
+    const snap = await usuariosRef.doc(email).get();
+    if(snap.exists){
+      const d = snap.data();
+      $('us-alias').value = d.alias || '';
+      const p = d.permisos || {};
+      $('us-diseno').checked = !!p.diseno;
+      $('us-movimientos').checked = !!p.movimientos;
+      $('us-productos').checked = !!p.productos;
+      $('us-inventario').checked = !!p.inventario;
+      $('us-pallets').checked = !!p.pallets;
+      $('us-retiros').checked = !!p.retiros;
+      $('us-kardex').checked = !!p.kardex;
+      $('us-bitacora').checked = !!p.bitacora;
+      $('us-eliminar').checked = !!p.eliminar;
+      $('us-admin').checked = !!p.admin;
+      $('us-load-hint').textContent = `✓ Se cargaron los permisos actuales de ${email}. Modifica lo que necesites y guarda.`;
+      $('us-load-hint').style.color = '#245C46';
+    }else{
+      $('us-load-hint').textContent = `${email} no existe todavía — se creará con los permisos que marques.`;
+      $('us-load-hint').style.color = '';
+    }
+  }catch(err){ console.error(err); }
+});
+
 $('btn-guardar-usuario').addEventListener('click', async ()=>{
   const email = $('us-email').value.trim();
   const alias = $('us-alias').value.trim().toUpperCase();
   if(!email){ showMsg('us-msg','err','Ingresa el correo del usuario.'); return; }
+  const haciendoseAdminFalse = (email === currentUserEmail) && !$('us-admin').checked && currentPermisos.admin;
+  if(haciendoseAdminFalse && !confirm('Estás a punto de quitarte tu propio acceso de administrador. ¿Seguro que quieres continuar?')) return;
   const permisos = {
     diseno: $('us-diseno').checked, movimientos: $('us-movimientos').checked,
     productos: $('us-productos').checked, inventario: $('us-inventario').checked,
     pallets: $('us-pallets').checked, retiros: $('us-retiros').checked,
     kardex: $('us-kardex').checked, bitacora: $('us-bitacora').checked,
-    eliminar: $('us-eliminar').checked, admin: false
+    eliminar: $('us-eliminar').checked, admin: $('us-admin').checked
   };
   try{
     const datos = { email, permisos, actualizado: firebase.firestore.FieldValue.serverTimestamp() };
@@ -1625,8 +1664,7 @@ $('btn-guardar-usuario').addEventListener('click', async ()=>{
     await logAccion('permisos_actualizados', {detalle:`Permisos actualizados para ${email}${alias?' ('+alias+')':''}`});
     showMsg('us-msg','ok', `Permisos guardados para ${email}.`);
     showToast(`Permisos actualizados para ${email}.`,'ok');
-    $('us-email').value=''; $('us-alias').value='';
-    ['us-diseno','us-movimientos','us-productos','us-inventario','us-pallets','us-retiros','us-kardex','us-bitacora','us-eliminar'].forEach(id=>{ $(id).checked=false; });
+    limpiarFormularioUsuario();
   }catch(err){ showMsg('us-msg','err', err.message); }
 });
 </script>
