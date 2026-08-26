@@ -652,8 +652,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v36';
-const APP_UPDATED = '26/08/2026 00:30';
+const APP_VERSION = 'v37';
+const APP_UPDATED = '26/08/2026 00:50';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -2432,7 +2432,16 @@ async function extractPdfRows(arrayBuffer){
         };
       }else if(currentRow){
         if(skuTxt) currentRow.sku += skuTxt;
-        if(prodTxt) currentRow.producto = (currentRow.producto + ' ' + prodTxt).replace(/\s+/g,' ').trim();
+        if(prodTxt){
+          // Si el texto acumulado termina en un guion "pegado" a la palabra anterior
+          // (ej. "\R4561-R-"), es una palabra partida por el salto de línea y se une
+          // SIN espacio. Si el guion tiene un espacio antes (ej. "CHINO -"), es un
+          // guion separador normal y sí lleva espacio antes de la continuación.
+          const guionPegado = /\S-$/.test(currentRow.producto);
+          currentRow.producto = guionPegado
+            ? (currentRow.producto + prodTxt).replace(/\s+/g,' ').trim()
+            : (currentRow.producto + ' ' + prodTxt).replace(/\s+/g,' ').trim();
+        }
       }
     }
   }
