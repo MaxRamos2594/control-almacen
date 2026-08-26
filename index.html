@@ -546,6 +546,7 @@
       <div class="hist-wrap" style="max-height:400px;">
         <table><thead><tr><th>Item</th><th>Código</th><th>Descripción</th><th>Unidad</th><th>Cantidad</th></tr></thead><tbody id="guia-preview-body"></tbody></table>
       </div>
+      <div id="guia-duplicado-aviso" style="display:none; margin-top:12px;"></div>
       <button class="btn btn-primary" id="btn-guardar-guia" style="margin-top:12px;">Guardar guía</button>
     </div>
   </div>
@@ -775,8 +776,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v42';
-const APP_UPDATED = '26/08/2026 05:15';
+const APP_VERSION = 'v43';
+const APP_UPDATED = '26/08/2026 05:45';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3039,6 +3040,40 @@ function parseGuiaPDF(paginas){
   };
 }
 
+let guiaDuplicadaBloqueada = false;
+
+async function chequearGuiaDuplicada(nroGuia){
+  const avisoEl = $('guia-duplicado-aviso');
+  guiaDuplicadaBloqueada = false;
+  avisoEl.style.display = 'none';
+  avisoEl.innerHTML = '';
+  $('btn-guardar-guia').disabled = false;
+  if(!nroGuia) return;
+  try{
+    const snap = await guiasRegistrosRef.where('nro_guia','==',nroGuia).limit(5).get();
+    const activaExistente = snap.docs.map(d=>d.data()).find(r=>(r.estado||'ACTIVO')==='ACTIVO');
+    if(activaExistente){
+      guiaDuplicadaBloqueada = true;
+      const puedeForzar = currentPermisos.admin || currentPermisos.eliminar;
+      avisoEl.className = 'msg err';
+      avisoEl.style.display = 'block';
+      avisoEl.innerHTML = `⚠ La guía N° <b>${nroGuia}</b> ya fue cargada antes como <b>${activaExistente.correlativo}</b> (campaña ${activaExistente.campana_correlativo||''}, ${activaExistente.fecha_traslado||''}, cargada por ${activaExistente.usuario||''}). No se puede volver a guardar para evitar duplicados.` +
+        (puedeForzar ? `<br><label style="font-weight:normal; display:flex; align-items:center; gap:6px; margin-top:8px;"><input type="checkbox" id="guia-forzar-duplicado" style="width:auto;">Sé que ya existe y quiero guardarla de todas formas (uso excepcional)</label>` : '');
+      $('btn-guardar-guia').disabled = true;
+      if(puedeForzar){
+        $('guia-forzar-duplicado').addEventListener('change', (e)=>{
+          $('btn-guardar-guia').disabled = !e.target.checked;
+        });
+      }
+    }
+  }catch(err){
+    console.error(err);
+    avisoEl.className = 'msg err';
+    avisoEl.style.display = 'block';
+    avisoEl.innerHTML = 'No se pudo verificar si esta guía ya existe ('+err.message+'). Revisa manualmente antes de guardar.';
+  }
+}
+
 $('btn-procesar-guia').addEventListener('click', async ()=>{
   const file = $('guia-pdf-input').files[0];
   if(!file){ showMsg('guia-msg','err','Selecciona un archivo PDF primero.'); return; }
@@ -3065,11 +3100,18 @@ $('btn-procesar-guia').addEventListener('click', async ()=>{
     $('guia-preview-body').innerHTML = resultado.items.map(it=>
       `<tr><td>${it.item}</td><td>${it.codigo}</td><td>${it.descripcion}</td><td>${it.unidad}</td><td>${it.cantidad}</td></tr>`
     ).join('');
+    // Repuebla el select de campañas, pero conserva la campaña que ya tenías elegida
+    // (útil cuando subes varias guías seguidas de la misma campaña).
+    const campanaPrevia = $('guia-campana-select').value;
     const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
     $('guia-campana-select').innerHTML = '<option value="">— Selecciona una campaña —</option>' +
       activos.map(r=>`<option value="${r.correlativo}">${r.correlativo} — ${r.campana} (${r.fecha_transaccion||''})</option>`).join('');
+    if(campanaPrevia && activos.some(r=>r.correlativo===campanaPrevia)) $('guia-campana-select').value = campanaPrevia;
     $('guia-sugerencias').innerHTML = '';
     $('guia-preview-wrap').style.display = 'block';
+
+    await chequearGuiaDuplicada(resultado.nro_guia);
+
     showMsg('guia-msg','ok', `PDF procesado: ${resultado.items.length} ítems. Selecciona a qué campaña pertenece.`);
   }catch(err){
     console.error(err);
@@ -3132,6 +3174,7 @@ $('btn-sugerir-campana').addEventListener('click', async ()=>{
 
 $('btn-guardar-guia').addEventListener('click', async ()=>{
   if(!guiaParsedItems.length){ showMsg('guia-msg','err','No hay ítems procesados.'); return; }
+  if(guiaDuplicadaBloqueada && !(currentPermisos.admin || currentPermisos.eliminar)){ showMsg('guia-msg','err','Esta guía ya fue cargada antes. No tienes permiso para forzar el guardado.'); return; }
   const campanaCorrelativo = $('guia-campana-select').value;
   if(!campanaCorrelativo){ showMsg('guia-msg','err','Selecciona a qué campaña pertenece esta guía.'); return; }
   const participante = $('guia-participante').value.trim().toUpperCase();
@@ -3181,6 +3224,9 @@ $('btn-guardar-guia').addEventListener('click', async ()=>{
     $('guia-preview-wrap').style.display = 'none';
     $('guia-pdf-input').value = '';
     $('guia-participante').value = '';
+    $('guia-duplicado-aviso').style.display = 'none';
+    $('guia-duplicado-aviso').innerHTML = '';
+    guiaDuplicadaBloqueada = false;
     $('guia-reg-filtro-estado').value = 'ACTIVO';
     cargarRegistrosGuias(true);
   }catch(err){
