@@ -489,6 +489,14 @@
 
 <!-- CAMPAÑAS (PDF) -->
 <div class="view" id="view-campanas">
+  <div class="subtabs">
+    <button class="active" id="campsub-cargar-campana">📋 Cargar Campaña</button>
+    <button id="campsub-cargar-guia">🚚 Cargar Guía</button>
+    <button id="campsub-registros">🗂 Registros y Detalle</button>
+    <button id="campsub-buscar">🔍 Buscar</button>
+  </div>
+
+  <div id="campsub-panel-cargar-campana">
   <div class="panel" style="margin-bottom:14px;">
     <h3>Cargar reparto de campaña (PDF)</h3>
     <p class="hint" style="margin-bottom:10px;">Sube el PDF de reparto de campaña. El sistema solo lee y guarda el contenido (código, campaña, participante, SKU, producto, área, cantidad y desglose) — el archivo PDF en sí <b>no</b> se guarda ni se sube a ningún lado. Todo se guarda en MAYÚSCULAS.</p>
@@ -507,7 +515,42 @@
       <button class="btn btn-primary" id="btn-guardar-campana" style="margin-top:12px;">Guardar en base de datos</button>
     </div>
   </div>
+  </div>
 
+  <div id="campsub-panel-cargar-guia" style="display:none;">
+  <div class="panel" style="margin-bottom:14px;">
+    <h3>Cargar Guía de Remisión (salida)</h3>
+    <p class="hint" style="margin-bottom:10px;">Sube la guía de remisión en PDF. Se extrae punto de partida, punto de llegada, N° de guía, ítems (código, descripción, unidad, cantidad) y bultos — el PDF no se guarda, solo esta información. Cada guía debe asociarse a una campaña (reparto) ya cargada.</p>
+    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
+      <div class="field" style="margin:0; max-width:340px;"><label>Archivo PDF (guía de remisión)</label><input type="file" id="guia-pdf-input" accept="application/pdf"></div>
+      <button class="btn btn-primary" id="btn-procesar-guia">Procesar PDF</button>
+    </div>
+    <div class="msg" id="guia-msg"></div>
+    <div id="guia-preview-wrap" style="display:none; margin-top:14px;">
+      <div class="hist-wrap" style="max-height:160px; margin-bottom:12px;">
+        <table><tbody id="guia-header-body"></tbody></table>
+      </div>
+      <div style="display:flex; gap:14px; align-items:end; flex-wrap:wrap; margin-bottom:8px;">
+        <div class="field" style="margin:0; max-width:340px; flex:1;">
+          <label>Campaña (reparto) a la que pertenece esta guía *</label>
+          <select id="guia-campana-select"><option value="">— Selecciona una campaña —</option></select>
+        </div>
+        <div class="field" style="margin:0; max-width:220px;">
+          <label>Participante</label>
+          <input type="text" id="guia-participante" class="upper" placeholder="EJ. MAGDALENA">
+        </div>
+        <button class="btn btn-ghost btn-sm" id="btn-sugerir-campana">🔍 Sugerir campaña y participante</button>
+      </div>
+      <div class="hint" id="guia-sugerencias" style="margin-bottom:10px;"></div>
+      <div class="hist-wrap" style="max-height:400px;">
+        <table><thead><tr><th>Item</th><th>Código</th><th>Descripción</th><th>Unidad</th><th>Cantidad</th></tr></thead><tbody id="guia-preview-body"></tbody></table>
+      </div>
+      <button class="btn btn-primary" id="btn-guardar-guia" style="margin-top:12px;">Guardar guía</button>
+    </div>
+  </div>
+  </div>
+
+  <div id="campsub-panel-registros" style="display:none;">
   <div class="panel" style="margin-bottom:14px;">
     <h3>Registros de campañas cargadas</h3>
     <p class="hint" style="margin-bottom:10px;">Cada carga guardada genera un correlativo. El detalle (todas las filas) solo se consulta cuando presionas "Ver detalle", para no gastar lecturas de más. Al eliminar un registro se borra su detalle y la cabecera queda marcada como INVALIDADA (no se borra el correlativo).</p>
@@ -536,33 +579,6 @@
   </div>
 
   <div class="panel" style="margin-bottom:14px;">
-    <h3>Cargar Guía de Remisión (salida)</h3>
-    <p class="hint" style="margin-bottom:10px;">Sube la guía de remisión en PDF. Se extrae punto de partida, punto de llegada, N° de guía, ítems (código, descripción, unidad, cantidad) y bultos — el PDF no se guarda, solo esta información. Cada guía debe asociarse a una campaña (reparto) ya cargada.</p>
-    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
-      <div class="field" style="margin:0; max-width:340px;"><label>Archivo PDF (guía de remisión)</label><input type="file" id="guia-pdf-input" accept="application/pdf"></div>
-      <button class="btn btn-primary" id="btn-procesar-guia">Procesar PDF</button>
-    </div>
-    <div class="msg" id="guia-msg"></div>
-    <div id="guia-preview-wrap" style="display:none; margin-top:14px;">
-      <div class="hist-wrap" style="max-height:160px; margin-bottom:12px;">
-        <table><tbody id="guia-header-body"></tbody></table>
-      </div>
-      <div style="display:flex; gap:14px; align-items:end; flex-wrap:wrap; margin-bottom:8px;">
-        <div class="field" style="margin:0; max-width:420px; flex:1;">
-          <label>Campaña (reparto) a la que pertenece esta guía *</label>
-          <select id="guia-campana-select"><option value="">— Selecciona una campaña —</option></select>
-        </div>
-        <button class="btn btn-ghost btn-sm" id="btn-sugerir-campana">🔍 Sugerir campaña según coincidencia de códigos</button>
-      </div>
-      <div class="hint" id="guia-sugerencias" style="margin-bottom:10px;"></div>
-      <div class="hist-wrap" style="max-height:400px;">
-        <table><thead><tr><th>Item</th><th>Código</th><th>Descripción</th><th>Unidad</th><th>Cantidad</th></tr></thead><tbody id="guia-preview-body"></tbody></table>
-      </div>
-      <button class="btn btn-primary" id="btn-guardar-guia" style="margin-top:12px;">Guardar guía</button>
-    </div>
-  </div>
-
-  <div class="panel" style="margin-bottom:14px;">
     <h3>Guías de remisión cargadas</h3>
     <p class="hint" style="margin-bottom:10px;">Cada guía queda asociada a una campaña (reparto). Una campaña puede tener varias guías.</p>
     <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
@@ -572,7 +588,7 @@
       </div>
     </div>
     <div class="hist-wrap" style="max-height:500px;">
-      <table><thead><tr><th>Correlativo guía</th><th>N° guía</th><th>Campaña</th><th>Fecha traslado</th><th>Partida → Llegada</th><th>Ítems</th><th>Bultos</th><th>Cargado por</th><th>Detalle</th><th>Acción</th></tr></thead><tbody id="guia-reg-body"></tbody></table>
+      <table><thead><tr><th>Correlativo guía</th><th>N° guía</th><th>Campaña</th><th>Participante</th><th>Fecha traslado</th><th>Partida → Llegada</th><th>Ítems</th><th>Bultos</th><th>Cargado por</th><th>Detalle</th><th>Acción</th></tr></thead><tbody id="guia-reg-body"></tbody></table>
       <div class="empty-state" id="guia-reg-empty">Aún no hay guías cargadas.</div>
     </div>
     <button class="btn" id="btn-guia-reg-cargar-mas" style="margin-top:10px; display:none;">Cargar más registros</button>
@@ -587,7 +603,9 @@
       <table><thead><tr><th>Item</th><th>Código</th><th>Descripción</th><th>Unidad</th><th>Cantidad</th></tr></thead><tbody id="guia-detalle-body"></tbody></table>
     </div>
   </div>
+  </div>
 
+  <div id="campsub-panel-buscar" style="display:none;">
   <div class="panel">
     <h3>Buscar en todo el historial</h3>
     <p class="hint" style="margin-bottom:10px;">Llena uno o más filtros. Elige si deben cumplirse TODOS (Y) o CUALQUIERA (O).</p>
@@ -607,6 +625,7 @@
       <table><thead><tr><th>Correlativo</th><th>Campaña</th><th>Participante</th><th>SKU</th><th>Producto</th><th>Área</th><th>Cantidad</th><th>Desglose</th><th>Fecha</th></tr></thead><tbody id="camp-buscar-body"></tbody></table>
       <div class="empty-state" id="camp-buscar-empty">Llena al menos un filtro y presiona "Buscar".</div>
     </div>
+  </div>
   </div>
 </div>
 
@@ -705,8 +724,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v40';
-const APP_UPDATED = '26/08/2026 03:10';
+const APP_VERSION = 'v41';
+const APP_UPDATED = '26/08/2026 04:00';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -858,6 +877,17 @@ $('subtab-crear').addEventListener('click', ()=>setSubtab('crear'));
 $('subtab-mover').addEventListener('click', ()=>setSubtab('mover'));
 $('subtab-transferir').addEventListener('click', ()=>setSubtab('transferir'));
 $('subtab-retirar-campana').addEventListener('click', ()=>setSubtab('retirar-campana'));
+
+function setCampanasSubtab(name){
+  ['cargar-campana','cargar-guia','registros','buscar'].forEach(n=>{
+    $('campsub-'+n).classList.toggle('active', n===name);
+    $('campsub-panel-'+n).style.display = (n===name) ? 'block' : 'none';
+  });
+}
+$('campsub-cargar-campana').addEventListener('click', ()=>setCampanasSubtab('cargar-campana'));
+$('campsub-cargar-guia').addEventListener('click', ()=>setCampanasSubtab('cargar-guia'));
+$('campsub-registros').addEventListener('click', ()=>setCampanasSubtab('registros'));
+$('campsub-buscar').addEventListener('click', ()=>setCampanasSubtab('buscar'));
 
 /* -------------------- Utilidades -------------------- */
 function indexToLetter(n){ n=n+1; let s=''; while(n>0){ n--; s=String.fromCharCode(65+(n%26))+s; n=Math.floor(n/26);} return s; }
@@ -3024,7 +3054,21 @@ $('btn-sugerir-campana').addEventListener('click', async ()=>{
       `• <b>${r.correlativo}</b> (${r.campana}) — ${r.coincidencias}/${r.total} códigos coinciden (${r.pct}%)`
     ).join('<br>');
     if(resultados.length && resultados[0].pct > 0){
-      $('guia-campana-select').value = resultados[0].correlativo;
+      const mejorCorrelativo = resultados[0].correlativo;
+      $('guia-campana-select').value = mejorCorrelativo;
+      // Sugerir participante: busca, entre los participantes reales de ESA campaña
+      // (los de la hoja de reparto), cuál aparece dentro del texto del punto de llegada.
+      const filasMejor = campRegCache[mejorCorrelativo] || [];
+      const participantesDeEsaCampana = [...new Set(filasMejor.map(f=>f.participante).filter(Boolean))];
+      const textoLlegada = normalizarTexto(guiaParsedHeader.punto_llegada);
+      let mejorMatch = '';
+      participantesDeEsaCampana.forEach(p=>{
+        if(textoLlegada.includes(normalizarTexto(p)) && p.length > mejorMatch.length) mejorMatch = p;
+      });
+      if(mejorMatch){
+        $('guia-participante').value = mejorMatch;
+        $('guia-sugerencias').innerHTML += `<br>Participante sugerido (según punto de llegada): <b>${mejorMatch}</b>`;
+      }
     }
   }catch(err){
     console.error(err);
@@ -3038,6 +3082,7 @@ $('btn-guardar-guia').addEventListener('click', async ()=>{
   if(!guiaParsedItems.length){ showMsg('guia-msg','err','No hay ítems procesados.'); return; }
   const campanaCorrelativo = $('guia-campana-select').value;
   if(!campanaCorrelativo){ showMsg('guia-msg','err','Selecciona a qué campaña pertenece esta guía.'); return; }
+  const participante = $('guia-participante').value.trim().toUpperCase();
   const campaniaObj = campRegAllCache.find(r=>r.correlativo===campanaCorrelativo);
   $('btn-guardar-guia').disabled = true;
   showMsg('guia-msg','ok','Guardando guía…');
@@ -3050,6 +3095,7 @@ $('btn-guardar-guia').addEventListener('click', async ()=>{
       punto_partida: guiaParsedHeader.punto_partida,
       punto_llegada: guiaParsedHeader.punto_llegada,
       fecha_traslado: guiaParsedHeader.fecha_traslado,
+      participante,
       bultos: guiaParsedHeader.bultos,
       total_items: guiaParsedItems.length,
       sku_distintos: skuDistintos,
@@ -3068,6 +3114,8 @@ $('btn-guardar-guia').addEventListener('click', async ()=>{
           correlativo_guia: correlativoGuia,
           campana_correlativo: campanaCorrelativo,
           nro_guia: guiaParsedHeader.nro_guia,
+          participante,
+          fecha_traslado: guiaParsedHeader.fecha_traslado,
           item: it.item, codigo: it.codigo, descripcion: it.descripcion, unidad: it.unidad, cantidad: it.cantidad,
           usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -3080,6 +3128,7 @@ $('btn-guardar-guia').addEventListener('click', async ()=>{
     guiaParsedItems = []; guiaParsedHeader = {};
     $('guia-preview-wrap').style.display = 'none';
     $('guia-pdf-input').value = '';
+    $('guia-participante').value = '';
     $('guia-reg-filtro-estado').value = 'ACTIVO';
     cargarRegistrosGuias(true);
   }catch(err){
@@ -3126,7 +3175,7 @@ function renderRegistrosGuias(){
     const accionHtml = estado === 'ACTIVO'
       ? (puedeEliminar ? `<button class="btn btn-sm btn-ghost btn-invalidar-guia" data-correlativo="${r.correlativo}">Eliminar</button>` : '')
       : `<span class="hint">Invalidado${r.invalidado_por ? ' por '+r.invalidado_por : ''}</span>`;
-    return `<tr><td>${r.correlativo}</td><td>${r.nro_guia||''}</td><td>${r.campana_correlativo||''} — ${r.campana_nombre||''}</td><td>${r.fecha_traslado||''}</td><td>${r.punto_partida||''} → ${r.punto_llegada||''}</td><td>${r.total_items??''}</td><td>${r.bultos??''}</td><td>${r.usuario||''}</td><td><button class="btn btn-sm btn-ver-detalle-guia" data-correlativo="${r.correlativo}" data-nro="${(r.nro_guia||'').replace(/"/g,'&quot;')}">Ver detalle</button></td><td>${accionHtml}</td></tr>`;
+    return `<tr><td>${r.correlativo}</td><td>${r.nro_guia||''}</td><td>${r.campana_correlativo||''} — ${r.campana_nombre||''}</td><td>${r.participante||''}</td><td>${r.fecha_traslado||''}</td><td>${r.punto_partida||''} → ${r.punto_llegada||''}</td><td>${r.total_items??''}</td><td>${r.bultos??''}</td><td>${r.usuario||''}</td><td><button class="btn btn-sm btn-ver-detalle-guia" data-correlativo="${r.correlativo}" data-nro="${(r.nro_guia||'').replace(/"/g,'&quot;')}">Ver detalle</button></td><td>${accionHtml}</td></tr>`;
   }).join('');
   $('btn-guia-reg-cargar-mas').style.display = !guiaRegNoMore ? 'inline-block' : 'none';
 }
