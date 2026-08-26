@@ -220,6 +220,7 @@
   <button data-tab="rotulos" id="tab-rotulos">Rótulos PDF</button>
   <button data-tab="retiros" id="tab-retiros">Retiros Campaña</button>
   <button data-tab="campanas" id="tab-campanas">Campañas (PDF)</button>
+  <button data-tab="toma_inventario" id="tab-toma_inventario">Toma de Inventario</button>
   <button data-tab="kardex" id="tab-kardex">Kardex</button>
   <button data-tab="bitacora" id="tab-bitacora">Bitácora</button>
   <button data-tab="usuarios" id="tab-usuarios">Usuarios</button>
@@ -495,6 +496,7 @@
     <button id="campsub-registros">🗂 Registros y Detalle</button>
     <button id="campsub-buscar">🔍 Buscar</button>
     <button id="campsub-analisis">📊 Análisis</button>
+    <button id="campsub-validadores">✅ Validadores</button>
   </div>
 
   <div id="campsub-panel-cargar-campana">
@@ -635,6 +637,11 @@
     <div id="an-resultados" style="display:none;">
       <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:8px;" id="an-kpis"></div>
 
+      <h4 style="font-size:12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; margin:20px 0 8px;">Cumplimiento por tienda (participante) — clic en una fila para filtrar</h4>
+      <div class="hist-wrap" style="max-height:320px; margin-bottom:10px;">
+        <table><thead><tr><th>Participante</th><th>Repartido</th><th>En guía</th><th>Cumplimiento</th></tr></thead><tbody id="an-ranking-participantes"></tbody></table>
+      </div>
+
       <h4 style="font-size:12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; margin:20px 0 8px;">Top 5 SKU con mayor faltante</h4>
       <div class="hist-wrap" style="max-height:260px; margin-bottom:10px;">
         <table><thead><tr><th>SKU</th><th>Descripción</th><th>Repartido</th><th>En guía</th><th>Faltan</th></tr></thead><tbody id="an-top-faltantes"></tbody></table>
@@ -663,6 +670,77 @@
       </div>
     </div>
   </div>
+  </div>
+
+  <div id="campsub-panel-validadores" style="display:none;">
+  <div class="panel" style="margin-bottom:14px;">
+    <h3>Validadores por campaña / tienda</h3>
+    <p class="hint" style="margin-bottom:10px;">Asigna quién valida cada tienda (participante) dentro de cada campaña. El sistema te avisa cuáles combinaciones aún no tienen validador asignado.</p>
+    <div id="val-pendientes-global" style="margin-bottom:14px;"></div>
+    <div style="display:flex; gap:14px; align-items:end; flex-wrap:wrap; margin-bottom:14px;">
+      <div class="field" style="margin:0; max-width:340px;">
+        <label>Campaña</label>
+        <select id="val-campana-select"><option value="">— Selecciona una campaña —</option></select>
+      </div>
+      <button class="btn btn-primary" id="btn-val-cargar">Cargar tiendas</button>
+    </div>
+    <div class="msg" id="val-msg"></div>
+    <div id="val-resumen" style="display:none; margin-bottom:10px;"></div>
+    <div class="hist-wrap" style="max-height:600px;">
+      <table><thead><tr><th>Tienda (participante)</th><th>Validador asignado</th><th>Estado</th><th></th></tr></thead><tbody id="val-body"></tbody></table>
+      <div class="empty-state" id="val-empty">Elige una campaña y presiona "Cargar tiendas".</div>
+    </div>
+    <datalist id="validadores-conocidos"></datalist>
+  </div>
+  </div>
+</div>
+
+<!-- TOMA DE INVENTARIO -->
+<div class="view" id="view-toma_inventario">
+  <div class="panel" style="margin-bottom:14px;">
+    <h3>Generar toma de inventario</h3>
+    <p class="hint" style="margin-bottom:10px;">El sistema elige posiciones al azar entre las que están OCUPADAS, sin bloquear, con pallet y stock mayor a cero: 20% de Rack y 80% de Piso. Ingresa cuántas posiciones quieres auditar hoy.</p>
+    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
+      <div class="field" style="margin:0; max-width:260px;"><label>Cantidad de posiciones a inventariar</label><input type="number" id="ti-cantidad" min="1" step="1" placeholder="EJ. 20"></div>
+      <button class="btn btn-primary" id="btn-ti-generar">🎲 Generar selección aleatoria</button>
+    </div>
+    <div class="msg" id="ti-msg"></div>
+    <div id="ti-preview-wrap" style="display:none; margin-top:14px;">
+      <p class="hint" id="ti-preview-resumen" style="margin-bottom:8px;"></p>
+      <div class="hist-wrap" style="max-height:400px;">
+        <table><thead><tr><th>Posición</th><th>Tipo</th><th>Pallet</th><th>Código</th><th>Descripción</th><th>Cantidad sistema</th></tr></thead><tbody id="ti-preview-body"></tbody></table>
+      </div>
+      <div style="display:flex; gap:10px; margin-top:12px;">
+        <button class="btn btn-primary" id="btn-ti-confirmar">Confirmar y guardar toma</button>
+        <button class="btn btn-ghost" id="btn-ti-regenerar">🎲 Volver a sortear</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-bottom:14px;">
+    <h3>Tomas de inventario</h3>
+    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
+      <div class="field" style="margin:0; max-width:200px;">
+        <label>Mostrar</label>
+        <select id="ti-filtro-estado"><option value="EN_PROCESO">En proceso</option><option value="FINALIZADO">Finalizadas</option></select>
+      </div>
+    </div>
+    <div class="hist-wrap" style="max-height:500px;">
+      <table><thead><tr><th>Correlativo</th><th>Fecha</th><th>Solicitadas</th><th>Posiciones</th><th>Líneas a contar</th><th>Estado</th><th>Generado por</th><th></th></tr></thead><tbody id="ti-reg-body"></tbody></table>
+      <div class="empty-state" id="ti-reg-empty">Aún no hay tomas de inventario.</div>
+    </div>
+  </div>
+
+  <div class="panel" id="ti-conteo-panel" style="display:none;">
+    <h3 style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+      <span id="ti-conteo-titulo">Conteo</span>
+      <button class="btn btn-sm btn-ghost" id="btn-ti-ocultar-conteo">Ocultar ✕</button>
+    </h3>
+    <div id="ti-conteo-resumen" style="margin-bottom:10px;"></div>
+    <div class="hist-wrap" style="max-height:600px;">
+      <table><thead><tr><th>Posición</th><th>Tipo</th><th>Pallet</th><th>Código</th><th>Descripción</th><th>Cant. sistema</th><th>Cant. contada</th><th>Diferencia</th><th></th></tr></thead><tbody id="ti-conteo-body"></tbody></table>
+    </div>
+    <button class="btn btn-primary" id="btn-ti-finalizar" style="margin-top:12px;">Finalizar toma</button>
   </div>
 </div>
 
@@ -719,6 +797,7 @@
     <div class="field"><label><input type="checkbox" id="us-pallets" style="width:auto; margin-right:6px;">Pallets</label></div>
     <div class="field"><label><input type="checkbox" id="us-retiros" style="width:auto; margin-right:6px;">Retiros Campaña</label></div>
     <div class="field"><label><input type="checkbox" id="us-campanas" style="width:auto; margin-right:6px;">Campañas (PDF)</label></div>
+    <div class="field"><label><input type="checkbox" id="us-toma-inventario" style="width:auto; margin-right:6px;">Toma de Inventario</label></div>
     <div class="field"><label><input type="checkbox" id="us-kardex" style="width:auto; margin-right:6px;">Kardex</label></div>
     <div class="field"><label><input type="checkbox" id="us-bitacora" style="width:auto; margin-right:6px;">Bitácora</label></div>
     <p class="hint" style="margin:10px 0 4px;">Permiso adicional (aplica dentro de los módulos ya marcados):</p>
@@ -761,8 +840,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v45';
-const APP_UPDATED = '26/08/2026 07:20';
+const APP_VERSION = 'v46';
+const APP_UPDATED = '26/08/2026 08:45';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -793,6 +872,10 @@ const campanaItemsRef = db.collection('campana_items');
 const campanaRegistrosRef = db.collection('campana_registros');
 const guiasRegistrosRef = db.collection('guias_registros');
 const guiaItemsRef = db.collection('guia_items');
+const mapeoDestinoParticipanteRef = db.collection('mapeo_destino_participante');
+const validadoresRef = db.collection('validadores_campana');
+const inventarioTomasRef = db.collection('inventario_tomas');
+const inventarioTomasItemsRef = db.collection('inventario_tomas_items');
 const contadoresRef = db.collection('contadores');
 const kardexRef = db.collection('kardex');
 const contadorRef = db.collection('contadores').doc('global');
@@ -877,6 +960,7 @@ function applyPermisosUI(){
     pallets: admin || !!p.pallets,
     retiros: admin || !!p.retiros,
     campanas: admin || !!p.campanas,
+    toma_inventario: admin || !!p.toma_inventario,
     kardex: admin || !!p.kardex,
     bitacora: admin || !!p.bitacora,
     usuarios: admin
@@ -916,7 +1000,7 @@ $('subtab-transferir').addEventListener('click', ()=>setSubtab('transferir'));
 $('subtab-retirar-campana').addEventListener('click', ()=>setSubtab('retirar-campana'));
 
 function setCampanasSubtab(name){
-  ['cargar-campana','cargar-guia','registros','buscar','analisis'].forEach(n=>{
+  ['cargar-campana','cargar-guia','registros','buscar','analisis','validadores'].forEach(n=>{
     $('campsub-'+n).classList.toggle('active', n===name);
     $('campsub-panel-'+n).style.display = (n===name) ? 'block' : 'none';
   });
@@ -926,6 +1010,7 @@ $('campsub-cargar-guia').addEventListener('click', ()=>setCampanasSubtab('cargar
 $('campsub-registros').addEventListener('click', ()=>setCampanasSubtab('registros'));
 $('campsub-buscar').addEventListener('click', ()=>setCampanasSubtab('buscar'));
 $('campsub-analisis').addEventListener('click', ()=>{ setCampanasSubtab('analisis'); poblarSelectCampanasAnalisis(); });
+$('campsub-validadores').addEventListener('click', ()=>{ setCampanasSubtab('validadores'); poblarSelectCampanasValidadores(); calcularPendientesGlobalValidadores(); });
 
 /* -------------------- Utilidades -------------------- */
 function indexToLetter(n){ n=n+1; let s=''; while(n>0){ n--; s=String.fromCharCode(65+(n%26))+s; n=Math.floor(n/26);} return s; }
@@ -991,6 +1076,7 @@ function startListeners(){
   }, onErr);
   cargarRegistrosCampana(true);
   cargarRegistrosGuias(true);
+  cargarTomasInventario(true);
 }
 
 function renderAll(){
@@ -3042,6 +3128,38 @@ function fechaDDMMYYYYaISO(str){
 // total de códigos de la guía. Se sugiere la campaña con mayor % (empate no resuelto,
 // se queda con la primera encontrada). Devuelve el % de TODAS las campañas activas
 // comparadas, no solo la ganadora, para poder mostrarlo si cambias de campaña.
+// -------- Aprendizaje: destino -> participante --------
+// Cuando el usuario asigna manualmente un participante a una guía, guardamos esa
+// relación (punto de llegada -> participante) para que la próxima vez que llegue
+// una guía al mismo destino, se sugiera sola sin que tengas que volver a elegirla.
+function hashTexto(s){
+  let h = 5381;
+  for(let i=0;i<s.length;i++){ h = ((h*33) ^ s.charCodeAt(i)) >>> 0; }
+  return h.toString(36);
+}
+function claveDestino(puntoLlegada){
+  return 'dest-' + hashTexto(normalizarTexto(puntoLlegada));
+}
+async function buscarParticipanteAprendido(puntoLlegada){
+  if(!puntoLlegada) return '';
+  try{
+    const doc = await mapeoDestinoParticipanteRef.doc(claveDestino(puntoLlegada)).get();
+    return doc.exists ? (doc.data().participante || '') : '';
+  }catch(err){ console.error(err); return ''; }
+}
+async function guardarMapeoDestinoParticipante(puntoLlegada, participante){
+  if(!puntoLlegada || !participante) return;
+  try{
+    await mapeoDestinoParticipanteRef.doc(claveDestino(puntoLlegada)).set({
+      punto_llegada_normalizado: normalizarTexto(puntoLlegada),
+      punto_llegada_original: puntoLlegada,
+      participante,
+      actualizado_por: currentUserAlias,
+      actualizado_en: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }catch(err){ console.error('No se pudo guardar el mapeo destino->participante', err); }
+}
+
 async function sugerirCampanaYParticipante(resultado){
   const codigosGuia = new Set(resultado.items.map(it=>it.codigo));
   const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
@@ -3061,8 +3179,12 @@ async function sugerirCampanaYParticipante(resultado){
     porcentajesPorCampana[campania.correlativo] = pct;
     if(pct > mejor.pct) mejor = { correlativo: campania.correlativo, pct };
   }
-  const participanteSugerido = mejor.correlativo ? buscarParticipanteEnTexto(mejor.correlativo, resultado.punto_llegada) : '';
-  return { correlativo: mejor.correlativo, pct: mejor.pct, participante: participanteSugerido, porcentajesPorCampana };
+  // Primero se prueba con lo que el usuario ya enseñó antes para este mismo destino
+  // (más confiable que adivinar por texto); si no hay nada aprendido, se cae al
+  // texto del punto de llegada contra los participantes reales de la campaña.
+  const aprendido = await buscarParticipanteAprendido(resultado.punto_llegada);
+  const participanteSugerido = aprendido || (mejor.correlativo ? buscarParticipanteEnTexto(mejor.correlativo, resultado.punto_llegada) : '');
+  return { correlativo: mejor.correlativo, pct: mejor.pct, participante: participanteSugerido, porcentajesPorCampana, aprendido: !!aprendido };
 }
 
 // Dentro de los participantes REALES de una campaña (los de su hoja de reparto), busca
@@ -3123,6 +3245,7 @@ $('btn-procesar-guia').addEventListener('click', async ()=>{
       const sugerencia = await sugerirCampanaYParticipante(item.resultado);
       item.correlativoSugerido = sugerencia.correlativo;
       item.participanteSugerido = sugerencia.participante;
+      item.participanteAprendido = sugerencia.aprendido ? sugerencia.participante : '';
       item.porcentajesPorCampana = sugerencia.porcentajesPorCampana;
     }catch(err){ console.error(err); }
     try{
@@ -3158,13 +3281,17 @@ function actualizarFilaTrasCambioCampana(idx){
     }
   }
 
-  // Lista de participantes REALES de la campaña elegida (no texto libre)
+  // Lista de participantes REALES de la campaña elegida (no texto libre).
+  // Si ya "aprendimos" el participante correcto para este mismo destino en una
+  // carga anterior, esa tiene prioridad sobre la búsqueda por texto.
   if(selParticipante){
     const filas = correlativo ? (campRegCache[correlativo] || []) : [];
     const participantes = [...new Set(filas.map(f=>f.participante).filter(Boolean))].sort();
-    const sugerido = correlativo ? buscarParticipanteEnTexto(correlativo, item.resultado.punto_llegada) : '';
+    let sugerido = item.participanteAprendido || (correlativo ? buscarParticipanteEnTexto(correlativo, item.resultado.punto_llegada) : '');
+    const etiquetaSugerido = item.participanteAprendido ? ' (recordado)' : ' (sugerido)';
+    if(sugerido && !participantes.includes(sugerido)) participantes.push(sugerido); // por si el aprendido no está en esta campaña
     selParticipante.innerHTML = '<option value="">— Elige un participante —</option>' +
-      participantes.map(p=>`<option value="${p}" ${p===sugerido?'selected':''}>${p}${p===sugerido?' (sugerido)':''}</option>`).join('');
+      participantes.map(p=>`<option value="${p}" ${p===sugerido?'selected':''}>${p}${p===sugerido?etiquetaSugerido:''}</option>`).join('');
   }
 }
 
@@ -3289,6 +3416,7 @@ $('btn-guardar-guias-lote').addEventListener('click', async ()=>{
 
     try{
       await guardarUnaGuia(item.resultado, campanaCorrelativo, participante, fechaTraslado);
+      await guardarMapeoDestinoParticipante(item.resultado.punto_llegada, participante);
       guardadas++;
     }catch(err){
       console.error(err);
@@ -3459,24 +3587,23 @@ $('btn-analizar').addEventListener('click', async ()=>{
   $('btn-analizar').disabled = true;
   showMsg('an-msg','ok','Analizando…');
   try{
-    let filasReparto = campRegCache[correlativo];
-    if(!filasReparto){
+    let filasRepartoCompleto = campRegCache[correlativo];
+    if(!filasRepartoCompleto){
       const snap = await campanaItemsRef.where('correlativo','==',correlativo).limit(3000).get();
-      filasReparto = snap.docs.map(d=>d.data());
-      campRegCache[correlativo] = filasReparto;
+      filasRepartoCompleto = snap.docs.map(d=>d.data());
+      campRegCache[correlativo] = filasRepartoCompleto;
     }
-    let filasGuia = anGuiaPorCampanaCache[correlativo];
-    if(!filasGuia){
+    let filasGuiaCompleto = anGuiaPorCampanaCache[correlativo];
+    if(!filasGuiaCompleto){
       const snap = await guiaItemsRef.where('campana_correlativo','==',correlativo).limit(5000).get();
-      filasGuia = snap.docs.map(d=>d.data());
-      anGuiaPorCampanaCache[correlativo] = filasGuia;
+      filasGuiaCompleto = snap.docs.map(d=>d.data());
+      anGuiaPorCampanaCache[correlativo] = filasGuiaCompleto;
     }
-    if(participanteFiltro){
-      filasReparto = filasReparto.filter(f=>f.participante===participanteFiltro);
-      filasGuia = filasGuia.filter(f=>f.participante===participanteFiltro);
-    }
+    const filasReparto = participanteFiltro ? filasRepartoCompleto.filter(f=>f.participante===participanteFiltro) : filasRepartoCompleto;
+    const filasGuia = participanteFiltro ? filasGuiaCompleto.filter(f=>f.participante===participanteFiltro) : filasGuiaCompleto;
     const resultado = calcularAnalisisCumplimiento(filasReparto, filasGuia);
-    renderAnalisis(resultado, participanteFiltro || 'Todos los participantes');
+    const ranking = calcularCumplimientoPorParticipante(filasRepartoCompleto, filasGuiaCompleto);
+    renderAnalisis(resultado, participanteFiltro || 'Todos los participantes', ranking);
     $('an-msg').style.display = 'none';
   }catch(err){
     console.error(err);
@@ -3529,7 +3656,25 @@ function calcularAnalisisCumplimiento(filasReparto, filasGuia){
   };
 }
 
-function renderAnalisis(resultado, etiquetaAlcance){
+function calcularCumplimientoPorParticipante(filasRepartoCompleto, filasGuiaCompleto){
+  const porParticipante = {};
+  filasRepartoCompleto.forEach(f=>{
+    const key = f.participante || '(SIN PARTICIPANTE)';
+    if(!porParticipante[key]) porParticipante[key] = {participante:key, repartido:0, guia:0};
+    porParticipante[key].repartido += Number(f.cantidad)||0;
+  });
+  filasGuiaCompleto.forEach(f=>{
+    const key = f.participante || '(SIN PARTICIPANTE)';
+    if(!porParticipante[key]) porParticipante[key] = {participante:key, repartido:0, guia:0};
+    porParticipante[key].guia += Number(f.cantidad)||0;
+  });
+  return Object.values(porParticipante).map(r=>({
+    participante: r.participante, repartido: r.repartido, guia: r.guia,
+    pct: r.repartido>0 ? Math.round((r.guia/r.repartido)*100) : (r.guia>0 ? 100 : 0)
+  })).sort((a,b)=> a.pct - b.pct); // peor cumplimiento primero, para que salte a la vista lo urgente
+}
+
+function renderAnalisis(resultado, etiquetaAlcance, ranking){
   anUltimoResultado = resultado;
   $('an-resultados').style.display = 'block';
 
@@ -3545,6 +3690,32 @@ function renderAnalisis(resultado, etiquetaAlcance){
     kpiHtml('Cumplimiento', resultado.pctGlobal+'%', resultado.pctGlobal>=100 ? '#245C46' : (resultado.pctGlobal>=80 ? '#8A6D1D' : '#8A332A')) +
     kpiHtml('SKU con faltante', resultado.skusFaltantes.length, resultado.skusFaltantes.length>0 ? '#8A332A' : undefined) +
     kpiHtml('SKU con exceso', resultado.skusExceso.length, resultado.skusExceso.length>0 ? '#8A6D1D' : undefined);
+
+  if(ranking){
+    $('an-ranking-participantes').innerHTML = ranking.map(r=>{
+      const color = r.pct>=100 ? '#2E7D46' : (r.pct>=80 ? '#D4A017' : '#C0392B');
+      const activo = r.participante === (etiquetaAlcance==='Todos los participantes' ? '' : etiquetaAlcance);
+      return `<tr class="an-ranking-fila" data-participante="${r.participante.replace(/"/g,'&quot;')}" style="cursor:pointer; ${activo?'background:#EEF3FB;':''}">
+        <td>${r.participante}${activo?' 👈':''}</td>
+        <td>${r.repartido}</td>
+        <td>${r.guia}</td>
+        <td>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div style="background:#eee; border-radius:4px; overflow:hidden; height:14px; width:120px; flex-shrink:0;">
+              <div style="background:${color}; height:100%; width:${Math.max(0,Math.min(100,r.pct))}%;"></div>
+            </div>
+            <span style="font-size:11px; font-weight:700; color:${color};">${r.pct}%</span>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+    document.querySelectorAll('.an-ranking-fila').forEach(tr=>{
+      tr.onclick = ()=>{
+        $('an-participante-select').value = tr.dataset.participante;
+        $('btn-analizar').click();
+      };
+    });
+  }
 
   const topFaltantes = resultado.filas.filter(r=>r.diferencia>0).sort((a,b)=>b.diferencia-a.diferencia).slice(0,5);
   $('an-top-faltantes').innerHTML = topFaltantes.length
@@ -3591,6 +3762,435 @@ function renderTablaDetalleAnalisis(){
 $('an-filtro-sku').addEventListener('input', renderTablaDetalleAnalisis);
 $('an-filtro-estado-sku').addEventListener('change', renderTablaDetalleAnalisis);
 
+/* -------------------- Validadores por campaña / tienda -------------------- */
+let validadoresConocidosCache = new Set();
+
+async function poblarSelectCampanasValidadores(){
+  const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
+  const valorActual = $('val-campana-select').value;
+  $('val-campana-select').innerHTML = '<option value="">— Selecciona una campaña —</option>' +
+    activos.map(r=>`<option value="${r.correlativo}">${r.correlativo} — ${r.campana}</option>`).join('');
+  if(valorActual) $('val-campana-select').value = valorActual;
+}
+
+function refrescarDatalistValidadores(){
+  $('validadores-conocidos').innerHTML = [...validadoresConocidosCache].map(v=>`<option value="${v}">`).join('');
+}
+
+$('btn-val-cargar').addEventListener('click', async ()=>{
+  const correlativo = $('val-campana-select').value;
+  if(!correlativo){ showMsg('val-msg','err','Selecciona una campaña primero.'); return; }
+  $('btn-val-cargar').disabled = true;
+  showMsg('val-msg','ok','Cargando…');
+  try{
+    let filas = campRegCache[correlativo];
+    if(!filas){
+      const snap = await campanaItemsRef.where('correlativo','==',correlativo).limit(3000).get();
+      filas = snap.docs.map(d=>d.data());
+      campRegCache[correlativo] = filas;
+    }
+    const participantes = [...new Set(filas.map(f=>f.participante).filter(Boolean))].sort();
+
+    const snapVal = await validadoresRef.where('correlativo','==',correlativo).get();
+    const asignados = {};
+    snapVal.docs.forEach(d=>{ const data = d.data(); asignados[data.participante] = data; });
+
+    participantes.forEach(p=>{ if(asignados[p] && asignados[p].validador) validadoresConocidosCache.add(asignados[p].validador); });
+    refrescarDatalistValidadores();
+
+    renderValidadoresTabla(correlativo, participantes, asignados);
+    $('val-msg').style.display = 'none';
+  }catch(err){
+    console.error(err);
+    showMsg('val-msg','err','Error al cargar: '+err.message);
+  }finally{
+    $('btn-val-cargar').disabled = false;
+  }
+});
+
+function renderValidadoresTabla(correlativo, participantes, asignados){
+  $('val-empty').style.display = 'none';
+  const faltantes = participantes.filter(p=>!asignados[p] || !asignados[p].validador);
+  $('val-resumen').style.display = 'block';
+  $('val-resumen').innerHTML = faltantes.length
+    ? `<div class="msg err" style="display:block;">⚠ ${faltantes.length} de ${participantes.length} tiendas SIN validador: ${faltantes.join(', ')}</div>`
+    : `<div class="msg ok" style="display:block;">✓ Todas las tiendas de esta campaña tienen validador asignado.</div>`;
+
+  $('val-body').innerHTML = participantes.map(p=>{
+    const asignado = asignados[p];
+    const valorActual = asignado ? (asignado.validador||'') : '';
+    const estadoHtml = valorActual ? `<span style="color:#245C46;">✓ Asignado</span>` : `<span style="color:#8A332A; font-weight:700;">⚠ Falta</span>`;
+    return `<tr data-participante="${p.replace(/"/g,'&quot;')}">
+      <td>${p}</td>
+      <td><input type="text" class="val-input-validador upper" list="validadores-conocidos" value="${valorActual}" placeholder="Nombre del validador" style="min-width:200px;"></td>
+      <td class="val-estado-celda">${estadoHtml}</td>
+      <td><button type="button" class="btn btn-sm btn-primary btn-val-guardar" data-correlativo="${correlativo}" data-participante="${p.replace(/"/g,'&quot;')}">Guardar</button></td>
+    </tr>`;
+  }).join('');
+}
+
+$('val-body').addEventListener('click', async (ev)=>{
+  const btn = ev.target.closest('.btn-val-guardar');
+  if(!btn) return;
+  const correlativo = btn.dataset.correlativo;
+  const participante = btn.dataset.participante;
+  const tr = btn.closest('tr');
+  const input = tr.querySelector('.val-input-validador');
+  const validador = input.value.trim().toUpperCase();
+  if(!validador){ showToast('Escribe el nombre del validador.','err'); return; }
+  btn.disabled = true;
+  try{
+    const campaniaObj = campRegAllCache.find(r=>r.correlativo===correlativo);
+    const docId = correlativo + '__' + codigoADocId(participante);
+    await validadoresRef.doc(docId).set({
+      correlativo, campana_nombre: campaniaObj ? campaniaObj.campana : '',
+      participante, validador,
+      asignado_por: currentUserAlias,
+      asignado_en: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    validadoresConocidosCache.add(validador);
+    refrescarDatalistValidadores();
+    tr.querySelector('.val-estado-celda').innerHTML = `<span style="color:#245C46;">✓ Asignado</span>`;
+    showToast(`Validador asignado a ${participante}.`,'ok');
+    calcularPendientesGlobalValidadores();
+    $('btn-val-cargar').click();
+  }catch(err){
+    console.error(err);
+    showToast('Error al guardar: '+err.message,'err');
+  }finally{
+    btn.disabled = false;
+  }
+});
+
+async function calcularPendientesGlobalValidadores(){
+  const el = $('val-pendientes-global');
+  el.innerHTML = '<span class="hint">Revisando validadores pendientes en todas las campañas activas…</span>';
+  try{
+    const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
+    const pendientesPorCampana = [];
+    for(const campania of activos){
+      let filas = campRegCache[campania.correlativo];
+      if(!filas){
+        const snap = await campanaItemsRef.where('correlativo','==',campania.correlativo).limit(3000).get();
+        filas = snap.docs.map(d=>d.data());
+        campRegCache[campania.correlativo] = filas;
+      }
+      const participantes = [...new Set(filas.map(f=>f.participante).filter(Boolean))];
+      const snapVal = await validadoresRef.where('correlativo','==',campania.correlativo).get();
+      const asignadosMap = {};
+      snapVal.docs.forEach(d=>{ const data = d.data(); if(data.validador) asignadosMap[data.participante] = true; });
+      const faltantes = participantes.filter(p=>!asignadosMap[p]);
+      if(faltantes.length) pendientesPorCampana.push({correlativo: campania.correlativo, campana: campania.campana, faltantes});
+    }
+    if(pendientesPorCampana.length === 0){
+      el.innerHTML = `<div class="msg ok" style="display:block;">✓ Todas las campañas activas tienen validador en todas sus tiendas.</div>`;
+    }else{
+      el.innerHTML = `<div class="msg err" style="display:block;">⚠ Faltan validadores en:<br>` +
+        pendientesPorCampana.map(p=>`• <b>${p.correlativo}</b> (${p.campana}): ${p.faltantes.length} tienda(s) — ${p.faltantes.join(', ')}`).join('<br>') +
+        `</div>`;
+    }
+  }catch(err){
+    console.error(err);
+    el.innerHTML = '<span class="hint" style="color:#8A332A;">No se pudo calcular pendientes: '+err.message+'</span>';
+  }
+}
+
+/* -------------------- Toma de Inventario -------------------- */
+async function generarCorrelativoToma(){
+  const counterRef = contadoresRef.doc('inventario_tomas');
+  const siguiente = await db.runTransaction(async (tx)=>{
+    const snap = await tx.get(counterRef);
+    const actual = snap.exists ? (snap.data().ultimo || 0) : 0;
+    const nuevo = actual + 1;
+    tx.set(counterRef, {ultimo: nuevo}, {merge:true});
+    return nuevo;
+  });
+  return 'INV-' + String(siguiente).padStart(5,'0');
+}
+
+function tomarAleatorio(arr, n){
+  const copia = arr.slice();
+  for(let i=copia.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [copia[i],copia[j]]=[copia[j],copia[i]]; }
+  return copia.slice(0, Math.max(0,n));
+}
+
+// Elige posiciones OCUPADAS (con pallet y al menos un producto con cantidad>0), sin
+// bloquear, al azar: 20% Rack / 80% Piso. Todo en memoria (posiciones/pallets/productos
+// ya están cargados en vivo), así que no cuesta ninguna lectura extra generar la toma.
+function generarSeleccionToma(cantidadSolicitada){
+  const candidatas = Object.entries(posiciones).filter(([id,p])=>{
+    if(p.estado !== 'ocupado' || !p.pallet_codigo) return false;
+    if(p.bloqueada) return false;
+    const pal = pallets[p.pallet_codigo];
+    if(!pal || !pal.items || pal.items.length===0) return false;
+    return pal.items.some(it => Number(it.cantidad) > 0);
+  }).map(([id,p])=>({id, tipo: p.tipo==='piso' ? 'piso' : 'rack', pallet_codigo:p.pallet_codigo}));
+
+  const racks = candidatas.filter(c=>c.tipo==='rack');
+  const pisos = candidatas.filter(c=>c.tipo==='piso');
+
+  let nRack = Math.round(cantidadSolicitada * 0.20);
+  let nPiso = cantidadSolicitada - nRack;
+
+  let seleccionRack = tomarAleatorio(racks, nRack);
+  let seleccionPiso = tomarAleatorio(pisos, nPiso);
+
+  // Si no hay suficientes de una categoría, se rellena con la otra para llegar al
+  // total pedido (siempre que haya candidatas disponibles).
+  let faltantes = cantidadSolicitada - (seleccionRack.length + seleccionPiso.length);
+  if(faltantes > 0){
+    const usados = new Set([...seleccionRack, ...seleccionPiso].map(c=>c.id));
+    const restantes = candidatas.filter(c=>!usados.has(c.id));
+    seleccionRack = seleccionRack.concat(tomarAleatorio(restantes, faltantes));
+  }
+
+  const seleccionFinal = seleccionRack.concat(seleccionPiso);
+  const filas = [];
+  seleccionFinal.forEach(sel=>{
+    const pal = pallets[sel.pallet_codigo];
+    (pal.items||[]).forEach(it=>{
+      if(Number(it.cantidad) <= 0) return;
+      const prod = productos[it.producto];
+      filas.push({
+        posicion_id: sel.id,
+        tipo_posicion: sel.tipo,
+        pallet_codigo: sel.pallet_codigo,
+        producto_codigo: it.producto,
+        producto_descripcion: prod ? (prod.descripcion||'') : (it.descripcion||''),
+        cantidad_sistema: Number(it.cantidad)
+      });
+    });
+  });
+  return { seleccionPosiciones: seleccionFinal, filas };
+}
+
+let tiSeleccionActual = null;
+
+$('btn-ti-generar').addEventListener('click', ()=>{
+  const cantidad = parseInt($('ti-cantidad').value, 10);
+  if(!cantidad || cantidad <= 0){ showMsg('ti-msg','err','Ingresa cuántas posiciones quieres inventariar.'); return; }
+  const resultado = generarSeleccionToma(cantidad);
+  if(resultado.seleccionPosiciones.length === 0){
+    showMsg('ti-msg','err','No hay posiciones ocupadas con stock disponibles para inventariar.');
+    $('ti-preview-wrap').style.display = 'none';
+    return;
+  }
+  tiSeleccionActual = resultado;
+  const nRack = resultado.seleccionPosiciones.filter(s=>s.tipo==='rack').length;
+  const nPiso = resultado.seleccionPosiciones.filter(s=>s.tipo==='piso').length;
+  const aviso = resultado.seleccionPosiciones.length < cantidad
+    ? ` (se pidieron ${cantidad}, pero solo hay ${resultado.seleccionPosiciones.length} posiciones ocupadas disponibles)` : '';
+  $('ti-preview-resumen').textContent = `${resultado.seleccionPosiciones.length} posición(es) seleccionada(s)${aviso}: ${nRack} de Rack, ${nPiso} de Piso (${resultado.filas.length} línea(s) de producto a contar). Puedes volver a sortear si quieres otra selección antes de confirmar.`;
+  $('ti-preview-body').innerHTML = resultado.filas.map(f=>
+    `<tr><td>${f.posicion_id}</td><td>${f.tipo_posicion==='piso'?'Piso':'Rack'}</td><td>${f.pallet_codigo}</td><td>${f.producto_codigo}</td><td>${f.producto_descripcion}</td><td>${f.cantidad_sistema}</td></tr>`
+  ).join('');
+  $('ti-preview-wrap').style.display = 'block';
+  showMsg('ti-msg','ok', `Selección generada: ${resultado.seleccionPosiciones.length} posiciones.`);
+});
+
+$('btn-ti-regenerar').addEventListener('click', ()=> $('btn-ti-generar').click());
+
+$('btn-ti-confirmar').addEventListener('click', async ()=>{
+  if(!tiSeleccionActual || tiSeleccionActual.filas.length===0){ showMsg('ti-msg','err','No hay selección para guardar.'); return; }
+  $('btn-ti-confirmar').disabled = true;
+  showMsg('ti-msg','ok','Guardando toma…');
+  try{
+    const correlativo = await generarCorrelativoToma();
+    const hoy = todayLocalStr();
+    await inventarioTomasRef.doc(correlativo).set({
+      correlativo,
+      fecha: hoy,
+      cantidad_solicitada: parseInt($('ti-cantidad').value,10),
+      cantidad_generada: tiSeleccionActual.seleccionPosiciones.length,
+      total_lineas: tiSeleccionActual.filas.length,
+      estado: 'EN_PROCESO',
+      generado_por: currentUserAlias,
+      generado_en: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    const CHUNK = 400;
+    const filas = tiSeleccionActual.filas;
+    for(let i=0;i<filas.length;i+=CHUNK){
+      const batch = db.batch();
+      filas.slice(i,i+CHUNK).forEach(f=>{
+        const docRef = inventarioTomasItemsRef.doc();
+        batch.set(docRef, {
+          correlativo_toma: correlativo,
+          posicion_id: f.posicion_id, tipo_posicion: f.tipo_posicion, pallet_codigo: f.pallet_codigo,
+          producto_codigo: f.producto_codigo, producto_descripcion: f.producto_descripcion,
+          cantidad_sistema: f.cantidad_sistema, cantidad_contada: null, diferencia: null,
+          estado: 'PENDIENTE', contado_por: null, contado_en: null
+        });
+      });
+      await batch.commit();
+    }
+    await logAccion('toma_inventario_generada', {detalle:`Toma ${correlativo}: ${tiSeleccionActual.seleccionPosiciones.length} posiciones, ${filas.length} líneas`});
+    showMsg('ti-msg','ok', `¡Guardado! Correlativo ${correlativo}.`);
+    showToast(`Toma de inventario generada: ${correlativo}`,'ok');
+    tiSeleccionActual = null;
+    $('ti-preview-wrap').style.display = 'none';
+    $('ti-cantidad').value = '';
+    $('ti-filtro-estado').value = 'EN_PROCESO';
+    cargarTomasInventario(true);
+  }catch(err){
+    console.error(err);
+    showMsg('ti-msg','err','Error al guardar: '+err.message);
+  }finally{
+    $('btn-ti-confirmar').disabled = false;
+  }
+});
+
+let tiRegRawLastDoc = null;
+let tiRegAllCache = [];
+let tiRegNoMore = false;
+
+async function cargarTomasInventario(reset){
+  if(reset){ tiRegRawLastDoc = null; tiRegAllCache = []; tiRegNoMore = false; }
+  if(!tiRegNoMore){
+    try{
+      let q = inventarioTomasRef.orderBy('generado_en','desc').limit(100);
+      if(tiRegRawLastDoc) q = q.startAfter(tiRegRawLastDoc);
+      const snap = await q.get();
+      tiRegAllCache = tiRegAllCache.concat(snap.docs.map(d=>d.data()));
+      tiRegRawLastDoc = snap.docs.length ? snap.docs[snap.docs.length-1] : tiRegRawLastDoc;
+      if(snap.docs.length < 100) tiRegNoMore = true;
+    }catch(err){
+      console.error(err);
+      showToast('Error al cargar tomas de inventario: '+err.message,'err');
+      return;
+    }
+  }
+  renderTomasInventario();
+}
+
+function renderTomasInventario(){
+  const filtro = $('ti-filtro-estado').value;
+  const filtradas = tiRegAllCache.filter(r=>(r.estado||'EN_PROCESO')===filtro);
+  if(filtradas.length===0){
+    $('ti-reg-body').innerHTML = '';
+    $('ti-reg-empty').style.display = 'block';
+    $('ti-reg-empty').textContent = filtro==='EN_PROCESO' ? 'No hay tomas en proceso.' : 'No hay tomas finalizadas.';
+    return;
+  }
+  $('ti-reg-empty').style.display = 'none';
+  $('ti-reg-body').innerHTML = filtradas.map(r=>
+    `<tr><td>${r.correlativo}</td><td>${r.fecha||''}</td><td>${r.cantidad_solicitada??''}</td><td>${r.cantidad_generada??''}</td><td>${r.total_lineas??''}</td><td>${r.estado||''}</td><td>${r.generado_por||''}</td><td><button class="btn btn-sm btn-ver-toma" data-correlativo="${r.correlativo}">Abrir conteo</button></td></tr>`
+  ).join('');
+}
+$('ti-filtro-estado').addEventListener('change', renderTomasInventario);
+
+let tiConteoActual = null; // { correlativo, items: [{id, ...datos}] }
+
+$('ti-reg-body').addEventListener('click', async (ev)=>{
+  const btn = ev.target.closest('.btn-ver-toma');
+  if(!btn) return;
+  const correlativo = btn.dataset.correlativo;
+  btn.disabled = true; btn.textContent = 'Cargando…';
+  try{
+    const snap = await inventarioTomasItemsRef.where('correlativo_toma','==',correlativo).limit(3000).get();
+    const items = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
+    tiConteoActual = { correlativo, items };
+    renderConteoToma();
+    $('ti-conteo-panel').style.display = 'block';
+    $('ti-conteo-panel').scrollIntoView({behavior:'smooth', block:'start'});
+  }catch(err){
+    console.error(err);
+    showToast('Error al abrir la toma: '+err.message,'err');
+  }finally{
+    btn.disabled = false; btn.textContent = 'Abrir conteo';
+  }
+});
+
+function actualizarResumenConteo(){
+  const {correlativo, items} = tiConteoActual;
+  const contadas = items.filter(it=>it.estado==='CONTADO').length;
+  const conDiferencia = items.filter(it=>it.estado==='CONTADO' && Number(it.diferencia)!==0).length;
+  $('ti-conteo-titulo').textContent = `Conteo de ${correlativo}`;
+  $('ti-conteo-resumen').innerHTML = `<span class="hint">${contadas}/${items.length} líneas contadas · <b style="color:${conDiferencia>0?'#8A332A':'#245C46'};">${conDiferencia} con diferencia</b></span>`;
+}
+
+function renderConteoToma(){
+  if(!tiConteoActual) return;
+  actualizarResumenConteo();
+  $('ti-conteo-body').innerHTML = tiConteoActual.items.map((it,idx)=>{
+    const contado = it.estado==='CONTADO';
+    const dif = contado ? Number(it.diferencia) : null;
+    const colorDif = dif==null ? '' : (dif===0 ? '#245C46' : (dif>0 ? '#8A6D1D' : '#8A332A'));
+    const textoDif = dif==null ? '—' : (dif===0?'OK':(dif>0?'+'+dif:dif));
+    return `<tr data-idx="${idx}">
+      <td>${it.posicion_id}</td><td>${it.tipo_posicion==='piso'?'Piso':'Rack'}</td><td>${it.pallet_codigo}</td>
+      <td>${it.producto_codigo}</td><td>${it.producto_descripcion}</td><td>${it.cantidad_sistema}</td>
+      <td><input type="number" class="ti-input-contada" data-idx="${idx}" value="${contado ? it.cantidad_contada : ''}" style="width:90px;" min="0"></td>
+      <td class="ti-celda-dif" data-idx="${idx}" style="color:${colorDif}; font-weight:700;">${textoDif}</td>
+      <td><button type="button" class="btn btn-sm btn-primary btn-ti-guardar-linea" data-idx="${idx}">Guardar</button></td>
+    </tr>`;
+  }).join('');
+}
+
+$('ti-conteo-body').addEventListener('click', async (ev)=>{
+  const btn = ev.target.closest('.btn-ti-guardar-linea');
+  if(!btn) return;
+  const idx = Number(btn.dataset.idx);
+  const item = tiConteoActual.items[idx];
+  const input = document.querySelector(`.ti-input-contada[data-idx="${idx}"]`);
+  const valor = input.value.trim();
+  if(valor === ''){ showToast('Ingresa la cantidad contada.','err'); return; }
+  const cantidadContada = Number(valor);
+  if(isNaN(cantidadContada) || cantidadContada<0){ showToast('Cantidad inválida.','err'); return; }
+  const diferencia = cantidadContada - item.cantidad_sistema;
+  btn.disabled = true;
+  try{
+    await inventarioTomasItemsRef.doc(item.id).update({
+      cantidad_contada: cantidadContada, diferencia, estado: 'CONTADO',
+      contado_por: currentUserAlias, contado_en: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    item.cantidad_contada = cantidadContada;
+    item.diferencia = diferencia;
+    item.estado = 'CONTADO';
+    const celda = document.querySelector(`.ti-celda-dif[data-idx="${idx}"]`);
+    const color = diferencia===0 ? '#245C46' : (diferencia>0 ? '#8A6D1D' : '#8A332A');
+    celda.style.color = color;
+    celda.textContent = diferencia===0 ? 'OK' : (diferencia>0 ? '+'+diferencia : diferencia);
+    actualizarResumenConteo();
+    showToast('Conteo guardado.','ok');
+  }catch(err){
+    console.error(err);
+    showToast('Error al guardar: '+err.message,'err');
+  }finally{
+    btn.disabled = false;
+  }
+});
+
+$('btn-ti-ocultar-conteo').addEventListener('click', ()=>{ $('ti-conteo-panel').style.display = 'none'; });
+
+$('btn-ti-finalizar').addEventListener('click', async ()=>{
+  if(!tiConteoActual) return;
+  const pendientes = tiConteoActual.items.filter(it=>it.estado!=='CONTADO').length;
+  if(pendientes > 0){
+    const ok = confirm(`Todavía hay ${pendientes} línea(s) sin contar. ¿Finalizar de todas formas? Las que falten quedarán marcadas como no contadas.`);
+    if(!ok) return;
+  }
+  $('btn-ti-finalizar').disabled = true;
+  try{
+    const contadas = tiConteoActual.items.filter(it=>it.estado==='CONTADO').length;
+    const conDiferencia = tiConteoActual.items.filter(it=>it.estado==='CONTADO' && Number(it.diferencia)!==0).length;
+    await inventarioTomasRef.doc(tiConteoActual.correlativo).update({
+      estado: 'FINALIZADO', contadas, con_diferencia: conDiferencia,
+      finalizado_por: currentUserAlias, finalizado_en: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    await logAccion('toma_inventario_finalizada', {detalle:`Toma ${tiConteoActual.correlativo} finalizada: ${contadas} contadas, ${conDiferencia} con diferencia`});
+    showToast(`Toma ${tiConteoActual.correlativo} finalizada.`,'ok');
+    $('ti-conteo-panel').style.display = 'none';
+    tiConteoActual = null;
+    $('ti-filtro-estado').value = 'EN_PROCESO';
+    cargarTomasInventario(true);
+  }catch(err){
+    console.error(err);
+    showToast('Error al finalizar: '+err.message,'err');
+  }finally{
+    $('btn-ti-finalizar').disabled = false;
+  }
+});
+
 /* -------------------- Paneles colapsables -------------------- */
 function setupCollapsiblePanels(){
   document.querySelectorAll('.panel > h3').forEach(h3=>{
@@ -3625,7 +4225,7 @@ function resetInactivityTimer(){
   document.addEventListener(evt, resetInactivityTimer, {passive:true});
 });
 
-const US_CHECK_IDS = ['us-diseno','us-movimientos','us-productos','us-inventario','us-pallets','us-retiros','us-campanas','us-kardex','us-bitacora','us-eliminar','us-admin'];
+const US_CHECK_IDS = ['us-diseno','us-movimientos','us-productos','us-inventario','us-pallets','us-retiros','us-campanas','us-toma-inventario','us-kardex','us-bitacora','us-eliminar','us-admin'];
 function limpiarFormularioUsuario(){
   $('us-email').value=''; $('us-alias').value='';
   US_CHECK_IDS.forEach(id=>{ $(id).checked=false; });
@@ -3648,6 +4248,7 @@ $('us-email').addEventListener('blur', async ()=>{
       $('us-pallets').checked = !!p.pallets;
       $('us-retiros').checked = !!p.retiros;
       $('us-campanas').checked = !!p.campanas;
+      $('us-toma-inventario').checked = !!p.toma_inventario;
       $('us-kardex').checked = !!p.kardex;
       $('us-bitacora').checked = !!p.bitacora;
       $('us-eliminar').checked = !!p.eliminar;
@@ -3672,6 +4273,7 @@ $('btn-guardar-usuario').addEventListener('click', async ()=>{
     productos: $('us-productos').checked, inventario: $('us-inventario').checked,
     pallets: $('us-pallets').checked, retiros: $('us-retiros').checked,
     campanas: $('us-campanas').checked,
+    toma_inventario: $('us-toma-inventario').checked,
     kardex: $('us-kardex').checked, bitacora: $('us-bitacora').checked,
     eliminar: $('us-eliminar').checked, admin: $('us-admin').checked
   };
