@@ -530,7 +530,7 @@
     <div id="guia-batch-wrap" style="display:none; margin-top:14px;">
       <p class="hint" id="guia-batch-resumen" style="margin-bottom:10px;"></p>
       <div class="hist-wrap" style="max-height:600px;">
-        <table><thead><tr><th>Archivo</th><th>N° guía</th><th>Fecha traslado</th><th>Bultos</th><th>Ítems</th><th>Campaña</th><th>Participante</th><th>Estado</th></tr></thead><tbody id="guia-batch-body"></tbody></table>
+        <table><thead><tr><th>Archivo</th><th>N° guía</th><th>Fecha traslado</th><th>Bultos</th><th>Ítems</th><th>Campaña (sugerida, editable)</th><th>Participante</th><th>Estado</th></tr></thead><tbody id="guia-batch-body"></tbody></table>
       </div>
       <button class="btn btn-primary" id="btn-guardar-guias-lote" style="margin-top:12px;">Guardar todas las guías válidas</button>
     </div>
@@ -761,8 +761,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v44';
-const APP_UPDATED = '26/08/2026 06:30';
+const APP_VERSION = 'v45';
+const APP_UPDATED = '26/08/2026 07:20';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3030,10 +3030,23 @@ let guiaBatch = []; // [{ fileName, resultado:{...}|null, error, correlativoSuge
 // Compara los códigos de una guía contra las campañas activas ya cargadas para
 // sugerir a cuál pertenece, y dentro de esa campaña busca qué participante real
 // aparece en el punto de llegada.
+function fechaDDMMYYYYaISO(str){
+  const m = (str||'').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(!m) return '';
+  const [, d, mo, y] = m;
+  return `${y}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`;
+}
+
+// Compara los CÓDIGOS de la guía contra los SKU de cada campaña activa (comparación
+// exacta, no aproximada). % = cuántos códigos de la guía existen en esa campaña /
+// total de códigos de la guía. Se sugiere la campaña con mayor % (empate no resuelto,
+// se queda con la primera encontrada). Devuelve el % de TODAS las campañas activas
+// comparadas, no solo la ganadora, para poder mostrarlo si cambias de campaña.
 async function sugerirCampanaYParticipante(resultado){
   const codigosGuia = new Set(resultado.items.map(it=>it.codigo));
   const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
   let mejor = { correlativo:'', pct:0 };
+  const porcentajesPorCampana = {};
   for(const campania of activos){
     let filas = campRegCache[campania.correlativo];
     if(!filas){
@@ -3045,20 +3058,26 @@ async function sugerirCampanaYParticipante(resultado){
     let coincidencias = 0;
     codigosGuia.forEach(c=>{ if(skusCampania.has(c)) coincidencias++; });
     const pct = codigosGuia.size ? Math.round((coincidencias/codigosGuia.size)*100) : 0;
+    porcentajesPorCampana[campania.correlativo] = pct;
     if(pct > mejor.pct) mejor = { correlativo: campania.correlativo, pct };
   }
-  let participanteSugerido = '';
-  if(mejor.correlativo){
-    const filasMejor = campRegCache[mejor.correlativo] || [];
-    const participantesDeEsaCampana = [...new Set(filasMejor.map(f=>f.participante).filter(Boolean))];
-    const textoLlegada = normalizarTexto(resultado.punto_llegada);
-    let mejorMatch = '';
-    participantesDeEsaCampana.forEach(p=>{
-      if(textoLlegada.includes(normalizarTexto(p)) && p.length > mejorMatch.length) mejorMatch = p;
-    });
-    participanteSugerido = mejorMatch;
-  }
-  return { correlativo: mejor.correlativo, pct: mejor.pct, participante: participanteSugerido };
+  const participanteSugerido = mejor.correlativo ? buscarParticipanteEnTexto(mejor.correlativo, resultado.punto_llegada) : '';
+  return { correlativo: mejor.correlativo, pct: mejor.pct, participante: participanteSugerido, porcentajesPorCampana };
+}
+
+// Dentro de los participantes REALES de una campaña (los de su hoja de reparto), busca
+// cuál aparece como texto dentro del punto de llegada de la guía. Si varios coinciden,
+// se queda con el nombre más largo (más específico, ej. "SAN JUAN DE LURIGANCHO" antes
+// que un posible "LURIGANCHO" suelto).
+function buscarParticipanteEnTexto(correlativo, puntoLlegada){
+  const filas = campRegCache[correlativo] || [];
+  const participantes = [...new Set(filas.map(f=>f.participante).filter(Boolean))];
+  const texto = normalizarTexto(puntoLlegada);
+  let mejorMatch = '';
+  participantes.forEach(p=>{
+    if(texto.includes(normalizarTexto(p)) && p.length > mejorMatch.length) mejorMatch = p;
+  });
+  return mejorMatch;
 }
 
 // Busca si ya existe una guía ACTIVA guardada con ese mismo N° de guía (evita duplicados).
@@ -3089,7 +3108,7 @@ $('btn-procesar-guia').addEventListener('click', async ()=>{
       if(resultado.items.length === 0){
         guiaBatch.push({ fileName: file.name, resultado: null, error: 'No se reconocieron ítems en este PDF.' });
       }else{
-        guiaBatch.push({ fileName: file.name, resultado, correlativoSugerido:'', participanteSugerido:'', duplicado:null });
+        guiaBatch.push({ fileName: file.name, resultado, correlativoSugerido:'', participanteSugerido:'', porcentajesPorCampana:{}, duplicado:null });
       }
     }catch(err){
       console.error(err);
@@ -3104,6 +3123,7 @@ $('btn-procesar-guia').addEventListener('click', async ()=>{
       const sugerencia = await sugerirCampanaYParticipante(item.resultado);
       item.correlativoSugerido = sugerencia.correlativo;
       item.participanteSugerido = sugerencia.participante;
+      item.porcentajesPorCampana = sugerencia.porcentajesPorCampana;
     }catch(err){ console.error(err); }
     try{
       item.duplicado = await buscarGuiaDuplicada(item.resultado.nro_guia);
@@ -3114,11 +3134,39 @@ $('btn-procesar-guia').addEventListener('click', async ()=>{
   const validas = guiaBatch.filter(it=>it.resultado && !it.duplicado).length;
   const dups = guiaBatch.filter(it=>it.duplicado).length;
   const errores = guiaBatch.filter(it=>!it.resultado).length;
-  $('guia-batch-resumen').textContent = `${guiaBatch.length} archivo(s) procesado(s): ${validas} listo(s) para guardar${dups?`, ${dups} ya existían (duplicados)`:''}${errores?`, ${errores} con error`:''}. Revisa/edita campaña y participante de cada uno antes de guardar.`;
+  $('guia-batch-resumen').textContent = `${guiaBatch.length} archivo(s) procesado(s): ${validas} listo(s) para guardar${dups?`, ${dups} ya existían (duplicados)`:''}${errores?`, ${errores} con error`:''}. Revisa/edita fecha, campaña y participante de cada uno antes de guardar.`;
   $('guia-batch-wrap').style.display = 'block';
   showMsg('guia-msg','ok', `Se procesaron ${guiaBatch.length} archivo(s).`);
   $('btn-procesar-guia').disabled = false;
 });
+
+function actualizarFilaTrasCambioCampana(idx){
+  const item = guiaBatch[idx];
+  const selCampana = document.querySelector(`.guia-batch-campana[data-idx="${idx}"]`);
+  const selParticipante = document.querySelector(`.guia-batch-participante[data-idx="${idx}"]`);
+  const badgePct = document.querySelector(`.guia-batch-pct[data-idx="${idx}"]`);
+  if(!item || !item.resultado || !selCampana) return;
+  const correlativo = selCampana.value;
+
+  // % de coincidencia de códigos para la campaña actualmente elegida en esta fila
+  if(badgePct){
+    const pct = correlativo ? (item.porcentajesPorCampana[correlativo] ?? null) : null;
+    if(pct === null){ badgePct.textContent = ''; }
+    else{
+      const color = pct>=90 ? '#245C46' : (pct>=50 ? '#8A6D1D' : '#8A332A');
+      badgePct.innerHTML = `<span style="color:${color}; font-weight:700;">${pct}%</span> coincidencia de códigos`;
+    }
+  }
+
+  // Lista de participantes REALES de la campaña elegida (no texto libre)
+  if(selParticipante){
+    const filas = correlativo ? (campRegCache[correlativo] || []) : [];
+    const participantes = [...new Set(filas.map(f=>f.participante).filter(Boolean))].sort();
+    const sugerido = correlativo ? buscarParticipanteEnTexto(correlativo, item.resultado.punto_llegada) : '';
+    selParticipante.innerHTML = '<option value="">— Elige un participante —</option>' +
+      participantes.map(p=>`<option value="${p}" ${p===sugerido?'selected':''}>${p}${p===sugerido?' (sugerido)':''}</option>`).join('');
+  }
+}
 
 function renderGuiaBatch(){
   const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
@@ -3134,14 +3182,18 @@ function renderGuiaBatch(){
       ? `<span style="color:#8A332A; font-weight:700;">Ya existe (${item.duplicado.correlativo})</span>` +
         (puedeForzar ? `<br><label style="font-weight:normal; font-size:11px; display:flex; align-items:center; gap:4px; margin-top:4px;"><input type="checkbox" class="guia-batch-forzar" data-idx="${idx}" style="width:auto;">Forzar guardado</label>` : '')
       : `<span style="color:#245C46;">Nueva ✓</span>`;
+    const fechaISO = fechaDDMMYYYYaISO(r.fecha_traslado);
     return `<tr data-idx="${idx}">
       <td>${item.fileName}</td>
       <td>${r.nro_guia||'—'}</td>
-      <td>${r.fecha_traslado||'—'}</td>
+      <td><input type="date" class="guia-batch-fecha" data-idx="${idx}" value="${fechaISO}" style="width:150px;"></td>
       <td>${r.bultos ?? '—'}</td>
       <td>${r.items.length} <button type="button" class="btn btn-ghost btn-sm guia-batch-ver-items" data-idx="${idx}">Ver</button></td>
-      <td><select class="guia-batch-campana" data-idx="${idx}" style="max-width:220px;">${opcionesCampana}</select></td>
-      <td><input type="text" class="upper guia-batch-participante" data-idx="${idx}" value="${item.participanteSugerido||''}" style="width:130px;"></td>
+      <td>
+        <select class="guia-batch-campana" data-idx="${idx}" style="max-width:220px;">${opcionesCampana}</select>
+        <div class="guia-batch-pct" data-idx="${idx}" style="font-size:10px; color:var(--ink-soft); margin-top:2px;"></div>
+      </td>
+      <td><select class="guia-batch-participante" data-idx="${idx}" style="min-width:170px;"><option value="">— Elige un participante —</option></select></td>
       <td>${dupHtml}</td>
     </tr>
     <tr class="guia-batch-items-row" data-items-for="${idx}" style="display:none;"><td colspan="8">
@@ -3152,10 +3204,11 @@ function renderGuiaBatch(){
   }).join('');
 
   guiaBatch.forEach((item, idx)=>{
-    if(item.resultado && item.correlativoSugerido){
-      const sel = document.querySelector(`.guia-batch-campana[data-idx="${idx}"]`);
-      if(sel) sel.value = item.correlativoSugerido;
-    }
+    if(!item.resultado) return;
+    const sel = document.querySelector(`.guia-batch-campana[data-idx="${idx}"]`);
+    if(sel && item.correlativoSugerido) sel.value = item.correlativoSugerido;
+    actualizarFilaTrasCambioCampana(idx);
+    if(sel) sel.addEventListener('change', ()=> actualizarFilaTrasCambioCampana(idx));
   });
 
   document.querySelectorAll('.guia-batch-ver-items').forEach(btn=>{
@@ -3169,7 +3222,8 @@ function renderGuiaBatch(){
   });
 }
 
-async function guardarUnaGuia(resultado, campanaCorrelativo, participante){
+
+async function guardarUnaGuia(resultado, campanaCorrelativo, participante, fechaTraslado){
   const campaniaObj = campRegAllCache.find(r=>r.correlativo===campanaCorrelativo);
   const correlativoGuia = await generarCorrelativoGuia();
   const skuDistintos = new Set(resultado.items.map(it=>it.codigo)).size;
@@ -3178,7 +3232,7 @@ async function guardarUnaGuia(resultado, campanaCorrelativo, participante){
     nro_guia: resultado.nro_guia,
     punto_partida: resultado.punto_partida,
     punto_llegada: resultado.punto_llegada,
-    fecha_traslado: resultado.fecha_traslado,
+    fecha_traslado: fechaTraslado,
     participante,
     bultos: resultado.bultos,
     total_items: resultado.items.length,
@@ -3199,7 +3253,7 @@ async function guardarUnaGuia(resultado, campanaCorrelativo, participante){
         campana_correlativo: campanaCorrelativo,
         nro_guia: resultado.nro_guia,
         participante,
-        fecha_traslado: resultado.fecha_traslado,
+        fecha_traslado: fechaTraslado,
         item: it.item, codigo: it.codigo, descripcion: it.descripcion, unidad: it.unidad, cantidad: it.cantidad,
         usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
       });
@@ -3221,16 +3275,20 @@ $('btn-guardar-guias-lote').addEventListener('click', async ()=>{
     const item = guiaBatch[idx];
     if(!item || !item.resultado) continue;
     const selCampana = document.querySelector(`.guia-batch-campana[data-idx="${idx}"]`);
-    const inpParticipante = document.querySelector(`.guia-batch-participante[data-idx="${idx}"]`);
+    const selParticipante = document.querySelector(`.guia-batch-participante[data-idx="${idx}"]`);
+    const inpFecha = document.querySelector(`.guia-batch-fecha[data-idx="${idx}"]`);
     const chkForzar = document.querySelector(`.guia-batch-forzar[data-idx="${idx}"]`);
     const campanaCorrelativo = selCampana ? selCampana.value : '';
-    const participante = inpParticipante ? inpParticipante.value.trim().toUpperCase() : '';
+    const participante = selParticipante ? selParticipante.value : '';
+    const fechaTraslado = inpFecha ? inpFecha.value : '';
 
     if(!campanaCorrelativo){ omitidas++; detalleOmitidas.push(`${item.fileName}: falta elegir campaña`); continue; }
+    if(!participante){ omitidas++; detalleOmitidas.push(`${item.fileName}: falta elegir participante`); continue; }
+    if(!fechaTraslado){ omitidas++; detalleOmitidas.push(`${item.fileName}: falta la fecha de traslado`); continue; }
     if(item.duplicado && !(chkForzar && chkForzar.checked)){ omitidas++; detalleOmitidas.push(`${item.fileName}: ya existe, no se forzó`); continue; }
 
     try{
-      await guardarUnaGuia(item.resultado, campanaCorrelativo, participante);
+      await guardarUnaGuia(item.resultado, campanaCorrelativo, participante, fechaTraslado);
       guardadas++;
     }catch(err){
       console.error(err);
