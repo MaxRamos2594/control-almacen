@@ -842,8 +842,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v47';
-const APP_UPDATED = '26/08/2026 09:40';
+const APP_VERSION = 'v48';
+const APP_UPDATED = '26/08/2026 10:15';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3255,11 +3255,27 @@ $('btn-procesar-guia').addEventListener('click', async ()=>{
     }catch(err){ console.error(err); }
   }
 
+  // Además de comparar contra lo ya guardado en la base, hay que revisar que no
+  // vengan 2+ archivos del MISMO lote con el mismo N° de guía (ej. el mismo PDF
+  // seleccionado dos veces, o dos copias con distinto nombre de archivo).
+  const vistosEnLote = new Map(); // nro_guia -> nombre del primer archivo que lo trajo
+  guiaBatch.forEach(item=>{
+    if(!item.resultado || item.duplicado) return; // si ya es duplicado de la BD, no hace falta marcarlo de nuevo
+    const nro = item.resultado.nro_guia;
+    if(!nro) return;
+    if(vistosEnLote.has(nro)){
+      item.duplicadoEnLote = vistosEnLote.get(nro);
+    }else{
+      vistosEnLote.set(nro, item.fileName);
+    }
+  });
+
   renderGuiaBatch();
-  const validas = guiaBatch.filter(it=>it.resultado && !it.duplicado).length;
+  const validas = guiaBatch.filter(it=>it.resultado && !it.duplicado && !it.duplicadoEnLote).length;
   const dups = guiaBatch.filter(it=>it.duplicado).length;
+  const dupsLote = guiaBatch.filter(it=>it.duplicadoEnLote).length;
   const errores = guiaBatch.filter(it=>!it.resultado).length;
-  $('guia-batch-resumen').textContent = `${guiaBatch.length} archivo(s) procesado(s): ${validas} listo(s) para guardar${dups?`, ${dups} ya existían (duplicados)`:''}${errores?`, ${errores} con error`:''}. Revisa/edita fecha, campaña y participante de cada uno antes de guardar.`;
+  $('guia-batch-resumen').textContent = `${guiaBatch.length} archivo(s) procesado(s): ${validas} listo(s) para guardar${dups?`, ${dups} ya existían (duplicados)`:''}${dupsLote?`, ${dupsLote} repetidos dentro de este mismo lote`:''}${errores?`, ${errores} con error`:''}. Revisa/edita fecha, campaña y participante de cada uno antes de guardar.`;
   $('guia-batch-wrap').style.display = 'block';
   showMsg('guia-msg','ok', `Se procesaron ${guiaBatch.length} archivo(s).`);
   $('btn-procesar-guia').disabled = false;
@@ -3307,10 +3323,16 @@ function renderGuiaBatch(){
       return `<tr><td>${item.fileName}</td><td colspan="7" style="color:#8A332A;">⚠ ${item.error||'No se pudo procesar.'}</td></tr>`;
     }
     const r = item.resultado;
-    const dupHtml = item.duplicado
-      ? `<span style="color:#8A332A; font-weight:700;">Ya existe (${item.duplicado.correlativo})</span>` +
-        (puedeForzar ? `<br><label style="font-weight:normal; font-size:11px; display:flex; align-items:center; gap:4px; margin-top:4px;"><input type="checkbox" class="guia-batch-forzar" data-idx="${idx}" style="width:auto;">Forzar guardado</label>` : '')
-      : `<span style="color:#245C46;">Nueva ✓</span>`;
+    let dupHtml;
+    if(item.duplicado){
+      dupHtml = `<span style="color:#8A332A; font-weight:700;">Ya existe (${item.duplicado.correlativo})</span>` +
+        (puedeForzar ? `<br><label style="font-weight:normal; font-size:11px; display:flex; align-items:center; gap:4px; margin-top:4px;"><input type="checkbox" class="guia-batch-forzar" data-idx="${idx}" style="width:auto;">Forzar guardado</label>` : '');
+    }else if(item.duplicadoEnLote){
+      dupHtml = `<span style="color:#8A332A; font-weight:700;">Repetida en este lote (igual que "${item.duplicadoEnLote}")</span>` +
+        (puedeForzar ? `<br><label style="font-weight:normal; font-size:11px; display:flex; align-items:center; gap:4px; margin-top:4px;"><input type="checkbox" class="guia-batch-forzar" data-idx="${idx}" style="width:auto;">Forzar guardado</label>` : '');
+    }else{
+      dupHtml = `<span style="color:#245C46;">Nueva ✓</span>`;
+    }
     const fechaISO = fechaDDMMYYYYaISO(r.fecha_traslado);
     return `<tr data-idx="${idx}">
       <td>${item.fileName}</td>
@@ -3399,6 +3421,7 @@ $('btn-guardar-guias-lote').addEventListener('click', async ()=>{
   $('btn-guardar-guias-lote').disabled = true;
   let guardadas = 0, omitidas = 0;
   const detalleOmitidas = [];
+  const nroGuiaGuardadosEnEstaEjecucion = new Set(); // salvaguarda extra: nunca guardar 2 veces el mismo N° de guía en la misma corrida
   for(const tr of filas){
     const idx = Number(tr.dataset.idx);
     const item = guiaBatch[idx];
@@ -3410,15 +3433,18 @@ $('btn-guardar-guias-lote').addEventListener('click', async ()=>{
     const campanaCorrelativo = selCampana ? selCampana.value : '';
     const participante = selParticipante ? selParticipante.value : '';
     const fechaTraslado = inpFecha ? inpFecha.value : '';
+    const nroGuia = item.resultado.nro_guia;
 
     if(!campanaCorrelativo){ omitidas++; detalleOmitidas.push(`${item.fileName}: falta elegir campaña`); continue; }
     if(!participante){ omitidas++; detalleOmitidas.push(`${item.fileName}: falta elegir participante`); continue; }
     if(!fechaTraslado){ omitidas++; detalleOmitidas.push(`${item.fileName}: falta la fecha de traslado`); continue; }
-    if(item.duplicado && !(chkForzar && chkForzar.checked)){ omitidas++; detalleOmitidas.push(`${item.fileName}: ya existe, no se forzó`); continue; }
+    if((item.duplicado || item.duplicadoEnLote) && !(chkForzar && chkForzar.checked)){ omitidas++; detalleOmitidas.push(`${item.fileName}: ${item.duplicado ? 'ya existe' : 'repetida en este lote'}, no se forzó`); continue; }
+    if(nroGuia && nroGuiaGuardadosEnEstaEjecucion.has(nroGuia)){ omitidas++; detalleOmitidas.push(`${item.fileName}: N° de guía ${nroGuia} ya se guardó en esta misma tanda`); continue; }
 
     try{
       await guardarUnaGuia(item.resultado, campanaCorrelativo, participante, fechaTraslado);
       await guardarMapeoDestinoParticipante(item.resultado.punto_llegada, participante);
+      if(nroGuia) nroGuiaGuardadosEnEstaEjecucion.add(nroGuia);
       guardadas++;
     }catch(err){
       console.error(err);
