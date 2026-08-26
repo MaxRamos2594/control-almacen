@@ -112,16 +112,12 @@
   .slot.ocupado{background:#1E5F3E; border-color:#123D28; color:#fff;}
   .slot.piso-slot.ocupado{background:#1E5F3E; border-color:#123D28; color:#fff;}
   .slot.selected{outline:2px solid var(--blue); outline-offset:1px;}
-  .slot.match{outline:2px solid var(--neon); outline-offset:1px; box-shadow:0 0 8px var(--neon); animation:pulse 1s infinite; background:var(--neon) !important; color:#0A3D00 !important; font-weight:700;}
-  .slot.vacio-glow{animation:vacioGlow 1.4s infinite;}
-  @keyframes vacioGlow{
-    0%,100%{outline:2px solid #F5C518; outline-offset:1px; box-shadow:0 0 6px #F5C518;}
-    50%{outline:2px solid transparent; box-shadow:0 0 0 transparent;}
-  }
+  .slot.match{outline:2px solid var(--neon); outline-offset:1px; box-shadow:0 0 8px var(--neon); background:var(--neon) !important; color:#0A3D00 !important; font-weight:700;}
+  .slot.vacio-glow{outline:2px solid #F5C518; outline-offset:1px; box-shadow:0 0 6px #F5C518;}
   .slot.dim{opacity:.25;}
   .slot.readonly{cursor:default;}
   .slot.bloqueada{ background:#000; border-color:#000; color:#fff; cursor:not-allowed; }
-  @keyframes pulse{0%,100%{outline-color:var(--neon); box-shadow:0 0 8px var(--neon); background:var(--neon);}50%{outline-color:transparent; box-shadow:0 0 0 transparent; background:#B6FF9E;}}
+  .slot.campana-dia{ background:#4FC3E8; border-color:#1E90BE; color:#06323F; cursor:not-allowed; }
 
   .tooltip{position:fixed; background:var(--ink); color:#fff; padding:8px 10px; border-radius:5px; font-family:var(--mono); font-size:11px; pointer-events:none; z-index:60; display:none; max-width:240px; line-height:1.5;}
   .tooltip b{color:var(--lacre-bg);}
@@ -253,6 +249,7 @@
         <span><i class="sw" style="background:#EDEDED; border:1px solid #C4C4C4;"></i>Piso vacío</span>
         <span><i class="sw" style="background:#1E5F3E; border:1px solid #123D28;"></i>Ocupado</span>
         <span><i class="sw" style="background:#000;"></i>Bloqueado</span>
+        <span><i class="sw" style="background:#4FC3E8; border:1px solid #1E90BE;"></i>Campaña del día</span>
       </div>
       <div class="bloques-scroll" id="preview-bloques"></div>
     </div>
@@ -267,7 +264,7 @@
       <div class="field"><label>Buscar (pallet o producto)</label><input type="text" id="f-buscar" class="upper" placeholder="CD0005 O PRODUCTO"></div>
       <div class="field"><label>Bloque</label><select id="f-bloque"><option value="">Todos</option></select></div>
       <div class="field"><label>Estado</label>
-        <select id="f-estado"><option value="">Todos</option><option value="ocupado">Ocupado</option><option value="vacio">Vacío</option><option value="bloqueado">Bloqueado</option></select>
+        <select id="f-estado"><option value="">Todos</option><option value="ocupado">Ocupado</option><option value="vacio">Vacío</option><option value="bloqueado">Bloqueado</option><option value="campana_dia">Campaña del día</option></select>
       </div>
       <button class="btn btn-ghost" id="btn-clear-filters" style="width:100%;">Limpiar filtros</button>
       <h3 style="margin-top:20px;">Resumen</h3>
@@ -281,6 +278,7 @@
         <span><i class="sw" style="background:#EDEDED; border:1px solid #C4C4C4;"></i>Piso vacío</span>
         <span><i class="sw" style="background:#1E5F3E; border:1px solid #123D28;"></i>Ocupado</span>
         <span><i class="sw" style="background:#000;"></i>Bloqueado</span>
+        <span><i class="sw" style="background:#4FC3E8; border:1px solid #1E90BE;"></i>Campaña del día</span>
         <span><i class="sw" style="background:#fff; border:2px solid var(--blue);"></i>Seleccionado</span>
         <span><i class="sw" style="background:#fff; border:2px solid var(--neon); box-shadow:0 0 4px var(--neon);"></i>Coincide búsqueda</span>
         <span><i class="sw" style="background:#fff; border:2px solid #F5C518; box-shadow:0 0 4px #F5C518;"></i>Vacío disponible (sin filtros)</span>
@@ -376,7 +374,10 @@
     </div>
     <div class="panel">
       <h3>Catálogo de productos</h3>
-      <div class="field" style="max-width:320px;"><label>Buscar (código o descripción que contengan)</label><input type="text" id="prod-buscar" class="upper" placeholder="EJ. SANDALIA o 06TP"></div>
+      <div style="display:flex; gap:14px; flex-wrap:wrap;">
+        <div class="field" style="max-width:320px;"><label>Buscar (código o descripción que contengan)</label><input type="text" id="prod-buscar" class="upper" placeholder="EJ. SANDALIA o 06TP"></div>
+        <div class="field" style="max-width:260px;"><label>Proveedor (nombre que contenga)</label><input type="text" id="prod-buscar-proveedor" class="upper" placeholder="EJ. DISTRIBUIDORA XYZ"></div>
+      </div>
       <div class="hist-wrap" style="max-height:600px;">
         <table><thead><tr><th>Imagen</th><th>Código</th><th>Descripción</th><th>Costo</th><th>Proveedor</th><th>Empaque 1</th><th>Empaque 2</th><th>Creado</th><th>Usuario</th></tr></thead><tbody id="prod-body"></tbody></table>
         <div class="empty-state" id="prod-empty">Sin productos registrados aún.</div>
@@ -390,9 +391,12 @@
   <div class="panel">
     <h3><span style="display:flex; align-items:center; gap:10px;"><span>Inventario (acumulado por producto)</span><button class="btn btn-primary btn-sm" id="btn-exportar-inventario" type="button">⬇ Exportar a Excel</button></span></h3>
     <p class="hint" style="margin-bottom:10px;">Suma la cantidad de cada producto en todos los pallets activos del almacén. Haz clic en "Ver detalle" para ver en qué pallets y posiciones está.</p>
-    <div class="field" style="max-width:320px;"><label>Buscar (código o descripción que contengan)</label><input type="text" id="inv-buscar" class="upper" placeholder="EJ. SANDALIA o 06TP"></div>
+    <div style="display:flex; gap:14px; flex-wrap:wrap;">
+      <div class="field" style="max-width:320px;"><label>Buscar (código o descripción que contengan)</label><input type="text" id="inv-buscar" class="upper" placeholder="EJ. SANDALIA o 06TP"></div>
+      <div class="field" style="max-width:260px;"><label>Proveedor (nombre que contenga)</label><input type="text" id="inv-buscar-proveedor" class="upper" placeholder="EJ. DISTRIBUIDORA XYZ"></div>
+    </div>
     <div class="hist-wrap" style="max-height:600px;">
-      <table><thead><tr><th>Código</th><th>Descripción</th><th>Cantidad total</th><th>Costo unitario</th><th>Costo total</th><th></th></tr></thead><tbody id="inv-body"></tbody></table>
+      <table><thead><tr><th>Código</th><th>Descripción</th><th>Proveedor</th><th>Cantidad total</th><th>Costo unitario</th><th>Costo total</th><th></th></tr></thead><tbody id="inv-body"></tbody></table>
       <div class="empty-state" id="inv-empty">Sin inventario todavía.</div>
     </div>
     <div class="total-line" style="font-size:15px; margin-top:12px;"><span><b>TOTAL VALORIZADO DEL ALMACÉN</b></span><span id="inv-total-valorizado"><b>0.00</b></span></div>
@@ -630,8 +634,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v32';
-const APP_UPDATED = '25/08/2026 21:50';
+const APP_VERSION = 'v33';
+const APP_UPDATED = '25/08/2026 23:10';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -1029,12 +1033,16 @@ async function eliminarNichosSeleccionados(bloqueId){
 
 /* -------------------- Render de grillas -------------------- */
 function slotHTML(id, data){
-  const cls = ['slot', data.tipo==='piso'?'piso-slot':'', data.estado==='ocupado'?'ocupado':'', data.bloqueada?'bloqueada':''].join(' ').trim();
-  return `<div class="${cls}" data-id="${id}" id="slot-${id}">${data.bloqueada?'🔒':id.slice(-2)}</div>`;
+  const bloqueadaClase = data.bloqueada ? (data.campana_dia ? 'campana-dia' : 'bloqueada') : '';
+  const cls = ['slot', data.tipo==='piso'?'piso-slot':'', data.estado==='ocupado'?'ocupado':'', bloqueadaClase].join(' ').trim();
+  const icono = data.bloqueada ? (data.campana_dia ? '📢' : '🔒') : id.slice(-2);
+  return `<div class="${cls}" data-id="${id}" id="slot-${id}">${icono}</div>`;
 }
 function slotReadonlyHTML(id, data){
-  const cls = ['slot','readonly', data.tipo==='piso'?'piso-slot':'', data.estado==='ocupado'?'ocupado':'', data.bloqueada?'bloqueada':''].join(' ').trim();
-  return `<div class="${cls}">${data.bloqueada?'🔒':id.slice(-2)}</div>`;
+  const bloqueadaClase = data.bloqueada ? (data.campana_dia ? 'campana-dia' : 'bloqueada') : '';
+  const cls = ['slot','readonly', data.tipo==='piso'?'piso-slot':'', data.estado==='ocupado'?'ocupado':'', bloqueadaClase].join(' ').trim();
+  const icono = data.bloqueada ? (data.campana_dia ? '📢' : '🔒') : id.slice(-2);
+  return `<div class="${cls}">${icono}</div>`;
 }
 function sortBloquesEntries(){
   return Object.entries(bloques).sort((a,b)=>{
@@ -1127,7 +1135,7 @@ function attachSlotEvents(){
 function showTooltip(e,id){
   const p = posiciones[id]; if(!p) return;
   const tt = $('tooltip');
-  if(p.bloqueada){ tt.innerHTML = `<b>${id}</b><br>Bloqueada`; }
+  if(p.bloqueada){ tt.innerHTML = `<b>${id}</b><br>${p.campana_dia ? 'Campaña del día' : 'Bloqueada'}`; }
   else if(p.estado==='ocupado'){
     const pal = pallets[p.pallet_codigo]; const n = pal && pal.items ? pal.items.length : 0;
     tt.innerHTML = `<b>${id}</b><br>Pallet: ${p.pallet_codigo}<br>${n} producto(s)`;
@@ -1145,19 +1153,30 @@ function showContextMenu(e, id){
   const p = posiciones[id]; if(!p) return;
   if(!p.bloqueada && p.estado==='ocupado') return;
   const menu = $('ctx-menu');
-  menu.innerHTML = p.bloqueada ? `<button data-a="d">Desbloquear ${id}</button>` : `<button data-a="b">Bloquear ${id}</button>`;
+  menu.innerHTML = p.bloqueada
+    ? `<button data-a="d">Desbloquear ${id}</button>`
+    : `<button data-a="b">Bloquear ${id}</button><button data-a="c">📢 Marcar como Campaña del día</button>`;
   menu.style.left = e.clientX+'px'; menu.style.top = e.clientY+'px'; menu.style.display='block';
-  menu.querySelector('button').onclick = () => { togglePosicionBloqueo(id, !p.bloqueada); menu.style.display='none'; };
+  menu.querySelectorAll('button').forEach(btn=>{
+    btn.onclick = () => {
+      const accion = btn.dataset.a;
+      if(accion === 'd') togglePosicionBloqueo(id, false, false);
+      else if(accion === 'c') togglePosicionBloqueo(id, true, true);
+      else togglePosicionBloqueo(id, true, false);
+      menu.style.display='none';
+    };
+  });
 }
 document.addEventListener('click', (e)=>{ if(!e.target.closest('#ctx-menu')) $('ctx-menu').style.display='none'; });
 
-async function togglePosicionBloqueo(id, bloquear){
+async function togglePosicionBloqueo(id, bloquear, esCampanaDia){
   try{
     const p = posiciones[id];
     if(bloquear && p.estado==='ocupado'){ showToast('No puedes bloquear una posición ocupada.','err'); return; }
-    await posicionesRef.doc(id).update({ bloqueada: bloquear, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
-    await logAccion(bloquear?'bloqueo':'desbloqueo', {origen:id, detalle:`Posición ${id} ${bloquear?'bloqueada':'desbloqueada'}`});
-    showToast(`Posición ${id} ${bloquear?'bloqueada':'desbloqueada'}.`,'ok');
+    await posicionesRef.doc(id).update({ bloqueada: bloquear, campana_dia: bloquear ? !!esCampanaDia : false, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
+    const etiqueta = esCampanaDia ? 'marcada como Campaña del día' : (bloquear?'bloqueada':'desbloqueada');
+    await logAccion(bloquear?'bloqueo':'desbloqueo', {origen:id, detalle:`Posición ${id} ${etiqueta}`});
+    showToast(`Posición ${id} ${esCampanaDia ? 'marcada como Campaña del día' : (bloquear?'bloqueada':'desbloqueada')}.`,'ok');
   }catch(err){ showToast('Error: '+err.message,'err'); }
 }
 
@@ -1192,9 +1211,10 @@ function renderDetalle(id, p){
   const puedeBloquear = currentPermisos.admin || currentPermisos.eliminar || currentPermisos.movimientos;
 
   if(p.bloqueada){
-    content.innerHTML = `<div style="font-family:var(--mono); font-size:13px;">${id}</div><div class="empty-state">🔒 Posición bloqueada — no se puede asignar.</div>
+    const esCampana = !!p.campana_dia;
+    content.innerHTML = `<div style="font-family:var(--mono); font-size:13px;">${id}</div><div class="empty-state">${esCampana ? '📢 Campaña del día — no se puede asignar.' : '🔒 Posición bloqueada — no se puede asignar.'}</div>
       ${puedeBloquear ? `<button class="btn btn-ghost btn-sm" id="btn-toggle-lock" style="width:100%;">Desbloquear posición</button>` : ''}`;
-    if(puedeBloquear) $('btn-toggle-lock').onclick = () => togglePosicionBloqueo(id, false);
+    if(puedeBloquear) $('btn-toggle-lock').onclick = () => togglePosicionBloqueo(id, false, false);
     return;
   }
   if(p.estado !== 'ocupado'){
@@ -1204,8 +1224,11 @@ function renderDetalle(id, p){
         <div style="font-size:16px; font-weight:700; color:#245C46; margin-top:8px; letter-spacing:.03em;">POSICIÓN VACÍA</div>
         <div style="font-size:11px; color:var(--ink-soft); margin-top:4px;">Disponible para asignar un pallet</div>
       </div>
-      ${puedeBloquear ? `<button class="btn btn-dark btn-sm" id="btn-toggle-lock" style="width:100%;">🔒 Bloquear posición</button>` : ''}`;
-    if(puedeBloquear) $('btn-toggle-lock').onclick = () => togglePosicionBloqueo(id, true);
+      ${puedeBloquear ? `<button class="btn btn-dark btn-sm" id="btn-toggle-lock" style="width:100%; margin-bottom:6px;">🔒 Bloquear posición</button><button class="btn btn-ghost btn-sm" id="btn-toggle-campana" style="width:100%;">📢 Marcar como Campaña del día</button>` : ''}`;
+    if(puedeBloquear){
+      $('btn-toggle-lock').onclick = () => togglePosicionBloqueo(id, true, false);
+      $('btn-toggle-campana').onclick = () => togglePosicionBloqueo(id, true, true);
+    }
     return;
   }
 
@@ -1213,9 +1236,12 @@ function renderDetalle(id, p){
   if(!pal){ content.innerHTML = `<div class="empty-state">Cargando datos del pallet…</div>`; return; }
   let totalCant=0, totalCosto=0;
   const rows = (pal.items||[]).map(it=>{
+    // Costo en vivo desde el catálogo de productos si existe; si el producto
+    // ya no está en el catálogo, se usa el costo guardado en el pallet como respaldo.
+    const costoVivo = productos[it.producto] ? (Number(productos[it.producto].costo)||0) : (Number(it.costo)||0);
     totalCant += Number(it.cantidad)||0;
-    totalCosto += (Number(it.cantidad)||0)*(Number(it.costo)||0);
-    return `<tr><td>${it.producto}</td><td>${it.descripcion||''}</td><td>${it.cantidad}</td><td>${fmtMoney(it.costo)}</td></tr>`;
+    totalCosto += (Number(it.cantidad)||0)*costoVivo;
+    return `<tr><td>${it.producto}</td><td>${it.descripcion||''}</td><td>${it.cantidad}</td><td>${fmtMoney(costoVivo)}</td></tr>`;
   }).join('');
   content.innerHTML = `
     <div style="font-family:var(--mono); font-size:13px; margin-bottom:6px;"><b>${id}</b> · Pallet ${p.pallet_codigo}</div>
@@ -1348,6 +1374,7 @@ function applyFilters(){
     let visible = true;
     if(bloque && p.bloque_id !== bloque) visible = false;
     if(estado==='bloqueado' && !p.bloqueada) visible = false;
+    else if(estado==='campana_dia' && !(p.bloqueada && p.campana_dia)) visible = false;
     else if(estado==='ocupado' && p.estado!=='ocupado') visible = false;
     else if(estado==='vacio' && (p.estado!=='vacio' || p.bloqueada)) visible = false;
     let isMatch = false;
@@ -1412,10 +1439,33 @@ $('btn-add-item').addEventListener('click', addItemRow);
 addItemRow();
 
 const PALLET_REGEX = /^CD\d{4}$/;
+
+function setCrearPalletBloqueado(bloqueado){
+  $('btn-add-item').disabled = bloqueado;
+  $('btn-crear-pallet').disabled = bloqueado;
+  $('cp-items-body').querySelectorAll('input').forEach(inp=> inp.disabled = bloqueado);
+  $('cp-destino').disabled = bloqueado;
+}
+
+$('cp-codigo').addEventListener('input', ()=>{
+  const codigo = $('cp-codigo').value.trim().toUpperCase();
+  const msgEl = $('cp-msg');
+  if(PALLET_REGEX.test(codigo) && pallets[codigo]){
+    msgEl.className = 'msg err';
+    msgEl.textContent = `⚠ El pallet ${codigo} ya existe. Usa "Mover pallet" o "Transferir producto" en vez de crear uno nuevo.`;
+    msgEl.style.display = 'block';
+    setCrearPalletBloqueado(true);
+  }else{
+    if(msgEl.classList.contains('err')){ msgEl.style.display='none'; msgEl.textContent=''; }
+    setCrearPalletBloqueado(false);
+  }
+});
+
 $('btn-crear-pallet').addEventListener('click', async ()=>{
   const codigo = $('cp-codigo').value.trim().toUpperCase();
   const destino = $('cp-destino').value.trim().toUpperCase();
   if(!PALLET_REGEX.test(codigo)){ showMsg('cp-msg','err','El código debe tener el formato CD0000 (CD + 4 dígitos).'); return; }
+  if(pallets[codigo]){ showMsg('cp-msg','err', `⚠ El pallet ${codigo} ya existe. Usa "Mover pallet" o "Transferir producto".`); return; }
   if(!destino || !posiciones[destino]){ showMsg('cp-msg','err','Selecciona una posición destino válida.'); return; }
   if(posiciones[destino].bloqueada){ showMsg('cp-msg','err','Esa posición está bloqueada.'); return; }
   const rows = [...$('cp-items-body').querySelectorAll('.item-card')];
@@ -1594,9 +1644,11 @@ function computeInventario(){
     });
   });
   Object.keys(inv).forEach(codigo=>{
-    const costo = productos[codigo] ? Number(productos[codigo].costo)||0 : 0;
+    const prod = productos[codigo];
+    const costo = prod ? Number(prod.costo)||0 : 0;
     inv[codigo].costo = costo;
     inv[codigo].costoTotal = costo * inv[codigo].total;
+    inv[codigo].proveedor = prod ? (prod.proveedor || '') : '';
   });
   return inv;
 }
@@ -1604,20 +1656,24 @@ function renderInventario(){
   const body = $('inv-body'); if(!body) return;
   const inv = computeInventario();
   const buscar = ($('inv-buscar') ? $('inv-buscar').value.trim().toLowerCase() : '');
+  const buscarProveedor = ($('inv-buscar-proveedor') ? $('inv-buscar-proveedor').value.trim().toLowerCase() : '');
   let entries = Object.entries(inv).sort((a,b)=>a[0].localeCompare(b[0]));
   if(buscar){
     entries = entries.filter(([codigo,data])=> codigo.toLowerCase().includes(buscar) || (data.descripcion||'').toLowerCase().includes(buscar));
   }
+  if(buscarProveedor){
+    entries = entries.filter(([,data])=> (data.proveedor||'').toLowerCase().includes(buscarProveedor));
+  }
   let totalValorizado = 0;
   entries.forEach(([,data])=>{ totalValorizado += data.costoTotal; });
   $('inv-total-valorizado').innerHTML = `<b>S/ ${fmtMoneyComma(totalValorizado)}</b>`;
-  if(entries.length===0){ body.innerHTML=''; $('inv-empty').style.display='block'; $('inv-empty').textContent = buscar ? 'Sin resultados para esa búsqueda.' : 'Sin inventario todavía.'; return; }
+  if(entries.length===0){ body.innerHTML=''; $('inv-empty').style.display='block'; $('inv-empty').textContent = (buscar||buscarProveedor) ? 'Sin resultados para esa búsqueda.' : 'Sin inventario todavía.'; return; }
   $('inv-empty').style.display='none';
   body.innerHTML = entries.map(([codigo,data])=>{
     const detId = `inv-det-${codigo}`;
     const detalleFilas = data.detalle.map(d=>`<tr><td>${d.pallet}</td><td>${d.posicion||'—'}</td><td>${d.cantidad}</td></tr>`).join('');
-    return `<tr><td>${codigo}</td><td>${data.descripcion||''}</td><td>${data.total}</td><td>${fmtMoney(data.costo)}</td><td>${fmtMoney(data.costoTotal)}</td><td><button class="btn btn-ghost btn-sm" data-toggle-inv="${detId}">Ver detalle</button></td></tr>
-    <tr id="${detId}" style="display:none;"><td colspan="6">
+    return `<tr><td>${codigo}</td><td>${data.descripcion||''}</td><td>${data.proveedor||''}</td><td>${data.total}</td><td>${fmtMoney(data.costo)}</td><td>${fmtMoney(data.costoTotal)}</td><td><button class="btn btn-ghost btn-sm" data-toggle-inv="${detId}">Ver detalle</button></td></tr>
+    <tr id="${detId}" style="display:none;"><td colspan="7">
       <table style="margin-top:4px;"><thead><tr><th>Pallet</th><th>Posición</th><th>Cantidad</th></tr></thead><tbody>${detalleFilas}</tbody></table>
     </td></tr>`;
   }).join('');
@@ -1631,16 +1687,17 @@ function renderInventario(){
   });
 }
 $('inv-buscar').addEventListener('input', renderInventario);
+$('inv-buscar-proveedor').addEventListener('input', renderInventario);
 $('btn-exportar-inventario').addEventListener('click', ()=>{
   const inv = computeInventario();
   const entries = Object.entries(inv).sort((a,b)=>a[0].localeCompare(b[0]));
   if(entries.length===0){ showToast('No hay inventario para exportar.','err'); return; }
   const filas = entries.map(([codigo,data])=>({
-    'Código': codigo, 'Descripción': data.descripcion||'', 'Cantidad total': data.total,
+    'Código': codigo, 'Descripción': data.descripcion||'', 'Proveedor': data.proveedor||'', 'Cantidad total': data.total,
     'Costo unitario': data.costo, 'Costo total': data.costoTotal
   }));
   const totalValorizado = entries.reduce((acc,[,d])=>acc+d.costoTotal, 0);
-  filas.push({ 'Código':'', 'Descripción':'', 'Cantidad total':'', 'Costo unitario':'TOTAL VALORIZADO', 'Costo total': totalValorizado });
+  filas.push({ 'Código':'', 'Descripción':'', 'Proveedor':'', 'Cantidad total':'', 'Costo unitario':'TOTAL VALORIZADO', 'Costo total': totalValorizado });
   const ws = XLSX.utils.json_to_sheet(filas);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Inventario');
@@ -1674,7 +1731,7 @@ function computePalletDetalle(){
         posicion: posId,
         codigo: it.producto || '',
         descripcion: it.descripcion || '',
-        costo: Number(it.costo)||0,
+        costo: productos[it.producto] ? (Number(productos[it.producto].costo)||0) : (Number(it.costo)||0),
         cantidad: Number(it.cantidad)||0
       });
     });
@@ -1710,12 +1767,16 @@ $('btn-exportar-pallets').addEventListener('click', ()=>{
 function renderProductosTabla(){
   let entries = Object.entries(productos).sort((a,b)=> a[0].localeCompare(b[0]));
   const buscar = ($('prod-buscar') ? $('prod-buscar').value.trim().toLowerCase() : '');
+  const buscarProveedor = ($('prod-buscar-proveedor') ? $('prod-buscar-proveedor').value.trim().toLowerCase() : '');
   if(buscar){
     entries = entries.filter(([codigo,p])=> codigo.toLowerCase().includes(buscar) || (p.descripcion||'').toLowerCase().includes(buscar));
   }
+  if(buscarProveedor){
+    entries = entries.filter(([,p])=> (p.proveedor||'').toLowerCase().includes(buscarProveedor));
+  }
   const body = $('prod-body');
   if(!body) return;
-  if(entries.length===0){ body.innerHTML=''; $('prod-empty').style.display='block'; $('prod-empty').textContent = buscar ? 'Sin resultados para esa búsqueda.' : 'Sin productos registrados aún.'; return; }
+  if(entries.length===0){ body.innerHTML=''; $('prod-empty').style.display='block'; $('prod-empty').textContent = (buscar||buscarProveedor) ? 'Sin resultados para esa búsqueda.' : 'Sin productos registrados aún.'; return; }
   $('prod-empty').style.display='none';
   body.innerHTML = entries.map(([codigo,p])=>{
     const fecha = p.creado_en ? p.creado_en.toDate().toLocaleString('es-PE') : '—';
@@ -1726,6 +1787,7 @@ function renderProductosTabla(){
   }).join('');
 }
 $('prod-buscar').addEventListener('input', renderProductosTabla);
+$('prod-buscar-proveedor').addEventListener('input', renderProductosTabla);
 
 let prImagenFile = null;      // archivo nuevo seleccionado (pendiente de subir)
 let prImagenUrlActual = null; // url ya guardada en el producto cargado (si existe)
