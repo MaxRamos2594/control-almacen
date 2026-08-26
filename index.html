@@ -521,33 +521,18 @@
   <div id="campsub-panel-cargar-guia" style="display:none;">
   <div class="panel" style="margin-bottom:14px;">
     <h3>Cargar Guía de Remisión (salida)</h3>
-    <p class="hint" style="margin-bottom:10px;">Sube la guía de remisión en PDF. Se extrae punto de partida, punto de llegada, N° de guía, ítems (código, descripción, unidad, cantidad) y bultos — el PDF no se guarda, solo esta información. Cada guía debe asociarse a una campaña (reparto) ya cargada.</p>
+    <p class="hint" style="margin-bottom:10px;">Puedes seleccionar <b>varios PDFs a la vez</b>. Se extrae de cada uno punto de partida, punto de llegada, N° de guía, ítems y bultos — los archivos no se guardan, solo esta información. Cada guía debe asociarse a una campaña (reparto) ya cargada.</p>
     <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
-      <div class="field" style="margin:0; max-width:340px;"><label>Archivo PDF (guía de remisión)</label><input type="file" id="guia-pdf-input" accept="application/pdf"></div>
-      <button class="btn btn-primary" id="btn-procesar-guia">Procesar PDF</button>
+      <div class="field" style="margin:0; max-width:420px;"><label>Archivos PDF (guías de remisión) — puedes elegir varios</label><input type="file" id="guia-pdf-input" accept="application/pdf" multiple></div>
+      <button class="btn btn-primary" id="btn-procesar-guia">Procesar PDF(s)</button>
     </div>
     <div class="msg" id="guia-msg"></div>
-    <div id="guia-preview-wrap" style="display:none; margin-top:14px;">
-      <div class="hist-wrap" style="max-height:160px; margin-bottom:12px;">
-        <table><tbody id="guia-header-body"></tbody></table>
+    <div id="guia-batch-wrap" style="display:none; margin-top:14px;">
+      <p class="hint" id="guia-batch-resumen" style="margin-bottom:10px;"></p>
+      <div class="hist-wrap" style="max-height:600px;">
+        <table><thead><tr><th>Archivo</th><th>N° guía</th><th>Fecha traslado</th><th>Bultos</th><th>Ítems</th><th>Campaña</th><th>Participante</th><th>Estado</th></tr></thead><tbody id="guia-batch-body"></tbody></table>
       </div>
-      <div style="display:flex; gap:14px; align-items:end; flex-wrap:wrap; margin-bottom:8px;">
-        <div class="field" style="margin:0; max-width:340px; flex:1;">
-          <label>Campaña (reparto) a la que pertenece esta guía *</label>
-          <select id="guia-campana-select"><option value="">— Selecciona una campaña —</option></select>
-        </div>
-        <div class="field" style="margin:0; max-width:220px;">
-          <label>Participante</label>
-          <input type="text" id="guia-participante" class="upper" placeholder="EJ. MAGDALENA">
-        </div>
-        <button class="btn btn-ghost btn-sm" id="btn-sugerir-campana">🔍 Sugerir campaña y participante</button>
-      </div>
-      <div class="hint" id="guia-sugerencias" style="margin-bottom:10px;"></div>
-      <div class="hist-wrap" style="max-height:400px;">
-        <table><thead><tr><th>Item</th><th>Código</th><th>Descripción</th><th>Unidad</th><th>Cantidad</th></tr></thead><tbody id="guia-preview-body"></tbody></table>
-      </div>
-      <div id="guia-duplicado-aviso" style="display:none; margin-top:12px;"></div>
-      <button class="btn btn-primary" id="btn-guardar-guia" style="margin-top:12px;">Guardar guía</button>
+      <button class="btn btn-primary" id="btn-guardar-guias-lote" style="margin-top:12px;">Guardar todas las guías válidas</button>
     </div>
   </div>
   </div>
@@ -776,8 +761,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v43';
-const APP_UPDATED = '26/08/2026 05:45';
+const APP_VERSION = 'v44';
+const APP_UPDATED = '26/08/2026 06:30';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3040,201 +3025,227 @@ function parseGuiaPDF(paginas){
   };
 }
 
-let guiaDuplicadaBloqueada = false;
+let guiaBatch = []; // [{ fileName, resultado:{...}|null, error, correlativoSugerido, participanteSugerido, duplicado:null|{...} }]
 
-async function chequearGuiaDuplicada(nroGuia){
-  const avisoEl = $('guia-duplicado-aviso');
-  guiaDuplicadaBloqueada = false;
-  avisoEl.style.display = 'none';
-  avisoEl.innerHTML = '';
-  $('btn-guardar-guia').disabled = false;
-  if(!nroGuia) return;
-  try{
-    const snap = await guiasRegistrosRef.where('nro_guia','==',nroGuia).limit(5).get();
-    const activaExistente = snap.docs.map(d=>d.data()).find(r=>(r.estado||'ACTIVO')==='ACTIVO');
-    if(activaExistente){
-      guiaDuplicadaBloqueada = true;
-      const puedeForzar = currentPermisos.admin || currentPermisos.eliminar;
-      avisoEl.className = 'msg err';
-      avisoEl.style.display = 'block';
-      avisoEl.innerHTML = `⚠ La guía N° <b>${nroGuia}</b> ya fue cargada antes como <b>${activaExistente.correlativo}</b> (campaña ${activaExistente.campana_correlativo||''}, ${activaExistente.fecha_traslado||''}, cargada por ${activaExistente.usuario||''}). No se puede volver a guardar para evitar duplicados.` +
-        (puedeForzar ? `<br><label style="font-weight:normal; display:flex; align-items:center; gap:6px; margin-top:8px;"><input type="checkbox" id="guia-forzar-duplicado" style="width:auto;">Sé que ya existe y quiero guardarla de todas formas (uso excepcional)</label>` : '');
-      $('btn-guardar-guia').disabled = true;
-      if(puedeForzar){
-        $('guia-forzar-duplicado').addEventListener('change', (e)=>{
-          $('btn-guardar-guia').disabled = !e.target.checked;
-        });
-      }
+// Compara los códigos de una guía contra las campañas activas ya cargadas para
+// sugerir a cuál pertenece, y dentro de esa campaña busca qué participante real
+// aparece en el punto de llegada.
+async function sugerirCampanaYParticipante(resultado){
+  const codigosGuia = new Set(resultado.items.map(it=>it.codigo));
+  const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
+  let mejor = { correlativo:'', pct:0 };
+  for(const campania of activos){
+    let filas = campRegCache[campania.correlativo];
+    if(!filas){
+      const snap = await campanaItemsRef.where('correlativo','==',campania.correlativo).limit(3000).get();
+      filas = snap.docs.map(d=>d.data());
+      campRegCache[campania.correlativo] = filas;
     }
-  }catch(err){
-    console.error(err);
-    avisoEl.className = 'msg err';
-    avisoEl.style.display = 'block';
-    avisoEl.innerHTML = 'No se pudo verificar si esta guía ya existe ('+err.message+'). Revisa manualmente antes de guardar.';
+    const skusCampania = new Set(filas.map(r=>r.sku));
+    let coincidencias = 0;
+    codigosGuia.forEach(c=>{ if(skusCampania.has(c)) coincidencias++; });
+    const pct = codigosGuia.size ? Math.round((coincidencias/codigosGuia.size)*100) : 0;
+    if(pct > mejor.pct) mejor = { correlativo: campania.correlativo, pct };
   }
+  let participanteSugerido = '';
+  if(mejor.correlativo){
+    const filasMejor = campRegCache[mejor.correlativo] || [];
+    const participantesDeEsaCampana = [...new Set(filasMejor.map(f=>f.participante).filter(Boolean))];
+    const textoLlegada = normalizarTexto(resultado.punto_llegada);
+    let mejorMatch = '';
+    participantesDeEsaCampana.forEach(p=>{
+      if(textoLlegada.includes(normalizarTexto(p)) && p.length > mejorMatch.length) mejorMatch = p;
+    });
+    participanteSugerido = mejorMatch;
+  }
+  return { correlativo: mejor.correlativo, pct: mejor.pct, participante: participanteSugerido };
+}
+
+// Busca si ya existe una guía ACTIVA guardada con ese mismo N° de guía (evita duplicados).
+async function buscarGuiaDuplicada(nroGuia){
+  if(!nroGuia) return null;
+  const snap = await guiasRegistrosRef.where('nro_guia','==',nroGuia).limit(5).get();
+  return snap.docs.map(d=>d.data()).find(r=>(r.estado||'ACTIVO')==='ACTIVO') || null;
 }
 
 $('btn-procesar-guia').addEventListener('click', async ()=>{
-  const file = $('guia-pdf-input').files[0];
-  if(!file){ showMsg('guia-msg','err','Selecciona un archivo PDF primero.'); return; }
-  if(!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf'){ showMsg('guia-msg','err','El archivo debe ser un PDF.'); return; }
+  const files = [...$('guia-pdf-input').files];
+  if(files.length === 0){ showMsg('guia-msg','err','Selecciona al menos un archivo PDF.'); return; }
+  const noPdf = files.find(f=> !/\.pdf$/i.test(f.name) && f.type !== 'application/pdf');
+  if(noPdf){ showMsg('guia-msg','err',`"${noPdf.name}" no es un PDF.`); return; }
+
   $('btn-procesar-guia').disabled = true;
-  showMsg('guia-msg','ok','Procesando PDF, un momento…');
-  try{
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    const arrayBuffer = await file.arrayBuffer();
-    const paginas = await extractGuiaLineGroups(arrayBuffer);
-    const resultado = parseGuiaPDF(paginas);
-    if(resultado.items.length === 0){
-      showMsg('guia-msg','err','No se encontraron ítems reconocibles en el PDF. Verifica que sea una guía de remisión con el formato esperado.');
-      $('guia-preview-wrap').style.display = 'none';
-      return;
+  guiaBatch = [];
+  $('guia-batch-wrap').style.display = 'none';
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  for(let i=0;i<files.length;i++){
+    const file = files[i];
+    showMsg('guia-msg','ok', `Procesando ${i+1}/${files.length}: ${file.name}…`);
+    try{
+      const arrayBuffer = await file.arrayBuffer();
+      const paginas = await extractGuiaLineGroups(arrayBuffer);
+      const resultado = parseGuiaPDF(paginas);
+      if(resultado.items.length === 0){
+        guiaBatch.push({ fileName: file.name, resultado: null, error: 'No se reconocieron ítems en este PDF.' });
+      }else{
+        guiaBatch.push({ fileName: file.name, resultado, correlativoSugerido:'', participanteSugerido:'', duplicado:null });
+      }
+    }catch(err){
+      console.error(err);
+      guiaBatch.push({ fileName: file.name, resultado: null, error: err.message });
     }
-    guiaParsedHeader = resultado;
-    guiaParsedItems = resultado.items;
-    $('guia-header-body').innerHTML = `
-      <tr><td><b>N° de guía</b></td><td>${resultado.nro_guia||'—'}</td><td><b>Fecha traslado</b></td><td>${resultado.fecha_traslado||'—'}</td></tr>
-      <tr><td><b>Punto de partida</b></td><td colspan="3">${resultado.punto_partida||'—'}</td></tr>
-      <tr><td><b>Punto de llegada</b></td><td colspan="3">${resultado.punto_llegada||'—'}</td></tr>
-      <tr><td><b>Bultos</b></td><td>${resultado.bultos ?? '—'}</td><td><b>Ítems</b></td><td>${resultado.items.length}</td></tr>`;
-    $('guia-preview-body').innerHTML = resultado.items.map(it=>
-      `<tr><td>${it.item}</td><td>${it.codigo}</td><td>${it.descripcion}</td><td>${it.unidad}</td><td>${it.cantidad}</td></tr>`
-    ).join('');
-    // Repuebla el select de campañas, pero conserva la campaña que ya tenías elegida
-    // (útil cuando subes varias guías seguidas de la misma campaña).
-    const campanaPrevia = $('guia-campana-select').value;
-    const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
-    $('guia-campana-select').innerHTML = '<option value="">— Selecciona una campaña —</option>' +
-      activos.map(r=>`<option value="${r.correlativo}">${r.correlativo} — ${r.campana} (${r.fecha_transaccion||''})</option>`).join('');
-    if(campanaPrevia && activos.some(r=>r.correlativo===campanaPrevia)) $('guia-campana-select').value = campanaPrevia;
-    $('guia-sugerencias').innerHTML = '';
-    $('guia-preview-wrap').style.display = 'block';
-
-    await chequearGuiaDuplicada(resultado.nro_guia);
-
-    showMsg('guia-msg','ok', `PDF procesado: ${resultado.items.length} ítems. Selecciona a qué campaña pertenece.`);
-  }catch(err){
-    console.error(err);
-    showMsg('guia-msg','err','Error al procesar el PDF: '+err.message);
-  }finally{
-    $('btn-procesar-guia').disabled = false;
   }
+
+  showMsg('guia-msg','ok', 'Comparando contra campañas activas y verificando duplicados…');
+  for(const item of guiaBatch){
+    if(!item.resultado) continue;
+    try{
+      const sugerencia = await sugerirCampanaYParticipante(item.resultado);
+      item.correlativoSugerido = sugerencia.correlativo;
+      item.participanteSugerido = sugerencia.participante;
+    }catch(err){ console.error(err); }
+    try{
+      item.duplicado = await buscarGuiaDuplicada(item.resultado.nro_guia);
+    }catch(err){ console.error(err); }
+  }
+
+  renderGuiaBatch();
+  const validas = guiaBatch.filter(it=>it.resultado && !it.duplicado).length;
+  const dups = guiaBatch.filter(it=>it.duplicado).length;
+  const errores = guiaBatch.filter(it=>!it.resultado).length;
+  $('guia-batch-resumen').textContent = `${guiaBatch.length} archivo(s) procesado(s): ${validas} listo(s) para guardar${dups?`, ${dups} ya existían (duplicados)`:''}${errores?`, ${errores} con error`:''}. Revisa/edita campaña y participante de cada uno antes de guardar.`;
+  $('guia-batch-wrap').style.display = 'block';
+  showMsg('guia-msg','ok', `Se procesaron ${guiaBatch.length} archivo(s).`);
+  $('btn-procesar-guia').disabled = false;
 });
 
-$('btn-sugerir-campana').addEventListener('click', async ()=>{
-  if(!guiaParsedItems.length) return;
-  const codigosGuia = new Set(guiaParsedItems.map(it=>it.codigo));
+function renderGuiaBatch(){
   const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
-  if(activos.length===0){ $('guia-sugerencias').textContent = 'No hay campañas activas cargadas para comparar.'; return; }
-  $('btn-sugerir-campana').disabled = true;
-  $('guia-sugerencias').textContent = 'Comparando contra campañas activas…';
-  try{
-    const resultados = [];
-    for(const campania of activos){
-      let filas = campRegCache[campania.correlativo];
-      if(!filas){
-        const snap = await campanaItemsRef.where('correlativo','==',campania.correlativo).limit(3000).get();
-        filas = snap.docs.map(d=>d.data());
-        campRegCache[campania.correlativo] = filas;
-      }
-      const skusCampania = new Set(filas.map(r=>r.sku));
-      let coincidencias = 0;
-      codigosGuia.forEach(c=>{ if(skusCampania.has(c)) coincidencias++; });
-      const pct = codigosGuia.size ? Math.round((coincidencias/codigosGuia.size)*100) : 0;
-      resultados.push({ correlativo: campania.correlativo, campana: campania.campana, coincidencias, total: codigosGuia.size, pct });
-    }
-    resultados.sort((a,b)=> b.pct - a.pct);
-    $('guia-sugerencias').innerHTML = 'Coincidencia de códigos por campaña activa:<br>' + resultados.map(r=>
-      `• <b>${r.correlativo}</b> (${r.campana}) — ${r.coincidencias}/${r.total} códigos coinciden (${r.pct}%)`
-    ).join('<br>');
-    if(resultados.length && resultados[0].pct > 0){
-      const mejorCorrelativo = resultados[0].correlativo;
-      $('guia-campana-select').value = mejorCorrelativo;
-      // Sugerir participante: busca, entre los participantes reales de ESA campaña
-      // (los de la hoja de reparto), cuál aparece dentro del texto del punto de llegada.
-      const filasMejor = campRegCache[mejorCorrelativo] || [];
-      const participantesDeEsaCampana = [...new Set(filasMejor.map(f=>f.participante).filter(Boolean))];
-      const textoLlegada = normalizarTexto(guiaParsedHeader.punto_llegada);
-      let mejorMatch = '';
-      participantesDeEsaCampana.forEach(p=>{
-        if(textoLlegada.includes(normalizarTexto(p)) && p.length > mejorMatch.length) mejorMatch = p;
-      });
-      if(mejorMatch){
-        $('guia-participante').value = mejorMatch;
-        $('guia-sugerencias').innerHTML += `<br>Participante sugerido (según punto de llegada): <b>${mejorMatch}</b>`;
-      }
-    }
-  }catch(err){
-    console.error(err);
-    $('guia-sugerencias').textContent = 'Error al comparar: '+err.message;
-  }finally{
-    $('btn-sugerir-campana').disabled = false;
-  }
-});
+  const opcionesCampana = '<option value="">— Selecciona —</option>' + activos.map(r=>`<option value="${r.correlativo}">${r.correlativo} — ${r.campana}</option>`).join('');
+  const puedeForzar = currentPermisos.admin || currentPermisos.eliminar;
 
-$('btn-guardar-guia').addEventListener('click', async ()=>{
-  if(!guiaParsedItems.length){ showMsg('guia-msg','err','No hay ítems procesados.'); return; }
-  if(guiaDuplicadaBloqueada && !(currentPermisos.admin || currentPermisos.eliminar)){ showMsg('guia-msg','err','Esta guía ya fue cargada antes. No tienes permiso para forzar el guardado.'); return; }
-  const campanaCorrelativo = $('guia-campana-select').value;
-  if(!campanaCorrelativo){ showMsg('guia-msg','err','Selecciona a qué campaña pertenece esta guía.'); return; }
-  const participante = $('guia-participante').value.trim().toUpperCase();
-  const campaniaObj = campRegAllCache.find(r=>r.correlativo===campanaCorrelativo);
-  $('btn-guardar-guia').disabled = true;
-  showMsg('guia-msg','ok','Guardando guía…');
-  try{
-    const correlativoGuia = await generarCorrelativoGuia();
-    const skuDistintos = new Set(guiaParsedItems.map(it=>it.codigo)).size;
-    await guiasRegistrosRef.doc(correlativoGuia).set({
-      correlativo: correlativoGuia,
-      nro_guia: guiaParsedHeader.nro_guia,
-      punto_partida: guiaParsedHeader.punto_partida,
-      punto_llegada: guiaParsedHeader.punto_llegada,
-      fecha_traslado: guiaParsedHeader.fecha_traslado,
-      participante,
-      bultos: guiaParsedHeader.bultos,
-      total_items: guiaParsedItems.length,
-      sku_distintos: skuDistintos,
-      campana_correlativo: campanaCorrelativo,
-      campana_nombre: campaniaObj ? campaniaObj.campana : '',
-      estado: 'ACTIVO',
-      usuario: currentUserAlias,
-      fecha_carga: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    const CHUNK = 400;
-    for(let i=0;i<guiaParsedItems.length;i+=CHUNK){
-      const batch = db.batch();
-      guiaParsedItems.slice(i,i+CHUNK).forEach(it=>{
-        const docRef = guiaItemsRef.doc();
-        batch.set(docRef, {
-          correlativo_guia: correlativoGuia,
-          campana_correlativo: campanaCorrelativo,
-          nro_guia: guiaParsedHeader.nro_guia,
-          participante,
-          fecha_traslado: guiaParsedHeader.fecha_traslado,
-          item: it.item, codigo: it.codigo, descripcion: it.descripcion, unidad: it.unidad, cantidad: it.cantidad,
-          usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      });
-      await batch.commit();
+  $('guia-batch-body').innerHTML = guiaBatch.map((item, idx)=>{
+    if(!item.resultado){
+      return `<tr><td>${item.fileName}</td><td colspan="7" style="color:#8A332A;">⚠ ${item.error||'No se pudo procesar.'}</td></tr>`;
     }
-    await logAccion('guia_remision_cargada', {detalle:`Guía ${correlativoGuia} (N° ${guiaParsedHeader.nro_guia}) asociada a campaña ${campanaCorrelativo}: ${guiaParsedItems.length} ítems`});
-    showMsg('guia-msg','ok', `¡Guardado! Correlativo ${correlativoGuia}.`);
-    showToast(`Guía guardada: ${correlativoGuia}`,'ok');
-    guiaParsedItems = []; guiaParsedHeader = {};
-    $('guia-preview-wrap').style.display = 'none';
-    $('guia-pdf-input').value = '';
-    $('guia-participante').value = '';
-    $('guia-duplicado-aviso').style.display = 'none';
-    $('guia-duplicado-aviso').innerHTML = '';
-    guiaDuplicadaBloqueada = false;
-    $('guia-reg-filtro-estado').value = 'ACTIVO';
-    cargarRegistrosGuias(true);
-  }catch(err){
-    console.error(err);
-    showMsg('guia-msg','err','Error al guardar: '+err.message);
-  }finally{
-    $('btn-guardar-guia').disabled = false;
+    const r = item.resultado;
+    const dupHtml = item.duplicado
+      ? `<span style="color:#8A332A; font-weight:700;">Ya existe (${item.duplicado.correlativo})</span>` +
+        (puedeForzar ? `<br><label style="font-weight:normal; font-size:11px; display:flex; align-items:center; gap:4px; margin-top:4px;"><input type="checkbox" class="guia-batch-forzar" data-idx="${idx}" style="width:auto;">Forzar guardado</label>` : '')
+      : `<span style="color:#245C46;">Nueva ✓</span>`;
+    return `<tr data-idx="${idx}">
+      <td>${item.fileName}</td>
+      <td>${r.nro_guia||'—'}</td>
+      <td>${r.fecha_traslado||'—'}</td>
+      <td>${r.bultos ?? '—'}</td>
+      <td>${r.items.length} <button type="button" class="btn btn-ghost btn-sm guia-batch-ver-items" data-idx="${idx}">Ver</button></td>
+      <td><select class="guia-batch-campana" data-idx="${idx}" style="max-width:220px;">${opcionesCampana}</select></td>
+      <td><input type="text" class="upper guia-batch-participante" data-idx="${idx}" value="${item.participanteSugerido||''}" style="width:130px;"></td>
+      <td>${dupHtml}</td>
+    </tr>
+    <tr class="guia-batch-items-row" data-items-for="${idx}" style="display:none;"><td colspan="8">
+      <table style="margin:6px 0;"><thead><tr><th>Item</th><th>Código</th><th>Descripción</th><th>Unidad</th><th>Cantidad</th></tr></thead><tbody>
+      ${r.items.map(it=>`<tr><td>${it.item}</td><td>${it.codigo}</td><td>${it.descripcion}</td><td>${it.unidad}</td><td>${it.cantidad}</td></tr>`).join('')}
+      </tbody></table>
+    </td></tr>`;
+  }).join('');
+
+  guiaBatch.forEach((item, idx)=>{
+    if(item.resultado && item.correlativoSugerido){
+      const sel = document.querySelector(`.guia-batch-campana[data-idx="${idx}"]`);
+      if(sel) sel.value = item.correlativoSugerido;
+    }
+  });
+
+  document.querySelectorAll('.guia-batch-ver-items').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const idx = btn.dataset.idx;
+      const row = document.querySelector(`[data-items-for="${idx}"]`);
+      const showing = row.style.display !== 'none';
+      row.style.display = showing ? 'none' : 'table-row';
+      btn.textContent = showing ? 'Ver' : 'Ocultar';
+    });
+  });
+}
+
+async function guardarUnaGuia(resultado, campanaCorrelativo, participante){
+  const campaniaObj = campRegAllCache.find(r=>r.correlativo===campanaCorrelativo);
+  const correlativoGuia = await generarCorrelativoGuia();
+  const skuDistintos = new Set(resultado.items.map(it=>it.codigo)).size;
+  await guiasRegistrosRef.doc(correlativoGuia).set({
+    correlativo: correlativoGuia,
+    nro_guia: resultado.nro_guia,
+    punto_partida: resultado.punto_partida,
+    punto_llegada: resultado.punto_llegada,
+    fecha_traslado: resultado.fecha_traslado,
+    participante,
+    bultos: resultado.bultos,
+    total_items: resultado.items.length,
+    sku_distintos: skuDistintos,
+    campana_correlativo: campanaCorrelativo,
+    campana_nombre: campaniaObj ? campaniaObj.campana : '',
+    estado: 'ACTIVO',
+    usuario: currentUserAlias,
+    fecha_carga: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  const CHUNK = 400;
+  for(let i=0;i<resultado.items.length;i+=CHUNK){
+    const batch = db.batch();
+    resultado.items.slice(i,i+CHUNK).forEach(it=>{
+      const docRef = guiaItemsRef.doc();
+      batch.set(docRef, {
+        correlativo_guia: correlativoGuia,
+        campana_correlativo: campanaCorrelativo,
+        nro_guia: resultado.nro_guia,
+        participante,
+        fecha_traslado: resultado.fecha_traslado,
+        item: it.item, codigo: it.codigo, descripcion: it.descripcion, unidad: it.unidad, cantidad: it.cantidad,
+        usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    });
+    await batch.commit();
   }
+  await logAccion('guia_remision_cargada', {detalle:`Correlativo ${correlativoGuia} (N° ${resultado.nro_guia}) asociada a campaña ${campanaCorrelativo}: ${resultado.items.length} ítems`});
+  return correlativoGuia;
+}
+
+$('btn-guardar-guias-lote').addEventListener('click', async ()=>{
+  const filas = [...document.querySelectorAll('#guia-batch-body tr[data-idx]')];
+  if(filas.length === 0){ showMsg('guia-msg','err','No hay guías para guardar.'); return; }
+  $('btn-guardar-guias-lote').disabled = true;
+  let guardadas = 0, omitidas = 0;
+  const detalleOmitidas = [];
+  for(const tr of filas){
+    const idx = Number(tr.dataset.idx);
+    const item = guiaBatch[idx];
+    if(!item || !item.resultado) continue;
+    const selCampana = document.querySelector(`.guia-batch-campana[data-idx="${idx}"]`);
+    const inpParticipante = document.querySelector(`.guia-batch-participante[data-idx="${idx}"]`);
+    const chkForzar = document.querySelector(`.guia-batch-forzar[data-idx="${idx}"]`);
+    const campanaCorrelativo = selCampana ? selCampana.value : '';
+    const participante = inpParticipante ? inpParticipante.value.trim().toUpperCase() : '';
+
+    if(!campanaCorrelativo){ omitidas++; detalleOmitidas.push(`${item.fileName}: falta elegir campaña`); continue; }
+    if(item.duplicado && !(chkForzar && chkForzar.checked)){ omitidas++; detalleOmitidas.push(`${item.fileName}: ya existe, no se forzó`); continue; }
+
+    try{
+      await guardarUnaGuia(item.resultado, campanaCorrelativo, participante);
+      guardadas++;
+    }catch(err){
+      console.error(err);
+      omitidas++;
+      detalleOmitidas.push(`${item.fileName}: error (${err.message})`);
+    }
+  }
+  showMsg('guia-msg', guardadas>0 ? 'ok' : 'err', `Listo: ${guardadas} guía(s) guardada(s)${omitidas?`, ${omitidas} omitida(s)`:''}.`);
+  if(detalleOmitidas.length){ showToast('Omitidas: '+detalleOmitidas.join(' | '),'err'); }
+  guiaBatch = [];
+  $('guia-batch-wrap').style.display = 'none';
+  $('guia-pdf-input').value = '';
+  $('guia-reg-filtro-estado').value = 'ACTIVO';
+  cargarRegistrosGuias(true);
+  $('btn-guardar-guias-lote').disabled = false;
 });
 
 async function cargarRegistrosGuias(reset){
