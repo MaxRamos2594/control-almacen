@@ -705,8 +705,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v38';
-const APP_UPDATED = '26/08/2026 02:15';
+const APP_VERSION = 'v39';
+const APP_UPDATED = '26/08/2026 02:40';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -1360,6 +1360,7 @@ async function agregarProductoAPallet(codigoPallet, prodEl, descEl, costoEl, can
   const producto = prodEl.value.trim().toUpperCase();
   const cantidad = parseFloat(cantEl.value);
   if(!producto){ showToast('Ingresa el código del producto.','err'); return; }
+  if(producto.includes('/')){ showToast('El código de producto no puede contener "/". Usa un guion en su lugar.','err'); return; }
   if(isNaN(cantidad) || cantidad<=0){ showToast('Cantidad inválida.','err'); return; }
   // Si ya existe en el catálogo, sus datos maestros son intocables: se ignora lo escrito en pantalla.
   let descripcion, costo;
@@ -1552,6 +1553,7 @@ $('btn-crear-pallet').addEventListener('click', async ()=>{
     const cantidad = parseFloat(r.querySelector('.it-cant').value);
     const costo = parseFloat(r.querySelector('.it-costo').value);
     if(!producto) continue;
+    if(producto.includes('/')){ showMsg('cp-msg','err',`El código "${producto}" no puede contener "/". Usa un guion en su lugar.`); return; }
     if(isNaN(cantidad) || cantidad<=0){ showMsg('cp-msg','err',`Cantidad inválida para ${producto}.`); return; }
     // Si el producto ya existe en el catálogo, sus datos maestros son intocables: se ignora lo escrito y se usa el catálogo.
     let descFinal = descripcion, costoFinal = costo;
@@ -2086,6 +2088,7 @@ $('btn-guardar-producto').addEventListener('click', async ()=>{
   const empaque1 = empaque1raw ? parseInt(empaque1raw, 10) : null;
   const empaque2 = empaque2raw ? parseInt(empaque2raw, 10) : null;
   if(!codigo){ showMsg('pr-msg','err','Ingresa el código.'); return; }
+  if(codigo.includes('/')){ showMsg('pr-msg','err','El código no puede contener "/". Usa un guion en su lugar (ej. "IP313-314").'); return; }
   if(!descripcion){ showMsg('pr-msg','err','Ingresa la descripción.'); return; }
   if(isNaN(costo) || costo<0){ showMsg('pr-msg','err','Costo inválido.'); return; }
   if(empaque1raw && (isNaN(empaque1) || empaque1<0)){ showMsg('pr-msg','err','Empaque 1 debe ser un número entero.'); return; }
