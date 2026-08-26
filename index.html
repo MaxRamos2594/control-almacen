@@ -705,8 +705,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v39';
-const APP_UPDATED = '26/08/2026 02:40';
+const APP_VERSION = 'v40';
+const APP_UPDATED = '26/08/2026 03:10';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -723,6 +723,13 @@ const nichosRef = db.collection('nichos');
 const posicionesRef = db.collection('posiciones');
 const palletsRef = db.collection('pallets');
 const productosRef = db.collection('productos');
+// Firestore no permite "/" dentro de un ID de documento (lo interpreta como
+// separador de ruta). Estas funciones "disfrazan" la barra con un carácter
+// visualmente casi idéntico (÷ división, U+2215) SOLO para el ID interno del
+// documento, así el usuario puede seguir escribiendo códigos con "/" normal
+// en toda la app (pantallas, exportables, búsquedas, etc.).
+function codigoADocId(codigo){ return (codigo||'').replace(/\//g, '∕'); }
+function docIdACodigo(id){ return (id||'').replace(/∕/g, '/'); }
 const movimientosRef = db.collection('movimientos');
 const usuariosRef = db.collection('usuarios');
 const retirosCampanaRef = db.collection('retiros_campana');
@@ -903,7 +910,7 @@ function startListeners(){
   nichosRef.onSnapshot(snap=>{ nichos={}; snap.forEach(d=>nichos[d.id]=d.data()); checkReady(); renderAll(); }, onErr);
   posicionesRef.onSnapshot(snap=>{ posiciones={}; snap.forEach(d=>posiciones[d.id]=d.data()); checkReady(); renderAll(); }, onErr);
   palletsRef.onSnapshot(snap=>{ pallets={}; snap.forEach(d=>pallets[d.id]=d.data()); checkReady(); renderAll(); }, onErr);
-  productosRef.onSnapshot(snap=>{ productos={}; snap.forEach(d=>productos[d.id]=d.data()); checkReady(); renderProductosTabla(); renderInventario(); }, onErr);
+  productosRef.onSnapshot(snap=>{ productos={}; snap.forEach(d=>productos[docIdACodigo(d.id)]=d.data()); checkReady(); renderProductosTabla(); renderInventario(); }, onErr);
   retirosCampanaRef.orderBy('timestamp','desc').limit(300).onSnapshot(snap=>{
     const body = $('retiros-body');
     if(snap.empty){ body.innerHTML=''; $('retiros-empty').style.display='block'; return; }
@@ -1360,7 +1367,6 @@ async function agregarProductoAPallet(codigoPallet, prodEl, descEl, costoEl, can
   const producto = prodEl.value.trim().toUpperCase();
   const cantidad = parseFloat(cantEl.value);
   if(!producto){ showToast('Ingresa el código del producto.','err'); return; }
-  if(producto.includes('/')){ showToast('El código de producto no puede contener "/". Usa un guion en su lugar.','err'); return; }
   if(isNaN(cantidad) || cantidad<=0){ showToast('Cantidad inválida.','err'); return; }
   // Si ya existe en el catálogo, sus datos maestros son intocables: se ignora lo escrito en pantalla.
   let descripcion, costo;
@@ -1382,7 +1388,7 @@ async function agregarProductoAPallet(codigoPallet, prodEl, descEl, costoEl, can
       else{ items.push({producto, descripcion, cantidad, costo}); }
       tx.update(palletRef, { items, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
       if(!productos[producto]){
-        tx.set(productosRef.doc(producto), { descripcion, costo, empaque1:null, empaque2:null, creado_en: firebase.firestore.FieldValue.serverTimestamp(), creado_por: currentUserEmail });
+        tx.set(productosRef.doc(codigoADocId(producto)), { descripcion, costo, empaque1:null, empaque2:null, creado_en: firebase.firestore.FieldValue.serverTimestamp(), creado_por: currentUserEmail });
       }
       tx.set(kardexRef.doc(), {
         producto, descripcion, costo, cantidad, tipo:'ingreso', motivo:'Producto agregado a pallet', pallet_codigo: codigoPallet, posicion: null,
@@ -1553,7 +1559,6 @@ $('btn-crear-pallet').addEventListener('click', async ()=>{
     const cantidad = parseFloat(r.querySelector('.it-cant').value);
     const costo = parseFloat(r.querySelector('.it-costo').value);
     if(!producto) continue;
-    if(producto.includes('/')){ showMsg('cp-msg','err',`El código "${producto}" no puede contener "/". Usa un guion en su lugar.`); return; }
     if(isNaN(cantidad) || cantidad<=0){ showMsg('cp-msg','err',`Cantidad inválida para ${producto}.`); return; }
     // Si el producto ya existe en el catálogo, sus datos maestros son intocables: se ignora lo escrito y se usa el catálogo.
     let descFinal = descripcion, costoFinal = costo;
@@ -1579,7 +1584,7 @@ $('btn-crear-pallet').addEventListener('click', async ()=>{
       tx.update(destinoRef, { estado:'ocupado', pallet_codigo: codigo, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
       items.forEach(it=>{
         if(!productos[it.producto]){
-          tx.set(productosRef.doc(it.producto), {descripcion:it.descripcion, costo:it.costo, empaque1:null, empaque2:null, creado_en: firebase.firestore.FieldValue.serverTimestamp(), creado_por: currentUserEmail});
+          tx.set(productosRef.doc(codigoADocId(it.producto)), {descripcion:it.descripcion, costo:it.costo, empaque1:null, empaque2:null, creado_en: firebase.firestore.FieldValue.serverTimestamp(), creado_por: currentUserEmail});
         }
       });
       tx.set(movimientosRef.doc(), { pallet_codigo: codigo, origen:null, destino, tipo:'ingreso', usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
@@ -2062,7 +2067,7 @@ $('btn-fus-confirmar').addEventListener('click', async ()=>{
         await batch.commit();
       }
 
-      await productosRef.doc(dup).delete();
+      await productosRef.doc(codigoADocId(dup)).delete();
       await logAccion('producto_fusionado', {pallet_codigo:null, detalle:`Se fusionó ${dup} dentro de ${bueno} (${palletsAfectados.length} pallets, ${campDocs.length} filas de campaña, ${kdxDocs.length} filas de kardex)`});
     }
 
@@ -2088,7 +2093,6 @@ $('btn-guardar-producto').addEventListener('click', async ()=>{
   const empaque1 = empaque1raw ? parseInt(empaque1raw, 10) : null;
   const empaque2 = empaque2raw ? parseInt(empaque2raw, 10) : null;
   if(!codigo){ showMsg('pr-msg','err','Ingresa el código.'); return; }
-  if(codigo.includes('/')){ showMsg('pr-msg','err','El código no puede contener "/". Usa un guion en su lugar (ej. "IP313-314").'); return; }
   if(!descripcion){ showMsg('pr-msg','err','Ingresa la descripción.'); return; }
   if(isNaN(costo) || costo<0){ showMsg('pr-msg','err','Costo inválido.'); return; }
   if(empaque1raw && (isNaN(empaque1) || empaque1<0)){ showMsg('pr-msg','err','Empaque 1 debe ser un número entero.'); return; }
@@ -2106,7 +2110,7 @@ $('btn-guardar-producto').addEventListener('click', async ()=>{
     if(prImagenFile){
       showMsg('pr-msg','ok','Subiendo imagen…');
       const ext = (prImagenFile.name.split('.').pop() || 'jpg').toLowerCase();
-      const path = `productos/${codigo}.${ext}`;
+      const path = `productos/${codigoADocId(codigo)}.${ext}`;
       const ref = storage.ref().child(path);
       await ref.put(prImagenFile);
       imagen_url = await ref.getDownloadURL();
@@ -2114,11 +2118,11 @@ $('btn-guardar-producto').addEventListener('click', async ()=>{
     const payload = { descripcion, costo, proveedor, empaque1, empaque2, imagen_url: imagen_url || null };
     if(existente){
       payload.actualizado = firebase.firestore.FieldValue.serverTimestamp();
-      await productosRef.doc(codigo).update(payload);
+      await productosRef.doc(codigoADocId(codigo)).update(payload);
     }else{
       payload.creado_en = firebase.firestore.FieldValue.serverTimestamp();
       payload.creado_por = currentUserEmail;
-      await productosRef.doc(codigo).set(payload);
+      await productosRef.doc(codigoADocId(codigo)).set(payload);
     }
     await logAccion('producto_registrado', {pallet_codigo:codigo, detalle:`Producto ${codigo} ${existente?'actualizado':'creado'} en catálogo`});
     showMsg('pr-msg','ok', `Producto ${codigo} guardado.`);
