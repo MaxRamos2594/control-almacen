@@ -113,7 +113,6 @@
   .slot.piso-slot.ocupado{background:#1E5F3E; border-color:#123D28; color:#fff;}
   .slot.selected{outline:2px solid var(--blue); outline-offset:1px;}
   .slot.match{outline:2px solid var(--neon); outline-offset:1px; box-shadow:0 0 8px var(--neon); background:var(--neon) !important; color:#0A3D00 !important; font-weight:700;}
-  .slot.vacio-glow{outline:2px solid #F5C518; outline-offset:1px; box-shadow:0 0 6px #F5C518;}
   .slot.dim{opacity:.25;}
   .slot.readonly{cursor:default;}
   .slot.bloqueada{ background:#000; border-color:#000; color:#fff; cursor:not-allowed; }
@@ -281,7 +280,6 @@
         <span><i class="sw" style="background:#4FC3E8; border:1px solid #1E90BE;"></i>Campaña del día</span>
         <span><i class="sw" style="background:#fff; border:2px solid var(--blue);"></i>Seleccionado</span>
         <span><i class="sw" style="background:#fff; border:2px solid var(--neon); box-shadow:0 0 4px var(--neon);"></i>Coincide búsqueda</span>
-        <span><i class="sw" style="background:#fff; border:2px solid #F5C518; box-shadow:0 0 4px #F5C518;"></i>Vacío disponible (sin filtros)</span>
       </div>
       <p class="hint">Clic en una posición para ver detalle y bloquear/desbloquear, o clic derecho para el mismo menú.</p>
       <div class="bloques-scroll" id="mov-bloques"></div>
@@ -634,8 +632,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v33';
-const APP_UPDATED = '25/08/2026 23:10';
+const APP_VERSION = 'v34';
+const APP_UPDATED = '25/08/2026 23:35';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -1355,11 +1353,12 @@ function renderSelects(){
 function renderResumen(){
   const total = Object.keys(posiciones).length;
   const ocupadas = Object.values(posiciones).filter(p=>p.estado==='ocupado').length;
-  const bloqueadas = Object.values(posiciones).filter(p=>p.bloqueada).length;
+  const bloqueadas = Object.values(posiciones).filter(p=>p.bloqueada && !p.campana_dia).length;
+  const campanaDia = Object.values(posiciones).filter(p=>p.bloqueada && p.campana_dia).length;
   const totalBloques = Object.keys(bloques).length;
   const totalNichos = Object.keys(nichos).length;
   const pct = total ? Math.round((ocupadas/total)*100) : 0;
-  $('resumen').innerHTML = `Bloques: ${totalBloques}<br>Nichos: ${totalNichos}<br>Posiciones: ${total}<br>Ocupadas: ${ocupadas} (${pct}%)<br>Bloqueadas: ${bloqueadas}`;
+  $('resumen').innerHTML = `Bloques: ${totalBloques}<br>Nichos: ${totalNichos}<br>Posiciones: ${total}<br>Ocupadas: ${ocupadas} (${pct}%)<br>Bloqueadas: ${bloqueadas}<br>Campaña del día: ${campanaDia}`;
 }
 ['f-buscar','f-bloque','f-estado'].forEach(id=>{ $(id).addEventListener('input', applyFilters); $(id).addEventListener('change', applyFilters); });
 $('btn-clear-filters').addEventListener('click', ()=>{ $('f-buscar').value=''; $('f-bloque').value=''; $('f-estado').value=''; applyFilters(); });
@@ -1389,7 +1388,6 @@ function applyFilters(){
     }
     if(!visible) el.classList.add('dim');
     if(isMatch) el.classList.add('match');
-    if(sinFiltros && p.estado==='vacio' && !p.bloqueada) el.classList.add('vacio-glow');
   });
 }
 
