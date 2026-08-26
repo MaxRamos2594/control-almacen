@@ -12,6 +12,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-storage-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <style>
@@ -714,6 +715,7 @@
         <button class="btn btn-primary" id="btn-ti-confirmar">Confirmar y guardar toma</button>
         <button class="btn btn-ghost" id="btn-ti-regenerar">🎲 Volver a sortear</button>
       </div>
+      <div id="ti-post-guardado" style="display:none; margin-top:12px;"></div>
     </div>
   </div>
 
@@ -726,7 +728,7 @@
       </div>
     </div>
     <div class="hist-wrap" style="max-height:500px;">
-      <table><thead><tr><th>Correlativo</th><th>Fecha</th><th>Solicitadas</th><th>Posiciones</th><th>Líneas a contar</th><th>Estado</th><th>Generado por</th><th></th></tr></thead><tbody id="ti-reg-body"></tbody></table>
+      <table><thead><tr><th>Correlativo</th><th>Fecha</th><th>Solicitadas</th><th>Posiciones</th><th>Líneas a contar</th><th>ERI</th><th>ERU</th><th>Estado</th><th>Generado por</th><th></th><th></th></tr></thead><tbody id="ti-reg-body"></tbody></table>
       <div class="empty-state" id="ti-reg-empty">Aún no hay tomas de inventario.</div>
     </div>
   </div>
@@ -738,7 +740,7 @@
     </h3>
     <div id="ti-conteo-resumen" style="margin-bottom:10px;"></div>
     <div class="hist-wrap" style="max-height:600px;">
-      <table><thead><tr><th>Posición</th><th>Tipo</th><th>Pallet</th><th>Código</th><th>Descripción</th><th>Cant. sistema</th><th>Cant. contada</th><th>Diferencia</th><th></th></tr></thead><tbody id="ti-conteo-body"></tbody></table>
+      <table><thead><tr><th>Posición</th><th>Tipo</th><th>Pallet</th><th>Código</th><th>Descripción</th><th>Cant. sistema</th><th>¿Encontrado?</th><th>Cant. contada</th><th>Diferencia</th><th></th></tr></thead><tbody id="ti-conteo-body"></tbody></table>
     </div>
     <button class="btn btn-primary" id="btn-ti-finalizar" style="margin-top:12px;">Finalizar toma</button>
   </div>
@@ -840,8 +842,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v46';
-const APP_UPDATED = '26/08/2026 08:45';
+const APP_VERSION = 'v47';
+const APP_UPDATED = '26/08/2026 09:40';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3967,6 +3969,8 @@ function generarSeleccionToma(cantidadSolicitada){
 let tiSeleccionActual = null;
 
 $('btn-ti-generar').addEventListener('click', ()=>{
+  $('ti-post-guardado').style.display = 'none';
+  $('ti-post-guardado').innerHTML = '';
   const cantidad = parseInt($('ti-cantidad').value, 10);
   if(!cantidad || cantidad <= 0){ showMsg('ti-msg','err','Ingresa cuántas posiciones quieres inventariar.'); return; }
   const resultado = generarSeleccionToma(cantidad);
@@ -3997,7 +4001,7 @@ $('btn-ti-confirmar').addEventListener('click', async ()=>{
   try{
     const correlativo = await generarCorrelativoToma();
     const hoy = todayLocalStr();
-    await inventarioTomasRef.doc(correlativo).set({
+    const headerData = {
       correlativo,
       fecha: hoy,
       cantidad_solicitada: parseInt($('ti-cantidad').value,10),
@@ -4006,7 +4010,8 @@ $('btn-ti-confirmar').addEventListener('click', async ()=>{
       estado: 'EN_PROCESO',
       generado_por: currentUserAlias,
       generado_en: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    };
+    await inventarioTomasRef.doc(correlativo).set(headerData);
     const CHUNK = 400;
     const filas = tiSeleccionActual.filas;
     for(let i=0;i<filas.length;i+=CHUNK){
@@ -4017,7 +4022,7 @@ $('btn-ti-confirmar').addEventListener('click', async ()=>{
           correlativo_toma: correlativo,
           posicion_id: f.posicion_id, tipo_posicion: f.tipo_posicion, pallet_codigo: f.pallet_codigo,
           producto_codigo: f.producto_codigo, producto_descripcion: f.producto_descripcion,
-          cantidad_sistema: f.cantidad_sistema, cantidad_contada: null, diferencia: null,
+          cantidad_sistema: f.cantidad_sistema, cantidad_contada: null, diferencia: null, encontrado: null,
           estado: 'PENDIENTE', contado_por: null, contado_en: null
         });
       });
@@ -4026,6 +4031,11 @@ $('btn-ti-confirmar').addEventListener('click', async ()=>{
     await logAccion('toma_inventario_generada', {detalle:`Toma ${correlativo}: ${tiSeleccionActual.seleccionPosiciones.length} posiciones, ${filas.length} líneas`});
     showMsg('ti-msg','ok', `¡Guardado! Correlativo ${correlativo}.`);
     showToast(`Toma de inventario generada: ${correlativo}`,'ok');
+    $('ti-post-guardado').style.display = 'block';
+    $('ti-post-guardado').innerHTML = `<button class="btn btn-primary" id="btn-ti-pdf-recien-creada">📄 Generar PDF de conteo físico (${correlativo})</button>`;
+    document.getElementById('btn-ti-pdf-recien-creada').addEventListener('click', ()=>{
+      generarPDFToma(Object.assign({}, headerData, {generado_en:null}), filas.map(f=>Object.assign({correlativo_toma:correlativo}, f)));
+    });
     tiSeleccionActual = null;
     $('ti-preview-wrap').style.display = 'none';
     $('ti-cantidad').value = '';
@@ -4073,7 +4083,7 @@ function renderTomasInventario(){
   }
   $('ti-reg-empty').style.display = 'none';
   $('ti-reg-body').innerHTML = filtradas.map(r=>
-    `<tr><td>${r.correlativo}</td><td>${r.fecha||''}</td><td>${r.cantidad_solicitada??''}</td><td>${r.cantidad_generada??''}</td><td>${r.total_lineas??''}</td><td>${r.estado||''}</td><td>${r.generado_por||''}</td><td><button class="btn btn-sm btn-ver-toma" data-correlativo="${r.correlativo}">Abrir conteo</button></td></tr>`
+    `<tr><td>${r.correlativo}</td><td>${r.fecha||''}</td><td>${r.cantidad_solicitada??''}</td><td>${r.cantidad_generada??''}</td><td>${r.total_lineas??''}</td><td>${r.eri!=null?r.eri+'%':'—'}</td><td>${r.eru!=null?r.eru+'%':'—'}</td><td>${r.estado||''}</td><td>${r.generado_por||''}</td><td><button class="btn btn-sm btn-ver-toma" data-correlativo="${r.correlativo}">Abrir conteo</button></td><td><button class="btn btn-sm btn-ghost btn-pdf-toma" data-correlativo="${r.correlativo}">📄 PDF</button></td></tr>`
   ).join('');
 }
 $('ti-filtro-estado').addEventListener('change', renderTomasInventario);
@@ -4081,31 +4091,148 @@ $('ti-filtro-estado').addEventListener('change', renderTomasInventario);
 let tiConteoActual = null; // { correlativo, items: [{id, ...datos}] }
 
 $('ti-reg-body').addEventListener('click', async (ev)=>{
-  const btn = ev.target.closest('.btn-ver-toma');
-  if(!btn) return;
-  const correlativo = btn.dataset.correlativo;
-  btn.disabled = true; btn.textContent = 'Cargando…';
-  try{
-    const snap = await inventarioTomasItemsRef.where('correlativo_toma','==',correlativo).limit(3000).get();
-    const items = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
-    tiConteoActual = { correlativo, items };
-    renderConteoToma();
-    $('ti-conteo-panel').style.display = 'block';
-    $('ti-conteo-panel').scrollIntoView({behavior:'smooth', block:'start'});
-  }catch(err){
-    console.error(err);
-    showToast('Error al abrir la toma: '+err.message,'err');
-  }finally{
-    btn.disabled = false; btn.textContent = 'Abrir conteo';
+  const btnVer = ev.target.closest('.btn-ver-toma');
+  const btnPdf = ev.target.closest('.btn-pdf-toma');
+
+  if(btnVer){
+    const correlativo = btnVer.dataset.correlativo;
+    btnVer.disabled = true; btnVer.textContent = 'Cargando…';
+    try{
+      const snap = await inventarioTomasItemsRef.where('correlativo_toma','==',correlativo).limit(3000).get();
+      const items = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
+      tiConteoActual = { correlativo, items };
+      renderConteoToma();
+      $('ti-conteo-panel').style.display = 'block';
+      $('ti-conteo-panel').scrollIntoView({behavior:'smooth', block:'start'});
+    }catch(err){
+      console.error(err);
+      showToast('Error al abrir la toma: '+err.message,'err');
+    }finally{
+      btnVer.disabled = false; btnVer.textContent = 'Abrir conteo';
+    }
+    return;
+  }
+
+  if(btnPdf){
+    const correlativo = btnPdf.dataset.correlativo;
+    btnPdf.disabled = true; btnPdf.textContent = 'Generando…';
+    try{
+      const header = tiRegAllCache.find(r=>r.correlativo===correlativo);
+      let items;
+      if(tiConteoActual && tiConteoActual.correlativo===correlativo){
+        items = tiConteoActual.items;
+      }else{
+        const snap = await inventarioTomasItemsRef.where('correlativo_toma','==',correlativo).limit(3000).get();
+        items = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
+      }
+      generarPDFToma(header, items);
+    }catch(err){
+      console.error(err);
+      showToast('Error al generar el PDF: '+err.message,'err');
+    }finally{
+      btnPdf.disabled = false; btnPdf.textContent = '📄 PDF';
+    }
+    return;
   }
 });
 
+// Genera la hoja física de conteo en PDF: cabecera + tabla con columnas en blanco
+// para anotar a mano lo inventariado, y espacio de firma/DNI/nombre al final.
+function generarPDFToma(header, items){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4', orientation:'portrait' });
+  const pageW = doc.internal.pageSize.getWidth();
+  const margin = 10;
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(15);
+  doc.text('TOMA DE INVENTARIO', pageW/2, 15, {align:'center'});
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(10);
+  const correlativo = header ? header.correlativo : (items[0] ? items[0].correlativo_toma : '');
+  const fecha = header ? header.fecha : '';
+  const generadoPor = header ? header.generado_por : '';
+  const totalPos = header ? header.cantidad_generada : new Set(items.map(i=>i.posicion_id)).size;
+  const totalLineas = header ? header.total_lineas : items.length;
+
+  let y = 24;
+  doc.text(`Correlativo: ${correlativo}`, margin, y);
+  doc.text(`Fecha: ${fecha||''}`, pageW-margin, y, {align:'right'});
+  y += 6;
+  doc.text(`Generado por: ${generadoPor||''}`, margin, y);
+  doc.text(`Posiciones: ${totalPos}   Líneas: ${totalLineas}`, pageW-margin, y, {align:'right'});
+  y += 4;
+
+  const filas = items.slice().sort((a,b)=> (a.posicion_id||'').localeCompare(b.posicion_id||'')).map((it,i)=>[
+    i+1, it.posicion_id, it.tipo_posicion==='piso'?'Piso':'Rack', it.pallet_codigo, it.producto_codigo, it.producto_descripcion,
+    String(it.cantidad_sistema), '', ''
+  ]);
+
+  doc.autoTable({
+    startY: y+2,
+    head: [['N°','Posición','Tipo','Pallet','Código','Descripción','Cant. Sistema','Cant. Inventariada','¿Encontrado? (SÍ/NO)']],
+    body: filas,
+    styles: { fontSize: 7.5, cellPadding: 1.4, valign:'middle' },
+    headStyles: { fillColor: [30,58,95], textColor: 255, fontStyle:'bold' },
+    columnStyles: {
+      0: {cellWidth:7}, 1: {cellWidth:16}, 2: {cellWidth:13}, 3: {cellWidth:16},
+      4: {cellWidth:20}, 6: {cellWidth:18, halign:'center'}, 7: {cellWidth:22, halign:'center'}, 8: {cellWidth:26, halign:'center'}
+    },
+    margin: { left: margin, right: margin },
+    didDrawPage: (data)=>{
+      const pageCount = doc.internal.getNumberOfPages();
+      doc.setFontSize(8); doc.setTextColor(120);
+      doc.text(`Página ${data.pageNumber}`, pageW-margin, doc.internal.pageSize.getHeight()-6, {align:'right'});
+      doc.setTextColor(0);
+    }
+  });
+
+  let finalY = doc.lastAutoTable.finalY + 14;
+  const pageH = doc.internal.pageSize.getHeight();
+  if(finalY > pageH - 45){ doc.addPage(); finalY = 20; }
+
+  doc.setDrawColor(120); doc.setLineWidth(0.3);
+  doc.setFont('helvetica','normal'); doc.setFontSize(10);
+
+  doc.line(margin, finalY, margin+80, finalY);
+  doc.text('Firma', margin, finalY+5);
+  doc.line(margin+95, finalY, margin+140, finalY);
+  doc.text('DNI', margin+95, finalY+5);
+
+  finalY += 18;
+  doc.line(margin, finalY, margin+160, finalY);
+  doc.text('Nombre completo de quien tomó el inventario', margin, finalY+5);
+
+  finalY += 18;
+  doc.line(margin, finalY, margin+80, finalY);
+  doc.text('Fecha de conteo', margin, finalY+5);
+
+  doc.save(`toma_inventario_${correlativo}.pdf`);
+  showToast('PDF de conteo físico generado.','ok');
+}
+
 function actualizarResumenConteo(){
   const {correlativo, items} = tiConteoActual;
-  const contadas = items.filter(it=>it.estado==='CONTADO').length;
-  const conDiferencia = items.filter(it=>it.estado==='CONTADO' && Number(it.diferencia)!==0).length;
+  const contadas = items.filter(it=>it.estado==='CONTADO');
+  const conDiferencia = contadas.filter(it=>Number(it.diferencia)!==0).length;
+  const { eri, eru } = calcularEriEru(items);
   $('ti-conteo-titulo').textContent = `Conteo de ${correlativo}`;
-  $('ti-conteo-resumen').innerHTML = `<span class="hint">${contadas}/${items.length} líneas contadas · <b style="color:${conDiferencia>0?'#8A332A':'#245C46'};">${conDiferencia} con diferencia</b></span>`;
+  $('ti-conteo-resumen').innerHTML = `<span class="hint">${contadas.length}/${items.length} líneas contadas · <b style="color:${conDiferencia>0?'#8A332A':'#245C46'};">${conDiferencia} con diferencia</b>` +
+    (contadas.length ? ` · ERI (exactitud de posición): <b>${eri}%</b> · ERU (exactitud de unidades): <b>${eru}%</b>` : '') + `</span>`;
+}
+
+// ERI (Exactitud de Registro de Inventario) = % de líneas contadas donde el producto
+// SÍ se encontró físicamente en su posición.
+// ERU (Exactitud de Registro de Unidades) = de las líneas encontradas, qué tan cerca
+// estuvo la cantidad contada de la cantidad del sistema (1 - diferencia acumulada / sistema acumulado).
+function calcularEriEru(items){
+  const contadas = items.filter(it=>it.estado==='CONTADO');
+  if(contadas.length===0) return { eri: 0, eru: 0 };
+  const encontradas = contadas.filter(it=>it.encontrado !== false);
+  const eri = Math.round((encontradas.length / contadas.length) * 100);
+  let sumaSistema = 0, sumaDif = 0;
+  encontradas.forEach(it=>{ sumaSistema += Number(it.cantidad_sistema)||0; sumaDif += Math.abs(Number(it.diferencia)||0); });
+  const eru = sumaSistema>0 ? Math.max(0, Math.round((1 - sumaDif/sumaSistema)*100)) : 100;
+  return { eri, eru };
 }
 
 function renderConteoToma(){
@@ -4116,14 +4243,30 @@ function renderConteoToma(){
     const dif = contado ? Number(it.diferencia) : null;
     const colorDif = dif==null ? '' : (dif===0 ? '#245C46' : (dif>0 ? '#8A6D1D' : '#8A332A'));
     const textoDif = dif==null ? '—' : (dif===0?'OK':(dif>0?'+'+dif:dif));
+    const encontradoVal = contado ? (it.encontrado===false ? 'no' : 'si') : 'si';
     return `<tr data-idx="${idx}">
       <td>${it.posicion_id}</td><td>${it.tipo_posicion==='piso'?'Piso':'Rack'}</td><td>${it.pallet_codigo}</td>
       <td>${it.producto_codigo}</td><td>${it.producto_descripcion}</td><td>${it.cantidad_sistema}</td>
-      <td><input type="number" class="ti-input-contada" data-idx="${idx}" value="${contado ? it.cantidad_contada : ''}" style="width:90px;" min="0"></td>
+      <td>
+        <select class="ti-select-encontrado" data-idx="${idx}">
+          <option value="si" ${encontradoVal==='si'?'selected':''}>Sí</option>
+          <option value="no" ${encontradoVal==='no'?'selected':''}>No</option>
+        </select>
+      </td>
+      <td><input type="number" class="ti-input-contada" data-idx="${idx}" value="${contado ? it.cantidad_contada : ''}" style="width:80px;" min="0" ${encontradoVal==='no'?'disabled':''}></td>
       <td class="ti-celda-dif" data-idx="${idx}" style="color:${colorDif}; font-weight:700;">${textoDif}</td>
       <td><button type="button" class="btn btn-sm btn-primary btn-ti-guardar-linea" data-idx="${idx}">Guardar</button></td>
     </tr>`;
   }).join('');
+
+  document.querySelectorAll('.ti-select-encontrado').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const idx = sel.dataset.idx;
+      const input = document.querySelector(`.ti-input-contada[data-idx="${idx}"]`);
+      if(sel.value === 'no'){ input.value = '0'; input.disabled = true; }
+      else{ input.disabled = false; }
+    });
+  });
 }
 
 $('ti-conteo-body').addEventListener('click', async (ev)=>{
@@ -4131,8 +4274,10 @@ $('ti-conteo-body').addEventListener('click', async (ev)=>{
   if(!btn) return;
   const idx = Number(btn.dataset.idx);
   const item = tiConteoActual.items[idx];
+  const selEncontrado = document.querySelector(`.ti-select-encontrado[data-idx="${idx}"]`);
+  const encontrado = selEncontrado.value === 'si';
   const input = document.querySelector(`.ti-input-contada[data-idx="${idx}"]`);
-  const valor = input.value.trim();
+  const valor = encontrado ? input.value.trim() : '0';
   if(valor === ''){ showToast('Ingresa la cantidad contada.','err'); return; }
   const cantidadContada = Number(valor);
   if(isNaN(cantidadContada) || cantidadContada<0){ showToast('Cantidad inválida.','err'); return; }
@@ -4140,16 +4285,17 @@ $('ti-conteo-body').addEventListener('click', async (ev)=>{
   btn.disabled = true;
   try{
     await inventarioTomasItemsRef.doc(item.id).update({
-      cantidad_contada: cantidadContada, diferencia, estado: 'CONTADO',
+      cantidad_contada: cantidadContada, diferencia, encontrado, estado: 'CONTADO',
       contado_por: currentUserAlias, contado_en: firebase.firestore.FieldValue.serverTimestamp()
     });
     item.cantidad_contada = cantidadContada;
     item.diferencia = diferencia;
+    item.encontrado = encontrado;
     item.estado = 'CONTADO';
     const celda = document.querySelector(`.ti-celda-dif[data-idx="${idx}"]`);
     const color = diferencia===0 ? '#245C46' : (diferencia>0 ? '#8A6D1D' : '#8A332A');
     celda.style.color = color;
-    celda.textContent = diferencia===0 ? 'OK' : (diferencia>0 ? '+'+diferencia : diferencia);
+    celda.textContent = encontrado ? (diferencia===0 ? 'OK' : (diferencia>0 ? '+'+diferencia : diferencia)) : 'NO ENCONTRADO';
     actualizarResumenConteo();
     showToast('Conteo guardado.','ok');
   }catch(err){
@@ -4173,12 +4319,13 @@ $('btn-ti-finalizar').addEventListener('click', async ()=>{
   try{
     const contadas = tiConteoActual.items.filter(it=>it.estado==='CONTADO').length;
     const conDiferencia = tiConteoActual.items.filter(it=>it.estado==='CONTADO' && Number(it.diferencia)!==0).length;
+    const { eri, eru } = calcularEriEru(tiConteoActual.items);
     await inventarioTomasRef.doc(tiConteoActual.correlativo).update({
-      estado: 'FINALIZADO', contadas, con_diferencia: conDiferencia,
+      estado: 'FINALIZADO', contadas, con_diferencia: conDiferencia, eri, eru,
       finalizado_por: currentUserAlias, finalizado_en: firebase.firestore.FieldValue.serverTimestamp()
     });
-    await logAccion('toma_inventario_finalizada', {detalle:`Toma ${tiConteoActual.correlativo} finalizada: ${contadas} contadas, ${conDiferencia} con diferencia`});
-    showToast(`Toma ${tiConteoActual.correlativo} finalizada.`,'ok');
+    await logAccion('toma_inventario_finalizada', {detalle:`Toma ${tiConteoActual.correlativo} finalizada: ${contadas} contadas, ${conDiferencia} con diferencia, ERI ${eri}%, ERU ${eru}%`});
+    showToast(`Toma ${tiConteoActual.correlativo} finalizada. ERI ${eri}% · ERU ${eru}%`,'ok');
     $('ti-conteo-panel').style.display = 'none';
     tiConteoActual = null;
     $('ti-filtro-estado').value = 'EN_PROCESO';
