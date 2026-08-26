@@ -494,6 +494,7 @@
     <button id="campsub-cargar-guia">🚚 Cargar Guía</button>
     <button id="campsub-registros">🗂 Registros y Detalle</button>
     <button id="campsub-buscar">🔍 Buscar</button>
+    <button id="campsub-analisis">📊 Análisis</button>
   </div>
 
   <div id="campsub-panel-cargar-campana">
@@ -627,6 +628,56 @@
     </div>
   </div>
   </div>
+
+  <div id="campsub-panel-analisis" style="display:none;">
+  <div class="panel">
+    <h3>Análisis: repartido vs. guías de salida</h3>
+    <p class="hint" style="margin-bottom:10px;">Compara lo asignado en la hoja de reparto contra lo que realmente salió en guías de remisión, por campaña y por participante.</p>
+    <div style="display:flex; gap:14px; align-items:end; flex-wrap:wrap; margin-bottom:14px;">
+      <div class="field" style="margin:0; max-width:340px;">
+        <label>Campaña</label>
+        <select id="an-campana-select"><option value="">— Selecciona una campaña —</option></select>
+      </div>
+      <div class="field" style="margin:0; max-width:260px;">
+        <label>Participante</label>
+        <select id="an-participante-select"><option value="">— Todos los participantes —</option></select>
+      </div>
+      <button class="btn btn-primary" id="btn-analizar">Analizar</button>
+    </div>
+    <div class="msg" id="an-msg"></div>
+
+    <div id="an-resultados" style="display:none;">
+      <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:8px;" id="an-kpis"></div>
+
+      <h4 style="font-size:12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; margin:20px 0 8px;">Top 5 SKU con mayor faltante</h4>
+      <div class="hist-wrap" style="max-height:260px; margin-bottom:10px;">
+        <table><thead><tr><th>SKU</th><th>Descripción</th><th>Repartido</th><th>En guía</th><th>Faltan</th></tr></thead><tbody id="an-top-faltantes"></tbody></table>
+      </div>
+
+      <h4 style="font-size:12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; margin:20px 0 8px;">Aporte por guía</h4>
+      <div class="hist-wrap" style="max-height:220px; margin-bottom:10px;">
+        <table><thead><tr><th>Guía</th><th>N° guía</th><th>Unidades aportadas</th><th>% del total en guías</th></tr></thead><tbody id="an-por-guia"></tbody></table>
+      </div>
+
+      <h4 style="font-size:12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; margin:20px 0 8px;">Detalle por SKU</h4>
+      <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
+        <div class="field" style="margin:0; max-width:280px;"><label>Buscar SKU o descripción</label><input type="text" id="an-filtro-sku" class="upper" placeholder="EJ. R4561"></div>
+        <div class="field" style="margin:0; max-width:200px;">
+          <label>Filtrar por estado</label>
+          <select id="an-filtro-estado-sku">
+            <option value="">Todos</option>
+            <option value="faltante">Con faltante</option>
+            <option value="exceso">Con exceso</option>
+            <option value="completo">Completos</option>
+          </select>
+        </div>
+      </div>
+      <div class="hist-wrap" style="max-height:500px;">
+        <table><thead><tr><th>SKU</th><th>Descripción</th><th>Repartido</th><th>En guía</th><th>Diferencia</th><th>Cumplimiento</th></tr></thead><tbody id="an-detalle-body"></tbody></table>
+      </div>
+    </div>
+  </div>
+  </div>
 </div>
 
 <!-- KARDEX -->
@@ -724,8 +775,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v41';
-const APP_UPDATED = '26/08/2026 04:00';
+const APP_VERSION = 'v42';
+const APP_UPDATED = '26/08/2026 05:15';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -879,7 +930,7 @@ $('subtab-transferir').addEventListener('click', ()=>setSubtab('transferir'));
 $('subtab-retirar-campana').addEventListener('click', ()=>setSubtab('retirar-campana'));
 
 function setCampanasSubtab(name){
-  ['cargar-campana','cargar-guia','registros','buscar'].forEach(n=>{
+  ['cargar-campana','cargar-guia','registros','buscar','analisis'].forEach(n=>{
     $('campsub-'+n).classList.toggle('active', n===name);
     $('campsub-panel-'+n).style.display = (n===name) ? 'block' : 'none';
   });
@@ -888,6 +939,7 @@ $('campsub-cargar-campana').addEventListener('click', ()=>setCampanasSubtab('car
 $('campsub-cargar-guia').addEventListener('click', ()=>setCampanasSubtab('cargar-guia'));
 $('campsub-registros').addEventListener('click', ()=>setCampanasSubtab('registros'));
 $('campsub-buscar').addEventListener('click', ()=>setCampanasSubtab('buscar'));
+$('campsub-analisis').addEventListener('click', ()=>{ setCampanasSubtab('analisis'); poblarSelectCampanasAnalisis(); });
 
 /* -------------------- Utilidades -------------------- */
 function indexToLetter(n){ n=n+1; let s=''; while(n>0){ n--; s=String.fromCharCode(65+(n%26))+s; n=Math.floor(n/26);} return s; }
@@ -3251,6 +3303,178 @@ $('guia-reg-body').addEventListener('click', async (ev)=>{
     return;
   }
 });
+
+/* -------------------- Análisis: Repartido vs. Guías -------------------- */
+let anGuiaPorCampanaCache = {};
+let anUltimoResultado = null;
+
+async function poblarSelectCampanasAnalisis(){
+  const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
+  const valorActual = $('an-campana-select').value;
+  $('an-campana-select').innerHTML = '<option value="">— Selecciona una campaña —</option>' +
+    activos.map(r=>`<option value="${r.correlativo}">${r.correlativo} — ${r.campana} (${r.fecha_transaccion||''})</option>`).join('');
+  if(valorActual) $('an-campana-select').value = valorActual;
+}
+
+$('an-campana-select').addEventListener('change', async ()=>{
+  const correlativo = $('an-campana-select').value;
+  $('an-participante-select').innerHTML = '<option value="">— Todos los participantes —</option>';
+  $('an-resultados').style.display = 'none';
+  if(!correlativo) return;
+  try{
+    let filas = campRegCache[correlativo];
+    if(!filas){
+      const snap = await campanaItemsRef.where('correlativo','==',correlativo).limit(3000).get();
+      filas = snap.docs.map(d=>d.data());
+      campRegCache[correlativo] = filas;
+    }
+    const participantes = [...new Set(filas.map(f=>f.participante).filter(Boolean))].sort();
+    $('an-participante-select').innerHTML = '<option value="">— Todos los participantes —</option>' +
+      participantes.map(p=>`<option value="${p}">${p}</option>`).join('');
+  }catch(err){
+    console.error(err);
+    showToast('Error al cargar participantes: '+err.message,'err');
+  }
+});
+
+$('btn-analizar').addEventListener('click', async ()=>{
+  const correlativo = $('an-campana-select').value;
+  if(!correlativo){ showMsg('an-msg','err','Selecciona una campaña primero.'); return; }
+  const participanteFiltro = $('an-participante-select').value;
+  $('btn-analizar').disabled = true;
+  showMsg('an-msg','ok','Analizando…');
+  try{
+    let filasReparto = campRegCache[correlativo];
+    if(!filasReparto){
+      const snap = await campanaItemsRef.where('correlativo','==',correlativo).limit(3000).get();
+      filasReparto = snap.docs.map(d=>d.data());
+      campRegCache[correlativo] = filasReparto;
+    }
+    let filasGuia = anGuiaPorCampanaCache[correlativo];
+    if(!filasGuia){
+      const snap = await guiaItemsRef.where('campana_correlativo','==',correlativo).limit(5000).get();
+      filasGuia = snap.docs.map(d=>d.data());
+      anGuiaPorCampanaCache[correlativo] = filasGuia;
+    }
+    if(participanteFiltro){
+      filasReparto = filasReparto.filter(f=>f.participante===participanteFiltro);
+      filasGuia = filasGuia.filter(f=>f.participante===participanteFiltro);
+    }
+    const resultado = calcularAnalisisCumplimiento(filasReparto, filasGuia);
+    renderAnalisis(resultado, participanteFiltro || 'Todos los participantes');
+    $('an-msg').style.display = 'none';
+  }catch(err){
+    console.error(err);
+    showMsg('an-msg','err','Error al analizar: '+err.message);
+  }finally{
+    $('btn-analizar').disabled = false;
+  }
+});
+
+function calcularAnalisisCumplimiento(filasReparto, filasGuia){
+  const porSku = {};
+  filasReparto.forEach(f=>{
+    const key = f.sku;
+    if(!key) return;
+    if(!porSku[key]) porSku[key] = {sku:key, descripcion:f.producto||'', repartido:0, guia:0};
+    porSku[key].repartido += Number(f.cantidad)||0;
+  });
+  filasGuia.forEach(f=>{
+    const key = f.codigo;
+    if(!key) return;
+    if(!porSku[key]) porSku[key] = {sku:key, descripcion:f.descripcion||'', repartido:0, guia:0};
+    porSku[key].guia += Number(f.cantidad)||0;
+    if(!porSku[key].descripcion) porSku[key].descripcion = f.descripcion||'';
+  });
+  const filas = Object.values(porSku).map(r=>{
+    const diferencia = r.repartido - r.guia; // positivo = falta enviar, negativo = se envió de más
+    const pct = r.repartido>0 ? Math.round((r.guia/r.repartido)*100) : (r.guia>0 ? 100 : 0);
+    return Object.assign({}, r, {diferencia, pct});
+  });
+
+  const totalRepartido = filas.reduce((a,r)=>a+r.repartido,0);
+  const totalGuia = filas.reduce((a,r)=>a+r.guia,0);
+  const pctGlobal = totalRepartido>0 ? Math.round((totalGuia/totalRepartido)*100) : 0;
+  const skusFaltantes = filas.filter(r=>r.diferencia>0);
+  const skusExceso = filas.filter(r=>r.diferencia<0);
+  const skusCompletos = filas.filter(r=>r.diferencia===0 && r.repartido>0);
+
+  const porGuia = {};
+  filasGuia.forEach(f=>{
+    const key = f.correlativo_guia;
+    if(!key) return;
+    if(!porGuia[key]) porGuia[key] = {correlativo:key, nro:f.nro_guia, cantidad:0};
+    porGuia[key].cantidad += Number(f.cantidad)||0;
+  });
+
+  return {
+    filas, totalRepartido, totalGuia, pctGlobal,
+    skusFaltantes, skusExceso, skusCompletos,
+    porGuiaArr: Object.values(porGuia).sort((a,b)=>b.cantidad-a.cantidad)
+  };
+}
+
+function renderAnalisis(resultado, etiquetaAlcance){
+  anUltimoResultado = resultado;
+  $('an-resultados').style.display = 'block';
+
+  const kpiHtml = (titulo, valor, color)=>`
+    <div style="flex:1; min-width:150px; background:#fff; border:1px solid var(--line-strong); border-radius:8px; padding:14px 16px;">
+      <div style="font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;">${titulo}</div>
+      <div style="font-size:22px; font-weight:800; color:${color||'var(--ink)'};">${valor}</div>
+    </div>`;
+  $('an-kpis').innerHTML =
+    kpiHtml('Alcance', etiquetaAlcance) +
+    kpiHtml('Repartido (hoja)', resultado.totalRepartido.toLocaleString('es-PE')) +
+    kpiHtml('En guías (salida)', resultado.totalGuia.toLocaleString('es-PE')) +
+    kpiHtml('Cumplimiento', resultado.pctGlobal+'%', resultado.pctGlobal>=100 ? '#245C46' : (resultado.pctGlobal>=80 ? '#8A6D1D' : '#8A332A')) +
+    kpiHtml('SKU con faltante', resultado.skusFaltantes.length, resultado.skusFaltantes.length>0 ? '#8A332A' : undefined) +
+    kpiHtml('SKU con exceso', resultado.skusExceso.length, resultado.skusExceso.length>0 ? '#8A6D1D' : undefined);
+
+  const topFaltantes = resultado.filas.filter(r=>r.diferencia>0).sort((a,b)=>b.diferencia-a.diferencia).slice(0,5);
+  $('an-top-faltantes').innerHTML = topFaltantes.length
+    ? topFaltantes.map(r=>`<tr><td>${r.sku}</td><td>${r.descripcion}</td><td>${r.repartido}</td><td>${r.guia}</td><td style="color:#8A332A; font-weight:700;">${r.diferencia}</td></tr>`).join('')
+    : `<tr><td colspan="5" style="text-align:center; color:var(--ink-soft);">Sin faltantes — todo lo repartido salió en guía. 🎉</td></tr>`;
+
+  const totalGuiaGlobal = resultado.totalGuia || 1;
+  $('an-por-guia').innerHTML = resultado.porGuiaArr.length
+    ? resultado.porGuiaArr.map(g=>`<tr><td>${g.correlativo}</td><td>${g.nro||''}</td><td>${g.cantidad}</td><td>${Math.round((g.cantidad/totalGuiaGlobal)*100)}%</td></tr>`).join('')
+    : `<tr><td colspan="4" style="text-align:center; color:var(--ink-soft);">No hay guías cargadas para este alcance.</td></tr>`;
+
+  renderTablaDetalleAnalisis();
+}
+
+function renderTablaDetalleAnalisis(){
+  if(!anUltimoResultado) return;
+  const filtro = ($('an-filtro-sku').value||'').trim().toUpperCase();
+  const filtroEstado = $('an-filtro-estado-sku').value;
+  let filas = anUltimoResultado.filas.slice().sort((a,b)=> b.diferencia - a.diferencia);
+  if(filtro) filas = filas.filter(r=> r.sku.toUpperCase().includes(filtro) || (r.descripcion||'').toUpperCase().includes(filtro));
+  if(filtroEstado==='faltante') filas = filas.filter(r=>r.diferencia>0);
+  else if(filtroEstado==='exceso') filas = filas.filter(r=>r.diferencia<0);
+  else if(filtroEstado==='completo') filas = filas.filter(r=>r.diferencia===0);
+
+  $('an-detalle-body').innerHTML = filas.length ? filas.map(r=>{
+    const pctClamp = Math.max(0, Math.min(100, r.pct));
+    const colorBarra = r.diferencia>0 ? '#C0392B' : (r.diferencia<0 ? '#D4A017' : '#2E7D46');
+    const textoDif = r.diferencia>0 ? ('Faltan '+r.diferencia) : (r.diferencia<0 ? ('Exceso '+Math.abs(r.diferencia)) : 'Completo');
+    const colorDif = r.diferencia>0 ? '#8A332A' : (r.diferencia<0 ? '#8A6D1D' : '#245C46');
+    return `<tr>
+      <td>${r.sku}</td><td>${r.descripcion}</td><td>${r.repartido}</td><td>${r.guia}</td>
+      <td style="color:${colorDif}; font-weight:700;">${textoDif}</td>
+      <td>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="background:#eee; border-radius:4px; overflow:hidden; height:14px; width:100px; flex-shrink:0;">
+            <div style="background:${colorBarra}; height:100%; width:${pctClamp}%;"></div>
+          </div>
+          <span style="font-size:11px; color:var(--ink-soft);">${r.pct}%</span>
+        </div>
+      </td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="6" style="text-align:center; color:var(--ink-soft);">Sin resultados para ese filtro.</td></tr>`;
+}
+$('an-filtro-sku').addEventListener('input', renderTablaDetalleAnalisis);
+$('an-filtro-estado-sku').addEventListener('change', renderTablaDetalleAnalisis);
 
 /* -------------------- Paneles colapsables -------------------- */
 function setupCollapsiblePanels(){
