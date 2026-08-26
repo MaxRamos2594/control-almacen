@@ -354,6 +354,7 @@
       <h3>Registrar / actualizar producto</h3>
       <div class="field"><label>Código</label><input type="text" id="pr-codigo" class="upper" placeholder="COD."></div>
       <div class="field"><label>Descripción</label><input type="text" id="pr-desc" class="upper"></div>
+      <div class="hint" id="pr-dup-warning" style="display:none; color:#8A332A; margin-bottom:10px; line-height:1.6;"></div>
       <div class="field"><label>Costo</label><input type="number" id="pr-costo" step="0.01" min="0"></div>
       <div class="field"><label>Proveedor</label><input type="text" id="pr-proveedor" class="upper" placeholder="EJ. DISTRIBUIDORA XYZ"></div>
       <div class="field"><label>Empaque 1 (unidades)</label><input type="number" id="pr-emp1" step="1" min="0" placeholder="EJ. 24"></div>
@@ -381,6 +382,25 @@
         <div class="empty-state" id="prod-empty">Sin productos registrados aún.</div>
       </div>
     </div>
+  </div>
+
+  <div class="panel hidden-perm" id="fusion-panel" style="margin-top:14px;">
+    <h3>Fusionar productos duplicados</h3>
+    <p class="hint" style="margin-bottom:10px;">Úsalo cuando dos o más códigos representen el mismo producto (ej. SAND-SUR, SAND-SURT, SAND-SURTI). Todo lo que esté a nombre de los códigos duplicados — pallets, inventario, historial de Kardex y filas de Campañas — pasa a pertenecer al código bueno, y los duplicados se eliminan del catálogo. <b>Es irreversible.</b></p>
+    <div style="display:flex; gap:20px; flex-wrap:wrap;">
+      <div style="min-width:260px;">
+        <div class="field"><label>Código BUENO (el que se mantiene)</label><input type="text" id="fus-bueno" class="upper" placeholder="EJ. SAND-SUR"></div>
+      </div>
+      <div style="min-width:280px; flex:1;">
+        <label style="font-size:12px; color:var(--ink-soft); display:block; margin-bottom:6px;">Códigos DUPLICADOS (se eliminan y su contenido pasa al bueno)</label>
+        <div id="fus-duplicados-body"></div>
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-fus-add">+ Agregar código duplicado</button>
+      </div>
+    </div>
+    <div class="msg" id="fus-msg"></div>
+    <button class="btn btn-primary" id="btn-fus-analizar" style="margin-top:10px;">Analizar</button>
+    <div id="fus-resumen" style="display:none; margin-top:14px;"></div>
+    <button class="btn" id="btn-fus-confirmar" style="display:none; margin-top:12px; background:#8A332A; color:#fff;">Confirmar fusión (irreversible)</button>
   </div>
 </div>
 
@@ -632,8 +652,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v34';
-const APP_UPDATED = '25/08/2026 23:35';
+const APP_VERSION = 'v36';
+const APP_UPDATED = '26/08/2026 00:30';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -749,6 +769,7 @@ function applyPermisosUI(){
   });
   $('op-panel').classList.toggle('hidden-perm', !map.mov);
   $('prod-form-panel').classList.toggle('hidden-perm', !map.productos);
+  $('fusion-panel').classList.toggle('hidden-perm', !(admin || !!p.eliminar));
   const activeBtn = document.querySelector('nav.tabs button.active');
   const activeTab = activeBtn ? activeBtn.dataset.tab : null;
   if(!activeTab || !map[activeTab]){
@@ -1234,12 +1255,13 @@ function renderDetalle(id, p){
   if(!pal){ content.innerHTML = `<div class="empty-state">Cargando datos del pallet…</div>`; return; }
   let totalCant=0, totalCosto=0;
   const rows = (pal.items||[]).map(it=>{
-    // Costo en vivo desde el catálogo de productos si existe; si el producto
-    // ya no está en el catálogo, se usa el costo guardado en el pallet como respaldo.
+    // Costo y descripción en vivo desde el catálogo de productos si existe; si el
+    // producto ya no está en el catálogo, se usa lo guardado en el pallet como respaldo.
     const costoVivo = productos[it.producto] ? (Number(productos[it.producto].costo)||0) : (Number(it.costo)||0);
+    const descVivo = productos[it.producto] ? (productos[it.producto].descripcion || '') : (it.descripcion || '');
     totalCant += Number(it.cantidad)||0;
     totalCosto += (Number(it.cantidad)||0)*costoVivo;
-    return `<tr><td>${it.producto}</td><td>${it.descripcion||''}</td><td>${it.cantidad}</td><td>${fmtMoney(costoVivo)}</td></tr>`;
+    return `<tr><td>${it.producto}</td><td>${descVivo}</td><td>${it.cantidad}</td><td>${fmtMoney(costoVivo)}</td></tr>`;
   }).join('');
   content.innerHTML = `
     <div style="font-family:var(--mono); font-size:13px; margin-bottom:6px;"><b>${id}</b> · Pallet ${p.pallet_codigo}</div>
@@ -1647,6 +1669,7 @@ function computeInventario(){
     inv[codigo].costo = costo;
     inv[codigo].costoTotal = costo * inv[codigo].total;
     inv[codigo].proveedor = prod ? (prod.proveedor || '') : '';
+    if(prod && prod.descripcion) inv[codigo].descripcion = prod.descripcion;
   });
   return inv;
 }
@@ -1728,7 +1751,7 @@ function computePalletDetalle(){
         pallet: codigo,
         posicion: posId,
         codigo: it.producto || '',
-        descripcion: it.descripcion || '',
+        descripcion: productos[it.producto] ? (productos[it.producto].descripcion || '') : (it.descripcion || ''),
         costo: productos[it.producto] ? (Number(productos[it.producto].costo)||0) : (Number(it.costo)||0),
         cantidad: Number(it.cantidad)||0
       });
@@ -1846,6 +1869,155 @@ $('pr-codigo').addEventListener('blur', ()=>{
   }else{
     $('pr-load-hint').textContent = `${codigo} no existe todavía — se creará como producto nuevo.`;
     $('pr-load-hint').style.color = '';
+  }
+  chequearPosiblesDuplicados();
+});
+
+/* -------------------- Prevención: aviso de posibles productos duplicados -------------------- */
+function normalizarTexto(s){
+  return (s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+}
+function normalizarPalabra(w){
+  return (w.length>4 && w.endsWith('S')) ? w.slice(0,-1) : w; // des-pluraliza simple: SANDALIAS -> SANDALIA
+}
+function similitudDescripciones(descA, descB){
+  const wa = new Set(normalizarTexto(descA).split(/\s+/).filter(w=>w.length>2).map(normalizarPalabra));
+  const wb = new Set(normalizarTexto(descB).split(/\s+/).filter(w=>w.length>2).map(normalizarPalabra));
+  if(wa.size===0 || wb.size===0) return 0;
+  let inter=0; wa.forEach(w=>{ if(wb.has(w)) inter++; });
+  const union = new Set([...wa,...wb]).size;
+  return union ? inter/union : 0;
+}
+function prefijoCodigo(c){ const m=(c||'').match(/^[A-Z]+/); return m?m[0]:''; }
+function chequearPosiblesDuplicados(){
+  const warnEl = $('pr-dup-warning');
+  const codigo = $('pr-codigo').value.trim().toUpperCase();
+  const desc = $('pr-desc').value.trim();
+  // Solo avisa cuando se está creando un código NUEVO (si ya existe, es una edición normal).
+  if(!desc || (codigo && productos[codigo])){ warnEl.style.display='none'; warnEl.innerHTML=''; return; }
+  const prefNuevo = prefijoCodigo(codigo);
+  const candidatos = Object.entries(productos)
+    .filter(([c])=> c!==codigo)
+    .map(([c,p])=>{
+      const score = similitudDescripciones(desc, p.descripcion);
+      const mismoPrefijo = prefNuevo && prefNuevo.length>=3 && prefijoCodigo(c)===prefNuevo;
+      return { codigo:c, descripcion:p.descripcion||'', score, mismoPrefijo };
+    })
+    .filter(x=> x.score >= 0.4 || x.mismoPrefijo)
+    .sort((a,b)=> (b.score+(b.mismoPrefijo?0.3:0)) - (a.score+(a.mismoPrefijo?0.3:0)))
+    .slice(0,5);
+  if(candidatos.length===0){ warnEl.style.display='none'; warnEl.innerHTML=''; return; }
+  warnEl.style.display='block';
+  warnEl.innerHTML = `⚠ Ya existen productos parecidos — verifica que no sea el mismo antes de crear uno nuevo:<br>` +
+    candidatos.map(c=>`• <b>${c.codigo}</b> — ${c.descripcion}`).join('<br>');
+}
+$('pr-desc').addEventListener('blur', chequearPosiblesDuplicados);
+$('pr-desc').addEventListener('input', chequearPosiblesDuplicados);
+
+/* -------------------- Fusionar productos duplicados -------------------- */
+function addFusDupRow(){
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex; gap:8px; align-items:center; margin-bottom:6px;';
+  row.innerHTML = `<input type="text" class="upper fus-dup-input" placeholder="CÓDIGO DUPLICADO" style="flex:1;"><button type="button" class="btn btn-ghost btn-sm fus-dup-remove">✕</button>`;
+  $('fus-duplicados-body').appendChild(row);
+  row.querySelector('.fus-dup-remove').addEventListener('click', ()=> row.remove());
+}
+$('btn-fus-add').addEventListener('click', addFusDupRow);
+addFusDupRow();
+
+let fusAnalisis = null;
+
+$('btn-fus-analizar').addEventListener('click', async ()=>{
+  const bueno = $('fus-bueno').value.trim().toUpperCase();
+  const duplicados = [...document.querySelectorAll('.fus-dup-input')].map(i=>i.value.trim().toUpperCase()).filter(Boolean);
+  fusAnalisis = null;
+  $('fus-resumen').style.display = 'none';
+  $('btn-fus-confirmar').style.display = 'none';
+  if(!bueno){ showMsg('fus-msg','err','Ingresa el código bueno (el que se mantiene).'); return; }
+  if(!productos[bueno]){ showMsg('fus-msg','err',`${bueno} no existe en el catálogo de productos.`); return; }
+  if(duplicados.length===0){ showMsg('fus-msg','err','Agrega al menos un código duplicado.'); return; }
+  if(duplicados.includes(bueno)){ showMsg('fus-msg','err','El código bueno no puede estar también en la lista de duplicados.'); return; }
+  const faltantes = duplicados.filter(d=>!productos[d]);
+  if(faltantes.length){ showMsg('fus-msg','err',`Estos códigos no existen en el catálogo: ${faltantes.join(', ')}`); return; }
+
+  $('btn-fus-analizar').disabled = true;
+  showMsg('fus-msg','ok','Analizando…');
+  try{
+    const resumenPorDup = [];
+    for(const dup of duplicados){
+      const palletsAfectados = Object.entries(pallets).filter(([,p])=>(p.items||[]).some(it=>it.producto===dup));
+      let unidadesEnPallets = 0;
+      palletsAfectados.forEach(([,p])=> p.items.forEach(it=>{ if(it.producto===dup) unidadesEnPallets += Number(it.cantidad)||0; }));
+      const campSnap = await campanaItemsRef.where('sku','==',dup).limit(5000).get();
+      const kdxSnap = await kardexRef.where('producto','==',dup).limit(5000).get();
+      resumenPorDup.push({ codigo: dup, pallets: palletsAfectados.length, unidadesEnPallets, campanaFilas: campSnap.size, kardexFilas: kdxSnap.size });
+    }
+    fusAnalisis = { bueno, duplicados, resumenPorDup };
+    $('fus-resumen').style.display = 'block';
+    $('fus-resumen').innerHTML = `
+      <p class="hint" style="margin-bottom:8px;">Se actualizará todo esto para que pase a pertenecer a <b>${bueno}</b> — ${productos[bueno].descripcion || ''}:</p>
+      <table><thead><tr><th>Código duplicado</th><th>Pallets afectados</th><th>Unidades en esos pallets</th><th>Filas en Campañas</th><th>Filas en Kardex</th></tr></thead><tbody>
+      ${resumenPorDup.map(r=>`<tr><td>${r.codigo}</td><td>${r.pallets}</td><td>${r.unidadesEnPallets}</td><td>${r.campanaFilas}</td><td>${r.kardexFilas}</td></tr>`).join('')}
+      </tbody></table>`;
+    $('btn-fus-confirmar').style.display = 'inline-block';
+    showMsg('fus-msg','ok','Análisis listo. Revisa los números y confirma si está todo correcto.');
+  }catch(err){
+    console.error(err);
+    showMsg('fus-msg','err','Error al analizar: '+err.message);
+  }finally{
+    $('btn-fus-analizar').disabled = false;
+  }
+});
+
+$('btn-fus-confirmar').addEventListener('click', async ()=>{
+  if(!fusAnalisis) return;
+  if(!(currentPermisos.admin || currentPermisos.eliminar)){ showToast('No tienes permiso para esta acción.','err'); return; }
+  const { bueno, duplicados } = fusAnalisis;
+  const ok = confirm(`Esto es IRREVERSIBLE. Se fusionarán ${duplicados.join(', ')} dentro de ${bueno} en todos los pallets, campañas y el Kardex, y los códigos duplicados se eliminarán del catálogo. ¿Continuar?`);
+  if(!ok) return;
+  $('btn-fus-confirmar').disabled = true;
+  showMsg('fus-msg','ok','Fusionando, esto puede tardar unos segundos…');
+  try{
+    const buenoDesc = productos[bueno].descripcion || '';
+    const buenoCosto = productos[bueno].costo ?? null;
+
+    for(const dup of duplicados){
+      const palletsAfectados = Object.entries(pallets).filter(([,p])=>(p.items||[]).some(it=>it.producto===dup));
+      for(const [codigoPallet, p] of palletsAfectados){
+        const nuevosItems = p.items.map(it => it.producto===dup ? {...it, producto:bueno, descripcion:buenoDesc, costo:buenoCosto} : it);
+        await palletsRef.doc(codigoPallet).update({ items: nuevosItems, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
+      }
+
+      const campSnap = await campanaItemsRef.where('sku','==',dup).limit(5000).get();
+      const campDocs = campSnap.docs;
+      for(let i=0;i<campDocs.length;i+=400){
+        const batch = db.batch();
+        campDocs.slice(i,i+400).forEach(d=> batch.update(d.ref, { sku: bueno, producto: buenoDesc }));
+        await batch.commit();
+      }
+
+      const kdxSnap = await kardexRef.where('producto','==',dup).limit(5000).get();
+      const kdxDocs = kdxSnap.docs;
+      for(let i=0;i<kdxDocs.length;i+=400){
+        const batch = db.batch();
+        kdxDocs.slice(i,i+400).forEach(d=> batch.update(d.ref, { producto: bueno, descripcion: buenoDesc }));
+        await batch.commit();
+      }
+
+      await productosRef.doc(dup).delete();
+      await logAccion('producto_fusionado', {pallet_codigo:null, detalle:`Se fusionó ${dup} dentro de ${bueno} (${palletsAfectados.length} pallets, ${campDocs.length} filas de campaña, ${kdxDocs.length} filas de kardex)`});
+    }
+
+    showMsg('fus-msg','ok', `Fusión completa. ${duplicados.join(', ')} ahora forman parte de ${bueno}.`);
+    showToast('Fusión de productos completada.','ok');
+    fusAnalisis = null;
+    $('fus-bueno').value=''; $('fus-duplicados-body').innerHTML=''; addFusDupRow();
+    $('fus-resumen').style.display='none'; $('btn-fus-confirmar').style.display='none';
+  }catch(err){
+    console.error(err);
+    showMsg('fus-msg','err','Error durante la fusión: '+err.message);
+  }finally{
+    $('btn-fus-confirmar').disabled = false;
   }
 });
 $('btn-guardar-producto').addEventListener('click', async ()=>{
