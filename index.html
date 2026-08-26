@@ -535,6 +535,59 @@
     </div>
   </div>
 
+  <div class="panel" style="margin-bottom:14px;">
+    <h3>Cargar Guía de Remisión (salida)</h3>
+    <p class="hint" style="margin-bottom:10px;">Sube la guía de remisión en PDF. Se extrae punto de partida, punto de llegada, N° de guía, ítems (código, descripción, unidad, cantidad) y bultos — el PDF no se guarda, solo esta información. Cada guía debe asociarse a una campaña (reparto) ya cargada.</p>
+    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
+      <div class="field" style="margin:0; max-width:340px;"><label>Archivo PDF (guía de remisión)</label><input type="file" id="guia-pdf-input" accept="application/pdf"></div>
+      <button class="btn btn-primary" id="btn-procesar-guia">Procesar PDF</button>
+    </div>
+    <div class="msg" id="guia-msg"></div>
+    <div id="guia-preview-wrap" style="display:none; margin-top:14px;">
+      <div class="hist-wrap" style="max-height:160px; margin-bottom:12px;">
+        <table><tbody id="guia-header-body"></tbody></table>
+      </div>
+      <div style="display:flex; gap:14px; align-items:end; flex-wrap:wrap; margin-bottom:8px;">
+        <div class="field" style="margin:0; max-width:420px; flex:1;">
+          <label>Campaña (reparto) a la que pertenece esta guía *</label>
+          <select id="guia-campana-select"><option value="">— Selecciona una campaña —</option></select>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="btn-sugerir-campana">🔍 Sugerir campaña según coincidencia de códigos</button>
+      </div>
+      <div class="hint" id="guia-sugerencias" style="margin-bottom:10px;"></div>
+      <div class="hist-wrap" style="max-height:400px;">
+        <table><thead><tr><th>Item</th><th>Código</th><th>Descripción</th><th>Unidad</th><th>Cantidad</th></tr></thead><tbody id="guia-preview-body"></tbody></table>
+      </div>
+      <button class="btn btn-primary" id="btn-guardar-guia" style="margin-top:12px;">Guardar guía</button>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-bottom:14px;">
+    <h3>Guías de remisión cargadas</h3>
+    <p class="hint" style="margin-bottom:10px;">Cada guía queda asociada a una campaña (reparto). Una campaña puede tener varias guías.</p>
+    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
+      <div class="field" style="margin:0; max-width:200px;">
+        <label>Mostrar</label>
+        <select id="guia-reg-filtro-estado"><option value="ACTIVO">Activos</option><option value="INVALIDADO">Invalidados</option></select>
+      </div>
+    </div>
+    <div class="hist-wrap" style="max-height:500px;">
+      <table><thead><tr><th>Correlativo guía</th><th>N° guía</th><th>Campaña</th><th>Fecha traslado</th><th>Partida → Llegada</th><th>Ítems</th><th>Bultos</th><th>Cargado por</th><th>Detalle</th><th>Acción</th></tr></thead><tbody id="guia-reg-body"></tbody></table>
+      <div class="empty-state" id="guia-reg-empty">Aún no hay guías cargadas.</div>
+    </div>
+    <button class="btn" id="btn-guia-reg-cargar-mas" style="margin-top:10px; display:none;">Cargar más registros</button>
+  </div>
+
+  <div class="panel" id="guia-detalle-panel" style="display:none; margin-bottom:14px;">
+    <h3 id="guia-detalle-titulo" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+      <span id="guia-detalle-titulo-text">Detalle de guía</span>
+      <button class="btn btn-sm btn-ghost" id="btn-ocultar-detalle-guia">Ocultar detalle ✕</button>
+    </h3>
+    <div class="hist-wrap" style="max-height:600px;">
+      <table><thead><tr><th>Item</th><th>Código</th><th>Descripción</th><th>Unidad</th><th>Cantidad</th></tr></thead><tbody id="guia-detalle-body"></tbody></table>
+    </div>
+  </div>
+
   <div class="panel">
     <h3>Buscar en todo el historial</h3>
     <p class="hint" style="margin-bottom:10px;">Llena uno o más filtros. Elige si deben cumplirse TODOS (Y) o CUALQUIERA (O).</p>
@@ -652,8 +705,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v37';
-const APP_UPDATED = '26/08/2026 00:50';
+const APP_VERSION = 'v38';
+const APP_UPDATED = '26/08/2026 02:15';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -675,6 +728,8 @@ const usuariosRef = db.collection('usuarios');
 const retirosCampanaRef = db.collection('retiros_campana');
 const campanaItemsRef = db.collection('campana_items');
 const campanaRegistrosRef = db.collection('campana_registros');
+const guiasRegistrosRef = db.collection('guias_registros');
+const guiaItemsRef = db.collection('guia_items');
 const contadoresRef = db.collection('contadores');
 const kardexRef = db.collection('kardex');
 const contadorRef = db.collection('contadores').doc('global');
@@ -860,6 +915,7 @@ function startListeners(){
     }).join('');
   }, onErr);
   cargarRegistrosCampana(true);
+  cargarRegistrosGuias(true);
 }
 
 function renderAll(){
@@ -2766,6 +2822,377 @@ $('btn-buscar-campana').addEventListener('click', async ()=>{
     showToast('Error al buscar: '+err.message,'err');
   }finally{
     $('btn-buscar-campana').disabled = false;
+  }
+});
+
+/* -------------------- Guías de Remisión (salida) -------------------- */
+let guiaParsedItems = [];
+let guiaParsedHeader = {};
+let guiaRegRawLastDoc = null;
+let guiaRegAllCache = [];
+let guiaRegNoMore = false;
+let guiaDetalleCache = {};
+
+async function generarCorrelativoGuia(){
+  const counterRef = contadoresRef.doc('guias_registros');
+  const siguiente = await db.runTransaction(async (tx)=>{
+    const snap = await tx.get(counterRef);
+    const actual = snap.exists ? (snap.data().ultimo || 0) : 0;
+    const nuevo = actual + 1;
+    tx.set(counterRef, {ultimo: nuevo}, {merge:true});
+    return nuevo;
+  });
+  return 'GUIA-' + String(siguiente).padStart(5,'0');
+}
+
+// Agrupa el texto del PDF en "líneas" físicas por coordenada Y. En esta guía
+// cada celda de la tabla (etiqueta, valor, item de producto) es un solo
+// "item" de texto de pdf.js, así que no hace falta repartir por columnas X
+// como en las hojas de reparto — cada línea ya viene con sus celdas separadas.
+async function extractGuiaLineGroups(arrayBuffer){
+  const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+  const paginas = [];
+  for(let p=1; p<=pdf.numPages; p++){
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    const items = content.items
+      .map(it=>({str: it.str, x: it.transform[4], y: it.transform[5]}))
+      .filter(it=> it.str && it.str.trim() !== '');
+    const lineGroups = [];
+    const TOL = 2.5;
+    items.slice().forEach(it=>{
+      let grp = lineGroups.find(g=> Math.abs(g.y-it.y) <= TOL);
+      if(!grp){ grp = {y: it.y, items: []}; lineGroups.push(grp); }
+      grp.items.push(it);
+    });
+    lineGroups.sort((a,b)=> b.y - a.y);
+    lineGroups.forEach(g=> g.items.sort((a,b)=> a.x - b.x));
+    paginas.push(lineGroups);
+  }
+  return paginas;
+}
+function txtItem(item){ return (item ? item.str : '').trim(); }
+
+function parseGuiaPDF(paginas){
+  const todasLineas = paginas.flat();
+
+  function buscarCampo(etiquetaRegex){
+    for(const g of todasLineas){
+      for(let i=0;i<g.items.length;i++){
+        if(etiquetaRegex.test(txtItem(g.items[i])) && g.items[i+1]) return txtItem(g.items[i+1]);
+      }
+    }
+    return '';
+  }
+
+  let nro_guia = '';
+  for(const g of todasLineas){
+    if(g.items.length===1 && /^[A-Z0-9]{2,8}-\d{5,10}$/.test(txtItem(g.items[0]))){ nro_guia = txtItem(g.items[0]); break; }
+  }
+
+  const fecha_traslado = buscarCampo(/^Fecha Traslado:?$/i);
+
+  let punto_partida = '', punto_llegada = '';
+  const idxPartida = todasLineas.findIndex(g => g.items.some(it=>/^Punto de Partida:?$/i.test(txtItem(it))));
+  if(idxPartida >= 0){
+    const g = todasLineas[idxPartida];
+    const iP = g.items.findIndex(it=>/^Punto de Partida:?$/i.test(txtItem(it)));
+    const iL = g.items.findIndex(it=>/^Punto de Llegada:?$/i.test(txtItem(it)));
+    punto_partida = (iP>=0 && g.items[iP+1]) ? txtItem(g.items[iP+1]) : '';
+    punto_llegada = (iL>=0 && g.items[iL+1]) ? txtItem(g.items[iL+1]) : '';
+    let j = idxPartida+1;
+    while(j < todasLineas.length){
+      const gj = todasLineas[j];
+      const esNuevaEtiqueta = gj.items.some(it => /:$/.test(txtItem(it)) && txtItem(it).length < 40);
+      if(esNuevaEtiqueta || gj.items.length===0 || gj.items.length>2) break;
+      if(gj.items[0]) punto_partida += ' ' + txtItem(gj.items[0]);
+      if(gj.items[1]) punto_llegada += ' ' + txtItem(gj.items[1]);
+      j++;
+    }
+  }
+
+  let bultos = null;
+  for(const g of todasLineas){
+    for(const it of g.items){
+      const m = txtItem(it).match(/traslada\s+([\d.,]+)\s+cantidad de bultos/i);
+      if(m) bultos = Number(m[1].replace(/,/g,''));
+    }
+  }
+
+  const items = [];
+  let enTabla = false;
+  for(const g of todasLineas){
+    const textos = g.items.map(txtItem);
+    if(textos.length===5 && /^item$/i.test(textos[0]) && /^codigo$/i.test(textos[1])){ enTabla = true; continue; }
+    if(/^Datos del Vehiculo/i.test(textos[0]||'')){ enTabla = false; continue; }
+    if(!enTabla) continue;
+    if(textos.length===5 && /^\d+$/.test(textos[0]) && /^[\d,]+\.\d{2}$/.test(textos[4])){
+      items.push({
+        item: Number(textos[0]),
+        codigo: textos[1].toUpperCase(),
+        descripcion: textos[2].toUpperCase(),
+        unidad: textos[3].toUpperCase(),
+        cantidad: Number(textos[4].replace(/,/g,''))
+      });
+    }else if(items.length>0 && textos.length>=1 && textos.length<=3){
+      // Continuación defensiva por si una descripción se parte en 2 líneas.
+      items[items.length-1].descripcion = (items[items.length-1].descripcion + ' ' + textos.join(' ')).replace(/\s+/g,' ').trim().toUpperCase();
+    }
+  }
+
+  return {
+    nro_guia,
+    fecha_traslado,
+    punto_partida: punto_partida.replace(/\s+/g,' ').trim().toUpperCase(),
+    punto_llegada: punto_llegada.replace(/\s+/g,' ').trim().toUpperCase(),
+    bultos,
+    items
+  };
+}
+
+$('btn-procesar-guia').addEventListener('click', async ()=>{
+  const file = $('guia-pdf-input').files[0];
+  if(!file){ showMsg('guia-msg','err','Selecciona un archivo PDF primero.'); return; }
+  if(!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf'){ showMsg('guia-msg','err','El archivo debe ser un PDF.'); return; }
+  $('btn-procesar-guia').disabled = true;
+  showMsg('guia-msg','ok','Procesando PDF, un momento…');
+  try{
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const arrayBuffer = await file.arrayBuffer();
+    const paginas = await extractGuiaLineGroups(arrayBuffer);
+    const resultado = parseGuiaPDF(paginas);
+    if(resultado.items.length === 0){
+      showMsg('guia-msg','err','No se encontraron ítems reconocibles en el PDF. Verifica que sea una guía de remisión con el formato esperado.');
+      $('guia-preview-wrap').style.display = 'none';
+      return;
+    }
+    guiaParsedHeader = resultado;
+    guiaParsedItems = resultado.items;
+    $('guia-header-body').innerHTML = `
+      <tr><td><b>N° de guía</b></td><td>${resultado.nro_guia||'—'}</td><td><b>Fecha traslado</b></td><td>${resultado.fecha_traslado||'—'}</td></tr>
+      <tr><td><b>Punto de partida</b></td><td colspan="3">${resultado.punto_partida||'—'}</td></tr>
+      <tr><td><b>Punto de llegada</b></td><td colspan="3">${resultado.punto_llegada||'—'}</td></tr>
+      <tr><td><b>Bultos</b></td><td>${resultado.bultos ?? '—'}</td><td><b>Ítems</b></td><td>${resultado.items.length}</td></tr>`;
+    $('guia-preview-body').innerHTML = resultado.items.map(it=>
+      `<tr><td>${it.item}</td><td>${it.codigo}</td><td>${it.descripcion}</td><td>${it.unidad}</td><td>${it.cantidad}</td></tr>`
+    ).join('');
+    const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
+    $('guia-campana-select').innerHTML = '<option value="">— Selecciona una campaña —</option>' +
+      activos.map(r=>`<option value="${r.correlativo}">${r.correlativo} — ${r.campana} (${r.fecha_transaccion||''})</option>`).join('');
+    $('guia-sugerencias').innerHTML = '';
+    $('guia-preview-wrap').style.display = 'block';
+    showMsg('guia-msg','ok', `PDF procesado: ${resultado.items.length} ítems. Selecciona a qué campaña pertenece.`);
+  }catch(err){
+    console.error(err);
+    showMsg('guia-msg','err','Error al procesar el PDF: '+err.message);
+  }finally{
+    $('btn-procesar-guia').disabled = false;
+  }
+});
+
+$('btn-sugerir-campana').addEventListener('click', async ()=>{
+  if(!guiaParsedItems.length) return;
+  const codigosGuia = new Set(guiaParsedItems.map(it=>it.codigo));
+  const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
+  if(activos.length===0){ $('guia-sugerencias').textContent = 'No hay campañas activas cargadas para comparar.'; return; }
+  $('btn-sugerir-campana').disabled = true;
+  $('guia-sugerencias').textContent = 'Comparando contra campañas activas…';
+  try{
+    const resultados = [];
+    for(const campania of activos){
+      let filas = campRegCache[campania.correlativo];
+      if(!filas){
+        const snap = await campanaItemsRef.where('correlativo','==',campania.correlativo).limit(3000).get();
+        filas = snap.docs.map(d=>d.data());
+        campRegCache[campania.correlativo] = filas;
+      }
+      const skusCampania = new Set(filas.map(r=>r.sku));
+      let coincidencias = 0;
+      codigosGuia.forEach(c=>{ if(skusCampania.has(c)) coincidencias++; });
+      const pct = codigosGuia.size ? Math.round((coincidencias/codigosGuia.size)*100) : 0;
+      resultados.push({ correlativo: campania.correlativo, campana: campania.campana, coincidencias, total: codigosGuia.size, pct });
+    }
+    resultados.sort((a,b)=> b.pct - a.pct);
+    $('guia-sugerencias').innerHTML = 'Coincidencia de códigos por campaña activa:<br>' + resultados.map(r=>
+      `• <b>${r.correlativo}</b> (${r.campana}) — ${r.coincidencias}/${r.total} códigos coinciden (${r.pct}%)`
+    ).join('<br>');
+    if(resultados.length && resultados[0].pct > 0){
+      $('guia-campana-select').value = resultados[0].correlativo;
+    }
+  }catch(err){
+    console.error(err);
+    $('guia-sugerencias').textContent = 'Error al comparar: '+err.message;
+  }finally{
+    $('btn-sugerir-campana').disabled = false;
+  }
+});
+
+$('btn-guardar-guia').addEventListener('click', async ()=>{
+  if(!guiaParsedItems.length){ showMsg('guia-msg','err','No hay ítems procesados.'); return; }
+  const campanaCorrelativo = $('guia-campana-select').value;
+  if(!campanaCorrelativo){ showMsg('guia-msg','err','Selecciona a qué campaña pertenece esta guía.'); return; }
+  const campaniaObj = campRegAllCache.find(r=>r.correlativo===campanaCorrelativo);
+  $('btn-guardar-guia').disabled = true;
+  showMsg('guia-msg','ok','Guardando guía…');
+  try{
+    const correlativoGuia = await generarCorrelativoGuia();
+    const skuDistintos = new Set(guiaParsedItems.map(it=>it.codigo)).size;
+    await guiasRegistrosRef.doc(correlativoGuia).set({
+      correlativo: correlativoGuia,
+      nro_guia: guiaParsedHeader.nro_guia,
+      punto_partida: guiaParsedHeader.punto_partida,
+      punto_llegada: guiaParsedHeader.punto_llegada,
+      fecha_traslado: guiaParsedHeader.fecha_traslado,
+      bultos: guiaParsedHeader.bultos,
+      total_items: guiaParsedItems.length,
+      sku_distintos: skuDistintos,
+      campana_correlativo: campanaCorrelativo,
+      campana_nombre: campaniaObj ? campaniaObj.campana : '',
+      estado: 'ACTIVO',
+      usuario: currentUserAlias,
+      fecha_carga: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    const CHUNK = 400;
+    for(let i=0;i<guiaParsedItems.length;i+=CHUNK){
+      const batch = db.batch();
+      guiaParsedItems.slice(i,i+CHUNK).forEach(it=>{
+        const docRef = guiaItemsRef.doc();
+        batch.set(docRef, {
+          correlativo_guia: correlativoGuia,
+          campana_correlativo: campanaCorrelativo,
+          nro_guia: guiaParsedHeader.nro_guia,
+          item: it.item, codigo: it.codigo, descripcion: it.descripcion, unidad: it.unidad, cantidad: it.cantidad,
+          usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+      await batch.commit();
+    }
+    await logAccion('guia_remision_cargada', {detalle:`Guía ${correlativoGuia} (N° ${guiaParsedHeader.nro_guia}) asociada a campaña ${campanaCorrelativo}: ${guiaParsedItems.length} ítems`});
+    showMsg('guia-msg','ok', `¡Guardado! Correlativo ${correlativoGuia}.`);
+    showToast(`Guía guardada: ${correlativoGuia}`,'ok');
+    guiaParsedItems = []; guiaParsedHeader = {};
+    $('guia-preview-wrap').style.display = 'none';
+    $('guia-pdf-input').value = '';
+    $('guia-reg-filtro-estado').value = 'ACTIVO';
+    cargarRegistrosGuias(true);
+  }catch(err){
+    console.error(err);
+    showMsg('guia-msg','err','Error al guardar: '+err.message);
+  }finally{
+    $('btn-guardar-guia').disabled = false;
+  }
+});
+
+async function cargarRegistrosGuias(reset){
+  if(reset){ guiaRegRawLastDoc = null; guiaRegAllCache = []; guiaRegNoMore = false; }
+  if(!guiaRegNoMore){
+    try{
+      let q = guiasRegistrosRef.orderBy('fecha_carga','desc').limit(200);
+      if(guiaRegRawLastDoc) q = q.startAfter(guiaRegRawLastDoc);
+      const snap = await q.get();
+      guiaRegAllCache = guiaRegAllCache.concat(snap.docs.map(d=>d.data()));
+      guiaRegRawLastDoc = snap.docs.length ? snap.docs[snap.docs.length-1] : guiaRegRawLastDoc;
+      if(snap.docs.length < 200) guiaRegNoMore = true;
+    }catch(err){
+      console.error(err);
+      showToast('Error al cargar guías: '+err.message,'err');
+      return;
+    }
+  }
+  renderRegistrosGuias();
+}
+
+function renderRegistrosGuias(){
+  const estadoFiltro = $('guia-reg-filtro-estado').value;
+  const filtrados = guiaRegAllCache.filter(r => (r.estado||'ACTIVO') === estadoFiltro);
+  if(filtrados.length === 0){
+    $('guia-reg-body').innerHTML = '';
+    $('guia-reg-empty').style.display = 'block';
+    $('guia-reg-empty').textContent = estadoFiltro==='ACTIVO' ? 'Aún no hay guías cargadas.' : 'No hay guías invalidadas.';
+    $('btn-guia-reg-cargar-mas').style.display = 'none';
+    return;
+  }
+  $('guia-reg-empty').style.display = 'none';
+  const puedeEliminar = currentPermisos.admin || currentPermisos.eliminar;
+  $('guia-reg-body').innerHTML = filtrados.map(r=>{
+    const estado = r.estado || 'ACTIVO';
+    const accionHtml = estado === 'ACTIVO'
+      ? (puedeEliminar ? `<button class="btn btn-sm btn-ghost btn-invalidar-guia" data-correlativo="${r.correlativo}">Eliminar</button>` : '')
+      : `<span class="hint">Invalidado${r.invalidado_por ? ' por '+r.invalidado_por : ''}</span>`;
+    return `<tr><td>${r.correlativo}</td><td>${r.nro_guia||''}</td><td>${r.campana_correlativo||''} — ${r.campana_nombre||''}</td><td>${r.fecha_traslado||''}</td><td>${r.punto_partida||''} → ${r.punto_llegada||''}</td><td>${r.total_items??''}</td><td>${r.bultos??''}</td><td>${r.usuario||''}</td><td><button class="btn btn-sm btn-ver-detalle-guia" data-correlativo="${r.correlativo}" data-nro="${(r.nro_guia||'').replace(/"/g,'&quot;')}">Ver detalle</button></td><td>${accionHtml}</td></tr>`;
+  }).join('');
+  $('btn-guia-reg-cargar-mas').style.display = !guiaRegNoMore ? 'inline-block' : 'none';
+}
+$('guia-reg-filtro-estado').addEventListener('change', ()=> renderRegistrosGuias());
+$('btn-guia-reg-cargar-mas').addEventListener('click', ()=> cargarRegistrosGuias(false));
+$('btn-ocultar-detalle-guia').addEventListener('click', ()=>{ $('guia-detalle-panel').style.display = 'none'; });
+
+$('guia-reg-body').addEventListener('click', async (ev)=>{
+  const btnVer = ev.target.closest('.btn-ver-detalle-guia');
+  const btnInv = ev.target.closest('.btn-invalidar-guia');
+
+  if(btnVer){
+    const correlativo = btnVer.dataset.correlativo;
+    const nro = btnVer.dataset.nro;
+    btnVer.disabled = true;
+    btnVer.textContent = 'Cargando…';
+    try{
+      let filas = guiaDetalleCache[correlativo];
+      if(!filas){
+        const snap = await guiaItemsRef.where('correlativo_guia','==',correlativo).limit(3000).get();
+        filas = snap.docs.map(d=>d.data());
+        guiaDetalleCache[correlativo] = filas;
+      }
+      $('guia-detalle-titulo-text').textContent = `Detalle de ${correlativo} — Guía N° ${nro}`;
+      $('guia-detalle-body').innerHTML = filas.slice().sort((a,b)=>(a.item||0)-(b.item||0)).map(r=>
+        `<tr><td>${r.item}</td><td>${r.codigo}</td><td>${r.descripcion}</td><td>${r.unidad}</td><td>${r.cantidad}</td></tr>`
+      ).join('') || '<tr><td colspan="5" style="text-align:center;">Sin filas.</td></tr>';
+      $('guia-detalle-panel').style.display = 'block';
+      $('guia-detalle-panel').scrollIntoView({behavior:'smooth', block:'start'});
+    }catch(err){
+      console.error(err);
+      showToast('Error al cargar el detalle: '+err.message,'err');
+    }finally{
+      btnVer.disabled = false;
+      btnVer.textContent = 'Ver detalle';
+    }
+    return;
+  }
+
+  if(btnInv){
+    const correlativo = btnInv.dataset.correlativo;
+    if(!(currentPermisos.admin || currentPermisos.eliminar)){ showToast('No tienes permiso para eliminar registros.','err'); return; }
+    const ok = confirm(`¿Eliminar el detalle de la guía ${correlativo}? Se borrarán todas sus filas y la cabecera quedará marcada como INVALIDADA. Esta acción no se puede deshacer.`);
+    if(!ok) return;
+    btnInv.disabled = true;
+    btnInv.textContent = 'Eliminando…';
+    try{
+      const snap = await guiaItemsRef.where('correlativo_guia','==',correlativo).limit(3000).get();
+      const docs = snap.docs;
+      for(let i=0;i<docs.length;i+=400){
+        const batch = db.batch();
+        docs.slice(i,i+400).forEach(d=> batch.delete(d.ref));
+        await batch.commit();
+      }
+      await guiasRegistrosRef.doc(correlativo).set({
+        estado: 'INVALIDADO',
+        invalidado_por: currentUserAlias,
+        invalidado_en: firebase.firestore.FieldValue.serverTimestamp()
+      }, {merge:true});
+      delete guiaDetalleCache[correlativo];
+      if($('guia-detalle-titulo-text').textContent.includes(correlativo)){
+        $('guia-detalle-panel').style.display = 'none';
+      }
+      await logAccion('guia_invalidada', {detalle:`Se invalidó la guía ${correlativo} (${docs.length} filas eliminadas)`});
+      showToast(`${correlativo} invalidado (${docs.length} filas eliminadas).`,'ok');
+      cargarRegistrosGuias(true);
+    }catch(err){
+      console.error(err);
+      showToast('Error al eliminar: '+err.message,'err');
+      btnInv.disabled = false;
+      btnInv.textContent = 'Eliminar';
+    }
+    return;
   }
 });
 
