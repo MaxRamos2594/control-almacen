@@ -9,6 +9,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-storage-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -361,6 +362,14 @@
       <div class="field"><label>Proveedor</label><input type="text" id="pr-proveedor" class="upper" placeholder="EJ. DISTRIBUIDORA XYZ"></div>
       <div class="field"><label>Empaque 1 (unidades)</label><input type="number" id="pr-emp1" step="1" min="0" placeholder="EJ. 24"></div>
       <div class="field"><label>Empaque 2 (unidades)</label><input type="number" id="pr-emp2" step="1" min="0" placeholder="EJ. 48"></div>
+      <div class="field">
+        <label>Imagen del producto (opcional)</label>
+        <input type="file" id="pr-imagen-input" accept="image/*">
+        <div style="margin-top:8px; display:flex; align-items:center; gap:10px;">
+          <img id="pr-imagen-preview" src="" alt="" style="display:none; width:70px; height:70px; object-fit:cover; border-radius:6px; border:1px solid var(--line-strong);">
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-quitar-imagen" style="display:none;">Quitar imagen</button>
+        </div>
+      </div>
       <button class="btn btn-primary" id="btn-guardar-producto" style="width:100%;">Guardar producto</button>
       <div class="msg" id="pr-msg"></div>
       <p class="hint" id="pr-load-hint" style="margin-top:8px;">Si escribes un código ya existente, sus datos se cargan aquí automáticamente para que los actualices (requiere permiso de edición/eliminación).</p>
@@ -369,7 +378,7 @@
       <h3>Catálogo de productos</h3>
       <div class="field" style="max-width:320px;"><label>Buscar (código o descripción que contengan)</label><input type="text" id="prod-buscar" class="upper" placeholder="EJ. SANDALIA o 06TP"></div>
       <div class="hist-wrap" style="max-height:600px;">
-        <table><thead><tr><th>Código</th><th>Descripción</th><th>Costo</th><th>Proveedor</th><th>Empaque 1</th><th>Empaque 2</th><th>Creado</th><th>Usuario</th></tr></thead><tbody id="prod-body"></tbody></table>
+        <table><thead><tr><th>Imagen</th><th>Código</th><th>Descripción</th><th>Costo</th><th>Proveedor</th><th>Empaque 1</th><th>Empaque 2</th><th>Creado</th><th>Usuario</th></tr></thead><tbody id="prod-body"></tbody></table>
         <div class="empty-state" id="prod-empty">Sin productos registrados aún.</div>
       </div>
     </div>
@@ -392,11 +401,19 @@
 
 <!-- PALLETS -->
 <div class="view" id="view-pallets">
-  <div class="panel">
+  <div class="panel" style="margin-bottom:14px;">
     <h3>Pallets en el almacén</h3>
     <div class="hist-wrap" style="max-height:600px;">
       <table><thead><tr><th>Código pallet</th><th>Posición</th><th>Nicho</th><th>Bloque</th><th>Productos</th></tr></thead><tbody id="pallets-body"></tbody></table>
       <div class="empty-state" id="pallets-empty">Sin pallets todavía.</div>
+    </div>
+  </div>
+  <div class="panel">
+    <h3><span style="display:flex; align-items:center; gap:10px;"><span>Detalle de pallets (para exportar)</span><button class="btn btn-primary btn-sm" id="btn-exportar-pallets" type="button">⬇ Exportar a Excel</button></span></h3>
+    <p class="hint" style="margin-bottom:10px;">Una fila por cada producto dentro de cada pallet.</p>
+    <div class="hist-wrap" style="max-height:600px;">
+      <table><thead><tr><th>Pallet</th><th>Posición</th><th>Código</th><th>Descripción</th><th>Costo</th><th>Cantidad</th></tr></thead><tbody id="pallet-detalle-body"></tbody></table>
+      <div class="empty-state" id="pallet-detalle-empty">Sin datos todavía.</div>
     </div>
   </div>
 </div>
@@ -610,10 +627,11 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v31';
-const APP_UPDATED = '25/08/2026 20:40';
+const APP_VERSION = 'v32';
+const APP_UPDATED = '25/08/2026 21:50';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -830,6 +848,7 @@ function renderAll(){
   renderResumen();
   renderInventario();
   renderPalletsTabla();
+  renderPalletDetalleTabla();
   if(selectedPosId && posiciones[selectedPosId]){ renderDetalle(selectedPosId, posiciones[selectedPosId]); }
   applyFilters();
 }
@@ -1645,6 +1664,48 @@ function renderPalletsTabla(){
   }).join('');
 }
 
+function computePalletDetalle(){
+  const filas = [];
+  Object.entries(pallets).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([codigo,p])=>{
+    const posId = p.posicion_actual || '';
+    (p.items||[]).forEach(it=>{
+      filas.push({
+        pallet: codigo,
+        posicion: posId,
+        codigo: it.producto || '',
+        descripcion: it.descripcion || '',
+        costo: Number(it.costo)||0,
+        cantidad: Number(it.cantidad)||0
+      });
+    });
+  });
+  return filas;
+}
+
+function renderPalletDetalleTabla(){
+  const body = $('pallet-detalle-body'); if(!body) return;
+  const filas = computePalletDetalle();
+  if(filas.length===0){ body.innerHTML=''; $('pallet-detalle-empty').style.display='block'; return; }
+  $('pallet-detalle-empty').style.display='none';
+  body.innerHTML = filas.map(f=>
+    `<tr><td>${f.pallet}</td><td>${f.posicion||'—'}</td><td>${f.codigo}</td><td>${f.descripcion}</td><td>${fmtMoney(f.costo)}</td><td>${f.cantidad}</td></tr>`
+  ).join('');
+}
+
+$('btn-exportar-pallets').addEventListener('click', ()=>{
+  const filas = computePalletDetalle();
+  if(filas.length===0){ showToast('No hay datos de pallets para exportar.','err'); return; }
+  const data = filas.map(f=>({
+    'Pallet': f.pallet, 'Posición': f.posicion||'', 'Código': f.codigo, 'Descripción': f.descripcion,
+    'Costo': f.costo, 'Cantidad': f.cantidad
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Pallets');
+  XLSX.writeFile(wb, `pallets_detalle_${new Date().toISOString().slice(0,10)}.xlsx`);
+  showToast('Detalle de pallets exportado.','ok');
+});
+
 /* -------------------- Catálogo de productos -------------------- */
 function renderProductosTabla(){
   let entries = Object.entries(productos).sort((a,b)=> a[0].localeCompare(b[0]));
@@ -1658,25 +1719,68 @@ function renderProductosTabla(){
   $('prod-empty').style.display='none';
   body.innerHTML = entries.map(([codigo,p])=>{
     const fecha = p.creado_en ? p.creado_en.toDate().toLocaleString('es-PE') : '—';
-    return `<tr><td>${codigo}</td><td>${p.descripcion||''}</td><td>${fmtMoney(p.costo)}</td><td>${p.proveedor||''}</td><td>${p.empaque1 ?? ''}</td><td>${p.empaque2 ?? ''}</td><td>${fecha}</td><td>${p.creado_por||''}</td></tr>`;
+    const img = p.imagen_url
+      ? `<img src="${p.imagen_url}" alt="" style="width:42px; height:42px; object-fit:cover; border-radius:5px; border:1px solid var(--line-strong);">`
+      : `<div style="width:42px; height:42px; border-radius:5px; border:1px dashed var(--line-strong); display:flex; align-items:center; justify-content:center; font-size:9px; color:var(--ink-soft);">S/I</div>`;
+    return `<tr><td>${img}</td><td>${codigo}</td><td>${p.descripcion||''}</td><td>${fmtMoney(p.costo)}</td><td>${p.proveedor||''}</td><td>${p.empaque1 ?? ''}</td><td>${p.empaque2 ?? ''}</td><td>${fecha}</td><td>${p.creado_por||''}</td></tr>`;
   }).join('');
 }
 $('prod-buscar').addEventListener('input', renderProductosTabla);
+
+let prImagenFile = null;      // archivo nuevo seleccionado (pendiente de subir)
+let prImagenUrlActual = null; // url ya guardada en el producto cargado (si existe)
+let prImagenQuitar = false;   // true si el usuario pidió quitar la imagen existente
+
+function resetImagenForm(){
+  prImagenFile = null; prImagenUrlActual = null; prImagenQuitar = false;
+  $('pr-imagen-input').value = '';
+  $('pr-imagen-preview').style.display = 'none'; $('pr-imagen-preview').src = '';
+  $('btn-quitar-imagen').style.display = 'none';
+}
+
 function limpiarFormularioProducto(){
   $('pr-codigo').value=''; $('pr-desc').value=''; $('pr-costo').value=''; $('pr-proveedor').value=''; $('pr-emp1').value=''; $('pr-emp2').value='';
   $('pr-load-hint').textContent = 'Si escribes un código ya existente, sus datos se cargan aquí automáticamente para que los actualices (requiere permiso de edición/eliminación).';
   $('pr-load-hint').style.color = '';
+  resetImagenForm();
 }
+
+$('pr-imagen-input').addEventListener('change', ()=>{
+  const file = $('pr-imagen-input').files[0];
+  if(!file) return;
+  prImagenFile = file;
+  prImagenQuitar = false;
+  const reader = new FileReader();
+  reader.onload = (e)=>{ $('pr-imagen-preview').src = e.target.result; $('pr-imagen-preview').style.display = 'inline-block'; };
+  reader.readAsDataURL(file);
+  $('btn-quitar-imagen').style.display = 'inline-block';
+});
+
+$('btn-quitar-imagen').addEventListener('click', ()=>{
+  prImagenFile = null;
+  prImagenQuitar = true;
+  $('pr-imagen-input').value = '';
+  $('pr-imagen-preview').style.display = 'none'; $('pr-imagen-preview').src = '';
+  $('btn-quitar-imagen').style.display = 'none';
+});
+
 $('pr-codigo').addEventListener('blur', ()=>{
   const codigo = $('pr-codigo').value.trim().toUpperCase(); $('pr-codigo').value = codigo;
   if(!codigo) return;
   const p = productos[codigo];
+  resetImagenForm();
   if(p){
     $('pr-desc').value = p.descripcion || '';
     $('pr-costo').value = p.costo ?? '';
     $('pr-proveedor').value = p.proveedor || '';
     $('pr-emp1').value = p.empaque1 ?? '';
     $('pr-emp2').value = p.empaque2 ?? '';
+    if(p.imagen_url){
+      prImagenUrlActual = p.imagen_url;
+      $('pr-imagen-preview').src = p.imagen_url;
+      $('pr-imagen-preview').style.display = 'inline-block';
+      $('btn-quitar-imagen').style.display = 'inline-block';
+    }
     $('pr-load-hint').textContent = `✓ Se cargaron los datos actuales de ${codigo}. Modifica lo que necesites y guarda.`;
     $('pr-load-hint').style.color = '#245C46';
   }else{
@@ -1702,17 +1806,35 @@ $('btn-guardar-producto').addEventListener('click', async ()=>{
   if(existente && !(currentPermisos.admin || currentPermisos.eliminar)){
     showMsg('pr-msg','err','Ese código ya existe. Necesitas permiso de edición/eliminación para modificarlo.'); return;
   }
+  $('btn-guardar-producto').disabled = true;
   try{
+    let imagen_url = prImagenUrlActual;
+    if(prImagenQuitar){
+      imagen_url = null;
+    }
+    if(prImagenFile){
+      showMsg('pr-msg','ok','Subiendo imagen…');
+      const ext = (prImagenFile.name.split('.').pop() || 'jpg').toLowerCase();
+      const path = `productos/${codigo}.${ext}`;
+      const ref = storage.ref().child(path);
+      await ref.put(prImagenFile);
+      imagen_url = await ref.getDownloadURL();
+    }
+    const payload = { descripcion, costo, proveedor, empaque1, empaque2, imagen_url: imagen_url || null };
     if(existente){
-      await productosRef.doc(codigo).update({ descripcion, costo, proveedor, empaque1, empaque2, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
+      payload.actualizado = firebase.firestore.FieldValue.serverTimestamp();
+      await productosRef.doc(codigo).update(payload);
     }else{
-      await productosRef.doc(codigo).set({ descripcion, costo, proveedor, empaque1, empaque2, creado_en: firebase.firestore.FieldValue.serverTimestamp(), creado_por: currentUserEmail });
+      payload.creado_en = firebase.firestore.FieldValue.serverTimestamp();
+      payload.creado_por = currentUserEmail;
+      await productosRef.doc(codigo).set(payload);
     }
     await logAccion('producto_registrado', {pallet_codigo:codigo, detalle:`Producto ${codigo} ${existente?'actualizado':'creado'} en catálogo`});
     showMsg('pr-msg','ok', `Producto ${codigo} guardado.`);
     showToast(`Producto ${codigo} guardado en el catálogo.`,'ok');
     limpiarFormularioProducto();
   }catch(err){ showMsg('pr-msg','err', err.message); }
+  finally{ $('btn-guardar-producto').disabled = false; }
 });
 
 /* -------------------- Retirar productos de un pallet (campaña) -------------------- */
@@ -1960,7 +2082,9 @@ $('btn-cargar-bitacora').addEventListener('click', async ()=>{
 
 /* -------------------- Campañas (PDF) -------------------- */
 let campParsedRows = [];
-let campRegLastDoc = null;
+let campRegRawLastDoc = null;
+let campRegAllCache = [];  // acumulado crudo (todos los estados) traído del servidor
+let campRegNoMore = false;
 let campRegCache = {}; // correlativo -> filas de detalle ya cargadas (cache en memoria)
 
 function todayLocalStr(){
@@ -2179,42 +2303,49 @@ function fmtFechaCorta(d){
 }
 
 async function cargarRegistrosCampana(reset){
-  if(reset){ campRegLastDoc = null; $('camp-reg-body').innerHTML=''; }
-  const estado = $('camp-reg-filtro-estado').value;
-  try{
-    let q = campanaRegistrosRef.where('estado','==', estado).orderBy('fecha_carga','desc').limit(20);
-    if(campRegLastDoc) q = q.startAfter(campRegLastDoc);
-    const snap = await q.get();
-    if(snap.empty && reset){
-      $('camp-reg-empty').style.display = 'block';
-      $('camp-reg-empty').textContent = estado === 'ACTIVO' ? 'Aún no hay campañas guardadas.' : 'No hay registros invalidados.';
-      $('btn-reg-cargar-mas').style.display = 'none';
+  if(reset){ campRegRawLastDoc = null; campRegAllCache = []; campRegNoMore = false; }
+  if(!campRegNoMore){
+    try{
+      let q = campanaRegistrosRef.orderBy('fecha_carga','desc').limit(200);
+      if(campRegRawLastDoc) q = q.startAfter(campRegRawLastDoc);
+      const snap = await q.get();
+      campRegAllCache = campRegAllCache.concat(snap.docs.map(d=>d.data()));
+      campRegRawLastDoc = snap.docs.length ? snap.docs[snap.docs.length-1] : campRegRawLastDoc;
+      if(snap.docs.length < 200) campRegNoMore = true;
+    }catch(err){
+      console.error(err);
+      showToast('Error al cargar registros de campañas: '+err.message,'err');
       return;
     }
-    $('camp-reg-empty').style.display = 'none';
-    const puedeEliminar = currentPermisos.admin || currentPermisos.eliminar;
-    snap.docs.forEach(doc=>{
-      const r = doc.data();
-      const tr = document.createElement('tr');
-      const accionHtml = r.estado === 'ACTIVO'
-        ? (puedeEliminar ? `<button class="btn btn-sm btn-ghost btn-invalidar-campana" data-correlativo="${r.correlativo}">Eliminar</button>` : '')
-        : `<span class="hint">Invalidado${r.invalidado_por ? ' por '+r.invalidado_por : ''}</span>`;
-      tr.innerHTML = `<td>${r.correlativo}</td><td>${r.campana||''}</td><td>${r.codigo||''}</td><td>${fmtFechaCorta(r.fecha_transaccion)}</td><td>${r.sku_distintos!=null?r.sku_distintos:''}</td><td>${r.total_filas!=null?r.total_filas:''}</td><td>${r.usuario||''}</td><td><button class="btn btn-sm btn-ver-detalle-campana" data-correlativo="${r.correlativo}" data-campana="${(r.campana||'').replace(/"/g,'&quot;')}">Ver detalle</button></td><td>${accionHtml}</td>`;
-      $('camp-reg-body').appendChild(tr);
-    });
-    campRegLastDoc = snap.docs.length ? snap.docs[snap.docs.length-1] : campRegLastDoc;
-    $('btn-reg-cargar-mas').style.display = (snap.docs.length === 20) ? 'inline-block' : 'none';
-  }catch(err){
-    console.error(err);
-    if(err.code === 'failed-precondition'){
-      showToast('Firestore necesita un índice para este filtro (una sola vez). Revisa la consola del navegador (F12): el error trae un enlace para crearlo con un clic.','err');
-    }else{
-      showToast('Error al cargar registros de campañas: '+err.message,'err');
-    }
   }
+  renderRegistrosCampana();
 }
 
-$('camp-reg-filtro-estado').addEventListener('change', ()=> cargarRegistrosCampana(true));
+function renderRegistrosCampana(){
+  const estadoFiltro = $('camp-reg-filtro-estado').value;
+  // Los registros antiguos (guardados antes de existir el campo "estado") se
+  // consideran ACTIVOS por defecto.
+  const filtrados = campRegAllCache.filter(r => (r.estado || 'ACTIVO') === estadoFiltro);
+  if(filtrados.length === 0){
+    $('camp-reg-body').innerHTML = '';
+    $('camp-reg-empty').style.display = 'block';
+    $('camp-reg-empty').textContent = estadoFiltro === 'ACTIVO' ? 'Aún no hay campañas guardadas.' : 'No hay registros invalidados.';
+    $('btn-reg-cargar-mas').style.display = 'none';
+    return;
+  }
+  $('camp-reg-empty').style.display = 'none';
+  const puedeEliminar = currentPermisos.admin || currentPermisos.eliminar;
+  $('camp-reg-body').innerHTML = filtrados.map(r=>{
+    const estado = r.estado || 'ACTIVO';
+    const accionHtml = estado === 'ACTIVO'
+      ? (puedeEliminar ? `<button class="btn btn-sm btn-ghost btn-invalidar-campana" data-correlativo="${r.correlativo}">Eliminar</button>` : '')
+      : `<span class="hint">Invalidado${r.invalidado_por ? ' por '+r.invalidado_por : ''}</span>`;
+    return `<tr><td>${r.correlativo}</td><td>${r.campana||''}</td><td>${r.codigo||''}</td><td>${fmtFechaCorta(r.fecha_transaccion)}</td><td>${r.sku_distintos!=null?r.sku_distintos:''}</td><td>${r.total_filas!=null?r.total_filas:''}</td><td>${r.usuario||''}</td><td><button class="btn btn-sm btn-ver-detalle-campana" data-correlativo="${r.correlativo}" data-campana="${(r.campana||'').replace(/"/g,'&quot;')}">Ver detalle</button></td><td>${accionHtml}</td></tr>`;
+  }).join('');
+  $('btn-reg-cargar-mas').style.display = !campRegNoMore ? 'inline-block' : 'none';
+}
+
+$('camp-reg-filtro-estado').addEventListener('change', ()=> renderRegistrosCampana());
 $('btn-reg-cargar-mas').addEventListener('click', ()=> cargarRegistrosCampana(false));
 
 $('btn-ocultar-detalle').addEventListener('click', ()=>{
