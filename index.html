@@ -769,7 +769,7 @@
       </div>
     </div>
     <div class="hist-wrap" style="max-height:500px;">
-      <table><thead><tr><th>Correlativo</th><th>Fecha</th><th>Solicitadas</th><th>Posiciones</th><th>Líneas a contar</th><th>ERI</th><th>ERU</th><th>Estado</th><th>Generado por</th><th></th><th></th></tr></thead><tbody id="ti-reg-body"></tbody></table>
+      <table><thead><tr><th>Correlativo</th><th>Fecha</th><th>Solicitadas</th><th>Posiciones</th><th>Líneas a contar</th><th>ERI</th><th>ERU</th><th>Estado</th><th>Generado por</th><th></th><th>PDF firmado</th><th></th></tr></thead><tbody id="ti-reg-body"></tbody></table>
       <div class="empty-state" id="ti-reg-empty">Aún no hay tomas de inventario.</div>
     </div>
   </div>
@@ -785,6 +785,20 @@
     </div>
     <button class="btn btn-primary" id="btn-ti-finalizar" style="margin-top:12px;">Finalizar toma</button>
   </div>
+
+  <div class="panel" id="ti-pdf-preview-panel" style="display:none;">
+    <h3 style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+      <span id="ti-pdf-preview-titulo">PDF firmado</span>
+      <button class="btn btn-sm btn-ghost" id="btn-ti-ocultar-pdf-preview">Ocultar ✕</button>
+    </h3>
+    <p class="hint" style="margin-bottom:10px;">Este PDF es solo un respaldo escaneado/firmado a mano — el sistema no puede leer marcas ni números escritos a mano automáticamente. Para que quede registrado, ingresa los resultados en "Registrar conteo" mientras lo tienes a la vista aquí.</p>
+    <iframe id="ti-pdf-iframe" style="width:100%; height:600px; border:1px solid var(--line-strong); border-radius:6px;" src=""></iframe>
+    <div style="display:flex; gap:10px; margin-top:12px;">
+      <a id="ti-pdf-abrir-nueva" href="#" target="_blank" rel="noopener" class="btn btn-ghost">⬇ Abrir en pestaña nueva</a>
+      <button class="btn btn-primary" id="btn-ti-ir-a-conteo">Registrar conteo de esta toma</button>
+    </div>
+  </div>
+  <input type="file" id="ti-pdf-input-global" accept="application/pdf" style="display:none;">
 </div>
 
 <!-- KARDEX -->
@@ -883,8 +897,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v50';
-const APP_UPDATED = '26/08/2026 12:10';
+const APP_VERSION = 'v51';
+const APP_UPDATED = '26/08/2026 13:00';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4244,34 +4258,98 @@ function renderTomasInventario(){
     return;
   }
   $('ti-reg-empty').style.display = 'none';
-  $('ti-reg-body').innerHTML = filtradas.map(r=>
-    `<tr><td>${r.correlativo}</td><td>${r.fecha||''}</td><td>${r.cantidad_solicitada??''}</td><td>${r.cantidad_generada??''}</td><td>${r.total_lineas??''}</td><td>${r.eri!=null?r.eri+'%':'—'}</td><td>${r.eru!=null?r.eru+'%':'—'}</td><td>${r.estado||''}</td><td>${r.generado_por||''}</td><td><button class="btn btn-sm btn-ver-toma" data-correlativo="${r.correlativo}">Abrir conteo</button></td><td><button class="btn btn-sm btn-ghost btn-pdf-toma" data-correlativo="${r.correlativo}">📄 PDF</button></td></tr>`
-  ).join('');
+  $('ti-reg-body').innerHTML = filtradas.map(r=>{
+    const pdfHtml = r.pdf_firmado_url
+      ? `<button class="btn btn-sm btn-ghost btn-ti-ver-pdf" data-correlativo="${r.correlativo}">👁 Ver PDF</button> <button class="btn btn-sm btn-ghost btn-ti-subir-pdf" data-correlativo="${r.correlativo}" title="Reemplazar">↺</button>`
+      : `<button class="btn btn-sm btn-ghost btn-ti-subir-pdf" data-correlativo="${r.correlativo}">📤 Subir PDF</button>`;
+    return `<tr><td>${r.correlativo}</td><td>${r.fecha||''}</td><td>${r.cantidad_solicitada??''}</td><td>${r.cantidad_generada??''}</td><td>${r.total_lineas??''}</td><td>${r.eri!=null?r.eri+'%':'—'}</td><td>${r.eru!=null?r.eru+'%':'—'}</td><td>${r.estado||''}</td><td>${r.generado_por||''}</td><td><button class="btn btn-sm btn-ver-toma" data-correlativo="${r.correlativo}">Abrir conteo</button></td><td>${pdfHtml}</td><td><button class="btn btn-sm btn-ghost btn-pdf-toma" data-correlativo="${r.correlativo}">📄 Generar PDF</button></td></tr>`;
+  }).join('');
 }
 $('ti-filtro-estado').addEventListener('change', renderTomasInventario);
 
 let tiConteoActual = null; // { correlativo, items: [{id, ...datos}] }
 
+async function abrirConteoToma(correlativo){
+  try{
+    const snap = await inventarioTomasItemsRef.where('correlativo_toma','==',correlativo).limit(3000).get();
+    const items = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
+    tiConteoActual = { correlativo, items };
+    renderConteoToma();
+    $('ti-conteo-panel').style.display = 'block';
+    $('ti-conteo-panel').scrollIntoView({behavior:'smooth', block:'start'});
+  }catch(err){
+    console.error(err);
+    showToast('Error al abrir la toma: '+err.message,'err');
+  }
+}
+
+// -------- Subir PDF firmado (respaldo escaneado) y previsualizarlo --------
+let tiSubidaCorrelativoActual = null;
+
+async function subirPdfFirmadoToma(correlativo, file){
+  const path = `tomas_inventario/${correlativo}/${Date.now()}_${file.name}`;
+  const ref = storage.ref().child(path);
+  await ref.put(file);
+  const url = await ref.getDownloadURL();
+  await inventarioTomasRef.doc(correlativo).update({
+    pdf_firmado_url: url,
+    pdf_firmado_nombre: file.name,
+    pdf_firmado_subido_por: currentUserAlias,
+    pdf_firmado_subido_en: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  return url;
+}
+
+$('ti-pdf-input-global').addEventListener('change', async ()=>{
+  const file = $('ti-pdf-input-global').files[0];
+  if(!file || !tiSubidaCorrelativoActual) return;
+  if(!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf'){
+    showToast('El archivo debe ser un PDF.','err');
+    $('ti-pdf-input-global').value = ''; tiSubidaCorrelativoActual = null;
+    return;
+  }
+  const correlativo = tiSubidaCorrelativoActual;
+  showToast('Subiendo PDF firmado…','ok');
+  try{
+    const url = await subirPdfFirmadoToma(correlativo, file);
+    const idx = tiRegAllCache.findIndex(r=>r.correlativo===correlativo);
+    if(idx>=0){
+      tiRegAllCache[idx].pdf_firmado_url = url;
+      tiRegAllCache[idx].pdf_firmado_nombre = file.name;
+    }
+    renderTomasInventario();
+    showToast('PDF firmado subido correctamente.','ok');
+  }catch(err){
+    console.error(err);
+    showToast('Error al subir el PDF: '+err.message,'err');
+  }finally{
+    $('ti-pdf-input-global').value = '';
+    tiSubidaCorrelativoActual = null;
+  }
+});
+
+$('btn-ti-ocultar-pdf-preview').addEventListener('click', ()=>{
+  $('ti-pdf-preview-panel').style.display = 'none';
+  $('ti-pdf-iframe').src = '';
+});
+
+$('btn-ti-ir-a-conteo').addEventListener('click', ()=>{
+  const correlativo = $('ti-pdf-preview-titulo').dataset.correlativo;
+  $('ti-pdf-preview-panel').style.display = 'none';
+  $('ti-pdf-iframe').src = '';
+  if(correlativo) abrirConteoToma(correlativo);
+});
+
 $('ti-reg-body').addEventListener('click', async (ev)=>{
   const btnVer = ev.target.closest('.btn-ver-toma');
   const btnPdf = ev.target.closest('.btn-pdf-toma');
+  const btnSubirPdf = ev.target.closest('.btn-ti-subir-pdf');
+  const btnVerPdf = ev.target.closest('.btn-ti-ver-pdf');
 
   if(btnVer){
-    const correlativo = btnVer.dataset.correlativo;
     btnVer.disabled = true; btnVer.textContent = 'Cargando…';
-    try{
-      const snap = await inventarioTomasItemsRef.where('correlativo_toma','==',correlativo).limit(3000).get();
-      const items = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
-      tiConteoActual = { correlativo, items };
-      renderConteoToma();
-      $('ti-conteo-panel').style.display = 'block';
-      $('ti-conteo-panel').scrollIntoView({behavior:'smooth', block:'start'});
-    }catch(err){
-      console.error(err);
-      showToast('Error al abrir la toma: '+err.message,'err');
-    }finally{
-      btnVer.disabled = false; btnVer.textContent = 'Abrir conteo';
-    }
+    await abrirConteoToma(btnVer.dataset.correlativo);
+    btnVer.disabled = false; btnVer.textContent = 'Abrir conteo';
     return;
   }
 
@@ -4292,8 +4370,27 @@ $('ti-reg-body').addEventListener('click', async (ev)=>{
       console.error(err);
       showToast('Error al generar el PDF: '+err.message,'err');
     }finally{
-      btnPdf.disabled = false; btnPdf.textContent = '📄 PDF';
+      btnPdf.disabled = false; btnPdf.textContent = '📄 Generar PDF';
     }
+    return;
+  }
+
+  if(btnSubirPdf){
+    tiSubidaCorrelativoActual = btnSubirPdf.dataset.correlativo;
+    $('ti-pdf-input-global').click();
+    return;
+  }
+
+  if(btnVerPdf){
+    const correlativo = btnVerPdf.dataset.correlativo;
+    const r = tiRegAllCache.find(x=>x.correlativo===correlativo);
+    if(!r || !r.pdf_firmado_url){ showToast('Ese PDF ya no está disponible.','err'); return; }
+    $('ti-pdf-preview-titulo').textContent = `PDF firmado — ${correlativo} (${r.pdf_firmado_nombre||''})`;
+    $('ti-pdf-preview-titulo').dataset.correlativo = correlativo;
+    $('ti-pdf-iframe').src = r.pdf_firmado_url;
+    $('ti-pdf-abrir-nueva').href = r.pdf_firmado_url;
+    $('ti-pdf-preview-panel').style.display = 'block';
+    $('ti-pdf-preview-panel').scrollIntoView({behavior:'smooth', block:'start'});
     return;
   }
 });
@@ -4305,9 +4402,14 @@ function generarPDFToma(header, items){
   const doc = new jsPDF({ unit:'mm', format:'a4', orientation:'portrait' });
   const pageW = doc.internal.pageSize.getWidth();
   const margin = 10;
+  const logoRatio = 93/236;
+
+  // Logo arriba a la izquierda
+  const logoW = 26, logoH = logoW*logoRatio;
+  doc.addImage(LOGO_ROTULO_B64, 'PNG', margin, 8, logoW, logoH);
 
   doc.setFont('helvetica','bold'); doc.setFontSize(15);
-  doc.text('TOMA DE INVENTARIO', pageW/2, 15, {align:'center'});
+  doc.text('TOMA DE INVENTARIO', pageW/2, 16, {align:'center'});
 
   doc.setFont('helvetica','normal'); doc.setFontSize(10);
   const correlativo = header ? header.correlativo : (items[0] ? items[0].correlativo_toma : '');
@@ -4316,7 +4418,7 @@ function generarPDFToma(header, items){
   const totalPos = header ? header.cantidad_generada : new Set(items.map(i=>i.posicion_id)).size;
   const totalLineas = header ? header.total_lineas : items.length;
 
-  let y = 24;
+  let y = 26;
   doc.text(`Correlativo: ${correlativo}`, margin, y);
   doc.text(`Fecha: ${fecha||''}`, pageW-margin, y, {align:'right'});
   y += 6;
@@ -4326,47 +4428,66 @@ function generarPDFToma(header, items){
 
   const filas = items.slice().sort((a,b)=> (a.posicion_id||'').localeCompare(b.posicion_id||'')).map((it,i)=>[
     i+1, it.posicion_id, it.tipo_posicion==='piso'?'Piso':'Rack', it.pallet_codigo, it.producto_codigo, it.producto_descripcion,
-    String(it.cantidad_sistema), '', ''
+    String(it.cantidad_sistema), '', '', ''
   ]);
 
+  const COL_SI = 8, COL_NO = 9;
   doc.autoTable({
     startY: y+2,
-    head: [['N°','Posición','Tipo','Pallet','Código','Descripción','Cant. Sistema','Cant. Inventariada','¿Encontrado? (SÍ/NO)']],
+    head: [['N°','Posición','Tipo','Pallet','Código','Descripción','Cant. Sistema','Cant. Inventariada','SÍ','NO']],
     body: filas,
     styles: { fontSize: 7.5, cellPadding: 1.4, valign:'middle' },
-    headStyles: { fillColor: [30,58,95], textColor: 255, fontStyle:'bold' },
+    headStyles: { fillColor: [30,58,95], textColor: 255, fontStyle:'bold', halign:'center' },
     columnStyles: {
-      0: {cellWidth:7}, 1: {cellWidth:16}, 2: {cellWidth:13}, 3: {cellWidth:16},
-      4: {cellWidth:20}, 6: {cellWidth:18, halign:'center'}, 7: {cellWidth:22, halign:'center'}, 8: {cellWidth:26, halign:'center'}
+      0: {cellWidth:7}, 1: {cellWidth:15}, 2: {cellWidth:12}, 3: {cellWidth:15},
+      4: {cellWidth:18}, 6: {cellWidth:16, halign:'center'}, 7: {cellWidth:20, halign:'center'},
+      8: {cellWidth:10, halign:'center'}, 9: {cellWidth:10, halign:'center'}
     },
     margin: { left: margin, right: margin },
+    didDrawCell: (data)=>{
+      // Dibuja el casillero (cuadradito) en blanco para marcar con una X a mano
+      if(data.section==='body' && (data.column.index===COL_SI || data.column.index===COL_NO)){
+        const sz = 3.2;
+        const cx = data.cell.x + data.cell.width/2 - sz/2;
+        const cy = data.cell.y + data.cell.height/2 - sz/2;
+        doc.setDrawColor(90,90,90); doc.setLineWidth(0.25);
+        doc.rect(cx, cy, sz, sz);
+      }
+    },
     didDrawPage: (data)=>{
-      const pageCount = doc.internal.getNumberOfPages();
       doc.setFontSize(8); doc.setTextColor(120);
       doc.text(`Página ${data.pageNumber}`, pageW-margin, doc.internal.pageSize.getHeight()-6, {align:'right'});
       doc.setTextColor(0);
     }
   });
 
-  let finalY = doc.lastAutoTable.finalY + 14;
+  // Bloque de firma: caja profesional, siempre en la esquina inferior derecha
   const pageH = doc.internal.pageSize.getHeight();
-  if(finalY > pageH - 45){ doc.addPage(); finalY = 20; }
+  const boxW = 88, boxH = 46;
+  let boxTop = doc.lastAutoTable.finalY + 12;
+  if(boxTop > pageH - margin - boxH){ doc.addPage(); boxTop = margin + 6; }
+  const boxX = pageW - margin - boxW;
 
-  doc.setDrawColor(120); doc.setLineWidth(0.3);
-  doc.setFont('helvetica','normal'); doc.setFontSize(10);
+  doc.setDrawColor(140,140,140); doc.setLineWidth(0.3);
+  doc.rect(boxX, boxTop, boxW, boxH);
+  doc.setFillColor(30,58,95);
+  doc.rect(boxX, boxTop, boxW, 8, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(255);
+  doc.text('CONFORMIDAD DE CONTEO', boxX+boxW/2, boxTop+5.5, {align:'center'});
 
-  doc.line(margin, finalY, margin+80, finalY);
-  doc.text('Firma', margin, finalY+5);
-  doc.line(margin+95, finalY, margin+140, finalY);
-  doc.text('DNI', margin+95, finalY+5);
-
-  finalY += 18;
-  doc.line(margin, finalY, margin+160, finalY);
-  doc.text('Nombre completo de quien tomó el inventario', margin, finalY+5);
-
-  finalY += 18;
-  doc.line(margin, finalY, margin+80, finalY);
-  doc.text('Fecha de conteo', margin, finalY+5);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(60);
+  const padL = 6, labelColW = 22;
+  let ly = boxTop + 16;
+  const filaFirma = (etiqueta)=>{
+    doc.text(etiqueta, boxX+padL, ly);
+    doc.setDrawColor(150,150,150); doc.setLineWidth(0.2);
+    doc.line(boxX+padL+labelColW, ly+0.8, boxX+boxW-6, ly+0.8);
+    ly += 9;
+  };
+  filaFirma('Firma:');
+  filaFirma('DNI:');
+  filaFirma('Nombre:');
+  filaFirma('Fecha conteo:');
 
   doc.save(`toma_inventario_${correlativo}.pdf`);
   showToast('PDF de conteo físico generado.','ok');
