@@ -813,8 +813,9 @@
           <div style="margin-top:22px; padding-top:16px; border-top:1px solid var(--line-strong);">
             <h4 style="font-size:12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;">Códigos sobrantes encontrados (no estaban en la lista a contar)</h4>
             <p class="hint" style="margin-bottom:10px;">No afectan el ERI ni el ERU — quedan registrados para que se gestionen en "Resultados".</p>
-            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:end; margin-bottom:10px;">
-              <div class="field" style="margin:0; max-width:130px;"><label>Código</label><input type="text" id="ti-sob-codigo" class="upper"></div>
+            <p class="hint" id="ti-sob-cerrado-aviso" style="display:none; color:#8A332A; font-weight:700;">⚠ Esta toma ya está finalizada — no se pueden agregar más sobrantes.</p>
+            <div id="ti-sob-form-wrap" style="display:flex; gap:8px; flex-wrap:wrap; align-items:end; margin-bottom:10px;">
+              <div class="field" style="margin:0; max-width:150px;"><label>Código</label><input type="text" id="ti-sob-codigo" class="upper"></div>
               <div class="field" style="margin:0; max-width:200px;"><label>Descripción</label><input type="text" id="ti-sob-desc" class="upper"></div>
               <div class="field" style="margin:0; max-width:90px;"><label>Cantidad</label><input type="number" id="ti-sob-cantidad" min="1" step="1"></div>
               <div class="field" style="margin:0; max-width:110px;"><label>Pallet</label><input type="text" id="ti-sob-pallet" class="upper"></div>
@@ -987,8 +988,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v57';
-const APP_UPDATED = '26/08/2026 18:00';
+const APP_VERSION = 'v58';
+const APP_UPDATED = '26/08/2026 18:25';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4471,6 +4472,8 @@ function renderResultadoConteo(){
   $('ti-resultado-titulo').textContent = `Resultado del conteo — ${tiConteoActual.correlativo}` + (finalizado ? ' (finalizada, solo lectura)' : '');
   actualizarResumenConteo();
   $('btn-ti-finalizar').style.display = finalizado ? 'none' : 'inline-block';
+  $('ti-sob-form-wrap').style.display = finalizado ? 'none' : 'flex';
+  $('ti-sob-cerrado-aviso').style.display = finalizado ? 'block' : 'none';
   if(finalizado) renderConteoTomaBloqueado();
   else renderConteoTomaEditable();
 }
@@ -5045,17 +5048,49 @@ function renderSobrantesToma(){
   ).join('');
 }
 
+// Mismo autocompletado/sugerencia que en Movimientos: si el código ya existe en el
+// catálogo, rellena y bloquea la descripción; si no existe, la deja libre para escribirla.
+wireProductoAutocomplete($('ti-sob-codigo'));
+$('ti-sob-codigo').addEventListener('blur', ()=>{
+  const code = $('ti-sob-codigo').value.trim().toUpperCase(); $('ti-sob-codigo').value = code;
+  const descEl = $('ti-sob-desc');
+  if(code && productos[code]){
+    descEl.value = productos[code].descripcion || '';
+    descEl.readOnly = true;
+  }else{
+    descEl.readOnly = false;
+  }
+});
+
 $('btn-ti-agregar-sobrante').addEventListener('click', async ()=>{
   if(!tiSeleccionCorrelativo){ showToast('Selecciona una toma primero.','err'); return; }
+  const headerActivo = tiRegAllCache.find(r=>r.correlativo===tiSeleccionCorrelativo);
+  if(headerActivo && headerActivo.estado==='FINALIZADO'){ showToast('Esta toma ya está finalizada — no se pueden agregar sobrantes.','err'); return; }
   const codigo = $('ti-sob-codigo').value.trim().toUpperCase();
   const descripcion = $('ti-sob-desc').value.trim().toUpperCase();
   const cantidad = Number($('ti-sob-cantidad').value);
   const pallet = $('ti-sob-pallet').value.trim().toUpperCase();
   const posicion = $('ti-sob-posicion').value.trim().toUpperCase();
   if(!codigo){ showToast('Ingresa el código.','err'); return; }
+  if(codigo.includes('/')){ showToast('El código no puede contener "/". Usa un guion en su lugar.','err'); return; }
+  if(!descripcion){ showToast('Ingresa la descripción.','err'); return; }
   if(!cantidad || cantidad<=0){ showToast('Ingresa una cantidad válida.','err'); return; }
   $('btn-ti-agregar-sobrante').disabled = true;
   try{
+    // Si el código no existe todavía en el catálogo, se crea ahí mismo (pidiendo costo),
+    // igual que cuando se crea un pallet con un producto nuevo.
+    if(!productos[codigo]){
+      const costoTexto = prompt(`"${codigo}" no existe en el catálogo de productos. Ingresa su costo unitario para crearlo:`, '0');
+      if(costoTexto === null){ $('btn-ti-agregar-sobrante').disabled = false; return; }
+      const costo = parseFloat(costoTexto);
+      if(isNaN(costo) || costo < 0){ showToast('Costo inválido — no se creó el producto ni el sobrante.','err'); $('btn-ti-agregar-sobrante').disabled = false; return; }
+      await productosRef.doc(codigoADocId(codigo)).set({
+        descripcion, costo, empaque1: null, empaque2: null,
+        creado_en: firebase.firestore.FieldValue.serverTimestamp(), creado_por: currentUserEmail
+      });
+      await logAccion('producto_registrado', {pallet_codigo:codigo, detalle:`Producto ${codigo} creado automáticamente al registrar un sobrante en Toma de Inventario`});
+    }
+
     const correlativo = tiSeleccionCorrelativo;
     await inventarioObservacionesRef.doc().set({
       correlativo_toma: correlativo,
@@ -5077,7 +5112,7 @@ $('btn-ti-agregar-sobrante').addEventListener('click', async ()=>{
       tiRegAllCache[idxCache].observaciones_pendientes = (tiRegAllCache[idxCache].observaciones_pendientes||0)+1;
     }
     await logAccion('toma_inventario_sobrante_registrado', {detalle:`Se registró código sobrante ${codigo} en ${correlativo} (pallet ${pallet||'-'}, posición ${posicion||'-'})`});
-    $('ti-sob-codigo').value=''; $('ti-sob-desc').value=''; $('ti-sob-cantidad').value=''; $('ti-sob-pallet').value=''; $('ti-sob-posicion').value='';
+    $('ti-sob-codigo').value=''; $('ti-sob-desc').value=''; $('ti-sob-desc').readOnly=false; $('ti-sob-cantidad').value=''; $('ti-sob-pallet').value=''; $('ti-sob-posicion').value='';
     await cargarSobrantesToma(correlativo);
     renderTomasInventario();
     showToast('Código sobrante registrado.','ok');
