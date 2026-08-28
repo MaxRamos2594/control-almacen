@@ -777,12 +777,18 @@
     </div>
 
     <div>
-      <div class="panel" style="margin-bottom:14px;">
+      <div class="subtabs" style="margin-bottom:14px;">
+        <button class="active" id="tisub-conteo">Resultado del conteo</button>
+        <button id="tisub-pdf">PDF firmado</button>
+      </div>
+
+      <div id="tisub-panel-conteo">
+      <div class="panel">
         <h3 id="ti-resultado-titulo">Resultado del conteo</h3>
         <div class="empty-state" id="ti-resultado-vacio">Selecciona una toma de la lista de la izquierda para ver o registrar su conteo.</div>
         <div id="ti-resultado-contenido" style="display:none;">
           <div id="ti-conteo-resumen" style="margin-bottom:10px;"></div>
-          <div class="hist-wrap" style="max-height:480px;">
+          <div class="hist-wrap" style="max-height:560px;">
             <table><thead><tr><th>Posición</th><th>Tipo</th><th>Pallet</th><th>Código</th><th>Descripción</th><th>Sistema</th><th>¿Encontrado?</th><th>Contada</th><th>Diferencia</th><th></th></tr></thead><tbody id="ti-conteo-body"></tbody></table>
           </div>
           <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
@@ -792,7 +798,9 @@
           </div>
         </div>
       </div>
+      </div>
 
+      <div id="tisub-panel-pdf" style="display:none;">
       <div class="panel">
         <h3>PDF firmado</h3>
         <div class="empty-state" id="ti-pdf-vacio">Selecciona una toma para ver o subir su PDF firmado.</div>
@@ -802,7 +810,7 @@
             <button class="btn btn-primary" id="btn-ti-subir-pdf-panel">📤 Subir PDF firmado</button>
           </div>
           <div id="ti-pdf-con-archivo" style="display:none;">
-            <iframe id="ti-pdf-iframe" style="width:100%; height:460px; border:1px solid var(--line-strong); border-radius:6px;" src=""></iframe>
+            <iframe id="ti-pdf-iframe" style="width:100%; height:760px; border:1px solid var(--line-strong); border-radius:6px;" src=""></iframe>
             <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
               <a id="ti-pdf-abrir-nueva" href="#" target="_blank" rel="noopener" class="btn btn-ghost">⬇ Abrir en pestaña nueva</a>
               <button class="btn btn-ghost" id="btn-ti-reemplazar-pdf">↺ Reemplazar PDF</button>
@@ -810,6 +818,7 @@
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
 
@@ -913,8 +922,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v52';
-const APP_UPDATED = '26/08/2026 14:15';
+const APP_VERSION = 'v53';
+const APP_UPDATED = '26/08/2026 14:35';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4235,6 +4244,15 @@ $('btn-ti-confirmar').addEventListener('click', async ()=>{
     $('btn-ti-confirmar').disabled = false;
   }
 });
+
+function setTiSubtab(name){
+  ['conteo','pdf'].forEach(n=>{
+    $('tisub-'+n).classList.toggle('active', n===name);
+    $('tisub-panel-'+n).style.display = (n===name) ? 'block' : 'none';
+  });
+}
+$('tisub-conteo').addEventListener('click', ()=> setTiSubtab('conteo'));
+$('tisub-pdf').addEventListener('click', ()=> setTiSubtab('pdf'));
 
 let tiRegRawLastDoc = null;
 let tiRegAllCache = [];
