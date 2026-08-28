@@ -809,6 +809,23 @@
             <button class="btn btn-ghost" id="btn-ti-generar-pdf-formulario">🖨 Generar PDF para conteo</button>
             <button class="btn" id="btn-ti-eliminar-toma" style="background:#8A332A; color:#fff;">🗑 Eliminar esta toma</button>
           </div>
+
+          <div style="margin-top:22px; padding-top:16px; border-top:1px solid var(--line-strong);">
+            <h4 style="font-size:12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;">Códigos sobrantes encontrados (no estaban en la lista a contar)</h4>
+            <p class="hint" style="margin-bottom:10px;">No afectan el ERI ni el ERU — quedan registrados para que se gestionen en "Resultados".</p>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:end; margin-bottom:10px;">
+              <div class="field" style="margin:0; max-width:130px;"><label>Código</label><input type="text" id="ti-sob-codigo" class="upper"></div>
+              <div class="field" style="margin:0; max-width:200px;"><label>Descripción</label><input type="text" id="ti-sob-desc" class="upper"></div>
+              <div class="field" style="margin:0; max-width:90px;"><label>Cantidad</label><input type="number" id="ti-sob-cantidad" min="1" step="1"></div>
+              <div class="field" style="margin:0; max-width:110px;"><label>Pallet</label><input type="text" id="ti-sob-pallet" class="upper"></div>
+              <div class="field" style="margin:0; max-width:100px;"><label>Posición</label><input type="text" id="ti-sob-posicion" class="upper"></div>
+              <button class="btn btn-primary btn-sm" id="btn-ti-agregar-sobrante">+ Agregar</button>
+            </div>
+            <div class="hist-wrap" style="max-height:220px;">
+              <table><thead><tr><th>Código</th><th>Descripción</th><th>Cantidad</th><th>Pallet</th><th>Posición</th><th>Estado</th></tr></thead><tbody id="ti-sob-body"></tbody></table>
+              <div class="empty-state" id="ti-sob-empty">Sin códigos sobrantes registrados para esta toma.</div>
+            </div>
+          </div>
         </div>
       </div>
       </div>
@@ -970,8 +987,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v56';
-const APP_UPDATED = '26/08/2026 17:00';
+const APP_VERSION = 'v57';
+const APP_UPDATED = '26/08/2026 18:00';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -1170,7 +1187,7 @@ function moduloOf(tipo){
   if(['bloqueo','desbloqueo'].includes(tipo)) return 'bloqueo';
   if(['producto_registrado','producto_fusionado'].includes(tipo)) return 'productos';
   if(['permisos_actualizados','sesion_cerrada','sesion_cerrada_inactividad','sesion_iniciada'].includes(tipo)) return 'usuarios';
-  if(['toma_inventario_generada','toma_inventario_finalizada','toma_inventario_eliminada','toma_inventario_pdf_subido','toma_inventario_pdf_eliminado','toma_inventario_observacion_resuelta','toma_inventario_observacion_reabierta','toma_inventario_conteo_corregido'].includes(tipo)) return 'toma_inventario';
+  if(['toma_inventario_generada','toma_inventario_finalizada','toma_inventario_eliminada','toma_inventario_pdf_subido','toma_inventario_pdf_eliminado','toma_inventario_observacion_resuelta','toma_inventario_observacion_reabierta','toma_inventario_conteo_corregido','toma_inventario_sobrante_registrado'].includes(tipo)) return 'toma_inventario';
   return '';
 }
 function tipoLabel(tipo){
@@ -1185,7 +1202,7 @@ function tipoLabel(tipo){
     toma_inventario_eliminada:'Toma de inventario: eliminada', toma_inventario_pdf_subido:'Toma de inventario: PDF subido',
     toma_inventario_pdf_eliminado:'Toma de inventario: PDF eliminado',
     toma_inventario_observacion_resuelta:'Observación resuelta', toma_inventario_observacion_reabierta:'Observación reabierta',
-    toma_inventario_conteo_corregido:'Conteo corregido'
+    toma_inventario_conteo_corregido:'Conteo corregido', toma_inventario_sobrante_registrado:'Código sobrante registrado'
   };
   return map[tipo] || tipo || '';
 }
@@ -4408,20 +4425,25 @@ async function seleccionarToma(correlativo){
     tiConteoActual = { correlativo, items };
     renderResultadoConteo();
     renderPanelPdf();
+    cargarSobrantesToma(correlativo);
   }catch(err){
     console.error(err);
     showToast('Error al cargar la toma: '+err.message,'err');
   }
 }
 
+// ERI (Exactitud de Registro de Inventario) = unidades contadas / unidades del
+// sistema, sobre todas las líneas contadas (Σcantidad_contada / Σcantidad_sistema).
+// ERU (Exactitud de Registro de Unidades... a nivel de posición) = % de líneas
+// contadas donde el producto SÍ se encontró físicamente en su posición.
 function calcularEriEru(items){
   const contadas = items.filter(it=>it.estado==='CONTADO');
   if(contadas.length===0) return { eri: 0, eru: 0 };
-  const encontradas = contadas.filter(it=>it.encontrado !== false);
-  const eri = Math.round((encontradas.length / contadas.length) * 100);
-  let sumaSistema = 0, sumaDif = 0;
-  encontradas.forEach(it=>{ sumaSistema += Number(it.cantidad_sistema)||0; sumaDif += Math.abs(Number(it.diferencia)||0); });
-  const eru = sumaSistema>0 ? Math.max(0, Math.round((1 - sumaDif/sumaSistema)*100)) : 100;
+  let sumaSistema = 0, sumaContada = 0;
+  contadas.forEach(it=>{ sumaSistema += Number(it.cantidad_sistema)||0; sumaContada += Number(it.cantidad_contada)||0; });
+  const eri = sumaSistema>0 ? Math.round((sumaContada/sumaSistema)*100) : 100;
+  const encontradas = contadas.filter(it=>it.encontrado !== false).length;
+  const eru = Math.round((encontradas / contadas.length) * 100);
   return { eri, eru };
 }
 
@@ -4665,7 +4687,8 @@ $('ti-conteo-body').addEventListener('click', async (ev)=>{
 
 function clasificarObservacion(it){
   if(it.encontrado===false) return 'NO_ENCONTRADO';
-  return it.diferencia>0 ? 'FALTANTE' : 'EXCESO';
+  // diferencia = contada - sistema. Si contada > sistema, SOBRA; si contada < sistema, FALTA.
+  return it.diferencia>0 ? 'SOBRANTE' : 'FALTANTE';
 }
 
 $('btn-ti-finalizar').addEventListener('click', async ()=>{
@@ -4949,6 +4972,24 @@ function generarPDFToma(header, items){
     }
   });
 
+  // Espacio en blanco para anotar a mano códigos ENCONTRADOS que no estaban en la lista
+  doc.autoTable({
+    startY: doc.lastAutoTable.finalY + 8,
+    head: [['CÓDIGOS SOBRANTES / NO LISTADOS (llenar a mano si encuentras algo que no está en la tabla de arriba)']],
+    body: [],
+    theme: 'plain',
+    styles: { fontSize: 9, fontStyle:'bold', textColor:[30,58,95] },
+    margin: { left: margin, right: margin }
+  });
+  doc.autoTable({
+    startY: doc.lastAutoTable.finalY + 1,
+    head: [['Código','Descripción','Cantidad','Pallet','Posición']],
+    body: Array.from({length:6}, ()=>['','','','','']),
+    styles: { fontSize: 8, cellPadding: 2, minCellHeight: 7 },
+    headStyles: { fillColor: [90,90,90], textColor: 255, fontStyle:'bold' },
+    margin: { left: margin, right: margin }
+  });
+
   const pageH = doc.internal.pageSize.getHeight();
   const boxW = 88, boxH = 46;
   let boxTop = doc.lastAutoTable.finalY + 12;
@@ -4979,6 +5020,75 @@ function generarPDFToma(header, items){
   doc.save(`toma_inventario_${correlativo}.pdf`);
   showToast('PDF de conteo físico generado.','ok');
 }
+/* -------------------- Códigos sobrantes (no listados en la toma) -------------------- */
+let tiSobrantesCache = [];
+
+async function cargarSobrantesToma(correlativo){
+  try{
+    const snap = await inventarioObservacionesRef.where('correlativo_toma','==',correlativo).limit(1000).get();
+    tiSobrantesCache = snap.docs.map(d=>Object.assign({id:d.id}, d.data())).filter(o=>o.tipo==='SOBRANTE_NO_LISTADO');
+    renderSobrantesToma();
+  }catch(err){
+    console.error(err);
+  }
+}
+
+function renderSobrantesToma(){
+  if(tiSobrantesCache.length===0){
+    $('ti-sob-body').innerHTML = '';
+    $('ti-sob-empty').style.display = 'block';
+    return;
+  }
+  $('ti-sob-empty').style.display = 'none';
+  $('ti-sob-body').innerHTML = tiSobrantesCache.map(o=>
+    `<tr><td>${o.producto_codigo||''}</td><td>${o.producto_descripcion||''}</td><td>${o.cantidad_contada??''}</td><td>${o.pallet_codigo||''}</td><td>${o.posicion_id||''}</td><td>${o.estado==='SOLUCIONADO'?'Solucionado':'Pendiente'}</td></tr>`
+  ).join('');
+}
+
+$('btn-ti-agregar-sobrante').addEventListener('click', async ()=>{
+  if(!tiSeleccionCorrelativo){ showToast('Selecciona una toma primero.','err'); return; }
+  const codigo = $('ti-sob-codigo').value.trim().toUpperCase();
+  const descripcion = $('ti-sob-desc').value.trim().toUpperCase();
+  const cantidad = Number($('ti-sob-cantidad').value);
+  const pallet = $('ti-sob-pallet').value.trim().toUpperCase();
+  const posicion = $('ti-sob-posicion').value.trim().toUpperCase();
+  if(!codigo){ showToast('Ingresa el código.','err'); return; }
+  if(!cantidad || cantidad<=0){ showToast('Ingresa una cantidad válida.','err'); return; }
+  $('btn-ti-agregar-sobrante').disabled = true;
+  try{
+    const correlativo = tiSeleccionCorrelativo;
+    await inventarioObservacionesRef.doc().set({
+      correlativo_toma: correlativo,
+      tipo: 'SOBRANTE_NO_LISTADO',
+      producto_codigo: codigo, producto_descripcion: descripcion,
+      cantidad_sistema: null, cantidad_contada: cantidad, diferencia: null,
+      pallet_codigo: pallet||null, posicion_id: posicion||null,
+      estado: 'PENDIENTE', comentario_resolucion: null,
+      creado_por: currentUserAlias, creado_en: firebase.firestore.FieldValue.serverTimestamp(),
+      resuelto_por: null, resuelto_en: null
+    });
+    await inventarioTomasRef.doc(correlativo).set({
+      total_observaciones: firebase.firestore.FieldValue.increment(1),
+      observaciones_pendientes: firebase.firestore.FieldValue.increment(1)
+    }, {merge:true});
+    const idxCache = tiRegAllCache.findIndex(r=>r.correlativo===correlativo);
+    if(idxCache>=0){
+      tiRegAllCache[idxCache].total_observaciones = (tiRegAllCache[idxCache].total_observaciones||0)+1;
+      tiRegAllCache[idxCache].observaciones_pendientes = (tiRegAllCache[idxCache].observaciones_pendientes||0)+1;
+    }
+    await logAccion('toma_inventario_sobrante_registrado', {detalle:`Se registró código sobrante ${codigo} en ${correlativo} (pallet ${pallet||'-'}, posición ${posicion||'-'})`});
+    $('ti-sob-codigo').value=''; $('ti-sob-desc').value=''; $('ti-sob-cantidad').value=''; $('ti-sob-pallet').value=''; $('ti-sob-posicion').value='';
+    await cargarSobrantesToma(correlativo);
+    renderTomasInventario();
+    showToast('Código sobrante registrado.','ok');
+  }catch(err){
+    console.error(err);
+    showToast('Error al registrar: '+err.message,'err');
+  }finally{
+    $('btn-ti-agregar-sobrante').disabled = false;
+  }
+});
+
 /* -------------------- Toma de Inventario: Dashboard de Resultados -------------------- */
 let resSeleccionCorrelativo = null;
 let resObsCache = null; // {correlativo, obs:[{id,...}]}
@@ -5063,7 +5173,7 @@ async function seleccionarTomaResultados(correlativo){
   }
 }
 
-const TIPO_OBS_LABEL = { FALTANTE:'Faltante', EXCESO:'Exceso', NO_ENCONTRADO:'No encontrado' };
+const TIPO_OBS_LABEL = { FALTANTE:'Faltante', SOBRANTE:'Sobrante', NO_ENCONTRADO:'No encontrado', SOBRANTE_NO_LISTADO:'Sobrante (no listado)' };
 
 function renderObservaciones(){
   if(!resObsCache) return;
@@ -5077,14 +5187,15 @@ function renderObservaciones(){
 
   $('res-obs-body').innerHTML = obs.slice().sort((a,b)=> (a.estado==='PENDIENTE'?0:1) - (b.estado==='PENDIENTE'?0:1)).map((o,idx)=>{
     const solucionado = o.estado === 'SOLUCIONADO';
-    const colorDif = o.diferencia>0 ? '#8A332A' : (o.diferencia<0 ? '#8A6D1D' : '#555');
+    const colorDif = o.diferencia==null ? '#555' : (o.diferencia>0 ? '#8A6D1D' : (o.diferencia<0 ? '#8A332A' : '#245C46'));
+    const textoDif = o.diferencia==null ? '—' : (o.diferencia>0?'+'+o.diferencia:o.diferencia);
     const accion = solucionado
       ? `<span style="color:#245C46; font-size:11px;">✓ por ${o.resuelto_por||''}</span><br><button type="button" class="btn btn-sm btn-ghost res-btn-reabrir" data-id="${o.id}">Reabrir</button>`
       : `<button type="button" class="btn btn-sm btn-primary res-btn-resolver" data-id="${o.id}">Marcar solucionado</button>`;
     return `<tr style="${solucionado?'opacity:.7;':''}">
-      <td>${o.posicion_id||''}</td><td>${o.producto_codigo||''}</td><td>${o.producto_descripcion||''}</td>
-      <td>${TIPO_OBS_LABEL[o.tipo]||o.tipo}</td><td>${o.cantidad_sistema??''}</td><td>${o.cantidad_contada??''}</td>
-      <td style="color:${colorDif}; font-weight:700;">${o.diferencia>0?'+'+o.diferencia:o.diferencia}</td>
+      <td>${o.posicion_id||''}${o.pallet_codigo?' / '+o.pallet_codigo:''}</td><td>${o.producto_codigo||''}</td><td>${o.producto_descripcion||''}</td>
+      <td>${TIPO_OBS_LABEL[o.tipo]||o.tipo}</td><td>${o.cantidad_sistema??'—'}</td><td>${o.cantidad_contada??''}</td>
+      <td style="color:${colorDif}; font-weight:700;">${textoDif}</td>
       <td>${solucionado?'Solucionado':'Pendiente'}</td>
       <td>${accion}${solucionado && o.comentario_resolucion ? `<div class="hint" style="margin-top:4px; max-width:160px;">"${o.comentario_resolucion}"</div>` : ''}</td>
     </tr>`;
