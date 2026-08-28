@@ -739,12 +739,18 @@
 
 <!-- TOMA DE INVENTARIO -->
 <div class="view" id="view-toma_inventario">
+  <div class="subtabs" style="margin-bottom:14px;">
+    <button class="active" id="timain-ejecucion">Ejecución</button>
+    <button id="timain-resultados">Resultados</button>
+  </div>
+
+  <div id="timain-panel-ejecucion">
   <div style="display:grid; grid-template-columns: 1fr 1.3fr; gap:14px; align-items:start;">
 
     <div>
       <div class="panel" style="margin-bottom:14px;">
         <h3>Generar toma de inventario</h3>
-        <p class="hint" style="margin-bottom:10px;">20% Rack / 80% Piso, solo posiciones ocupadas, sin bloquear, con stock &gt;0.</p>
+        <p class="hint" style="margin-bottom:10px;">20% Rack / 80% Piso, solo posiciones ocupadas, sin bloquear, con stock &gt;0. Si ya sorteaste posiciones hoy en una toma activa, no se vuelven a repetir en un sorteo nuevo del mismo día.</p>
         <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
           <div class="field" style="margin:0; max-width:200px;"><label>Cantidad a inventariar</label><input type="number" id="ti-cantidad" min="1" step="1" placeholder="EJ. 20"></div>
           <button class="btn btn-primary" id="btn-ti-generar">🎲 Sortear</button>
@@ -764,12 +770,19 @@
 
       <div class="panel">
         <h3>Tomas de inventario</h3>
-        <div class="field" style="max-width:200px; margin-bottom:10px;">
-          <label>Mostrar</label>
-          <select id="ti-filtro-estado"><option value="EN_PROCESO">En proceso</option><option value="FINALIZADO">Finalizadas</option></select>
+        <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
+          <div class="field" style="margin:0; max-width:180px;">
+            <label>Mostrar</label>
+            <select id="ti-filtro-estado"><option value="EN_PROCESO">En proceso</option><option value="FINALIZADO">Finalizadas</option></select>
+          </div>
+          <div class="field" style="margin:0; max-width:170px;">
+            <label>Fecha</label>
+            <input type="date" id="ti-filtro-fecha">
+          </div>
+          <button class="btn btn-ghost btn-sm" id="btn-ti-limpiar-filtro-fecha">Quitar filtro</button>
         </div>
         <p class="hint" style="margin-bottom:8px;">Clic en una fila para ver/registrar su conteo y su PDF a la derecha.</p>
-        <div class="hist-wrap" style="max-height:520px;">
+        <div class="hist-wrap" style="max-height:480px;">
           <table><thead><tr><th>Correlativo</th><th>Fecha</th><th>Pos.</th><th>Líneas</th><th>ERI</th><th>ERU</th><th>PDF</th><th></th></tr></thead><tbody id="ti-reg-body"></tbody></table>
           <div class="empty-state" id="ti-reg-empty">Aún no hay tomas de inventario.</div>
         </div>
@@ -823,6 +836,41 @@
     </div>
 
   </div>
+  </div>
+
+  <div id="timain-panel-resultados" style="display:none;">
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; align-items:start;">
+    <div class="panel">
+      <h3>Dashboard de resultados</h3>
+      <p class="hint" style="margin-bottom:10px;">Solo las tomas finalizadas generan observaciones. Filtra por fecha y por si les faltan observaciones pendientes por resolver.</p>
+      <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:12px;">
+        <div class="field" style="margin:0; max-width:150px;"><label>Desde</label><input type="date" id="res-fecha-desde"></div>
+        <div class="field" style="margin:0; max-width:150px;"><label>Hasta</label><input type="date" id="res-fecha-hasta"></div>
+        <div class="field" style="margin:0; max-width:190px;">
+          <label>Observaciones</label>
+          <select id="res-filtro-pendientes"><option value="">Todas las tomas</option><option value="con">Con pendientes</option><option value="sin">Sin pendientes</option></select>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="btn-res-limpiar-filtros">Quitar filtros</button>
+      </div>
+      <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:14px;" id="res-kpis"></div>
+      <div class="hist-wrap" style="max-height:460px;">
+        <table><thead><tr><th>Correlativo</th><th>Fecha</th><th>ERI</th><th>ERU</th><th>Observ.</th><th>Pendientes</th></tr></thead><tbody id="res-tomas-body"></tbody></table>
+        <div class="empty-state" id="res-tomas-empty">No hay tomas finalizadas para este filtro.</div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3 id="res-obs-titulo">Observaciones</h3>
+      <div class="empty-state" id="res-obs-vacio">Selecciona una toma finalizada de la izquierda para ver sus observaciones.</div>
+      <div id="res-obs-contenido" style="display:none;">
+        <div id="res-obs-resumen" class="hint" style="margin-bottom:10px;"></div>
+        <div class="hist-wrap" style="max-height:560px;">
+          <table><thead><tr><th>Posición</th><th>Código</th><th>Descripción</th><th>Tipo</th><th>Sistema</th><th>Contada</th><th>Dif.</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="res-obs-body"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+
   <input type="file" id="ti-pdf-input-global" accept="application/pdf" style="display:none;">
 </div>
 
@@ -852,7 +900,7 @@
       <div class="field" style="margin:0;"><label>Desde</label><input type="date" id="bit-desde"></div>
       <div class="field" style="margin:0;"><label>Hasta</label><input type="date" id="bit-hasta"></div>
       <div class="field" style="margin:0;"><label>Módulo</label>
-        <select id="bit-modulo"><option value="">Todos</option><option value="diseno">Diseño</option><option value="movimientos">Movimientos</option><option value="bloqueo">Bloqueo</option><option value="productos">Productos</option><option value="usuarios">Usuarios</option></select>
+        <select id="bit-modulo"><option value="">Todos</option><option value="diseno">Diseño</option><option value="movimientos">Movimientos</option><option value="bloqueo">Bloqueo</option><option value="productos">Productos</option><option value="usuarios">Usuarios</option><option value="toma_inventario">Toma de Inventario</option></select>
       </div>
       <button class="btn btn-primary" id="btn-cargar-bitacora">Cargar</button>
     </div>
@@ -922,8 +970,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v53';
-const APP_UPDATED = '26/08/2026 14:35';
+const APP_VERSION = 'v54';
+const APP_UPDATED = '26/08/2026 16:00';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -958,6 +1006,7 @@ const mapeoDestinoParticipanteRef = db.collection('mapeo_destino_participante');
 const validadoresRef = db.collection('validadores_campana');
 const inventarioTomasRef = db.collection('inventario_tomas');
 const inventarioTomasItemsRef = db.collection('inventario_tomas_items');
+const inventarioObservacionesRef = db.collection('inventario_observaciones');
 const contadoresRef = db.collection('contadores');
 const kardexRef = db.collection('kardex');
 const contadorRef = db.collection('contadores').doc('global');
@@ -1119,8 +1168,9 @@ function moduloOf(tipo){
   if(['bloque_creado','nicho_creado','nicho_eliminado','nicho_reordenado','nicho_renombrado','pasillo_actualizado'].includes(tipo)) return 'diseno';
   if(['ingreso','movimiento','retiro','producto_agregado','transferencia','retiro_campana'].includes(tipo)) return 'movimientos';
   if(['bloqueo','desbloqueo'].includes(tipo)) return 'bloqueo';
-  if(['producto_registrado'].includes(tipo)) return 'productos';
+  if(['producto_registrado','producto_fusionado'].includes(tipo)) return 'productos';
   if(['permisos_actualizados','sesion_cerrada','sesion_cerrada_inactividad','sesion_iniciada'].includes(tipo)) return 'usuarios';
+  if(['toma_inventario_generada','toma_inventario_finalizada','toma_inventario_eliminada','toma_inventario_pdf_subido','toma_inventario_pdf_eliminado','toma_inventario_observacion_resuelta','toma_inventario_observacion_reabierta'].includes(tipo)) return 'toma_inventario';
   return '';
 }
 function tipoLabel(tipo){
@@ -1129,8 +1179,12 @@ function tipoLabel(tipo){
     retiro_campana:'Salida (campaña)', producto_agregado:'Adición de producto', transferencia:'Transferencia entre pallets',
     bloqueo:'Bloqueo de posición', desbloqueo:'Desbloqueo de posición',
     bloque_creado:'Bloque creado', nicho_creado:'Nicho creado', nicho_eliminado:'Nicho eliminado', nicho_reordenado:'Nicho reordenado', nicho_renombrado:'Nicho renombrado', pasillo_actualizado:'Pasillo actualizado',
-    producto_registrado:'Producto registrado', permisos_actualizados:'Permisos actualizados',
-    sesion_cerrada:'Cierre de sesión', sesion_cerrada_inactividad:'Cierre por inactividad', sesion_iniciada:'Inicio de sesión'
+    producto_registrado:'Producto registrado', producto_fusionado:'Producto fusionado', permisos_actualizados:'Permisos actualizados',
+    sesion_cerrada:'Cierre de sesión', sesion_cerrada_inactividad:'Cierre por inactividad', sesion_iniciada:'Inicio de sesión',
+    toma_inventario_generada:'Toma de inventario: generada', toma_inventario_finalizada:'Toma de inventario: finalizada',
+    toma_inventario_eliminada:'Toma de inventario: eliminada', toma_inventario_pdf_subido:'Toma de inventario: PDF subido',
+    toma_inventario_pdf_eliminado:'Toma de inventario: PDF eliminado',
+    toma_inventario_observacion_resuelta:'Observación resuelta', toma_inventario_observacion_reabierta:'Observación reabierta'
   };
   return map[tipo] || tipo || '';
 }
@@ -4120,8 +4174,23 @@ function tomarAleatorio(arr, n){
 // Elige posiciones OCUPADAS (con pallet y al menos un producto con cantidad>0), sin
 // bloquear, al azar: 20% Rack / 80% Piso. Todo en memoria (posiciones/pallets/productos
 // ya están cargados en vivo), así que no cuesta ninguna lectura extra generar la toma.
-function generarSeleccionToma(cantidadSolicitada){
+// Posiciones que YA están en una toma ACTIVA (EN_PROCESO) generada hoy — no se
+// vuelven a incluir en un sorteo nuevo del mismo día.
+function obtenerPosicionesActivasHoy(){
+  const hoy = todayLocalStr();
+  const excluidas = new Set();
+  tiRegAllCache.forEach(r=>{
+    if(r.fecha === hoy && (r.estado||'EN_PROCESO') === 'EN_PROCESO' && Array.isArray(r.posiciones_ids)){
+      r.posiciones_ids.forEach(id=> excluidas.add(id));
+    }
+  });
+  return excluidas;
+}
+
+function generarSeleccionToma(cantidadSolicitada, posicionesExcluidas){
+  posicionesExcluidas = posicionesExcluidas || new Set();
   const candidatas = Object.entries(posiciones).filter(([id,p])=>{
+    if(posicionesExcluidas.has(id)) return false;
     if(p.estado !== 'ocupado' || !p.pallet_codigo) return false;
     if(p.bloqueada) return false;
     const pal = pallets[p.pallet_codigo];
@@ -4172,18 +4241,19 @@ let tiSeleccionActual = null;
 $('btn-ti-generar').addEventListener('click', ()=>{
   const cantidad = parseInt($('ti-cantidad').value, 10);
   if(!cantidad || cantidad <= 0){ showMsg('ti-msg','err','Ingresa cuántas posiciones quieres inventariar.'); return; }
-  const resultado = generarSeleccionToma(cantidad);
+  const excluidas = obtenerPosicionesActivasHoy();
+  const resultado = generarSeleccionToma(cantidad, excluidas);
   if(resultado.seleccionPosiciones.length === 0){
-    showMsg('ti-msg','err','No hay posiciones ocupadas con stock disponibles para inventariar.');
+    showMsg('ti-msg','err','No hay posiciones ocupadas con stock disponibles para inventariar (o ya están todas en una toma activa de hoy).');
     $('ti-preview-wrap').style.display = 'none';
     return;
   }
   tiSeleccionActual = resultado;
   const nRack = resultado.seleccionPosiciones.filter(s=>s.tipo==='rack').length;
   const nPiso = resultado.seleccionPosiciones.filter(s=>s.tipo==='piso').length;
-  const aviso = resultado.seleccionPosiciones.length < cantidad
-    ? ` (se pidieron ${cantidad}, pero solo hay ${resultado.seleccionPosiciones.length} posiciones ocupadas disponibles)` : '';
-  $('ti-preview-resumen').textContent = `${resultado.seleccionPosiciones.length} posición(es) seleccionada(s)${aviso}: ${nRack} de Rack, ${nPiso} de Piso (${resultado.filas.length} línea(s) de producto a contar). Puedes volver a sortear si quieres otra selección antes de confirmar.`;
+  const avisoCantidad = resultado.seleccionPosiciones.length < cantidad
+    ? ` (se pidieron ${cantidad}, pero solo hay ${resultado.seleccionPosiciones.length} posiciones disponibles${excluidas.size?', descontando las ya sorteadas hoy':''})` : '';
+  $('ti-preview-resumen').textContent = `${resultado.seleccionPosiciones.length} posición(es) seleccionada(s)${avisoCantidad}: ${nRack} de Rack, ${nPiso} de Piso (${resultado.filas.length} línea(s) de producto a contar). Puedes volver a sortear si quieres otra selección antes de confirmar.`;
   $('ti-preview-body').innerHTML = resultado.filas.map(f=>
     `<tr><td>${f.posicion_id}</td><td>${f.tipo_posicion==='piso'?'Piso':'Rack'}</td><td>${f.pallet_codigo}</td><td>${f.producto_codigo}</td><td>${f.producto_descripcion}</td><td>${f.cantidad_sistema}</td></tr>`
   ).join('');
@@ -4206,6 +4276,7 @@ $('btn-ti-confirmar').addEventListener('click', async ()=>{
       cantidad_solicitada: parseInt($('ti-cantidad').value,10),
       cantidad_generada: tiSeleccionActual.seleccionPosiciones.length,
       total_lineas: tiSeleccionActual.filas.length,
+      posiciones_ids: tiSeleccionActual.seleccionPosiciones.map(s=>s.id),
       estado: 'EN_PROCESO',
       generado_por: currentUserAlias,
       generado_en: firebase.firestore.FieldValue.serverTimestamp()
@@ -4281,11 +4352,15 @@ async function cargarTomasInventario(reset){
 
 function renderTomasInventario(){
   const filtro = $('ti-filtro-estado').value;
-  const filtradas = tiRegAllCache.filter(r=>(r.estado||'EN_PROCESO')===filtro);
+  const fechaFiltro = $('ti-filtro-fecha').value;
+  let filtradas = tiRegAllCache.filter(r=>(r.estado||'EN_PROCESO')===filtro);
+  if(fechaFiltro) filtradas = filtradas.filter(r=>r.fecha===fechaFiltro);
   if(filtradas.length===0){
     $('ti-reg-body').innerHTML = '';
     $('ti-reg-empty').style.display = 'block';
-    $('ti-reg-empty').textContent = filtro==='EN_PROCESO' ? 'No hay tomas en proceso.' : 'No hay tomas finalizadas.';
+    $('ti-reg-empty').textContent = fechaFiltro
+      ? `No hay tomas ${filtro==='EN_PROCESO'?'en proceso':'finalizadas'} en esa fecha.`
+      : (filtro==='EN_PROCESO' ? 'No hay tomas en proceso.' : 'No hay tomas finalizadas.');
     return;
   }
   $('ti-reg-empty').style.display = 'none';
@@ -4301,6 +4376,17 @@ function renderTomasInventario(){
   }).join('');
 }
 $('ti-filtro-estado').addEventListener('change', renderTomasInventario);
+$('ti-filtro-fecha').addEventListener('change', renderTomasInventario);
+$('btn-ti-limpiar-filtro-fecha').addEventListener('click', ()=>{ $('ti-filtro-fecha').value=''; renderTomasInventario(); });
+
+function setTiMainSubtab(name){
+  ['ejecucion','resultados'].forEach(n=>{
+    $('timain-'+n).classList.toggle('active', n===name);
+    $('timain-panel-'+n).style.display = (n===name) ? 'block' : 'none';
+  });
+}
+$('timain-ejecucion').addEventListener('click', ()=> setTiMainSubtab('ejecucion'));
+$('timain-resultados').addEventListener('click', ()=>{ setTiMainSubtab('resultados'); renderDashboardResultados(); });
 
 $('ti-reg-body').addEventListener('click', (ev)=>{
   const btnDel = ev.target.closest('.ti-btn-eliminar-toma');
@@ -4450,6 +4536,11 @@ $('ti-conteo-body').addEventListener('click', async (ev)=>{
   }
 });
 
+function clasificarObservacion(it){
+  if(it.encontrado===false) return 'NO_ENCONTRADO';
+  return it.diferencia>0 ? 'FALTANTE' : 'EXCESO';
+}
+
 $('btn-ti-finalizar').addEventListener('click', async ()=>{
   if(!tiConteoActual) return;
   const pendientes = tiConteoActual.items.filter(it=>it.estado!=='CONTADO').length;
@@ -4462,14 +4553,38 @@ $('btn-ti-finalizar').addEventListener('click', async ()=>{
     const contadas = tiConteoActual.items.filter(it=>it.estado==='CONTADO').length;
     const conDiferencia = tiConteoActual.items.filter(it=>it.estado==='CONTADO' && Number(it.diferencia)!==0).length;
     const { eri, eru } = calcularEriEru(tiConteoActual.items);
+
+    // Genera una "observación" pendiente por cada línea con diferencia o no encontrada.
+    const itemsConProblema = tiConteoActual.items.filter(it=> it.estado==='CONTADO' && (Number(it.diferencia)!==0 || it.encontrado===false));
+    if(itemsConProblema.length){
+      const CHUNK = 400;
+      for(let i=0;i<itemsConProblema.length;i+=CHUNK){
+        const batchObs = db.batch();
+        itemsConProblema.slice(i,i+CHUNK).forEach(it=>{
+          const docRef = inventarioObservacionesRef.doc();
+          batchObs.set(docRef, {
+            correlativo_toma: tiConteoActual.correlativo,
+            item_id: it.id, posicion_id: it.posicion_id, pallet_codigo: it.pallet_codigo,
+            producto_codigo: it.producto_codigo, producto_descripcion: it.producto_descripcion,
+            cantidad_sistema: it.cantidad_sistema, cantidad_contada: it.cantidad_contada, diferencia: it.diferencia,
+            tipo: clasificarObservacion(it), estado: 'PENDIENTE', comentario_resolucion: null,
+            creado_por: currentUserAlias, creado_en: firebase.firestore.FieldValue.serverTimestamp(),
+            resuelto_por: null, resuelto_en: null
+          });
+        });
+        await batchObs.commit();
+      }
+    }
+
     await inventarioTomasRef.doc(tiConteoActual.correlativo).update({
       estado: 'FINALIZADO', contadas, con_diferencia: conDiferencia, eri, eru,
+      total_observaciones: itemsConProblema.length, observaciones_pendientes: itemsConProblema.length,
       finalizado_por: currentUserAlias, finalizado_en: firebase.firestore.FieldValue.serverTimestamp()
     });
-    await logAccion('toma_inventario_finalizada', {detalle:`Toma ${tiConteoActual.correlativo} finalizada: ${contadas} contadas, ${conDiferencia} con diferencia, ERI ${eri}%, ERU ${eru}%`});
+    await logAccion('toma_inventario_finalizada', {detalle:`Toma ${tiConteoActual.correlativo} finalizada: ${contadas} contadas, ${conDiferencia} con diferencia, ERI ${eri}%, ERU ${eru}%, ${itemsConProblema.length} observación(es) generada(s)`});
     const idx = tiRegAllCache.findIndex(r=>r.correlativo===tiConteoActual.correlativo);
-    if(idx>=0){ Object.assign(tiRegAllCache[idx], {estado:'FINALIZADO', contadas, con_diferencia:conDiferencia, eri, eru}); }
-    showToast(`Toma ${tiConteoActual.correlativo} finalizada. ERI ${eri}% · ERU ${eru}%`,'ok');
+    if(idx>=0){ Object.assign(tiRegAllCache[idx], {estado:'FINALIZADO', contadas, con_diferencia:conDiferencia, eri, eru, total_observaciones:itemsConProblema.length, observaciones_pendientes:itemsConProblema.length}); }
+    showToast(`Toma ${tiConteoActual.correlativo} finalizada. ERI ${eri}% · ERU ${eru}%${itemsConProblema.length?` · ${itemsConProblema.length} observación(es) por resolver`:''}`,'ok');
     $('ti-filtro-estado').value = 'FINALIZADO';
     renderTomasInventario();
     renderResultadoConteo();
@@ -4503,6 +4618,12 @@ async function eliminarTomaCompleta(correlativo){
     const header = tiRegAllCache.find(r=>r.correlativo===correlativo);
     if(header && header.pdf_firmado_url){
       try{ await storage.refFromURL(header.pdf_firmado_url).delete(); }catch(e){ console.error('No se pudo borrar el PDF de Storage', e); }
+    }
+    const snapObs = await inventarioObservacionesRef.where('correlativo_toma','==',correlativo).limit(3000).get();
+    for(let i=0;i<snapObs.docs.length;i+=400){
+      const batchObs = db.batch();
+      snapObs.docs.slice(i,i+400).forEach(d=> batchObs.delete(d.ref));
+      await batchObs.commit();
     }
     await inventarioTomasRef.doc(correlativo).delete();
     await logAccion('toma_inventario_eliminada', {detalle:`Se eliminó la toma ${correlativo} (${docs.length} línea(s))`});
@@ -4557,6 +4678,7 @@ async function subirPdfFirmadoToma(correlativo, file){
     pdf_firmado_subido_por: currentUserAlias,
     pdf_firmado_subido_en: firebase.firestore.FieldValue.serverTimestamp()
   });
+  await logAccion('toma_inventario_pdf_subido', {detalle:`Se subió el PDF firmado "${file.name}" a la toma ${correlativo}`});
   return url;
 }
 
@@ -4722,6 +4844,174 @@ function generarPDFToma(header, items){
   doc.save(`toma_inventario_${correlativo}.pdf`);
   showToast('PDF de conteo físico generado.','ok');
 }
+/* -------------------- Toma de Inventario: Dashboard de Resultados -------------------- */
+let resSeleccionCorrelativo = null;
+let resObsCache = null; // {correlativo, obs:[{id,...}]}
+
+function renderDashboardResultados(){
+  const desde = $('res-fecha-desde').value;
+  const hasta = $('res-fecha-hasta').value;
+  const filtroPend = $('res-filtro-pendientes').value;
+
+  let finalizadas = tiRegAllCache.filter(r=>r.estado==='FINALIZADO');
+  if(desde) finalizadas = finalizadas.filter(r=> (r.fecha||'') >= desde);
+  if(hasta) finalizadas = finalizadas.filter(r=> (r.fecha||'') <= hasta);
+  if(filtroPend==='con') finalizadas = finalizadas.filter(r=> (r.observaciones_pendientes||0) > 0);
+  else if(filtroPend==='sin') finalizadas = finalizadas.filter(r=> (r.observaciones_pendientes||0) === 0);
+
+  // KPIs
+  const totalTomas = finalizadas.length;
+  const totalObs = finalizadas.reduce((a,r)=>a+(r.total_observaciones||0),0);
+  const totalPend = finalizadas.reduce((a,r)=>a+(r.observaciones_pendientes||0),0);
+  const totalSolucionadas = totalObs - totalPend;
+  const pctResuelto = totalObs>0 ? Math.round((totalSolucionadas/totalObs)*100) : 100;
+  const eriProm = totalTomas ? Math.round(finalizadas.reduce((a,r)=>a+(r.eri||0),0)/totalTomas) : 0;
+  const eruProm = totalTomas ? Math.round(finalizadas.reduce((a,r)=>a+(r.eru||0),0)/totalTomas) : 0;
+
+  const kpiHtml = (titulo, valor, color)=>`
+    <div style="flex:1; min-width:130px; background:#fff; border:1px solid var(--line-strong); border-radius:8px; padding:12px 14px;">
+      <div style="font-size:10px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; margin-bottom:5px;">${titulo}</div>
+      <div style="font-size:20px; font-weight:800; color:${color||'var(--ink)'};">${valor}</div>
+    </div>`;
+  $('res-kpis').innerHTML =
+    kpiHtml('Tomas finalizadas', totalTomas) +
+    kpiHtml('Observaciones', totalObs) +
+    kpiHtml('Pendientes', totalPend, totalPend>0 ? '#8A332A' : '#245C46') +
+    kpiHtml('Solucionadas', totalSolucionadas, '#245C46') +
+    kpiHtml('% resuelto', pctResuelto+'%', pctResuelto>=100 ? '#245C46' : (pctResuelto>=70 ? '#8A6D1D' : '#8A332A')) +
+    kpiHtml('ERI / ERU promedio', `${eriProm}% / ${eruProm}%`);
+
+  if(finalizadas.length===0){
+    $('res-tomas-body').innerHTML = '';
+    $('res-tomas-empty').style.display = 'block';
+    return;
+  }
+  $('res-tomas-empty').style.display = 'none';
+  $('res-tomas-body').innerHTML = finalizadas.slice().sort((a,b)=> (b.fecha||'').localeCompare(a.fecha||'')).map(r=>{
+    const activo = r.correlativo === resSeleccionCorrelativo;
+    const pend = r.observaciones_pendientes || 0;
+    return `<tr class="res-fila-toma" data-correlativo="${r.correlativo}" style="cursor:pointer; ${activo?'background:#EEF3FB;':''}">
+      <td>${r.correlativo}</td><td>${r.fecha||''}</td><td>${r.eri!=null?r.eri+'%':'—'}</td><td>${r.eru!=null?r.eru+'%':'—'}</td>
+      <td>${r.total_observaciones??0}</td>
+      <td style="color:${pend>0?'#8A332A':'#245C46'}; font-weight:700;">${pend}</td>
+    </tr>`;
+  }).join('');
+}
+$('res-fecha-desde').addEventListener('change', renderDashboardResultados);
+$('res-fecha-hasta').addEventListener('change', renderDashboardResultados);
+$('res-filtro-pendientes').addEventListener('change', renderDashboardResultados);
+$('btn-res-limpiar-filtros').addEventListener('click', ()=>{
+  $('res-fecha-desde').value=''; $('res-fecha-hasta').value=''; $('res-filtro-pendientes').value='';
+  renderDashboardResultados();
+});
+
+$('res-tomas-body').addEventListener('click', (ev)=>{
+  const tr = ev.target.closest('.res-fila-toma');
+  if(tr) seleccionarTomaResultados(tr.dataset.correlativo);
+});
+
+async function seleccionarTomaResultados(correlativo){
+  resSeleccionCorrelativo = correlativo;
+  renderDashboardResultados(); // para resaltar la fila
+  $('res-obs-vacio').style.display = 'none';
+  $('res-obs-contenido').style.display = 'block';
+  $('res-obs-titulo').textContent = `Observaciones — ${correlativo}`;
+  $('res-obs-body').innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--ink-soft);">Cargando…</td></tr>';
+  try{
+    const snap = await inventarioObservacionesRef.where('correlativo_toma','==',correlativo).limit(1000).get();
+    const obs = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
+    resObsCache = { correlativo, obs };
+    renderObservaciones();
+  }catch(err){
+    console.error(err);
+    showToast('Error al cargar observaciones: '+err.message,'err');
+  }
+}
+
+const TIPO_OBS_LABEL = { FALTANTE:'Faltante', EXCESO:'Exceso', NO_ENCONTRADO:'No encontrado' };
+
+function renderObservaciones(){
+  if(!resObsCache) return;
+  const { obs } = resObsCache;
+  const pendientes = obs.filter(o=>o.estado==='PENDIENTE').length;
+  $('res-obs-resumen').innerHTML = obs.length === 0
+    ? '✓ Esta toma no generó observaciones — todo cuadró.'
+    : `${obs.length} observación(es) · <b style="color:${pendientes>0?'#8A332A':'#245C46'};">${pendientes} pendiente(s)</b>`;
+
+  if(obs.length===0){ $('res-obs-body').innerHTML=''; return; }
+
+  $('res-obs-body').innerHTML = obs.slice().sort((a,b)=> (a.estado==='PENDIENTE'?0:1) - (b.estado==='PENDIENTE'?0:1)).map((o,idx)=>{
+    const solucionado = o.estado === 'SOLUCIONADO';
+    const colorDif = o.diferencia>0 ? '#8A332A' : (o.diferencia<0 ? '#8A6D1D' : '#555');
+    const accion = solucionado
+      ? `<span style="color:#245C46; font-size:11px;">✓ por ${o.resuelto_por||''}</span><br><button type="button" class="btn btn-sm btn-ghost res-btn-reabrir" data-id="${o.id}">Reabrir</button>`
+      : `<button type="button" class="btn btn-sm btn-primary res-btn-resolver" data-id="${o.id}">Marcar solucionado</button>`;
+    return `<tr style="${solucionado?'opacity:.7;':''}">
+      <td>${o.posicion_id||''}</td><td>${o.producto_codigo||''}</td><td>${o.producto_descripcion||''}</td>
+      <td>${TIPO_OBS_LABEL[o.tipo]||o.tipo}</td><td>${o.cantidad_sistema??''}</td><td>${o.cantidad_contada??''}</td>
+      <td style="color:${colorDif}; font-weight:700;">${o.diferencia>0?'+'+o.diferencia:o.diferencia}</td>
+      <td>${solucionado?'Solucionado':'Pendiente'}</td>
+      <td>${accion}${solucionado && o.comentario_resolucion ? `<div class="hint" style="margin-top:4px; max-width:160px;">"${o.comentario_resolucion}"</div>` : ''}</td>
+    </tr>`;
+  }).join('');
+}
+
+$('res-obs-body').addEventListener('click', async (ev)=>{
+  const btnResolver = ev.target.closest('.res-btn-resolver');
+  const btnReabrir = ev.target.closest('.res-btn-reabrir');
+  if(!btnResolver && !btnReabrir) return;
+  const id = (btnResolver||btnReabrir).dataset.id;
+  const obsItem = resObsCache.obs.find(o=>o.id===id);
+  if(!obsItem) return;
+
+  if(btnResolver){
+    const comentario = prompt('Comentario de la solución (opcional):', '') || '';
+    btnResolver.disabled = true;
+    try{
+      await inventarioObservacionesRef.doc(id).update({
+        estado: 'SOLUCIONADO', comentario_resolucion: comentario || null,
+        resuelto_por: currentUserAlias, resuelto_en: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      await inventarioTomasRef.doc(resObsCache.correlativo).update({ observaciones_pendientes: firebase.firestore.FieldValue.increment(-1) });
+      await logAccion('toma_inventario_observacion_resuelta', {detalle:`Observación de ${obsItem.posicion_id} (${obsItem.producto_codigo}) en ${resObsCache.correlativo} marcada como solucionada${comentario?': '+comentario:''}`});
+      obsItem.estado='SOLUCIONADO'; obsItem.comentario_resolucion=comentario; obsItem.resuelto_por=currentUserAlias;
+      const idxCache = tiRegAllCache.findIndex(r=>r.correlativo===resObsCache.correlativo);
+      if(idxCache>=0) tiRegAllCache[idxCache].observaciones_pendientes = Math.max(0,(tiRegAllCache[idxCache].observaciones_pendientes||1)-1);
+      renderObservaciones();
+      renderDashboardResultados();
+      showToast('Observación marcada como solucionada.','ok');
+    }catch(err){
+      console.error(err);
+      showToast('Error al resolver: '+err.message,'err');
+    }finally{
+      btnResolver.disabled = false;
+    }
+  }
+
+  if(btnReabrir){
+    if(!(currentPermisos.admin || currentPermisos.eliminar)){ showToast('No tienes permiso para reabrir observaciones.','err'); return; }
+    btnReabrir.disabled = true;
+    try{
+      await inventarioObservacionesRef.doc(id).update({
+        estado: 'PENDIENTE', comentario_resolucion: null, resuelto_por: null, resuelto_en: null
+      });
+      await inventarioTomasRef.doc(resObsCache.correlativo).update({ observaciones_pendientes: firebase.firestore.FieldValue.increment(1) });
+      await logAccion('toma_inventario_observacion_reabierta', {detalle:`Observación de ${obsItem.posicion_id} (${obsItem.producto_codigo}) en ${resObsCache.correlativo} reabierta`});
+      obsItem.estado='PENDIENTE'; obsItem.comentario_resolucion=null; obsItem.resuelto_por=null;
+      const idxCache = tiRegAllCache.findIndex(r=>r.correlativo===resObsCache.correlativo);
+      if(idxCache>=0) tiRegAllCache[idxCache].observaciones_pendientes = (tiRegAllCache[idxCache].observaciones_pendientes||0)+1;
+      renderObservaciones();
+      renderDashboardResultados();
+      showToast('Observación reabierta.','ok');
+    }catch(err){
+      console.error(err);
+      showToast('Error al reabrir: '+err.message,'err');
+    }finally{
+      btnReabrir.disabled = false;
+    }
+  }
+});
+
 /* -------------------- Paneles colapsables -------------------- */
 function setupCollapsiblePanels(){
   document.querySelectorAll('.panel > h3').forEach(h3=>{
