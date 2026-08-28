@@ -970,8 +970,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v54';
-const APP_UPDATED = '26/08/2026 16:00';
+const APP_VERSION = 'v56';
+const APP_UPDATED = '26/08/2026 17:00';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -1170,7 +1170,7 @@ function moduloOf(tipo){
   if(['bloqueo','desbloqueo'].includes(tipo)) return 'bloqueo';
   if(['producto_registrado','producto_fusionado'].includes(tipo)) return 'productos';
   if(['permisos_actualizados','sesion_cerrada','sesion_cerrada_inactividad','sesion_iniciada'].includes(tipo)) return 'usuarios';
-  if(['toma_inventario_generada','toma_inventario_finalizada','toma_inventario_eliminada','toma_inventario_pdf_subido','toma_inventario_pdf_eliminado','toma_inventario_observacion_resuelta','toma_inventario_observacion_reabierta'].includes(tipo)) return 'toma_inventario';
+  if(['toma_inventario_generada','toma_inventario_finalizada','toma_inventario_eliminada','toma_inventario_pdf_subido','toma_inventario_pdf_eliminado','toma_inventario_observacion_resuelta','toma_inventario_observacion_reabierta','toma_inventario_conteo_corregido'].includes(tipo)) return 'toma_inventario';
   return '';
 }
 function tipoLabel(tipo){
@@ -1184,7 +1184,8 @@ function tipoLabel(tipo){
     toma_inventario_generada:'Toma de inventario: generada', toma_inventario_finalizada:'Toma de inventario: finalizada',
     toma_inventario_eliminada:'Toma de inventario: eliminada', toma_inventario_pdf_subido:'Toma de inventario: PDF subido',
     toma_inventario_pdf_eliminado:'Toma de inventario: PDF eliminado',
-    toma_inventario_observacion_resuelta:'Observación resuelta', toma_inventario_observacion_reabierta:'Observación reabierta'
+    toma_inventario_observacion_resuelta:'Observación resuelta', toma_inventario_observacion_reabierta:'Observación reabierta',
+    toma_inventario_conteo_corregido:'Conteo corregido'
   };
   return map[tipo] || tipo || '';
 }
@@ -4399,6 +4400,7 @@ $('ti-reg-body').addEventListener('click', (ev)=>{
 // derecha (resultado del conteo + PDF firmado) — así de dinámico, sin recargar nada más.
 async function seleccionarToma(correlativo){
   tiSeleccionCorrelativo = correlativo;
+  tiLineaEnEdicionId = null;
   renderTomasInventario(); // para resaltar la fila elegida
   try{
     const snap = await inventarioTomasItemsRef.where('correlativo_toma','==',correlativo).limit(3000).get();
@@ -4483,8 +4485,30 @@ function renderConteoTomaEditable(){
   });
 }
 
+let tiLineaEnEdicionId = null; // id del ítem que se está corrigiendo dentro de una toma ya finalizada
+
 function renderConteoTomaBloqueado(){
+  const puedeCorregir = currentPermisos.admin || currentPermisos.eliminar;
   $('ti-conteo-body').innerHTML = tiConteoActual.items.map(it=>{
+    if(puedeCorregir && it.id === tiLineaEnEdicionId){
+      const encontradoVal = it.encontrado===false ? 'no' : 'si';
+      return `<tr data-id="${it.id}" style="background:#FFF8E1;">
+        <td>${it.posicion_id}</td><td>${it.tipo_posicion==='piso'?'Piso':'Rack'}</td><td>${it.pallet_codigo}</td>
+        <td>${it.producto_codigo}</td><td>${it.producto_descripcion}</td><td>${it.cantidad_sistema}</td>
+        <td>
+          <select class="ti-select-encontrado-fix" data-id="${it.id}">
+            <option value="si" ${encontradoVal==='si'?'selected':''}>Sí</option>
+            <option value="no" ${encontradoVal==='no'?'selected':''}>No</option>
+          </select>
+        </td>
+        <td><input type="number" class="ti-input-contada-fix" data-id="${it.id}" value="${it.cantidad_contada??''}" style="width:80px;" min="0" ${encontradoVal==='no'?'disabled':''}></td>
+        <td>—</td>
+        <td style="white-space:nowrap;">
+          <button type="button" class="btn btn-sm btn-primary btn-ti-guardar-correccion" data-id="${it.id}">Guardar</button>
+          <button type="button" class="btn btn-sm btn-ghost btn-ti-cancelar-correccion">Cancelar</button>
+        </td>
+      </tr>`;
+    }
     const contado = it.estado==='CONTADO';
     const dif = contado ? Number(it.diferencia) : null;
     const colorDif = dif==null ? '' : (dif===0 ? '#245C46' : (dif>0 ? '#8A6D1D' : '#8A332A'));
@@ -4494,12 +4518,115 @@ function renderConteoTomaBloqueado(){
       <td>${it.posicion_id}</td><td>${it.tipo_posicion==='piso'?'Piso':'Rack'}</td><td>${it.pallet_codigo}</td>
       <td>${it.producto_codigo}</td><td>${it.producto_descripcion}</td><td>${it.cantidad_sistema}</td>
       <td>${encontradoTxt}</td><td>${contado ? it.cantidad_contada : '—'}</td>
-      <td style="color:${colorDif}; font-weight:700;">${textoDif}</td><td></td>
+      <td style="color:${colorDif}; font-weight:700;">${textoDif}</td>
+      <td>${puedeCorregir ? `<button type="button" class="btn btn-sm btn-ghost btn-ti-editar-linea" data-id="${it.id}">✏️ Corregir</button>` : ''}</td>
     </tr>`;
   }).join('');
+
+  document.querySelectorAll('.ti-select-encontrado-fix').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const id = sel.dataset.id;
+      const input = document.querySelector(`.ti-input-contada-fix[data-id="${id}"]`);
+      if(sel.value === 'no'){ input.value = '0'; input.disabled = true; }
+      else{ input.disabled = false; }
+    });
+  });
+}
+
+// Clasifica una diferencia como Faltante / Exceso / No encontrado (reusable
+// tanto al finalizar como al corregir un conteo ya finalizado).
+async function guardarCorreccionLinea(itemId){
+  const item = tiConteoActual.items.find(it=>it.id===itemId);
+  if(!item) return;
+  const selEncontrado = document.querySelector(`.ti-select-encontrado-fix[data-id="${itemId}"]`);
+  const encontrado = selEncontrado.value === 'si';
+  const input = document.querySelector(`.ti-input-contada-fix[data-id="${itemId}"]`);
+  const valor = encontrado ? input.value.trim() : '0';
+  if(valor === ''){ showToast('Ingresa la cantidad contada.','err'); return; }
+  const cantidadContada = Number(valor);
+  if(isNaN(cantidadContada) || cantidadContada<0){ showToast('Cantidad inválida.','err'); return; }
+  const diferenciaNueva = cantidadContada - item.cantidad_sistema;
+
+  try{
+    await inventarioTomasItemsRef.doc(itemId).update({
+      cantidad_contada: cantidadContada, diferencia: diferenciaNueva, encontrado, estado:'CONTADO',
+      corregido_por: currentUserAlias, corregido_en: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    const tieneDiscrepanciaNueva = diferenciaNueva !== 0 || encontrado===false;
+    let deltaPendientes = 0, deltaTotalObs = 0;
+    const snapObs = await inventarioObservacionesRef.where('item_id','==',itemId).limit(1).get();
+
+    if(!snapObs.empty){
+      const obsDoc = snapObs.docs[0];
+      const obsData = obsDoc.data();
+      if(tieneDiscrepanciaNueva){
+        await inventarioObservacionesRef.doc(obsDoc.id).update({
+          cantidad_contada: cantidadContada, diferencia: diferenciaNueva,
+          tipo: clasificarObservacion({diferencia:diferenciaNueva, encontrado})
+        });
+      }else{
+        if(obsData.estado === 'PENDIENTE') deltaPendientes = -1;
+        await inventarioObservacionesRef.doc(obsDoc.id).update({
+          estado:'SOLUCIONADO', comentario_resolucion:'Corregido en el conteo — ya no hay diferencia.',
+          resuelto_por: currentUserAlias, resuelto_en: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+    }else if(tieneDiscrepanciaNueva){
+      await inventarioObservacionesRef.doc().set({
+        correlativo_toma: tiConteoActual.correlativo,
+        item_id: itemId, posicion_id: item.posicion_id, pallet_codigo: item.pallet_codigo,
+        producto_codigo: item.producto_codigo, producto_descripcion: item.producto_descripcion,
+        cantidad_sistema: item.cantidad_sistema, cantidad_contada: cantidadContada, diferencia: diferenciaNueva,
+        tipo: clasificarObservacion({diferencia:diferenciaNueva, encontrado}), estado:'PENDIENTE', comentario_resolucion:null,
+        creado_por: currentUserAlias, creado_en: firebase.firestore.FieldValue.serverTimestamp(),
+        resuelto_por:null, resuelto_en:null
+      });
+      deltaPendientes = 1; deltaTotalObs = 1;
+    }
+
+    item.cantidad_contada = cantidadContada; item.diferencia = diferenciaNueva; item.encontrado = encontrado;
+
+    const { eri, eru } = calcularEriEru(tiConteoActual.items);
+    const conDiferencia = tiConteoActual.items.filter(it=>it.estado==='CONTADO' && Number(it.diferencia)!==0).length;
+    const updateHeader = { eri, eru, con_diferencia: conDiferencia };
+    if(deltaPendientes) updateHeader.observaciones_pendientes = firebase.firestore.FieldValue.increment(deltaPendientes);
+    if(deltaTotalObs) updateHeader.total_observaciones = firebase.firestore.FieldValue.increment(deltaTotalObs);
+    await inventarioTomasRef.doc(tiConteoActual.correlativo).update(updateHeader);
+
+    const idxCache = tiRegAllCache.findIndex(r=>r.correlativo===tiConteoActual.correlativo);
+    if(idxCache>=0){
+      tiRegAllCache[idxCache].eri = eri; tiRegAllCache[idxCache].eru = eru; tiRegAllCache[idxCache].con_diferencia = conDiferencia;
+      if(deltaPendientes) tiRegAllCache[idxCache].observaciones_pendientes = Math.max(0,(tiRegAllCache[idxCache].observaciones_pendientes||0)+deltaPendientes);
+      if(deltaTotalObs) tiRegAllCache[idxCache].total_observaciones = (tiRegAllCache[idxCache].total_observaciones||0)+deltaTotalObs;
+    }
+
+    await logAccion('toma_inventario_conteo_corregido', {detalle:`Se corrigió el conteo de ${item.posicion_id} (${item.producto_codigo}) en ${tiConteoActual.correlativo}: nueva cantidad ${cantidadContada}, diferencia ${diferenciaNueva}`});
+
+    tiLineaEnEdicionId = null;
+    renderResultadoConteo();
+    renderTomasInventario();
+    showToast('Conteo corregido.','ok');
+  }catch(err){
+    console.error(err);
+    showToast('Error al corregir: '+err.message,'err');
+  }
 }
 
 $('ti-conteo-body').addEventListener('click', async (ev)=>{
+  const btnEditar = ev.target.closest('.btn-ti-editar-linea');
+  if(btnEditar){ tiLineaEnEdicionId = btnEditar.dataset.id; renderConteoTomaBloqueado(); return; }
+
+  const btnCancelar = ev.target.closest('.btn-ti-cancelar-correccion');
+  if(btnCancelar){ tiLineaEnEdicionId = null; renderConteoTomaBloqueado(); return; }
+
+  const btnCorregir = ev.target.closest('.btn-ti-guardar-correccion');
+  if(btnCorregir){
+    btnCorregir.disabled = true;
+    await guardarCorreccionLinea(btnCorregir.dataset.id);
+    return;
+  }
+
   const btn = ev.target.closest('.btn-ti-guardar-linea');
   if(!btn) return;
   const idx = Number(btn.dataset.idx);
@@ -4605,8 +4732,17 @@ $('btn-ti-generar-pdf-formulario').addEventListener('click', ()=>{
 // Elimina COMPLETAMENTE una toma: su cabecera, todas sus líneas y su PDF firmado (si tiene).
 async function eliminarTomaCompleta(correlativo){
   if(!(currentPermisos.admin || currentPermisos.eliminar)){ showToast('No tienes permiso para eliminar.','err'); return; }
+  const header = tiRegAllCache.find(r=>r.correlativo===correlativo);
+  const finalizada = header && header.estado === 'FINALIZADO';
   const ok = confirm(`¿Eliminar definitivamente la toma ${correlativo}? Se borrará todo su detalle (y su PDF firmado, si tiene) y no se puede deshacer.`);
   if(!ok) return;
+  if(finalizada){
+    const clave = prompt('Esta toma ya está FINALIZADA. Escribe la clave de confirmación para eliminarla:');
+    if(clave !== 'standford123'){
+      showToast(clave===null ? 'Eliminación cancelada.' : 'Clave incorrecta — no se eliminó la toma.', 'err');
+      return;
+    }
+  }
   try{
     const snap = await inventarioTomasItemsRef.where('correlativo_toma','==',correlativo).limit(3000).get();
     const docs = snap.docs;
@@ -4615,7 +4751,6 @@ async function eliminarTomaCompleta(correlativo){
       docs.slice(i,i+400).forEach(d=> batch.delete(d.ref));
       await batch.commit();
     }
-    const header = tiRegAllCache.find(r=>r.correlativo===correlativo);
     if(header && header.pdf_firmado_url){
       try{ await storage.refFromURL(header.pdf_firmado_url).delete(); }catch(e){ console.error('No se pudo borrar el PDF de Storage', e); }
     }
@@ -4626,7 +4761,7 @@ async function eliminarTomaCompleta(correlativo){
       await batchObs.commit();
     }
     await inventarioTomasRef.doc(correlativo).delete();
-    await logAccion('toma_inventario_eliminada', {detalle:`Se eliminó la toma ${correlativo} (${docs.length} línea(s))`});
+    await logAccion('toma_inventario_eliminada', {detalle:`Se eliminó la toma ${correlativo} (${docs.length} línea(s))${finalizada?' — estaba FINALIZADA, se confirmó con clave':''}`});
     tiRegAllCache = tiRegAllCache.filter(r=>r.correlativo!==correlativo);
     if(tiSeleccionCorrelativo===correlativo){
       tiSeleccionCorrelativo = null; tiConteoActual = null;
