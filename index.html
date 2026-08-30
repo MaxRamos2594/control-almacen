@@ -604,8 +604,17 @@
       <span id="camp-detalle-titulo-text">Detalle de campaña</span>
       <button class="btn btn-sm btn-ghost" id="btn-ocultar-detalle">Ocultar detalle ✕</button>
     </h3>
-    <div class="hist-wrap" style="max-height:600px;">
-      <table><thead><tr><th>Participante</th><th>SKU</th><th>Producto</th><th>Área</th><th>Cantidad</th><th>Desglose</th></tr></thead><tbody id="camp-detalle-body"></tbody></table>
+
+    <h4 style="font-size:12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; margin:14px 0 8px;">Detalle 1 — Participantes y totales</h4>
+    <p class="hint" style="margin-bottom:8px;">Clic en una fila para ver el detalle de ese participante abajo.</p>
+    <div class="hist-wrap" style="max-height:280px; margin-bottom:18px;">
+      <table><thead><tr><th>Participante</th><th>SKU distintos</th><th>Total unidades</th></tr></thead><tbody id="camp-detalle-cabecera-body"></tbody></table>
+    </div>
+
+    <h4 style="font-size:12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; margin-bottom:8px;" id="camp-detalle2-titulo">Detalle 2 — selecciona un participante arriba</h4>
+    <div class="hist-wrap" style="max-height:420px;">
+      <table><thead><tr><th>SKU</th><th>Producto</th><th>Área</th><th>Cantidad</th><th>Desglose</th></tr></thead><tbody id="camp-detalle-body"></tbody></table>
+      <div class="empty-state" id="camp-detalle2-vacio">Elige un participante en "Detalle 1" para ver sus filas.</div>
     </div>
   </div>
 
@@ -807,6 +816,7 @@
           <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
             <button class="btn btn-primary" id="btn-ti-finalizar">Finalizar toma</button>
             <button class="btn btn-ghost" id="btn-ti-generar-pdf-formulario">🖨 Generar PDF para conteo</button>
+            <button class="btn btn-ghost" id="btn-ti-recalcular-eri-eru" style="display:none;">🔄 Recalcular ERI/ERU</button>
             <button class="btn" id="btn-ti-eliminar-toma" style="background:#8A332A; color:#fff;">🗑 Eliminar esta toma</button>
           </div>
 
@@ -988,8 +998,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v58';
-const APP_UPDATED = '26/08/2026 18:25';
+const APP_VERSION = 'v59';
+const APP_UPDATED = '26/08/2026 19:15';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -1188,7 +1198,7 @@ function moduloOf(tipo){
   if(['bloqueo','desbloqueo'].includes(tipo)) return 'bloqueo';
   if(['producto_registrado','producto_fusionado'].includes(tipo)) return 'productos';
   if(['permisos_actualizados','sesion_cerrada','sesion_cerrada_inactividad','sesion_iniciada'].includes(tipo)) return 'usuarios';
-  if(['toma_inventario_generada','toma_inventario_finalizada','toma_inventario_eliminada','toma_inventario_pdf_subido','toma_inventario_pdf_eliminado','toma_inventario_observacion_resuelta','toma_inventario_observacion_reabierta','toma_inventario_conteo_corregido','toma_inventario_sobrante_registrado'].includes(tipo)) return 'toma_inventario';
+  if(['toma_inventario_generada','toma_inventario_finalizada','toma_inventario_eliminada','toma_inventario_pdf_subido','toma_inventario_pdf_eliminado','toma_inventario_observacion_resuelta','toma_inventario_observacion_reabierta','toma_inventario_conteo_corregido','toma_inventario_sobrante_registrado','toma_inventario_eri_eru_recalculado'].includes(tipo)) return 'toma_inventario';
   return '';
 }
 function tipoLabel(tipo){
@@ -1203,7 +1213,8 @@ function tipoLabel(tipo){
     toma_inventario_eliminada:'Toma de inventario: eliminada', toma_inventario_pdf_subido:'Toma de inventario: PDF subido',
     toma_inventario_pdf_eliminado:'Toma de inventario: PDF eliminado',
     toma_inventario_observacion_resuelta:'Observación resuelta', toma_inventario_observacion_reabierta:'Observación reabierta',
-    toma_inventario_conteo_corregido:'Conteo corregido', toma_inventario_sobrante_registrado:'Código sobrante registrado'
+    toma_inventario_conteo_corregido:'Conteo corregido', toma_inventario_sobrante_registrado:'Código sobrante registrado',
+    toma_inventario_eri_eru_recalculado:'ERI/ERU recalculado'
   };
   return map[tipo] || tipo || '';
 }
@@ -3056,6 +3067,44 @@ function renderRegistrosCampana(){
 $('camp-reg-filtro-estado').addEventListener('change', ()=> renderRegistrosCampana());
 $('btn-reg-cargar-mas').addEventListener('click', ()=> cargarRegistrosCampana(false));
 
+// Detalle 1: agrupa las filas de la campaña por participante (SKU distintos + total unidades).
+let campDetalleFilasActuales = [];
+let campDetalleParticipanteSeleccionado = null;
+
+function renderDetalleCabeceraCampana(correlativo, filas){
+  campDetalleFilasActuales = filas;
+  campDetalleParticipanteSeleccionado = null;
+  const porParticipante = {};
+  filas.forEach(r=>{
+    const key = r.participante || '(SIN PARTICIPANTE)';
+    if(!porParticipante[key]) porParticipante[key] = { participante:key, skus:new Set(), total:0 };
+    if(r.sku) porParticipante[key].skus.add(r.sku);
+    porParticipante[key].total += Number(r.cantidad)||0;
+  });
+  const filasCab = Object.values(porParticipante).sort((a,b)=> a.participante.localeCompare(b.participante));
+  $('camp-detalle-cabecera-body').innerHTML = filasCab.map(p=>
+    `<tr class="camp-fila-participante" data-participante="${p.participante.replace(/"/g,'&quot;')}" style="cursor:pointer;">
+      <td>${p.participante}</td><td>${p.skus.size}</td><td>${p.total.toLocaleString('es-PE')}</td>
+    </tr>`
+  ).join('') || '<tr><td colspan="3" style="text-align:center;">Sin datos.</td></tr>';
+}
+
+$('camp-detalle-cabecera-body').addEventListener('click', (ev)=>{
+  const tr = ev.target.closest('.camp-fila-participante');
+  if(!tr) return;
+  const participante = tr.dataset.participante;
+  campDetalleParticipanteSeleccionado = participante;
+  document.querySelectorAll('.camp-fila-participante').forEach(row=>{
+    row.style.background = row.dataset.participante === participante ? '#EEF3FB' : '';
+  });
+  const filasFiltradas = campDetalleFilasActuales.filter(r=> (r.participante||'(SIN PARTICIPANTE)') === participante);
+  $('camp-detalle2-titulo').textContent = `Detalle 2 — ${participante} (${filasFiltradas.length} fila(s))`;
+  $('camp-detalle2-vacio').style.display = filasFiltradas.length ? 'none' : 'block';
+  $('camp-detalle-body').innerHTML = filasFiltradas.map(r=>
+    `<tr><td>${r.sku||''}</td><td>${r.producto||''}</td><td>${r.area||''}</td><td>${r.cantidad!=null?r.cantidad:''}</td><td>${r.desglose||''}</td></tr>`
+  ).join('');
+});
+
 $('btn-ocultar-detalle').addEventListener('click', ()=>{
   $('camp-detalle-panel').style.display = 'none';
 });
@@ -3077,9 +3126,10 @@ $('camp-reg-body').addEventListener('click', async (ev)=>{
         campRegCache[correlativo] = filas;
       }
       $('camp-detalle-titulo-text').textContent = `Detalle de ${correlativo} — ${campana}`;
-      $('camp-detalle-body').innerHTML = filas.map(r=>
-        `<tr><td>${r.participante||''}</td><td>${r.sku||''}</td><td>${r.producto||''}</td><td>${r.area||''}</td><td>${r.cantidad!=null?r.cantidad:''}</td><td>${r.desglose||''}</td></tr>`
-      ).join('') || '<tr><td colspan="6" style="text-align:center;">Sin filas.</td></tr>';
+      renderDetalleCabeceraCampana(correlativo, filas);
+      $('camp-detalle-body').innerHTML = '';
+      $('camp-detalle2-vacio').style.display = 'block';
+      $('camp-detalle2-titulo').textContent = 'Detalle 2 — selecciona un participante arriba';
       $('camp-detalle-panel').style.display = 'block';
       $('camp-detalle-panel').scrollIntoView({behavior:'smooth', block:'start'});
     }catch(err){
@@ -4389,7 +4439,7 @@ function renderTomasInventario(){
     const pdfIcon = r.pdf_firmado_url ? '📄✓' : '—';
     return `<tr class="ti-fila-toma" data-correlativo="${r.correlativo}" style="cursor:pointer; ${activo?'background:#EEF3FB;':''}">
       <td>${r.correlativo}</td><td>${r.fecha||''}</td><td>${r.cantidad_generada??''}</td><td>${r.total_lineas??''}</td>
-      <td>${r.eri!=null?r.eri+'%':'—'}</td><td>${r.eru!=null?r.eru+'%':'—'}</td><td>${pdfIcon}</td>
+      <td>${fmtPct2(r.eri)}</td><td>${fmtPct2(r.eru)}</td><td>${pdfIcon}</td>
       <td>${puedeEliminar?`<button type="button" class="btn btn-sm btn-ghost ti-btn-eliminar-toma" data-correlativo="${r.correlativo}" title="Eliminar toma">🗑</button>`:''}</td>
     </tr>`;
   }).join('');
@@ -4433,18 +4483,22 @@ async function seleccionarToma(correlativo){
   }
 }
 
+// Formatea un porcentaje con 2 decimales fijos (ej. 99.85%). Acepta null/undefined.
+function fmtPct2(n){ return (n==null || isNaN(n)) ? '—' : Number(n).toFixed(2)+'%'; }
+
 // ERI (Exactitud de Registro de Inventario) = unidades contadas / unidades del
 // sistema, sobre todas las líneas contadas (Σcantidad_contada / Σcantidad_sistema).
 // ERU (Exactitud de Registro de Unidades... a nivel de posición) = % de líneas
 // contadas donde el producto SÍ se encontró físicamente en su posición.
+// Ambos se guardan con 2 decimales de precisión (ej. 99.85), no enteros redondeados.
 function calcularEriEru(items){
   const contadas = items.filter(it=>it.estado==='CONTADO');
   if(contadas.length===0) return { eri: 0, eru: 0 };
   let sumaSistema = 0, sumaContada = 0;
   contadas.forEach(it=>{ sumaSistema += Number(it.cantidad_sistema)||0; sumaContada += Number(it.cantidad_contada)||0; });
-  const eri = sumaSistema>0 ? Math.round((sumaContada/sumaSistema)*100) : 100;
+  const eri = sumaSistema>0 ? Math.round((sumaContada/sumaSistema)*10000)/100 : 100;
   const encontradas = contadas.filter(it=>it.encontrado !== false).length;
-  const eru = Math.round((encontradas / contadas.length) * 100);
+  const eru = Math.round((encontradas / contadas.length) * 10000)/100;
   return { eri, eru };
 }
 
@@ -4454,7 +4508,7 @@ function actualizarResumenConteo(){
   const conDiferencia = contadas.filter(it=>Number(it.diferencia)!==0).length;
   const { eri, eru } = calcularEriEru(items);
   $('ti-conteo-resumen').innerHTML = `<span class="hint">${contadas.length}/${items.length} líneas contadas · <b style="color:${conDiferencia>0?'#8A332A':'#245C46'};">${conDiferencia} con diferencia</b>` +
-    (contadas.length ? ` · ERI (exactitud de posición): <b>${eri}%</b> · ERU (exactitud de unidades): <b>${eru}%</b>` : '') + `</span>`;
+    (contadas.length ? ` · ERI (exactitud de unidades): <b>${fmtPct2(eri)}</b> · ERU (exactitud de posición): <b>${fmtPct2(eru)}</b>` : '') + `</span>`;
 }
 
 // Panel derecho superior: si la toma NO está finalizada, se muestra editable
@@ -4472,6 +4526,7 @@ function renderResultadoConteo(){
   $('ti-resultado-titulo').textContent = `Resultado del conteo — ${tiConteoActual.correlativo}` + (finalizado ? ' (finalizada, solo lectura)' : '');
   actualizarResumenConteo();
   $('btn-ti-finalizar').style.display = finalizado ? 'none' : 'inline-block';
+  $('btn-ti-recalcular-eri-eru').style.display = finalizado ? 'inline-block' : 'none';
   $('ti-sob-form-wrap').style.display = finalizado ? 'none' : 'flex';
   $('ti-sob-cerrado-aviso').style.display = finalizado ? 'block' : 'none';
   if(finalizado) renderConteoTomaBloqueado();
@@ -4638,6 +4693,57 @@ async function guardarCorreccionLinea(itemId){
   }
 }
 
+// Recalcula ERI/ERU de una toma YA FINALIZADA con la fórmula/precisión vigentes
+// (útil para tomas ejecutadas antes de un cambio en la fórmula). De paso corrige
+// también la etiqueta Faltante/Sobrante de sus observaciones si quedaron mal
+// clasificadas con una versión anterior.
+async function recalcularTomaFinalizada(correlativo){
+  const snap = await inventarioTomasItemsRef.where('correlativo_toma','==',correlativo).limit(3000).get();
+  const items = snap.docs.map(d=>d.data());
+  const { eri, eru } = calcularEriEru(items);
+  const conDiferencia = items.filter(it=>it.estado==='CONTADO' && Number(it.diferencia)!==0).length;
+  await inventarioTomasRef.doc(correlativo).update({ eri, eru, con_diferencia: conDiferencia });
+
+  const snapObs = await inventarioObservacionesRef.where('correlativo_toma','==',correlativo).limit(1000).get();
+  const obsAAjustar = snapObs.docs.filter(d=>{
+    const t = d.data().tipo;
+    return (t==='FALTANTE' || t==='EXCESO' || t==='SOBRANTE') && d.data().diferencia!=null;
+  });
+  const CHUNK = 400;
+  for(let i=0;i<obsAAjustar.length;i+=CHUNK){
+    const batch = db.batch();
+    obsAAjustar.slice(i,i+CHUNK).forEach(d=>{
+      const dif = d.data().diferencia;
+      const tipoCorrecto = dif>0 ? 'SOBRANTE' : 'FALTANTE';
+      if(tipoCorrecto !== d.data().tipo) batch.update(d.ref, { tipo: tipoCorrecto });
+    });
+    await batch.commit();
+  }
+
+  const idx = tiRegAllCache.findIndex(r=>r.correlativo===correlativo);
+  if(idx>=0){ Object.assign(tiRegAllCache[idx], { eri, eru, con_diferencia: conDiferencia }); }
+  await logAccion('toma_inventario_eri_eru_recalculado', {detalle:`Se recalculó ERI/ERU de ${correlativo}: nuevo ERI ${fmtPct2(eri)}, ERU ${fmtPct2(eru)}`});
+  return { eri, eru };
+}
+
+$('btn-ti-recalcular-eri-eru').addEventListener('click', async ()=>{
+  if(!tiConteoActual) return;
+  const correlativo = tiConteoActual.correlativo;
+  $('btn-ti-recalcular-eri-eru').disabled = true;
+  try{
+    const { eri, eru } = await recalcularTomaFinalizada(correlativo);
+    renderResultadoConteo();
+    renderTomasInventario();
+    renderDashboardResultados();
+    showToast(`ERI/ERU recalculado: ERI ${fmtPct2(eri)} · ERU ${fmtPct2(eru)}`,'ok');
+  }catch(err){
+    console.error(err);
+    showToast('Error al recalcular: '+err.message,'err');
+  }finally{
+    $('btn-ti-recalcular-eri-eru').disabled = false;
+  }
+});
+
 $('ti-conteo-body').addEventListener('click', async (ev)=>{
   const btnEditar = ev.target.closest('.btn-ti-editar-linea');
   if(btnEditar){ tiLineaEnEdicionId = btnEditar.dataset.id; renderConteoTomaBloqueado(); return; }
@@ -4734,10 +4840,10 @@ $('btn-ti-finalizar').addEventListener('click', async ()=>{
       total_observaciones: itemsConProblema.length, observaciones_pendientes: itemsConProblema.length,
       finalizado_por: currentUserAlias, finalizado_en: firebase.firestore.FieldValue.serverTimestamp()
     });
-    await logAccion('toma_inventario_finalizada', {detalle:`Toma ${tiConteoActual.correlativo} finalizada: ${contadas} contadas, ${conDiferencia} con diferencia, ERI ${eri}%, ERU ${eru}%, ${itemsConProblema.length} observación(es) generada(s)`});
+    await logAccion('toma_inventario_finalizada', {detalle:`Toma ${tiConteoActual.correlativo} finalizada: ${contadas} contadas, ${conDiferencia} con diferencia, ERI ${fmtPct2(eri)}, ERU ${fmtPct2(eru)}, ${itemsConProblema.length} observación(es) generada(s)`});
     const idx = tiRegAllCache.findIndex(r=>r.correlativo===tiConteoActual.correlativo);
     if(idx>=0){ Object.assign(tiRegAllCache[idx], {estado:'FINALIZADO', contadas, con_diferencia:conDiferencia, eri, eru, total_observaciones:itemsConProblema.length, observaciones_pendientes:itemsConProblema.length}); }
-    showToast(`Toma ${tiConteoActual.correlativo} finalizada. ERI ${eri}% · ERU ${eru}%${itemsConProblema.length?` · ${itemsConProblema.length} observación(es) por resolver`:''}`,'ok');
+    showToast(`Toma ${tiConteoActual.correlativo} finalizada. ERI ${fmtPct2(eri)} · ERU ${fmtPct2(eru)}${itemsConProblema.length?` · ${itemsConProblema.length} observación(es) por resolver`:''}`,'ok');
     $('ti-filtro-estado').value = 'FINALIZADO';
     renderTomasInventario();
     renderResultadoConteo();
@@ -5145,8 +5251,8 @@ function renderDashboardResultados(){
   const totalPend = finalizadas.reduce((a,r)=>a+(r.observaciones_pendientes||0),0);
   const totalSolucionadas = totalObs - totalPend;
   const pctResuelto = totalObs>0 ? Math.round((totalSolucionadas/totalObs)*100) : 100;
-  const eriProm = totalTomas ? Math.round(finalizadas.reduce((a,r)=>a+(r.eri||0),0)/totalTomas) : 0;
-  const eruProm = totalTomas ? Math.round(finalizadas.reduce((a,r)=>a+(r.eru||0),0)/totalTomas) : 0;
+  const eriProm = totalTomas ? Math.round((finalizadas.reduce((a,r)=>a+(r.eri||0),0)/totalTomas)*100)/100 : 0;
+  const eruProm = totalTomas ? Math.round((finalizadas.reduce((a,r)=>a+(r.eru||0),0)/totalTomas)*100)/100 : 0;
 
   const kpiHtml = (titulo, valor, color)=>`
     <div style="flex:1; min-width:130px; background:#fff; border:1px solid var(--line-strong); border-radius:8px; padding:12px 14px;">
@@ -5159,7 +5265,7 @@ function renderDashboardResultados(){
     kpiHtml('Pendientes', totalPend, totalPend>0 ? '#8A332A' : '#245C46') +
     kpiHtml('Solucionadas', totalSolucionadas, '#245C46') +
     kpiHtml('% resuelto', pctResuelto+'%', pctResuelto>=100 ? '#245C46' : (pctResuelto>=70 ? '#8A6D1D' : '#8A332A')) +
-    kpiHtml('ERI / ERU promedio', `${eriProm}% / ${eruProm}%`);
+    kpiHtml('ERI / ERU promedio', `${fmtPct2(eriProm)} / ${fmtPct2(eruProm)}`);
 
   if(finalizadas.length===0){
     $('res-tomas-body').innerHTML = '';
@@ -5171,7 +5277,7 @@ function renderDashboardResultados(){
     const activo = r.correlativo === resSeleccionCorrelativo;
     const pend = r.observaciones_pendientes || 0;
     return `<tr class="res-fila-toma" data-correlativo="${r.correlativo}" style="cursor:pointer; ${activo?'background:#EEF3FB;':''}">
-      <td>${r.correlativo}</td><td>${r.fecha||''}</td><td>${r.eri!=null?r.eri+'%':'—'}</td><td>${r.eru!=null?r.eru+'%':'—'}</td>
+      <td>${r.correlativo}</td><td>${r.fecha||''}</td><td>${fmtPct2(r.eri)}</td><td>${fmtPct2(r.eru)}</td>
       <td>${r.total_observaciones??0}</td>
       <td style="color:${pend>0?'#8A332A':'#245C46'}; font-weight:700;">${pend}</td>
     </tr>`;
