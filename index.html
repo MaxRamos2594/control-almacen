@@ -191,6 +191,42 @@
   .footer-dev b{font-size:12px;}
   .footer-dev span{color:#B8C0CC; font-size:11px;}
   .footer-version{margin-left:auto; font-family:var(--mono); font-size:11px; color:#B8C0CC; text-align:right;}
+
+  /* ---- KPIs dinámicos (Dashboard de Resultados / Toma de Inventario) ---- */
+  .kpi-strip{display:flex; gap:12px; flex-wrap:wrap;}
+  .kpi-card{
+    position:relative; flex:1; min-width:152px; background:#fff; overflow:hidden;
+    border:1px solid var(--line-strong); border-left:4px solid var(--kpi-accent, var(--blue));
+    border-radius:8px; padding:12px 14px 11px;
+    opacity:0; transform:translateY(10px);
+    animation:kpiRise .5s cubic-bezier(.22,.85,.32,1) forwards;
+    transition:transform .18s ease, box-shadow .18s ease;
+  }
+  .kpi-card:hover{ transform:translateY(-3px); box-shadow:0 8px 18px rgba(27,36,48,.12); z-index:1; }
+  .kpi-card:nth-child(1){animation-delay:.02s;}
+  .kpi-card:nth-child(2){animation-delay:.08s;}
+  .kpi-card:nth-child(3){animation-delay:.14s;}
+  .kpi-card:nth-child(4){animation-delay:.20s;}
+  .kpi-card:nth-child(5){animation-delay:.26s;}
+  .kpi-card:nth-child(6){animation-delay:.32s;}
+  .kpi-top{display:flex; align-items:center; justify-content:space-between; margin-bottom:9px;}
+  .kpi-icon{
+    width:26px; height:26px; border-radius:6px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--kpi-accent-bg, var(--blue-bg)); color:var(--kpi-accent, var(--blue));
+  }
+  .kpi-icon svg{width:14px; height:14px;}
+  .kpi-alert-dot{width:8px; height:8px; border-radius:50%; background:var(--red); flex-shrink:0; animation:kpiPulse 1.8s ease-out infinite;}
+  .kpi-value{font-family:var(--mono); font-size:22px; font-weight:700; color:var(--ink); line-height:1; letter-spacing:-.01em; white-space:nowrap;}
+  .kpi-label{font-size:10px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.05em; margin-top:5px;}
+  .kpi-bar-track{height:4px; border-radius:3px; background:#EDEFF2; margin-top:9px; overflow:hidden;}
+  .kpi-bar-fill{display:block; height:100%; border-radius:3px; width:0%; background:var(--kpi-accent, var(--blue)); transition:width 1s cubic-bezier(.22,.85,.32,1);}
+  .kpi-dual{margin-top:9px; display:flex; flex-direction:column; gap:5px;}
+  .kpi-dual-row{display:flex; align-items:center; gap:6px;}
+  .kpi-dual-tag{font-family:var(--mono); font-size:9px; font-weight:700; color:var(--ink-soft); width:22px; flex-shrink:0;}
+  .kpi-dual .kpi-bar-track{margin-top:0; flex:1;}
+  @keyframes kpiRise{ to{ opacity:1; transform:translateY(0); } }
+  @keyframes kpiPulse{ 0%{box-shadow:0 0 0 0 rgba(196,72,58,.5);} 70%{box-shadow:0 0 0 6px rgba(196,72,58,0);} 100%{box-shadow:0 0 0 0 rgba(196,72,58,0);} }
 </style>
 </head>
 <body>
@@ -4533,23 +4569,41 @@ function renderResultadoConteo(){
   else renderConteoTomaEditable();
 }
 
+// Sincroniza el select "¿Encontrado?" a partir de la cantidad contada: en 0 (o vacío)
+// se fuerza y bloquea en "No"; solo se habilita para elegir cuando la cantidad es > 0.
+function sincronizarEncontradoDesdeCantidad(input, select){
+  if(!input || !select) return;
+  const raw = input.value.trim();
+  const v = Number(raw);
+  const activo = raw !== '' && !isNaN(v) && v > 0;
+  if(!activo){
+    select.value = 'no';
+    select.disabled = true;
+  } else if(select.disabled){
+    select.disabled = false;
+    select.value = 'si';
+  }
+}
+
 function renderConteoTomaEditable(){
   $('ti-conteo-body').innerHTML = tiConteoActual.items.map((it,idx)=>{
     const contado = it.estado==='CONTADO';
     const dif = contado ? Number(it.diferencia) : null;
     const colorDif = dif==null ? '' : (dif===0 ? '#245C46' : (dif>0 ? '#8A6D1D' : '#8A332A'));
     const textoDif = dif==null ? '—' : (dif===0?'OK':(dif>0?'+'+dif:dif));
-    const encontradoVal = contado ? (it.encontrado===false ? 'no' : 'si') : 'si';
+    const cantidadVal = contado ? it.cantidad_contada : '';
+    const activo = Number(cantidadVal) > 0;
+    const encontradoVal = activo ? (it.encontrado===false ? 'no' : 'si') : 'no';
     return `<tr data-idx="${idx}">
       <td>${it.posicion_id}</td><td>${it.tipo_posicion==='piso'?'Piso':'Rack'}</td><td>${it.pallet_codigo}</td>
       <td>${it.producto_codigo}</td><td>${it.producto_descripcion}</td><td>${it.cantidad_sistema}</td>
       <td>
-        <select class="ti-select-encontrado" data-idx="${idx}">
+        <select class="ti-select-encontrado" data-idx="${idx}" ${activo?'':'disabled'}>
           <option value="si" ${encontradoVal==='si'?'selected':''}>Sí</option>
           <option value="no" ${encontradoVal==='no'?'selected':''}>No</option>
         </select>
       </td>
-      <td><input type="number" class="ti-input-contada" data-idx="${idx}" value="${contado ? it.cantidad_contada : ''}" style="width:80px;" min="0" ${encontradoVal==='no'?'disabled':''}></td>
+      <td><input type="number" class="ti-input-contada" data-idx="${idx}" value="${cantidadVal}" style="width:80px;" min="0" ${(encontradoVal==='no' && activo)?'disabled':''}></td>
       <td class="ti-celda-dif" data-idx="${idx}" style="color:${colorDif}; font-weight:700;">${textoDif}</td>
       <td><button type="button" class="btn btn-sm btn-primary btn-ti-guardar-linea" data-idx="${idx}">Guardar</button></td>
     </tr>`;
@@ -4563,6 +4617,11 @@ function renderConteoTomaEditable(){
       else{ input.disabled = false; }
     });
   });
+
+  document.querySelectorAll('.ti-input-contada').forEach(inp=>{
+    const sel = document.querySelector(`.ti-select-encontrado[data-idx="${inp.dataset.idx}"]`);
+    inp.addEventListener('input', ()=> sincronizarEncontradoDesdeCantidad(inp, sel));
+  });
 }
 
 let tiLineaEnEdicionId = null; // id del ítem que se está corrigiendo dentro de una toma ya finalizada
@@ -4571,17 +4630,19 @@ function renderConteoTomaBloqueado(){
   const puedeCorregir = currentPermisos.admin || currentPermisos.eliminar;
   $('ti-conteo-body').innerHTML = tiConteoActual.items.map(it=>{
     if(puedeCorregir && it.id === tiLineaEnEdicionId){
-      const encontradoVal = it.encontrado===false ? 'no' : 'si';
+      const cantidadVal = it.cantidad_contada ?? '';
+      const activoFix = Number(cantidadVal) > 0;
+      const encontradoVal = activoFix ? (it.encontrado===false ? 'no' : 'si') : 'no';
       return `<tr data-id="${it.id}" style="background:#FFF8E1;">
         <td>${it.posicion_id}</td><td>${it.tipo_posicion==='piso'?'Piso':'Rack'}</td><td>${it.pallet_codigo}</td>
         <td>${it.producto_codigo}</td><td>${it.producto_descripcion}</td><td>${it.cantidad_sistema}</td>
         <td>
-          <select class="ti-select-encontrado-fix" data-id="${it.id}">
+          <select class="ti-select-encontrado-fix" data-id="${it.id}" ${activoFix?'':'disabled'}>
             <option value="si" ${encontradoVal==='si'?'selected':''}>Sí</option>
             <option value="no" ${encontradoVal==='no'?'selected':''}>No</option>
           </select>
         </td>
-        <td><input type="number" class="ti-input-contada-fix" data-id="${it.id}" value="${it.cantidad_contada??''}" style="width:80px;" min="0" ${encontradoVal==='no'?'disabled':''}></td>
+        <td><input type="number" class="ti-input-contada-fix" data-id="${it.id}" value="${cantidadVal}" style="width:80px;" min="0" ${(encontradoVal==='no' && activoFix)?'disabled':''}></td>
         <td>—</td>
         <td style="white-space:nowrap;">
           <button type="button" class="btn btn-sm btn-primary btn-ti-guardar-correccion" data-id="${it.id}">Guardar</button>
@@ -4610,6 +4671,11 @@ function renderConteoTomaBloqueado(){
       if(sel.value === 'no'){ input.value = '0'; input.disabled = true; }
       else{ input.disabled = false; }
     });
+  });
+
+  document.querySelectorAll('.ti-input-contada-fix').forEach(inp=>{
+    const sel = document.querySelector(`.ti-select-encontrado-fix[data-id="${inp.dataset.id}"]`);
+    inp.addEventListener('input', ()=> sincronizarEncontradoDesdeCantidad(inp, sel));
   });
 }
 
@@ -5234,6 +5300,69 @@ $('btn-ti-agregar-sobrante').addEventListener('click', async ()=>{
 let resSeleccionCorrelativo = null;
 let resObsCache = null; // {correlativo, obs:[{id,...}]}
 
+// ---- KPIs dinámicos: iconos, contador animado y barras de progreso ----
+const KPI_ICONOS = {
+  pallet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>',
+  lupa: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.8-4.8"/></svg>',
+  reloj: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/></svg>',
+  meta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg>',
+  barras: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M12 20V4"/><path d="M20 20v-7"/></svg>'
+};
+
+// Construye una tarjeta KPI. opts: {icono, accent, accentBg, decimales, sufijo, alerta, barra:{pct}, dual:[{tag,pct}]}
+function kpiCardHtml(titulo, valorNumerico, opts){
+  opts = opts || {};
+  const accent = opts.accent || 'var(--blue)';
+  const accentBg = opts.accentBg || 'var(--blue-bg)';
+  const sufijo = opts.sufijo || '';
+  const decimales = opts.decimales || 0;
+  let extra = '';
+  if(opts.barra){
+    extra = `<div class="kpi-bar-track"><span class="kpi-bar-fill" data-fill="${opts.barra.pct}"></span></div>`;
+  } else if(opts.dual){
+    extra = `<div class="kpi-dual">` + opts.dual.map(d=>
+      `<div class="kpi-dual-row"><span class="kpi-dual-tag">${d.tag}</span><div class="kpi-bar-track"><span class="kpi-bar-fill" data-fill="${d.pct}"></span></div></div>`
+    ).join('') + `</div>`;
+  }
+  return `<div class="kpi-card" style="--kpi-accent:${accent}; --kpi-accent-bg:${accentBg};">
+    <div class="kpi-top">
+      <span class="kpi-icon">${KPI_ICONOS[opts.icono]||''}</span>
+      ${opts.alerta ? '<span class="kpi-alert-dot" title="Requiere atención"></span>' : ''}
+    </div>
+    <div class="kpi-value" data-target="${valorNumerico}" data-decimales="${decimales}" data-sufijo="${sufijo}">0${sufijo}</div>
+    <div class="kpi-label">${titulo}</div>
+    ${extra}
+  </div>`;
+}
+
+// Anima los números (conteo ascendente) y las barras de progreso de una tira de KPIs recién insertada.
+function animarKpis(contenedorId){
+  const cont = $(contenedorId);
+  if(!cont) return;
+  const duracion = 800;
+  cont.querySelectorAll('.kpi-value[data-target]').forEach(el=>{
+    const target = Number(el.dataset.target)||0;
+    const decimales = Number(el.dataset.decimales)||0;
+    const sufijo = el.dataset.sufijo||'';
+    const t0 = performance.now();
+    const ease = t=> 1 - Math.pow(1-t, 3); // easeOutCubic
+    function tick(now){
+      const p = Math.min(1, (now - t0) / duracion);
+      const val = target * ease(p);
+      el.textContent = val.toLocaleString('es-PE', {minimumFractionDigits:decimales, maximumFractionDigits:decimales}) + sufijo;
+      if(p < 1) requestAnimationFrame(tick);
+      else el.textContent = target.toLocaleString('es-PE', {minimumFractionDigits:decimales, maximumFractionDigits:decimales}) + sufijo;
+    }
+    requestAnimationFrame(tick);
+  });
+  requestAnimationFrame(()=> requestAnimationFrame(()=>{
+    cont.querySelectorAll('.kpi-bar-fill[data-fill]').forEach(el=>{
+      el.style.width = Math.max(0, Math.min(100, Number(el.dataset.fill)||0)) + '%';
+    });
+  }));
+}
+
 function renderDashboardResultados(){
   const desde = $('res-fecha-desde').value;
   const hasta = $('res-fecha-hasta').value;
@@ -5254,18 +5383,38 @@ function renderDashboardResultados(){
   const eriProm = totalTomas ? Math.round((finalizadas.reduce((a,r)=>a+(r.eri||0),0)/totalTomas)*100)/100 : 0;
   const eruProm = totalTomas ? Math.round((finalizadas.reduce((a,r)=>a+(r.eru||0),0)/totalTomas)*100)/100 : 0;
 
-  const kpiHtml = (titulo, valor, color)=>`
-    <div style="flex:1; min-width:130px; background:#fff; border:1px solid var(--line-strong); border-radius:8px; padding:12px 14px;">
-      <div style="font-size:10px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; margin-bottom:5px;">${titulo}</div>
-      <div style="font-size:20px; font-weight:800; color:${color||'var(--ink)'};">${valor}</div>
-    </div>`;
+  $('res-kpis').className = 'kpi-strip';
   $('res-kpis').innerHTML =
-    kpiHtml('Tomas finalizadas', totalTomas) +
-    kpiHtml('Observaciones', totalObs) +
-    kpiHtml('Pendientes', totalPend, totalPend>0 ? '#8A332A' : '#245C46') +
-    kpiHtml('Solucionadas', totalSolucionadas, '#245C46') +
-    kpiHtml('% resuelto', pctResuelto+'%', pctResuelto>=100 ? '#245C46' : (pctResuelto>=70 ? '#8A6D1D' : '#8A332A')) +
-    kpiHtml('ERI / ERU promedio', `${fmtPct2(eriProm)} / ${fmtPct2(eruProm)}`);
+    kpiCardHtml('Tomas finalizadas', totalTomas, { icono:'pallet', accent:'var(--blue)', accentBg:'var(--blue-bg)' }) +
+    kpiCardHtml('Observaciones', totalObs, { icono:'lupa', accent:'var(--blue)', accentBg:'var(--blue-bg)' }) +
+    kpiCardHtml('Pendientes', totalPend, {
+      icono:'reloj', alerta: totalPend>0,
+      accent: totalPend>0 ? 'var(--red)' : 'var(--green)', accentBg: totalPend>0 ? 'var(--red-bg)' : 'var(--green-bg)'
+    }) +
+    kpiCardHtml('Solucionadas', totalSolucionadas, { icono:'check', accent:'var(--green)', accentBg:'var(--green-bg)' }) +
+    kpiCardHtml('% resuelto', pctResuelto, {
+      icono:'meta', sufijo:'%',
+      accent: pctResuelto>=100 ? 'var(--green)' : (pctResuelto>=70 ? '#8A6D1D' : 'var(--red)'),
+      accentBg: pctResuelto>=100 ? 'var(--green-bg)' : (pctResuelto>=70 ? '#FBF1E1' : 'var(--red-bg)'),
+      barra: { pct: pctResuelto }
+    }) +
+    `<div class="kpi-card" style="--kpi-accent:var(--blue); --kpi-accent-bg:var(--blue-bg);">
+      <div class="kpi-top"><span class="kpi-icon">${KPI_ICONOS.barras}</span></div>
+      <div class="kpi-label" style="margin-top:0; margin-bottom:8px;">ERI / ERU promedio</div>
+      <div class="kpi-dual">
+        <div class="kpi-dual-row">
+          <span class="kpi-dual-tag">ERI</span>
+          <div class="kpi-value" data-target="${eriProm}" data-decimales="2" data-sufijo="%" style="font-size:14px; width:58px; flex-shrink:0;">0%</div>
+          <div class="kpi-bar-track" style="flex:1;"><span class="kpi-bar-fill" data-fill="${eriProm}"></span></div>
+        </div>
+        <div class="kpi-dual-row">
+          <span class="kpi-dual-tag">ERU</span>
+          <div class="kpi-value" data-target="${eruProm}" data-decimales="2" data-sufijo="%" style="font-size:14px; width:58px; flex-shrink:0;">0%</div>
+          <div class="kpi-bar-track" style="flex:1;"><span class="kpi-bar-fill" data-fill="${eruProm}"></span></div>
+        </div>
+      </div>
+    </div>`;
+  animarKpis('res-kpis');
 
   if(finalizadas.length===0){
     $('res-tomas-body').innerHTML = '';
