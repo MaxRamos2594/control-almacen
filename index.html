@@ -195,7 +195,7 @@
   /* ---- KPIs dinámicos (Dashboard de Resultados / Toma de Inventario) ---- */
   .kpi-strip{display:flex; gap:12px; flex-wrap:wrap;}
   .kpi-card{
-    position:relative; flex:1; min-width:152px; background:#fff; overflow:hidden;
+    position:relative; flex:1; min-width:152px; background:var(--kpi-card-bg, #fff); overflow:hidden;
     border:1px solid var(--line-strong); border-left:4px solid var(--kpi-accent, var(--blue));
     border-radius:8px; padding:12px 14px 11px;
     opacity:0; transform:translateY(10px);
@@ -921,6 +921,7 @@
         <table><thead><tr><th>Correlativo</th><th>Fecha</th><th>ERI</th><th>ERU</th><th>Observ.</th><th>Pendientes</th></tr></thead><tbody id="res-tomas-body"></tbody></table>
         <div class="empty-state" id="res-tomas-empty">No hay tomas finalizadas para este filtro.</div>
       </div>
+      <div id="res-tomas-paginacion" style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:8px; font-size:11px; color:var(--ink-soft);"></div>
     </div>
     <div class="panel">
       <h3 id="res-obs-titulo">Observaciones</h3>
@@ -5299,6 +5300,8 @@ $('btn-ti-agregar-sobrante').addEventListener('click', async ()=>{
 /* -------------------- Toma de Inventario: Dashboard de Resultados -------------------- */
 let resSeleccionCorrelativo = null;
 let resObsCache = null; // {correlativo, obs:[{id,...}]}
+let resTablaPagina = 1; // página actual de la tabla de tomas finalizadas
+const RES_TABLA_POR_PAGINA = 10;
 
 // ---- KPIs dinámicos: iconos, contador animado y barras de progreso ----
 const KPI_ICONOS = {
@@ -5310,13 +5313,17 @@ const KPI_ICONOS = {
   barras: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M12 20V4"/><path d="M20 20v-7"/></svg>'
 };
 
-// Construye una tarjeta KPI. opts: {icono, accent, accentBg, decimales, sufijo, alerta, barra:{pct}, dual:[{tag,pct}]}
+// Construye una tarjeta KPI. opts: {icono, accent, badgeBg, cardBg, decimales, sufijo, alerta, barra:{pct}, dual:[{tag,pct}]}
+// - accent: color del ícono/borde/barra. badgeBg: fondo del ícono (siempre suave).
+// - cardBg: fondo de toda la tarjeta — solo se pasa cuando el KPI representa un "estado" (bien/mal);
+//   si se omite, la tarjeta queda blanca/neutra (para simples contadores sin estado propio).
 function kpiCardHtml(titulo, valorNumerico, opts){
   opts = opts || {};
   const accent = opts.accent || 'var(--blue)';
-  const accentBg = opts.accentBg || 'var(--blue-bg)';
+  const badgeBg = opts.badgeBg || 'var(--blue-bg)';
   const sufijo = opts.sufijo || '';
   const decimales = opts.decimales || 0;
+  const cardBgRule = opts.cardBg ? `--kpi-card-bg:${opts.cardBg};` : '';
   let extra = '';
   if(opts.barra){
     extra = `<div class="kpi-bar-track"><span class="kpi-bar-fill" data-fill="${opts.barra.pct}"></span></div>`;
@@ -5325,7 +5332,7 @@ function kpiCardHtml(titulo, valorNumerico, opts){
       `<div class="kpi-dual-row"><span class="kpi-dual-tag">${d.tag}</span><div class="kpi-bar-track"><span class="kpi-bar-fill" data-fill="${d.pct}"></span></div></div>`
     ).join('') + `</div>`;
   }
-  return `<div class="kpi-card" style="--kpi-accent:${accent}; --kpi-accent-bg:${accentBg};">
+  return `<div class="kpi-card" style="--kpi-accent:${accent}; --kpi-accent-bg:${badgeBg}; ${cardBgRule}">
     <div class="kpi-top">
       <span class="kpi-icon">${KPI_ICONOS[opts.icono]||''}</span>
       ${opts.alerta ? '<span class="kpi-alert-dot" title="Requiere atención"></span>' : ''}
@@ -5363,7 +5370,15 @@ function animarKpis(contenedorId){
   }));
 }
 
-function renderDashboardResultados(){
+// Clasifica un % de exactitud (ERI/ERU) en un estado visual: verde ≥90, ámbar ≥50, rojo <50.
+function estadoExactitudKpi(pct){
+  if(pct>=90) return { accent:'var(--green)', bg:'var(--green-bg)' };
+  if(pct>=50) return { accent:'#8A6D1D', bg:'#FBF1E1' };
+  return { accent:'var(--red)', bg:'var(--red-bg)' };
+}
+
+// Devuelve las tomas finalizadas que cumplen los filtros activos (fecha / pendientes).
+function obtenerTomasFiltradas(){
   const desde = $('res-fecha-desde').value;
   const hasta = $('res-fecha-hasta').value;
   const filtroPend = $('res-filtro-pendientes').value;
@@ -5373,8 +5388,19 @@ function renderDashboardResultados(){
   if(hasta) finalizadas = finalizadas.filter(r=> (r.fecha||'') <= hasta);
   if(filtroPend==='con') finalizadas = finalizadas.filter(r=> (r.observaciones_pendientes||0) > 0);
   else if(filtroPend==='sin') finalizadas = finalizadas.filter(r=> (r.observaciones_pendientes||0) === 0);
+  return finalizadas;
+}
 
-  // KPIs
+// Recarga KPIs + tabla + resetea la paginación. Se usa solo cuando cambian los filtros.
+function renderDashboardResultados(){
+  resTablaPagina = 1;
+  renderResKpis();
+  renderResTablaTomas();
+}
+
+function renderResKpis(){
+  const finalizadas = obtenerTomasFiltradas();
+
   const totalTomas = finalizadas.length;
   const totalObs = finalizadas.reduce((a,r)=>a+(r.total_observaciones||0),0);
   const totalPend = finalizadas.reduce((a,r)=>a+(r.observaciones_pendientes||0),0);
@@ -5383,46 +5409,71 @@ function renderDashboardResultados(){
   const eriProm = totalTomas ? Math.round((finalizadas.reduce((a,r)=>a+(r.eri||0),0)/totalTomas)*100)/100 : 0;
   const eruProm = totalTomas ? Math.round((finalizadas.reduce((a,r)=>a+(r.eru||0),0)/totalTomas)*100)/100 : 0;
 
+  const estadoResuelto = pctResuelto>=100 ? {accent:'var(--green)', bg:'var(--green-bg)'} : (pctResuelto>=70 ? {accent:'#8A6D1D', bg:'#FBF1E1'} : {accent:'var(--red)', bg:'var(--red-bg)'});
+  const eriEstado = estadoExactitudKpi(eriProm);
+  const eruEstado = estadoExactitudKpi(eruProm);
+  const estadoEriEru = estadoExactitudKpi(Math.min(eriProm, eruProm));
+
   $('res-kpis').className = 'kpi-strip';
   $('res-kpis').innerHTML =
-    kpiCardHtml('Tomas finalizadas', totalTomas, { icono:'pallet', accent:'var(--blue)', accentBg:'var(--blue-bg)' }) +
-    kpiCardHtml('Observaciones', totalObs, { icono:'lupa', accent:'var(--blue)', accentBg:'var(--blue-bg)' }) +
+    // Contadores neutros: informan una cantidad, no tienen un "bien/mal" propio.
+    kpiCardHtml('Tomas finalizadas', totalTomas, { icono:'pallet', accent:'var(--blue)', badgeBg:'var(--blue-bg)' }) +
+    kpiCardHtml('Observaciones', totalObs, { icono:'lupa', accent:'var(--blue)', badgeBg:'var(--blue-bg)' }) +
+    // Tarjetas de estado: color de fondo completo según qué tan bien va el indicador.
     kpiCardHtml('Pendientes', totalPend, {
       icono:'reloj', alerta: totalPend>0,
-      accent: totalPend>0 ? 'var(--red)' : 'var(--green)', accentBg: totalPend>0 ? 'var(--red-bg)' : 'var(--green-bg)'
+      accent: totalPend>0 ? 'var(--red)' : 'var(--green)',
+      badgeBg: totalPend>0 ? 'var(--red-bg)' : 'var(--green-bg)',
+      cardBg: totalPend>0 ? 'var(--red-bg)' : 'var(--green-bg)'
     }) +
-    kpiCardHtml('Solucionadas', totalSolucionadas, { icono:'check', accent:'var(--green)', accentBg:'var(--green-bg)' }) +
+    kpiCardHtml('Solucionadas', totalSolucionadas, {
+      icono:'check', accent:'var(--green)', badgeBg:'var(--green-bg)',
+      cardBg: totalSolucionadas>0 ? 'var(--green-bg)' : undefined
+    }) +
     kpiCardHtml('% resuelto', pctResuelto, {
       icono:'meta', sufijo:'%',
-      accent: pctResuelto>=100 ? 'var(--green)' : (pctResuelto>=70 ? '#8A6D1D' : 'var(--red)'),
-      accentBg: pctResuelto>=100 ? 'var(--green-bg)' : (pctResuelto>=70 ? '#FBF1E1' : 'var(--red-bg)'),
+      accent: estadoResuelto.accent, badgeBg: estadoResuelto.bg, cardBg: estadoResuelto.bg,
       barra: { pct: pctResuelto }
     }) +
-    `<div class="kpi-card" style="--kpi-accent:var(--blue); --kpi-accent-bg:var(--blue-bg);">
+    `<div class="kpi-card" style="--kpi-accent:${estadoEriEru.accent}; --kpi-accent-bg:${estadoEriEru.bg}; --kpi-card-bg:${estadoEriEru.bg};">
       <div class="kpi-top"><span class="kpi-icon">${KPI_ICONOS.barras}</span></div>
       <div class="kpi-label" style="margin-top:0; margin-bottom:8px;">ERI / ERU promedio</div>
       <div class="kpi-dual">
         <div class="kpi-dual-row">
           <span class="kpi-dual-tag">ERI</span>
-          <div class="kpi-value" data-target="${eriProm}" data-decimales="2" data-sufijo="%" style="font-size:14px; width:58px; flex-shrink:0;">0%</div>
-          <div class="kpi-bar-track" style="flex:1;"><span class="kpi-bar-fill" data-fill="${eriProm}"></span></div>
+          <div class="kpi-value" data-target="${eriProm}" data-decimales="2" data-sufijo="%" style="font-size:14px; width:58px; flex-shrink:0; color:${eriEstado.accent};">0%</div>
+          <div class="kpi-bar-track" style="flex:1;"><span class="kpi-bar-fill" style="background:${eriEstado.accent};" data-fill="${eriProm}"></span></div>
         </div>
         <div class="kpi-dual-row">
           <span class="kpi-dual-tag">ERU</span>
-          <div class="kpi-value" data-target="${eruProm}" data-decimales="2" data-sufijo="%" style="font-size:14px; width:58px; flex-shrink:0;">0%</div>
-          <div class="kpi-bar-track" style="flex:1;"><span class="kpi-bar-fill" data-fill="${eruProm}"></span></div>
+          <div class="kpi-value" data-target="${eruProm}" data-decimales="2" data-sufijo="%" style="font-size:14px; width:58px; flex-shrink:0; color:${eruEstado.accent};">0%</div>
+          <div class="kpi-bar-track" style="flex:1;"><span class="kpi-bar-fill" style="background:${eruEstado.accent};" data-fill="${eruProm}"></span></div>
         </div>
       </div>
     </div>`;
   animarKpis('res-kpis');
+}
+
+// Tabla de tomas finalizadas, paginada de RES_TABLA_POR_PAGINA en RES_TABLA_POR_PAGINA.
+function renderResTablaTomas(){
+  const finalizadas = obtenerTomasFiltradas();
 
   if(finalizadas.length===0){
     $('res-tomas-body').innerHTML = '';
     $('res-tomas-empty').style.display = 'block';
+    $('res-tomas-paginacion').innerHTML = '';
     return;
   }
   $('res-tomas-empty').style.display = 'none';
-  $('res-tomas-body').innerHTML = finalizadas.slice().sort((a,b)=> (b.fecha||'').localeCompare(a.fecha||'')).map(r=>{
+
+  const ordenadas = finalizadas.slice().sort((a,b)=> (b.fecha||'').localeCompare(a.fecha||''));
+  const totalPaginas = Math.max(1, Math.ceil(ordenadas.length / RES_TABLA_POR_PAGINA));
+  if(resTablaPagina > totalPaginas) resTablaPagina = totalPaginas;
+  if(resTablaPagina < 1) resTablaPagina = 1;
+  const inicio = (resTablaPagina - 1) * RES_TABLA_POR_PAGINA;
+  const pagina = ordenadas.slice(inicio, inicio + RES_TABLA_POR_PAGINA);
+
+  $('res-tomas-body').innerHTML = pagina.map(r=>{
     const activo = r.correlativo === resSeleccionCorrelativo;
     const pend = r.observaciones_pendientes || 0;
     return `<tr class="res-fila-toma" data-correlativo="${r.correlativo}" style="cursor:pointer; ${activo?'background:#EEF3FB;':''}">
@@ -5431,7 +5482,22 @@ function renderDashboardResultados(){
       <td style="color:${pend>0?'#8A332A':'#245C46'}; font-weight:700;">${pend}</td>
     </tr>`;
   }).join('');
+
+  $('res-tomas-paginacion').innerHTML = `
+    <span>${ordenadas.length} toma(s) · página ${resTablaPagina} de ${totalPaginas}</span>
+    <div style="display:flex; gap:6px;">
+      <button type="button" class="btn btn-ghost btn-sm" id="btn-res-pag-prev" ${resTablaPagina<=1?'disabled':''}>‹ Anterior</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="btn-res-pag-next" ${resTablaPagina>=totalPaginas?'disabled':''}>Siguiente ›</button>
+    </div>`;
 }
+
+// Resalta la fila de la toma seleccionada sin recargar KPIs ni la tabla completa.
+function resaltarFilaTomaSeleccionada(correlativo){
+  document.querySelectorAll('.res-fila-toma').forEach(tr=>{
+    tr.style.background = tr.dataset.correlativo === correlativo ? '#EEF3FB' : '';
+  });
+}
+
 $('res-fecha-desde').addEventListener('change', renderDashboardResultados);
 $('res-fecha-hasta').addEventListener('change', renderDashboardResultados);
 $('res-filtro-pendientes').addEventListener('change', renderDashboardResultados);
@@ -5445,9 +5511,14 @@ $('res-tomas-body').addEventListener('click', (ev)=>{
   if(tr) seleccionarTomaResultados(tr.dataset.correlativo);
 });
 
+$('res-tomas-paginacion').addEventListener('click', (ev)=>{
+  if(ev.target.closest('#btn-res-pag-prev')){ resTablaPagina--; renderResTablaTomas(); }
+  else if(ev.target.closest('#btn-res-pag-next')){ resTablaPagina++; renderResTablaTomas(); }
+});
+
 async function seleccionarTomaResultados(correlativo){
   resSeleccionCorrelativo = correlativo;
-  renderDashboardResultados(); // para resaltar la fila
+  resaltarFilaTomaSeleccionada(correlativo); // solo resalta la fila — no recarga KPIs ni la tabla
   $('res-obs-vacio').style.display = 'none';
   $('res-obs-contenido').style.display = 'block';
   $('res-obs-titulo').textContent = `Observaciones — ${correlativo}`;
@@ -5514,7 +5585,7 @@ $('res-obs-body').addEventListener('click', async (ev)=>{
       const idxCache = tiRegAllCache.findIndex(r=>r.correlativo===resObsCache.correlativo);
       if(idxCache>=0) tiRegAllCache[idxCache].observaciones_pendientes = Math.max(0,(tiRegAllCache[idxCache].observaciones_pendientes||1)-1);
       renderObservaciones();
-      renderDashboardResultados();
+      renderResKpis(); renderResTablaTomas(); // refresca datos sin resetear la página de la tabla
       showToast('Observación marcada como solucionada.','ok');
     }catch(err){
       console.error(err);
@@ -5537,7 +5608,7 @@ $('res-obs-body').addEventListener('click', async (ev)=>{
       const idxCache = tiRegAllCache.findIndex(r=>r.correlativo===resObsCache.correlativo);
       if(idxCache>=0) tiRegAllCache[idxCache].observaciones_pendientes = (tiRegAllCache[idxCache].observaciones_pendientes||0)+1;
       renderObservaciones();
-      renderDashboardResultados();
+      renderResKpis(); renderResTablaTomas(); // refresca datos sin resetear la página de la tabla
       showToast('Observación reabierta.','ok');
     }catch(err){
       console.error(err);
