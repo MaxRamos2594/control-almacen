@@ -246,6 +246,25 @@
   #crop-modal .actions{display:flex; gap:8px; margin-top:16px;}
   #crop-modal .actions .btn{flex:1;}
 
+  #mez-stage{user-select:none;}
+  .mez-tile{position:absolute; cursor:pointer; transition:filter .1s;}
+  .mez-tile:hover{filter:brightness(1.6);}
+  .mez-tile.mez-tile-hover{filter:brightness(2.2);}
+  .mez-box{position:absolute; cursor:grab;}
+  .mez-box.mez-box-dragging{cursor:grabbing; opacity:.85; z-index:9999 !important;}
+  .mez-box .mez-face{position:absolute; left:0; top:0;}
+  .mez-box .mez-label{
+    position:absolute; top:2px; left:0; width:100%; text-align:center;
+    font-family:var(--mono); font-size:9px; font-weight:700; color:rgba(0,0,0,.55);
+    pointer-events:none; line-height:1;
+  }
+  .mez-add-btn{
+    position:absolute; width:18px; height:18px; border-radius:50%; background:var(--lacre); color:#fff;
+    font-size:13px; font-weight:700; line-height:18px; text-align:center; cursor:pointer;
+    box-shadow:0 2px 6px rgba(0,0,0,.35); opacity:.5; transition:opacity .12s, transform .12s;
+  }
+  .mez-add-btn:hover{opacity:1; transform:scale(1.15);}
+
   .filters-grid{display:grid; grid-template-columns:repeat(6,1fr) auto; gap:10px; align-items:end;}
   @media (max-width:1200px){ .filters-grid{grid-template-columns:1fr 1fr;} }
 
@@ -452,6 +471,27 @@
         <span><i class="sw" style="background:#4FC3E8; border:1px solid #1E90BE;"></i>Campaña del día</span>
       </div>
       <div class="bloques-scroll" id="preview-bloques"></div>
+    </div>
+  </div>
+  <div class="panel" id="mez-panel" style="margin-top:14px;">
+    <h3>Mezzanine</h3>
+    <p class="hint" style="margin-bottom:10px;">Un piso adicional aparte de los bloques de racks: aquí agregas cajas sueltas sobre una plataforma (se pueden apilar unas sobre otras). Cada caja es una posición más del sistema — haz clic en una caja para asignarle un pallet en Movimientos, igual que con el resto del layout.</p>
+    <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:end; margin-bottom:12px;">
+      <div class="field" style="margin:0; width:90px;"><label>Filas</label><input type="number" id="mez-filas" min="1" step="1"></div>
+      <div class="field" style="margin:0; width:100px;"><label>Columnas</label><input type="number" id="mez-columnas" min="1" step="1"></div>
+      <div class="field" style="margin:0; width:160px;"><label>Niveles máx. de apilado</label><input type="number" id="mez-niveles-max" min="1" step="1"></div>
+      <button class="btn btn-ghost btn-sm" id="btn-mez-guardar-tamano">Guardar tamaño</button>
+    </div>
+    <div class="msg" id="mez-msg"></div>
+    <div class="legend" style="margin-bottom:10px;">
+      <span><i class="sw" style="background:#0A0A0A; border:1px solid #333;"></i>Piso del mezzanine (vacío)</span>
+      <span><i class="sw" style="background:var(--lacre-bg); border:1px solid var(--lacre-line);"></i>Caja vacía</span>
+      <span><i class="sw" style="background:#1E5F3E; border:1px solid #123D28;"></i>Caja con pallet</span>
+      <span><i class="sw" style="background:#000;"></i>Caja bloqueada</span>
+    </div>
+    <p class="hint" style="margin-bottom:10px;">Clic en el piso vacío = agregar una caja ahí. Clic en una caja = asignarla/verla en Movimientos. Arrastra una caja para moverla o apilarla sobre otra. Clic derecho sobre una caja vacía = quitarla.</p>
+    <div id="mez-viewport" style="overflow:auto; border:1px solid var(--line); border-radius:8px; background:#F1F2F4; padding:24px;">
+      <div id="mez-stage" style="position:relative;"></div>
     </div>
   </div>
 </div>
@@ -1306,8 +1346,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v73';
-const APP_UPDATED = '31/08/2026 04:20';
+const APP_VERSION = 'v74';
+const APP_UPDATED = '31/08/2026 05:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -1351,6 +1391,7 @@ const kardexRef = db.collection('kardex');
 const contadorRef = db.collection('contadores').doc('global');
 
 let bloques = {}, nichos = {}, posiciones = {}, pallets = {}, productos = {};
+let mezanineConfig = { filas: 6, columnas: 10, niveles_max: 4 };
 let validadoresMaestroCache = {}; // maestro de validadores, keyed por DNI
 let currentPermisos = {};
 let currentUserEmail = '';
@@ -1605,6 +1646,20 @@ function startListeners(){
   nichosRef.onSnapshot(snap=>{ nichos={}; snap.forEach(d=>nichos[d.id]=d.data()); checkReady(); renderAll(); }, onErr);
   posicionesRef.onSnapshot(snap=>{ posiciones={}; snap.forEach(d=>posiciones[d.id]=d.data()); checkReady(); renderAll(); }, onErr);
   palletsRef.onSnapshot(snap=>{ pallets={}; snap.forEach(d=>pallets[d.id]=d.data()); checkReady(); renderAll(); }, onErr);
+  // Config del Mezzanine (tamaño de la grilla): reutiliza el mismo documento de
+  // contadores/global (ya usado para nicho_index), en vez de una colección nueva,
+  // para no depender de reglas de seguridad de Firestore que aún no contemplan una
+  // colección nueva. No cuenta para checkReady() — es un detalle adicional del
+  // layout, no una de las 5 colecciones núcleo que definen "sincronizado en vivo".
+  contadorRef.onSnapshot(snap=>{
+    const d = snap.exists ? snap.data() : {};
+    mezanineConfig = {
+      filas: d.mezanine_filas || 6,
+      columnas: d.mezanine_columnas || 10,
+      niveles_max: d.mezanine_niveles_max || 4
+    };
+    renderMezanine();
+  }, onErr);
   productosRef.onSnapshot(snap=>{ productos={}; snap.forEach(d=>productos[docIdACodigo(d.id)]=d.data()); checkReady(); renderProductosTabla(); renderInventario(); poblarProveedoresToma(); poblarDatalistsProductos(); }, onErr);
   validadoresMaestroRef.onSnapshot(snap=>{
     validadoresMaestroCache = {};
@@ -1630,6 +1685,7 @@ function renderAll(){
   renderBloqueForms();
   renderPreviewGrid();
   renderMovGrid();
+  renderMezanine();
   renderFiltroBloques();
   renderSelects();
   renderResumen();
@@ -1813,6 +1869,285 @@ async function eliminarNichosSeleccionados(bloqueId){
     showToast(`${letras.length} nicho(s) eliminado(s).`,'ok');
   }catch(err){ showToast('Error: '+err.message,'err'); }
 }
+
+/* -------------------- Mezzanine (piso adicional, isométrico) --------------------
+   Las "cajas" del mezzanine son posiciones normales del sistema (misma colección
+   `posiciones`, tipo:'mezanine'), así que Movimientos/Kardex/Toma de Inventario ya
+   las soportan sin cambios: cualquier caja vacía aparece como destino disponible
+   al crear un pallet, exactamente igual que un rack o un piso.
+   A diferencia de los racks (donde las posiciones son fijas y lo que se mueve es
+   el pallet), aquí la caja EN SÍ se puede arrastrar dentro de la plataforma — sus
+   campos fila/columna/nivel_apilado son solo metadata visual y se actualizan al
+   soltarla; su código (id) nunca cambia. Varias cajas pueden compartir la misma
+   celda (fila,columna) apiladas en niveles 1,2,3… sin huecos entre niveles.
+   La vista es una proyección isométrica 2:1 dibujada con posicionamiento absoluto
+   normal (sin transform 3D), lo que hace el arrastrar-soltar simple y confiable. */
+const MEZ_TILE_W = 64, MEZ_TILE_H = 32, MEZ_BOX_H = 28;
+const MEZ_TOP_POLY = `polygon(${MEZ_TILE_W/2}px 0, ${MEZ_TILE_W}px ${MEZ_TILE_H/2}px, ${MEZ_TILE_W/2}px ${MEZ_TILE_H}px, 0 ${MEZ_TILE_H/2}px)`;
+function mezLeftPoly(h){ return `polygon(0 ${MEZ_TILE_H/2}px, ${MEZ_TILE_W/2}px ${MEZ_TILE_H}px, ${MEZ_TILE_W/2}px ${MEZ_TILE_H+h}px, 0 ${MEZ_TILE_H/2+h}px)`; }
+function mezRightPoly(h){ return `polygon(${MEZ_TILE_W/2}px ${MEZ_TILE_H}px, ${MEZ_TILE_W}px ${MEZ_TILE_H/2}px, ${MEZ_TILE_W}px ${MEZ_TILE_H/2+h}px, ${MEZ_TILE_W/2}px ${MEZ_TILE_H+h}px)`; }
+function mezTilePos(fila, columna, filas, nivelesMax){
+  const halfW = MEZ_TILE_W/2, halfH = MEZ_TILE_H/2;
+  const originX = (filas-1) * halfW;
+  const originY = nivelesMax * MEZ_BOX_H;
+  return { x: (columna-fila)*halfW + originX, y: (columna+fila)*halfH + originY };
+}
+function mezStageSize(filas, columnas, nivelesMax){
+  const halfW = MEZ_TILE_W/2, halfH = MEZ_TILE_H/2;
+  return {
+    width: Math.max(1,(filas-1+columnas-1))*halfW + MEZ_TILE_W,
+    height: Math.max(1,(filas-1+columnas-1))*halfH + MEZ_TILE_H + nivelesMax*MEZ_BOX_H
+  };
+}
+function mezBoxColores(p){
+  if(p.bloqueada) return { top:'#3A3A3A', left:'#000000', right:'#141414' };
+  if(p.estado==='ocupado') return { top:'#3FA982', left:'#123D28', right:'#1E5F3E' };
+  return { top:'#E9A47D', left:'#8C3416', right:'#B8471F' };
+}
+
+function renderMezanine(){
+  const stage = $('mez-stage');
+  if(!stage) return;
+  const filas = Math.max(1, mezanineConfig.filas || 6);
+  const columnas = Math.max(1, mezanineConfig.columnas || 10);
+  const nivelesMax = Math.max(1, mezanineConfig.niveles_max || 4);
+
+  // Refleja el tamaño guardado en los campos, salvo que el usuario los esté editando.
+  if(document.activeElement !== $('mez-filas')) $('mez-filas').value = filas;
+  if(document.activeElement !== $('mez-columnas')) $('mez-columnas').value = columnas;
+  if(document.activeElement !== $('mez-niveles-max')) $('mez-niveles-max').value = nivelesMax;
+
+  const { width, height } = mezStageSize(filas, columnas, nivelesMax);
+  stage.style.width = width+'px';
+  stage.style.height = height+'px';
+
+  const cajasPorCelda = {};
+  Object.entries(posiciones).forEach(([id,p])=>{
+    if(p.tipo !== 'mezanine') return;
+    const key = p.fila+'_'+p.columna;
+    (cajasPorCelda[key] = cajasPorCelda[key] || []).push([id,p]);
+  });
+
+  let html = '';
+  for(let f=0; f<filas; f++){
+    for(let c=0; c<columnas; c++){
+      const {x,y} = mezTilePos(f,c,filas,nivelesMax);
+      const z = (f+c)*100;
+      html += `<div class="mez-tile" data-fila="${f}" data-columna="${c}" style="left:${x}px; top:${y}px; width:${MEZ_TILE_W}px; height:${MEZ_TILE_H}px; clip-path:${MEZ_TOP_POLY}; background:#0A0A0A; border:1px solid #2A2A2A; z-index:${z};"></div>`;
+    }
+  }
+
+  Object.entries(cajasPorCelda).forEach(([key,cajas])=>{
+    cajas.sort((a,b)=> (a[1].nivel_apilado||1) - (b[1].nivel_apilado||1));
+    const [f0,c0] = key.split('_').map(Number);
+    const tilePos = mezTilePos(f0,c0,filas,nivelesMax);
+    const zBase = (f0+c0)*100;
+    cajas.forEach(([id,p])=>{
+      const nivel = p.nivel_apilado || 1;
+      const boxY = tilePos.y - nivel*MEZ_BOX_H;
+      const colores = mezBoxColores(p);
+      html += `<div class="mez-box" data-id="${id}" style="left:${tilePos.x}px; top:${boxY}px; width:${MEZ_TILE_W}px; height:${MEZ_TILE_H+MEZ_BOX_H}px; z-index:${zBase+nivel};">
+        <div class="mez-face" style="clip-path:${mezLeftPoly(MEZ_BOX_H)}; background:${colores.left}; width:${MEZ_TILE_W}px; height:${MEZ_TILE_H+MEZ_BOX_H}px;"></div>
+        <div class="mez-face" style="clip-path:${mezRightPoly(MEZ_BOX_H)}; background:${colores.right}; width:${MEZ_TILE_W}px; height:${MEZ_TILE_H+MEZ_BOX_H}px;"></div>
+        <div class="mez-face" style="clip-path:${MEZ_TOP_POLY}; background:${colores.top}; width:${MEZ_TILE_W}px; height:${MEZ_TILE_H}px;"></div>
+        <div class="mez-label">${id.replace('MEZ-','')}</div>
+      </div>`;
+    });
+    if(cajas.length < nivelesMax){
+      const btnY = tilePos.y - cajas.length*MEZ_BOX_H - 10;
+      html += `<div class="mez-add-btn" data-add-fila="${f0}" data-add-columna="${c0}" style="left:${tilePos.x+MEZ_TILE_W/2-9}px; top:${btnY}px; z-index:${zBase+cajas.length+1};" title="Agregar otra caja encima">+</div>`;
+    }
+  });
+
+  stage.innerHTML = html;
+
+  stage.querySelectorAll('.mez-tile').forEach(el=>{
+    el.addEventListener('click', ()=> agregarCajaMezanine(Number(el.dataset.fila), Number(el.dataset.columna)));
+    el.addEventListener('mouseenter', e=> showMezTooltipCelda(e, Number(el.dataset.fila), Number(el.dataset.columna)));
+    el.addEventListener('mouseleave', hideTooltip);
+    el.addEventListener('mousemove', positionTooltip);
+  });
+  stage.querySelectorAll('.mez-add-btn').forEach(el=>{
+    el.addEventListener('click', (e)=>{ e.stopPropagation(); agregarCajaMezanine(Number(el.dataset.addFila), Number(el.dataset.addColumna)); });
+  });
+  stage.querySelectorAll('.mez-box').forEach(el=> wireMezBoxInteraction(el));
+}
+
+function celdaMasCercana(el, nivelOriginal){
+  const filas = Math.max(1, mezanineConfig.filas || 6), columnas = Math.max(1, mezanineConfig.columnas || 10), nivelesMax = Math.max(1, mezanineConfig.niveles_max || 4);
+  const curLeft = parseFloat(el.style.left), curTop = parseFloat(el.style.top);
+  const groundX = curLeft, groundY = curTop + nivelOriginal*MEZ_BOX_H;
+  let mejor = null, mejorDist = Infinity;
+  for(let f=0; f<filas; f++){
+    for(let c=0; c<columnas; c++){
+      const t = mezTilePos(f,c,filas,nivelesMax);
+      const d = Math.hypot(t.x-groundX, t.y-groundY);
+      if(d < mejorDist){ mejorDist = d; mejor = {fila:f, columna:c}; }
+    }
+  }
+  return (mejor && mejorDist <= MEZ_TILE_W) ? mejor : null;
+}
+
+function wireMezBoxInteraction(el){
+  const id = el.dataset.id;
+  let startX=0, startY=0, startLeft=0, startTop=0, dragging=false, moved=false, nivelOriginal=1;
+
+  function resaltarCeldaCercana(){
+    document.querySelectorAll('.mez-tile-hover').forEach(t=>t.classList.remove('mez-tile-hover'));
+    const celda = celdaMasCercana(el, nivelOriginal);
+    if(celda){
+      const t = $('mez-stage').querySelector(`.mez-tile[data-fila="${celda.fila}"][data-columna="${celda.columna}"]`);
+      if(t) t.classList.add('mez-tile-hover');
+    }
+  }
+  function onMouseMove(e){
+    const dx = e.clientX-startX, dy = e.clientY-startY;
+    if(!dragging && (Math.abs(dx)>5 || Math.abs(dy)>5)){ dragging = true; el.classList.add('mez-box-dragging'); }
+    if(dragging){
+      moved = true;
+      el.style.left = (startLeft+dx)+'px';
+      el.style.top = (startTop+dy)+'px';
+      resaltarCeldaCercana();
+    }
+  }
+  function onMouseUp(){
+    window.removeEventListener('mousemove', onMouseMove);
+    window.removeEventListener('mouseup', onMouseUp);
+    el.classList.remove('mez-box-dragging');
+    document.querySelectorAll('.mez-tile-hover').forEach(t=>t.classList.remove('mez-tile-hover'));
+    if(dragging && moved){
+      const celda = celdaMasCercana(el, nivelOriginal);
+      if(celda) moverCajaMezanine(id, celda.fila, celda.columna);
+      else renderMezanine();
+    } else {
+      switchTab('mov');
+      selectSlot(id);
+    }
+    dragging = false; moved = false;
+  }
+  el.addEventListener('mousedown', (e)=>{
+    if(e.button !== 0) return;
+    e.preventDefault();
+    const p = posiciones[id]; nivelOriginal = (p && p.nivel_apilado) || 1;
+    startX = e.clientX; startY = e.clientY;
+    startLeft = parseFloat(el.style.left); startTop = parseFloat(el.style.top);
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  });
+  el.addEventListener('mouseenter', (e)=> showMezTooltip(e,id));
+  el.addEventListener('mouseleave', hideTooltip);
+  el.addEventListener('mousemove', (e)=>{ if(!dragging) positionTooltip(e); });
+  el.addEventListener('contextmenu', (e)=> showMezContextMenu(e,id));
+}
+
+function showMezTooltip(e,id){
+  const p = posiciones[id]; if(!p) return;
+  const tt = $('tooltip');
+  const ubic = `Fila ${p.fila+1}, columna ${p.columna+1}, nivel ${p.nivel_apilado||1}`;
+  if(p.bloqueada){ tt.innerHTML = `<b>${id}</b><br>${ubic}<br>${p.campana_dia?'Campaña del día':'Bloqueada'}`; }
+  else if(p.estado==='ocupado'){
+    const pal = pallets[p.pallet_codigo]; const n = pal && pal.items ? pal.items.length : 0;
+    tt.innerHTML = `<b>${id}</b><br>${ubic}<br>Pallet: ${p.pallet_codigo}<br>${n} producto(s)`;
+  } else {
+    tt.innerHTML = `<b>${id}</b><br>${ubic}<br>Vacío`;
+  }
+  tt.style.display='block'; positionTooltip(e);
+}
+function showMezTooltipCelda(e,fila,columna){
+  const tt = $('tooltip');
+  tt.innerHTML = `Fila ${fila+1}, columna ${columna+1}<br>Piso vacío — clic para agregar una caja`;
+  tt.style.display='block'; positionTooltip(e);
+}
+function showMezContextMenu(e,id){
+  e.preventDefault();
+  const p = posiciones[id]; if(!p) return;
+  const menu = $('ctx-menu');
+  if(p.bloqueada || p.estado==='ocupado'){
+    menu.innerHTML = `<button disabled style="opacity:.5; cursor:default;">${p.bloqueada?'Bloqueada':'Con pallet asignado'} — no se puede quitar</button>`;
+  } else {
+    menu.innerHTML = `<button data-a="quitar">Quitar caja ${id}</button>`;
+  }
+  menu.style.left = e.clientX+'px'; menu.style.top = e.clientY+'px'; menu.style.display='block';
+  menu.querySelectorAll('button[data-a]').forEach(btn=>{
+    btn.onclick = () => { quitarCajaMezanine(id); menu.style.display='none'; };
+  });
+}
+
+async function agregarCajaMezanine(fila, columna){
+  const nivelesMax = mezanineConfig.niveles_max || 4;
+  const enEstaCelda = Object.values(posiciones).filter(p=>p.tipo==='mezanine' && p.fila===fila && p.columna===columna);
+  if(enEstaCelda.length >= nivelesMax){ showToast(`Esa pila ya llegó al máximo de ${nivelesMax} nivel(es).`,'err'); return; }
+  try{
+    let codigo;
+    await db.runTransaction(async tx=>{
+      const cSnap = await tx.get(contadorRef);
+      const data = cSnap.exists ? cSnap.data() : {};
+      const idx = data.mezanine_index || 0;
+      codigo = `MEZ-${String(idx+1).padStart(3,'0')}`;
+      tx.set(posicionesRef.doc(codigoADocId(codigo)), {
+        tipo:'mezanine', bloque_id:null, nicho:null, nivel:null,
+        fila, columna, nivel_apilado: enEstaCelda.length+1,
+        estado:'vacio', bloqueada:false, pallet_codigo:null,
+        creado_en: firebase.firestore.FieldValue.serverTimestamp(),
+        actualizado: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      tx.set(contadorRef, { mezanine_index: idx+1 }, {merge:true});
+    });
+    await logAccion('mezanine_caja_creada', {detalle:`Caja ${codigo} agregada al mezzanine (fila ${fila+1}, columna ${columna+1})`});
+    showToast(`Caja ${codigo} agregada.`,'ok');
+  }catch(err){ showToast('Error: '+err.message,'err'); }
+}
+
+async function moverCajaMezanine(id, nuevaFila, nuevaColumna){
+  const caja = posiciones[id]; if(!caja) return;
+  if(caja.fila===nuevaFila && caja.columna===nuevaColumna){ renderMezanine(); return; }
+  const nivelesMax = mezanineConfig.niveles_max || 4;
+  const destinoStack = Object.entries(posiciones).filter(([pid,p])=>p.tipo==='mezanine' && p.fila===nuevaFila && p.columna===nuevaColumna);
+  if(destinoStack.length >= nivelesMax){ showToast(`Esa pila ya llegó al máximo de ${nivelesMax} nivel(es).`,'err'); renderMezanine(); return; }
+  const origenArriba = Object.entries(posiciones).filter(([pid,p])=>p.tipo==='mezanine' && p.fila===caja.fila && p.columna===caja.columna && (p.nivel_apilado||1) > (caja.nivel_apilado||1));
+  try{
+    const batch = db.batch();
+    batch.update(posicionesRef.doc(id), { fila:nuevaFila, columna:nuevaColumna, nivel_apilado: destinoStack.length+1, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
+    origenArriba.forEach(([pid,p])=>{
+      batch.update(posicionesRef.doc(pid), { nivel_apilado: (p.nivel_apilado||1)-1, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
+    });
+    await batch.commit();
+    await logAccion('mezanine_caja_movida', {detalle:`Caja ${id} movida a fila ${nuevaFila+1}, columna ${nuevaColumna+1}`});
+  }catch(err){ showToast('Error al mover: '+err.message,'err'); renderMezanine(); }
+}
+
+async function quitarCajaMezanine(id){
+  const caja = posiciones[id]; if(!caja) return;
+  if(caja.bloqueada){ showToast('Esa caja está bloqueada.','err'); return; }
+  if(caja.estado==='ocupado'){ showToast('Esa caja tiene un pallet asignado. Retíralo primero desde Movimientos.','err'); return; }
+  const arriba = Object.entries(posiciones).filter(([pid,p])=>p.tipo==='mezanine' && p.fila===caja.fila && p.columna===caja.columna && (p.nivel_apilado||1) > (caja.nivel_apilado||1));
+  try{
+    const batch = db.batch();
+    batch.delete(posicionesRef.doc(id));
+    arriba.forEach(([pid,p])=>{
+      batch.update(posicionesRef.doc(pid), { nivel_apilado: (p.nivel_apilado||1)-1, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
+    });
+    await batch.commit();
+    await logAccion('mezanine_caja_eliminada', {detalle:`Caja ${id} eliminada del mezzanine`});
+    showToast(`Caja ${id} eliminada.`,'ok');
+  }catch(err){ showToast('Error: '+err.message,'err'); }
+}
+
+async function guardarTamanoMezanine(){
+  const filas = parseInt($('mez-filas').value,10);
+  const columnas = parseInt($('mez-columnas').value,10);
+  const nivelesMax = parseInt($('mez-niveles-max').value,10);
+  if(!filas || filas<1 || !columnas || columnas<1 || !nivelesMax || nivelesMax<1){ showMsg('mez-msg','err','Ingresa filas, columnas y niveles máximos válidos (mayor a 0).'); return; }
+  const cajas = Object.values(posiciones).filter(p=>p.tipo==='mezanine');
+  const fueraDeRango = cajas.some(p=> p.fila>=filas || p.columna>=columnas || (p.nivel_apilado||1)>nivelesMax);
+  if(fueraDeRango){ showMsg('mez-msg','err','No puedes reducir el tamaño: hay cajas fuera del nuevo rango. Muévelas o quítalas primero.'); return; }
+  try{
+    await contadorRef.set({ mezanine_filas: filas, mezanine_columnas: columnas, mezanine_niveles_max: nivelesMax }, {merge:true});
+    showMsg('mez-msg','ok','Tamaño del mezzanine guardado.');
+    showToast('Tamaño del mezzanine actualizado.','ok');
+  }catch(err){ showMsg('mez-msg','err',err.message); }
+}
+$('btn-mez-guardar-tamano').addEventListener('click', guardarTamanoMezanine);
 
 /* -------------------- Render de grillas -------------------- */
 function slotHTML(id, data){
@@ -5231,7 +5566,7 @@ function generarSeleccionToma(cantidadSolicitada, posicionesExcluidas){
     const pal = pallets[p.pallet_codigo];
     if(!pal || !pal.items || pal.items.length===0) return false;
     return pal.items.some(it => Number(it.cantidad) > 0);
-  }).map(([id,p])=>({id, tipo: p.tipo==='piso' ? 'piso' : 'rack', pallet_codigo:p.pallet_codigo}));
+  }).map(([id,p])=>({id, tipo: p.tipo==='rack' ? 'rack' : 'piso', pallet_codigo:p.pallet_codigo}));
 
   const racks = candidatas.filter(c=>c.tipo==='rack');
   const pisos = candidatas.filter(c=>c.tipo==='piso');
@@ -5320,7 +5655,7 @@ function generarSeleccionTomaPorProveedor(proveedor, posicionesExcluidas){
       return prod && (prod.proveedor||'').trim() === proveedor;
     });
     if(itemsProveedor.length === 0) return;
-    const tipo = p.tipo==='piso' ? 'piso' : 'rack';
+    const tipo = p.tipo==='rack' ? 'rack' : 'piso'; // el mezzanine se cuenta junto con "piso" para este sorteo
     seleccionFinal.push({id, tipo, pallet_codigo:p.pallet_codigo});
     itemsProveedor.forEach(it=>{
       const prod = productos[it.producto];
