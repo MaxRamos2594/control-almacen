@@ -225,6 +225,27 @@
   .dl-popup-status.done{color:var(--green); font-weight:600;}
   .dl-popup-status.err{color:var(--red); font-weight:600;}
 
+  #crop-modal-overlay{
+    position:fixed; inset:0; background:rgba(15,21,29,.55); z-index:300;
+    display:flex; align-items:center; justify-content:center; padding:16px;
+  }
+  #crop-modal{
+    background:var(--panel); border-radius:10px; padding:20px; width:340px; max-width:100%;
+    box-shadow:0 18px 46px rgba(0,0,0,.32); font-family:var(--sans);
+  }
+  #crop-modal h3{margin:0 0 4px; font-size:15px; color:var(--ink);}
+  #crop-modal .hint{color:var(--ink-soft); font-size:11.5px; margin:0 0 14px; line-height:1.5;}
+  #crop-canvas-wrap{
+    width:280px; height:280px; max-width:100%; margin:0 auto; border-radius:8px; overflow:hidden;
+    border:1px solid var(--line-strong); background:#EEE; cursor:grab; touch-action:none;
+  }
+  #crop-canvas-wrap.dragging{cursor:grabbing;}
+  #crop-canvas{display:block; width:100%; height:100%;}
+  #crop-zoom-row{display:flex; align-items:center; gap:8px; margin-top:14px;}
+  #crop-zoom-row input[type=range]{flex:1;}
+  #crop-modal .actions{display:flex; gap:8px; margin-top:16px;}
+  #crop-modal .actions .btn{flex:1;}
+
   .filters-grid{display:grid; grid-template-columns:repeat(6,1fr) auto; gap:10px; align-items:end;}
   @media (max-width:1200px){ .filters-grid{grid-template-columns:1fr 1fr;} }
 
@@ -1285,8 +1306,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v72';
-const APP_UPDATED = '31/08/2026 03:45';
+const APP_VERSION = 'v73';
+const APP_UPDATED = '31/08/2026 04:20';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -2749,6 +2770,129 @@ function renderProductosTabla(){
 $('prod-buscar').addEventListener('input', renderProductosTabla);
 $('prod-buscar-proveedor').addEventListener('input', renderProductosTabla);
 
+/* -------------------- Recortador cuadrado de imágenes -------------------- */
+// Modal reutilizable: recibe un File de imagen y devuelve una Promise que resuelve
+// con un nuevo File cuadrado (JPEG) ya recortado según lo que el usuario ajuste
+// (arrastrar para mover, control para hacer zoom), o null si cancela. Se usa antes
+// de subir la foto de un producto para que la columna "Foto" del PDF de Inventario
+// (que es cuadrada) aproveche mejor el ancho en vez de mostrar franjas verticales.
+function abrirRecortadorImagen(file){
+  return new Promise((resolve)=>{
+    const CANVAS_SIZE = 280;   // tamaño del área visible de recorte, en px
+    const SALIDA_SIZE = 800;   // resolución final de la imagen recortada, en px
+
+    const reader = new FileReader();
+    reader.onload = (e)=>{
+      const img = new Image();
+      img.onload = ()=>{
+        let scaleBase = Math.max(CANVAS_SIZE/img.naturalWidth, CANVAS_SIZE/img.naturalHeight);
+        let scale = scaleBase;
+        let offsetX = (CANVAS_SIZE - img.naturalWidth*scale)/2;
+        let offsetY = (CANVAS_SIZE - img.naturalHeight*scale)/2;
+        let dragging = false, dragStartX=0, dragStartY=0, dragOrigX=0, dragOrigY=0;
+
+        const overlay = document.createElement('div');
+        overlay.id = 'crop-modal-overlay';
+        overlay.innerHTML = `
+          <div id="crop-modal">
+            <h3>Ajustar foto del producto</h3>
+            <p class="hint">Arrastra la imagen para moverla y usa el control para acercar. Se guardará cuadrada.</p>
+            <div id="crop-canvas-wrap"><canvas id="crop-canvas" width="${CANVAS_SIZE}" height="${CANVAS_SIZE}"></canvas></div>
+            <div id="crop-zoom-row">
+              <span style="font-size:11px; color:var(--ink-soft);">🔍</span>
+              <input type="range" id="crop-zoom" min="100" max="300" value="100">
+            </div>
+            <div class="actions">
+              <button type="button" class="btn btn-ghost" id="crop-btn-cancelar">Cancelar</button>
+              <button type="button" class="btn btn-primary" id="crop-btn-usar">Usar foto</button>
+            </div>
+          </div>`;
+        document.body.appendChild(overlay);
+
+        const canvas = document.getElementById('crop-canvas');
+        const ctx = canvas.getContext('2d');
+        const wrap = document.getElementById('crop-canvas-wrap');
+        const zoomInput = document.getElementById('crop-zoom');
+
+        function clampOffset(){
+          const drawW = img.naturalWidth*scale, drawH = img.naturalHeight*scale;
+          const minX = CANVAS_SIZE - drawW, minY = CANVAS_SIZE - drawH;
+          offsetX = Math.min(0, Math.max(minX, offsetX));
+          offsetY = Math.min(0, Math.max(minY, offsetY));
+        }
+        function render(){
+          clampOffset();
+          ctx.clearRect(0,0,CANVAS_SIZE,CANVAS_SIZE);
+          ctx.drawImage(img, offsetX, offsetY, img.naturalWidth*scale, img.naturalHeight*scale);
+        }
+        function cerrar(resultado){
+          document.body.removeChild(overlay);
+          document.removeEventListener('keydown', onKeydown);
+          resolve(resultado);
+        }
+        function onKeydown(ev){ if(ev.key==='Escape') cerrar(null); }
+        function posDeEvento(ev){
+          const t = ev.touches ? ev.touches[0] : ev;
+          return {x:t.clientX, y:t.clientY};
+        }
+        function iniciarArrastre(ev){
+          dragging = true; wrap.classList.add('dragging');
+          const p = posDeEvento(ev);
+          dragStartX = p.x; dragStartY = p.y; dragOrigX = offsetX; dragOrigY = offsetY;
+          ev.preventDefault();
+        }
+        function moverArrastre(ev){
+          if(!dragging) return;
+          const p = posDeEvento(ev);
+          offsetX = dragOrigX + (p.x - dragStartX);
+          offsetY = dragOrigY + (p.y - dragStartY);
+          render();
+          ev.preventDefault();
+        }
+        function terminarArrastre(){ dragging = false; wrap.classList.remove('dragging'); }
+
+        wrap.addEventListener('mousedown', iniciarArrastre);
+        window.addEventListener('mousemove', moverArrastre);
+        window.addEventListener('mouseup', terminarArrastre);
+        wrap.addEventListener('touchstart', iniciarArrastre, {passive:false});
+        wrap.addEventListener('touchmove', moverArrastre, {passive:false});
+        wrap.addEventListener('touchend', terminarArrastre);
+
+        zoomInput.addEventListener('input', ()=>{
+          // Mantiene el centro del recorte fijo al hacer zoom, para que no "salte".
+          const cx = CANVAS_SIZE/2, cy = CANVAS_SIZE/2;
+          const imgX = (cx - offsetX)/scale, imgY = (cy - offsetY)/scale;
+          scale = scaleBase * (zoomInput.value/100);
+          offsetX = cx - imgX*scale;
+          offsetY = cy - imgY*scale;
+          render();
+        });
+
+        document.getElementById('crop-btn-cancelar').addEventListener('click', ()=> cerrar(null));
+        document.getElementById('crop-btn-usar').addEventListener('click', ()=>{
+          const outCanvas = document.createElement('canvas');
+          outCanvas.width = SALIDA_SIZE; outCanvas.height = SALIDA_SIZE;
+          const outCtx = outCanvas.getContext('2d');
+          const factor = SALIDA_SIZE/CANVAS_SIZE;
+          outCtx.drawImage(img, offsetX*factor, offsetY*factor, img.naturalWidth*scale*factor, img.naturalHeight*scale*factor);
+          outCanvas.toBlob((blob)=>{
+            if(!blob){ cerrar(null); return; }
+            const nombre = (file.name||'producto').replace(/\.[^.]+$/,'') + '.jpg';
+            cerrar(new File([blob], nombre, {type:'image/jpeg'}));
+          }, 'image/jpeg', 0.9);
+        });
+        document.addEventListener('keydown', onKeydown);
+
+        render();
+      };
+      img.onerror = ()=> resolve(null);
+      img.src = e.target.result;
+    };
+    reader.onerror = ()=> resolve(null);
+    reader.readAsDataURL(file);
+  });
+}
+
 let prImagenFile = null;      // archivo nuevo seleccionado (pendiente de subir)
 let prImagenUrlActual = null; // url ya guardada en el producto cargado (si existe)
 let prImagenQuitar = false;   // true si el usuario pidió quitar la imagen existente
@@ -2779,14 +2923,17 @@ function limpiarFormularioProducto(){
   resetImagenForm();
 }
 
-$('pr-imagen-input').addEventListener('change', ()=>{
+$('pr-imagen-input').addEventListener('change', async ()=>{
   const file = $('pr-imagen-input').files[0];
+  $('pr-imagen-input').value = ''; // limpiar siempre, ya se guardó la referencia en `file`
   if(!file) return;
-  prImagenFile = file;
+  const recortado = await abrirRecortadorImagen(file);
+  if(!recortado) return; // el usuario canceló el recorte: no se cambia nada
+  prImagenFile = recortado;
   prImagenQuitar = false;
   const reader = new FileReader();
   reader.onload = (e)=>{ $('pr-imagen-preview').src = e.target.result; $('pr-imagen-preview').style.display = 'inline-block'; };
-  reader.readAsDataURL(file);
+  reader.readAsDataURL(recortado);
   $('btn-quitar-imagen').style.display = 'inline-block';
 });
 
