@@ -141,6 +141,11 @@
   table{width:100%; border-collapse:collapse; font-size:12px;}
   th{text-align:left; padding:6px 4px; color:var(--ink-soft); font-weight:600; border-bottom:1px solid var(--line); font-size:10px; text-transform:uppercase;}
   td{padding:6px 4px; border-bottom:1px solid var(--line); font-family:var(--mono); font-size:11px;}
+  th.th-ordenable{cursor:pointer; user-select:none; white-space:nowrap;}
+  th.th-ordenable:hover{color:var(--ink);}
+  th.th-ordenable .th-arrow{display:inline-block; width:10px; font-size:9px; opacity:.7;}
+  th.th-ordenable.th-activo{color:var(--blue);}
+  tfoot td{border-bottom:none; border-top:2px solid var(--line-strong); font-weight:700; background:#FAFBFC;}
   .hist-wrap{max-height:420px; overflow-y:auto;}
   .items-table input{width:100%; padding:4px 6px; font-size:11px; border:1px solid var(--line-strong); border-radius:3px; font-family:var(--mono);}
   .items-table input[readonly]{background:#EFEFEF;}
@@ -700,10 +705,28 @@
       <button class="btn btn-primary" id="btn-buscar-campana">Buscar</button>
     </div>
     <div class="msg" id="camp-buscar-msg"></div>
+    <p class="hint" style="margin-bottom:6px;">Haz clic en el encabezado de una columna para ordenar por ella.</p>
     <div class="hist-wrap" style="max-height:600px;">
-      <table><thead><tr><th>Correlativo</th><th>Campaña</th><th>Participante</th><th>SKU</th><th>Producto</th><th>Área</th><th>Cantidad</th><th>Desglose</th><th>Fecha</th></tr></thead><tbody id="camp-buscar-body"></tbody></table>
+      <table>
+        <thead id="camp-buscar-thead">
+          <tr>
+            <th class="th-ordenable" data-key="campana">Campaña</th>
+            <th class="th-ordenable" data-key="participante">Participante</th>
+            <th class="th-ordenable" data-key="sku">SKU</th>
+            <th class="th-ordenable" data-key="producto">Producto</th>
+            <th class="th-ordenable" data-key="area">Área</th>
+            <th class="th-ordenable" data-key="cantidad">Cantidad</th>
+            <th class="th-ordenable" data-key="cantidad_guia">Cant. Guía</th>
+            <th class="th-ordenable" data-key="desglose">Desglose</th>
+            <th class="th-ordenable" data-key="fecha_transaccion">Fecha</th>
+          </tr>
+        </thead>
+        <tbody id="camp-buscar-body"></tbody>
+        <tfoot id="camp-buscar-tfoot"></tfoot>
+      </table>
       <div class="empty-state" id="camp-buscar-empty">Llena al menos un filtro y presiona "Buscar".</div>
     </div>
+    <div id="camp-buscar-paginacion" style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:8px; font-size:11px; color:var(--ink-soft);"></div>
   </div>
   </div>
 
@@ -1064,8 +1087,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v61';
-const APP_UPDATED = '31/08/2026 19:10';
+const APP_VERSION = 'v62';
+const APP_UPDATED = '31/08/2026 19:40';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3289,6 +3312,16 @@ $('btn-limpiar-legacy').addEventListener('click', async ()=>{
   }
 });
 
+// ---- Tabla de resultados: orden por columna + paginación de 30 en 30 ----
+let campBuscarResultados = [];               // filas ya enriquecidas con cantidad_guia
+let campBuscarPagina = 1;
+let campBuscarOrden = { campo: null, dir: 1 }; // dir: 1 asc, -1 desc
+const CAMP_BUSCAR_POR_PAGINA = 30;
+const CAMP_BUSCAR_COLUMNAS = {
+  campana:'Campaña', participante:'Participante', sku:'SKU', producto:'Producto', area:'Área',
+  cantidad:'Cantidad', cantidad_guia:'Cant. Guía', desglose:'Desglose', fecha_transaccion:'Fecha'
+};
+
 $('btn-buscar-campana').addEventListener('click', async ()=>{
   const tienda = $('camp-f-tienda').value.trim().toUpperCase();
   const sku = $('camp-f-sku').value.trim().toUpperCase();
@@ -3328,16 +3361,44 @@ $('btn-buscar-campana').addEventListener('click', async ()=>{
     };
 
     const docs = snap.docs.map(d=>d.data()).filter(checks);
+    const docsLimitados = docs.slice(0,1000);
 
-    if(docs.length === 0){
+    if(docsLimitados.length === 0){
+      campBuscarResultados = [];
+      campBuscarPagina = 1;
       $('camp-buscar-body').innerHTML = '';
+      $('camp-buscar-tfoot').innerHTML = '';
+      $('camp-buscar-paginacion').innerHTML = '';
       $('camp-buscar-empty').style.display = 'block';
       $('camp-buscar-empty').textContent = 'No se encontraron registros para ese filtro.';
     }else{
       $('camp-buscar-empty').style.display = 'none';
-      $('camp-buscar-body').innerHTML = docs.slice(0,1000).map(r=>
-        `<tr><td>${r.correlativo||''}</td><td>${r.campana||''}</td><td>${r.participante||''}</td><td>${r.sku||''}</td><td>${r.producto||''}</td><td>${r.area||''}</td><td>${r.cantidad!=null?r.cantidad:''}</td><td>${r.desglose||''}</td><td>${r.fecha_transaccion||''}</td></tr>`
-      ).join('');
+      bmsg.className = 'msg ok'; bmsg.innerHTML = 'Buscando cantidades de guía…'; bmsg.style.display = 'block';
+
+      // Trae (o reutiliza del caché de Análisis) las guías de cada campaña involucrada,
+      // para poder mostrar por fila cuánto de ese SKU salió realmente en guía a esa tienda.
+      const correlativos = [...new Set(docsLimitados.map(r=>r.correlativo).filter(Boolean))];
+      await Promise.all(correlativos.map(async (correlativo)=>{
+        if(anGuiaPorCampanaCache[correlativo]) return;
+        const snapG = await guiaItemsRef.where('campana_correlativo','==',correlativo).limit(5000).get();
+        anGuiaPorCampanaCache[correlativo] = snapG.docs.map(d=>d.data());
+      }));
+
+      const guiaPorClave = {}; // "correlativo|participante|codigo" -> cantidad sumada en guía
+      correlativos.forEach(correlativo=>{
+        (anGuiaPorCampanaCache[correlativo]||[]).forEach(g=>{
+          const clave = `${correlativo}|${g.participante||''}|${g.codigo||''}`;
+          guiaPorClave[clave] = (guiaPorClave[clave]||0) + (Number(g.cantidad)||0);
+        });
+      });
+
+      campBuscarResultados = docsLimitados.map(r=>{
+        const clave = `${r.correlativo}|${r.participante||''}|${r.sku||''}`;
+        return Object.assign({}, r, { cantidad_guia: guiaPorClave[clave] || 0 });
+      });
+      campBuscarPagina = 1;
+      renderCampBuscarTabla();
+
       const avisos = [];
       if(snap.docs.length === LIMITE){
         avisos.push(`Se revisaron los ${LIMITE} registros más recientes; si no encuentras lo que buscas, acota más con la fecha.`);
@@ -3349,6 +3410,8 @@ $('btn-buscar-campana').addEventListener('click', async ()=>{
         bmsg.className = 'msg ok';
         bmsg.innerHTML = avisos.join('<br>');
         bmsg.style.display = 'block';
+      }else{
+        bmsg.style.display = 'none';
       }
     }
   }catch(err){
@@ -3357,6 +3420,80 @@ $('btn-buscar-campana').addEventListener('click', async ()=>{
   }finally{
     $('btn-buscar-campana').disabled = false;
   }
+});
+
+// Renderiza la página actual de campBuscarResultados aplicando el orden activo,
+// más el total (sobre TODOS los resultados, no solo la página visible) y la paginación.
+function renderCampBuscarTabla(){
+  const filas = campBuscarResultados.slice();
+  if(campBuscarOrden.campo){
+    const campo = campBuscarOrden.campo;
+    const dir = campBuscarOrden.dir;
+    const esNumerico = campo==='cantidad' || campo==='cantidad_guia';
+    filas.sort((a,b)=>{
+      if(esNumerico) return ((Number(a[campo])||0) - (Number(b[campo])||0)) * dir;
+      return (a[campo]||'').toString().localeCompare((b[campo]||'').toString()) * dir;
+    });
+  }
+
+  const totalPaginas = Math.max(1, Math.ceil(filas.length / CAMP_BUSCAR_POR_PAGINA));
+  if(campBuscarPagina > totalPaginas) campBuscarPagina = totalPaginas;
+  if(campBuscarPagina < 1) campBuscarPagina = 1;
+  const inicio = (campBuscarPagina - 1) * CAMP_BUSCAR_POR_PAGINA;
+  const pagina = filas.slice(inicio, inicio + CAMP_BUSCAR_POR_PAGINA);
+
+  $('camp-buscar-body').innerHTML = pagina.map(r=>
+    `<tr>
+      <td>${r.campana||''}</td>
+      <td>${r.participante||''}</td>
+      <td><span style="background:var(--blue-bg); color:var(--blue); font-weight:700; padding:2px 7px; border-radius:4px; display:inline-block;">${r.sku||''}</span></td>
+      <td>${r.producto||''}</td>
+      <td>${r.area||''}</td>
+      <td><span style="background:var(--green-bg); color:#245C46; font-weight:700; padding:2px 7px; border-radius:4px; display:inline-block;">${r.cantidad!=null?r.cantidad:0}</span></td>
+      <td><span style="background:#FDF0E4; color:var(--lacre-line); font-weight:700; padding:2px 7px; border-radius:4px; display:inline-block;">${r.cantidad_guia!=null?r.cantidad_guia:0}</span></td>
+      <td>${r.desglose||''}</td>
+      <td>${r.fecha_transaccion||''}</td>
+    </tr>`
+  ).join('');
+
+  const totalCantidad = filas.reduce((a,r)=> a + (Number(r.cantidad)||0), 0);
+  const totalGuia = filas.reduce((a,r)=> a + (Number(r.cantidad_guia)||0), 0);
+  $('camp-buscar-tfoot').innerHTML = `<tr>
+    <td colspan="5" style="text-align:right;">TOTAL — ${filas.length} registro${filas.length===1?'':'s'}</td>
+    <td>${totalCantidad.toLocaleString('es-PE')}</td>
+    <td>${totalGuia.toLocaleString('es-PE')}</td>
+    <td colspan="2"></td>
+  </tr>`;
+
+  $('camp-buscar-paginacion').innerHTML = `
+    <span>${filas.length} registro(s) · página ${campBuscarPagina} de ${totalPaginas}</span>
+    <div style="display:flex; gap:6px;">
+      <button type="button" class="btn btn-ghost btn-sm" id="btn-cb-pag-prev" ${campBuscarPagina<=1?'disabled':''}>‹ Anterior</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="btn-cb-pag-next" ${campBuscarPagina>=totalPaginas?'disabled':''}>Siguiente ›</button>
+    </div>`;
+
+  // Refresca las etiquetas + flechita de orden en cada encabezado.
+  document.querySelectorAll('#camp-buscar-thead .th-ordenable').forEach(th=>{
+    const campo = th.dataset.key;
+    const activo = campBuscarOrden.campo === campo;
+    th.classList.toggle('th-activo', activo);
+    const arrow = activo ? (campBuscarOrden.dir===1 ? '▲' : '▼') : '';
+    th.innerHTML = `${CAMP_BUSCAR_COLUMNAS[campo]||campo}<span class="th-arrow">${arrow}</span>`;
+  });
+}
+
+$('camp-buscar-thead').addEventListener('click', (ev)=>{
+  const th = ev.target.closest('.th-ordenable');
+  if(!th || campBuscarResultados.length===0) return;
+  const campo = th.dataset.key;
+  if(campBuscarOrden.campo === campo) campBuscarOrden.dir *= -1;
+  else{ campBuscarOrden.campo = campo; campBuscarOrden.dir = 1; }
+  renderCampBuscarTabla();
+});
+
+$('camp-buscar-paginacion').addEventListener('click', (ev)=>{
+  if(ev.target.closest('#btn-cb-pag-prev')){ campBuscarPagina--; renderCampBuscarTabla(); }
+  else if(ev.target.closest('#btn-cb-pag-next')){ campBuscarPagina++; renderCampBuscarTabla(); }
 });
 
 /* -------------------- Guías de Remisión (salida) -------------------- */
