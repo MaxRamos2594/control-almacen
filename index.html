@@ -1285,8 +1285,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v71';
-const APP_UPDATED = '01/09/2026 02:45';
+const APP_VERSION = 'v72';
+const APP_UPDATED = '31/08/2026 03:45';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -2587,7 +2587,7 @@ async function generarPDFInventarioAcumulado(){
     doc.addImage(LOGO_JOANIS_ALTA_B64, 'PNG', pageW-margin-logoW, 8, logoW, logoH);
 
     doc.setFont('helvetica','bold'); doc.setFontSize(18);
-    doc.text('INVENTARIO', margin, 17);
+    doc.text('REPORTE DE INVENTARIO', margin, 17);
 
     doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
     const fechaStr = ahora.toLocaleDateString('es-PE');
@@ -2611,10 +2611,10 @@ async function generarPDFInventarioAcumulado(){
       body: filas,
       styles: { fontSize: 8, cellPadding: 1.6, valign:'middle' },
       headStyles: { fillColor: [30,58,95], textColor: 255, fontStyle:'bold' },
-      bodyStyles: { minCellHeight: 13 },
+      bodyStyles: { minCellHeight: 24 },
       columnStyles: {
         0: {cellWidth:22}, 3: {cellWidth:22, halign:'right'}, 4: {cellWidth:24, halign:'right'},
-        5: {cellWidth:26, halign:'right'}, [COL_IMAGEN]: {cellWidth:17, halign:'center'}
+        5: {cellWidth:26, halign:'right'}, [COL_IMAGEN]: {cellWidth:32, halign:'center'}
       },
       margin: { left: margin, right: margin, top: 32 },
       didDrawCell: (data)=>{
