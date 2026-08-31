@@ -830,6 +830,9 @@
         <label>Mostrar</label>
         <select id="camp-reg-filtro-estado"><option value="ACTIVO">Activos</option><option value="INVALIDADO">Invalidados</option></select>
       </div>
+      <div class="field" style="margin:0; max-width:170px;"><label>Fecha de transacción</label><input type="date" id="camp-reg-filtro-fecha"></div>
+      <div class="field" style="margin:0; max-width:220px;"><label>Campaña (contiene)</label><input type="text" id="camp-reg-filtro-campana" class="upper" placeholder="EJ. CAMPAÑA 30-08"></div>
+      <button class="btn btn-ghost btn-sm" id="btn-camp-reg-limpiar-filtros">Limpiar filtros</button>
       <button class="btn btn-ghost" id="btn-limpiar-legacy" style="margin-left:auto;">🧹 Eliminar registros antiguos sin correlativo</button>
     </div>
     <div class="hist-wrap" style="max-height:500px;">
@@ -866,6 +869,10 @@
         <label>Mostrar</label>
         <select id="guia-reg-filtro-estado"><option value="ACTIVO">Activos</option><option value="INVALIDADO">Invalidados</option></select>
       </div>
+      <div class="field" style="margin:0; max-width:170px;"><label>Fecha de traslado</label><input type="date" id="guia-reg-filtro-fecha"></div>
+      <div class="field" style="margin:0; max-width:180px;"><label>Participante (contiene)</label><input type="text" id="guia-reg-filtro-participante" class="upper" placeholder="EJ. MAGDALENA"></div>
+      <div class="field" style="margin:0; max-width:220px;"><label>Campaña (contiene)</label><input type="text" id="guia-reg-filtro-campana" class="upper" placeholder="EJ. CAMPAÑA 30-08"></div>
+      <button class="btn btn-ghost btn-sm" id="btn-guia-reg-limpiar-filtros">Limpiar filtros</button>
     </div>
     <div class="hist-wrap" style="max-height:500px;">
       <table><thead><tr><th>Correlativo guía</th><th>N° guía</th><th>Campaña</th><th>Participante</th><th>Fecha traslado</th><th>Partida → Llegada</th><th>Ítems</th><th>Bultos</th><th>Cargado por</th><th>Detalle</th><th>Acción</th></tr></thead><tbody id="guia-reg-body"></tbody></table>
@@ -1346,8 +1353,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v74';
-const APP_UPDATED = '31/08/2026 05:30';
+const APP_VERSION = 'v75';
+const APP_UPDATED = '31/08/2026 06:10';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4093,13 +4100,23 @@ async function cargarRegistrosCampana(reset){
 
 function renderRegistrosCampana(){
   const estadoFiltro = $('camp-reg-filtro-estado').value;
+  const fechaFiltro = $('camp-reg-filtro-fecha').value;
+  const campanaFiltro = $('camp-reg-filtro-campana').value.trim().toUpperCase();
+  const hayFiltrosExtra = !!(fechaFiltro || campanaFiltro);
   // Los registros antiguos (guardados antes de existir el campo "estado") se
   // consideran ACTIVOS por defecto.
-  const filtrados = campRegAllCache.filter(r => (r.estado || 'ACTIVO') === estadoFiltro);
+  const filtrados = campRegAllCache.filter(r => {
+    if((r.estado || 'ACTIVO') !== estadoFiltro) return false;
+    if(fechaFiltro && r.fecha_transaccion !== fechaFiltro) return false;
+    if(campanaFiltro && !(r.campana||'').toUpperCase().includes(campanaFiltro)) return false;
+    return true;
+  });
   if(filtrados.length === 0){
     $('camp-reg-body').innerHTML = '';
     $('camp-reg-empty').style.display = 'block';
-    $('camp-reg-empty').textContent = estadoFiltro === 'ACTIVO' ? 'Aún no hay campañas guardadas.' : 'No hay registros invalidados.';
+    $('camp-reg-empty').textContent = hayFiltrosExtra
+      ? 'No hay registros que coincidan con los filtros.'
+      : (estadoFiltro === 'ACTIVO' ? 'Aún no hay campañas guardadas.' : 'No hay registros invalidados.');
     $('btn-reg-cargar-mas').style.display = 'none';
     return;
   }
@@ -4116,6 +4133,13 @@ function renderRegistrosCampana(){
 }
 
 $('camp-reg-filtro-estado').addEventListener('change', ()=> renderRegistrosCampana());
+$('camp-reg-filtro-fecha').addEventListener('change', ()=> renderRegistrosCampana());
+$('camp-reg-filtro-campana').addEventListener('input', ()=> renderRegistrosCampana());
+$('btn-camp-reg-limpiar-filtros').addEventListener('click', ()=>{
+  $('camp-reg-filtro-fecha').value = '';
+  $('camp-reg-filtro-campana').value = '';
+  renderRegistrosCampana();
+});
 $('btn-reg-cargar-mas').addEventListener('click', ()=> cargarRegistrosCampana(false));
 
 // Detalle 1: agrupa las filas de la campaña por participante (SKU distintos + total unidades).
@@ -4946,11 +4970,23 @@ async function cargarRegistrosGuias(reset){
 
 function renderRegistrosGuias(){
   const estadoFiltro = $('guia-reg-filtro-estado').value;
-  const filtrados = guiaRegAllCache.filter(r => (r.estado||'ACTIVO') === estadoFiltro);
+  const fechaFiltro = $('guia-reg-filtro-fecha').value;
+  const participanteFiltro = $('guia-reg-filtro-participante').value.trim().toUpperCase();
+  const campanaFiltro = $('guia-reg-filtro-campana').value.trim().toUpperCase();
+  const hayFiltrosExtra = !!(fechaFiltro || participanteFiltro || campanaFiltro);
+  const filtrados = guiaRegAllCache.filter(r => {
+    if((r.estado||'ACTIVO') !== estadoFiltro) return false;
+    if(fechaFiltro && r.fecha_traslado !== fechaFiltro) return false;
+    if(participanteFiltro && !(r.participante||'').toUpperCase().includes(participanteFiltro)) return false;
+    if(campanaFiltro && !(r.campana_nombre||'').toUpperCase().includes(campanaFiltro)) return false;
+    return true;
+  });
   if(filtrados.length === 0){
     $('guia-reg-body').innerHTML = '';
     $('guia-reg-empty').style.display = 'block';
-    $('guia-reg-empty').textContent = estadoFiltro==='ACTIVO' ? 'Aún no hay guías cargadas.' : 'No hay guías invalidadas.';
+    $('guia-reg-empty').textContent = hayFiltrosExtra
+      ? 'No hay guías que coincidan con los filtros.'
+      : (estadoFiltro==='ACTIVO' ? 'Aún no hay guías cargadas.' : 'No hay guías invalidadas.');
     $('btn-guia-reg-cargar-mas').style.display = 'none';
     return;
   }
@@ -4966,6 +5002,15 @@ function renderRegistrosGuias(){
   $('btn-guia-reg-cargar-mas').style.display = !guiaRegNoMore ? 'inline-block' : 'none';
 }
 $('guia-reg-filtro-estado').addEventListener('change', ()=> renderRegistrosGuias());
+$('guia-reg-filtro-fecha').addEventListener('change', ()=> renderRegistrosGuias());
+$('guia-reg-filtro-participante').addEventListener('input', ()=> renderRegistrosGuias());
+$('guia-reg-filtro-campana').addEventListener('input', ()=> renderRegistrosGuias());
+$('btn-guia-reg-limpiar-filtros').addEventListener('click', ()=>{
+  $('guia-reg-filtro-fecha').value = '';
+  $('guia-reg-filtro-participante').value = '';
+  $('guia-reg-filtro-campana').value = '';
+  renderRegistrosGuias();
+});
 $('btn-guia-reg-cargar-mas').addEventListener('click', ()=> cargarRegistrosGuias(false));
 $('btn-ocultar-detalle-guia').addEventListener('click', ()=>{ $('guia-detalle-panel').style.display = 'none'; });
 
