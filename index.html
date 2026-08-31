@@ -853,7 +853,7 @@
       </div>
       <div class="msg" id="vch-guias-msg"></div>
       <div class="hist-wrap" style="max-height:320px; margin-bottom:12px;">
-        <table><thead><tr><th></th><th>Guía</th><th>N° guía</th><th>Tienda / destino</th><th>Bultos</th></tr></thead><tbody id="vch-guias-body"></tbody></table>
+        <table><thead><tr><th></th><th>N° guía</th><th>Fecha</th><th>Tienda / destino</th><th>Bultos</th></tr></thead><tbody id="vch-guias-body"></tbody></table>
         <div class="empty-state" id="vch-guias-empty">Elige una campaña y presiona "Cargar guías".</div>
       </div>
       <button class="btn btn-primary" id="btn-vch-crear">📦 Crear voucher con las guías marcadas</button>
@@ -870,17 +870,17 @@
       <h3>Detalle del voucher</h3>
       <div class="empty-state" id="vch-detalle-vacio">Selecciona un voucher de la lista de la izquierda para ver sus guías y PDFs.</div>
       <div id="vch-detalle-contenido" style="display:none;">
-        <div id="vch-detalle-info" style="margin-bottom:12px;"></div>
+        <div id="vch-detalle-info" style="margin-bottom:10px;"></div>
+        <div style="margin-bottom:14px;">
+          <button class="btn" id="btn-vch-eliminar-voucher" style="background:#8A332A; color:#fff;">🗑 Eliminar este voucher (borra sus PDFs y libera las guías)</button>
+        </div>
         <div class="hist-wrap" style="max-height:340px; margin-bottom:12px;">
-          <table><thead><tr><th>Guía</th><th>Tienda</th><th>Bultos</th><th>PDF</th><th></th></tr></thead><tbody id="vch-items-body"></tbody></table>
+          <table><thead><tr><th>N° guía</th><th>Fecha</th><th>Tienda</th><th>Bultos</th><th>PDF</th><th></th></tr></thead><tbody id="vch-items-body"></tbody></table>
         </div>
         <div id="vch-pdf-wrap" style="display:none;">
           <p class="hint" id="vch-pdf-info" style="margin-bottom:8px;"></p>
           <iframe id="vch-pdf-iframe" style="width:100%; height:520px; border:1px solid var(--line-strong); border-radius:6px;" src=""></iframe>
           <div style="margin-top:10px;"><a id="vch-pdf-abrir-nueva" href="#" target="_blank" rel="noopener" class="btn btn-ghost">⬇ Abrir en pestaña nueva</a></div>
-        </div>
-        <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--line-strong);">
-          <button class="btn" id="btn-vch-eliminar-voucher" style="background:#8A332A; color:#fff;">🗑 Eliminar este voucher (libera las guías)</button>
         </div>
       </div>
     </div>
@@ -1143,8 +1143,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v63';
-const APP_UPDATED = '31/08/2026 21:10';
+const APP_VERSION = 'v64';
+const APP_UPDATED = '31/08/2026 22:05';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -5512,8 +5512,8 @@ function renderVchGuiasChecklist(){
   tbody.innerHTML = vchGuiasCache.map(g=>`
     <tr>
       <td><input type="checkbox" class="vch-guia-check" data-correlativo="${g.correlativo}" style="width:auto;"></td>
-      <td><b>${g.correlativo}</b></td>
-      <td>${g.nro_guia||''}</td>
+      <td><b>${g.nro_guia||''}</b></td>
+      <td>${g.fecha_traslado||''}</td>
       <td>${g.participante||''} <span class="hint">(${g.punto_llegada||''})</span></td>
       <td><input type="number" class="vch-guia-bultos" data-correlativo="${g.correlativo}" min="1" step="1" style="width:80px;" disabled></td>
     </tr>
@@ -5569,6 +5569,7 @@ $('btn-vch-crear').addEventListener('click', async ()=>{
         voucher_correlativo: correlativoVoucher,
         guia_correlativo: s.guia.correlativo,
         nro_guia: s.guia.nro_guia || '',
+        fecha_traslado: s.guia.fecha_traslado || '',
         participante: s.guia.participante || '',
         bultos: s.bultos,
         creado_por: currentUserAlias,
@@ -5641,15 +5642,22 @@ async function seleccionarVoucher(correlativo){
   }
 }
 
+let vchEditandoBultosId = null;
+
 function renderVchItemsTabla(){
   const tbody = $('vch-items-body');
   tbody.innerHTML = vchItemsCache.map(it=>{
     const tienePdf = !!it.pdf_url;
+    const editandoBultos = it.id === vchEditandoBultosId;
     return `
     <tr>
-      <td>${it.guia_correlativo}<br><span class="hint">Nº ${it.nro_guia||''}</span></td>
+      <td><b>${it.nro_guia||''}</b></td>
+      <td>${it.fecha_traslado||''}</td>
       <td>${it.participante||''}</td>
-      <td>${it.bultos||''}</td>
+      <td>${editandoBultos
+        ? `<input type="number" class="vch-bultos-edit-input" data-id="${it.id}" min="1" step="1" value="${it.bultos||''}" style="width:70px;"> <button class="btn btn-sm btn-primary vch-guardar-bultos" data-id="${it.id}">💾</button> <button class="btn btn-sm btn-ghost vch-cancelar-bultos" data-id="${it.id}">✕</button>`
+        : `${it.bultos||''} <button class="btn btn-sm btn-ghost vch-editar-bultos" data-id="${it.id}">✏️</button>`}
+      </td>
       <td>
         <span class="vch-pill ${tienePdf?'ok':'no'}">${tienePdf?'Subido':'Pendiente'}</span>
         ${tienePdf?`<br><span class="hint">${it.pdf_subido_por||''} · ${it.pdf_subido_en && it.pdf_subido_en.toDate ? it.pdf_subido_en.toDate().toLocaleString('es-PE') : ''}</span>`:''}
@@ -5667,6 +5675,9 @@ $('vch-items-body').addEventListener('click', (e)=>{
   const btnReemplazar = e.target.closest('.vch-reemplazar-pdf');
   const btnVer = e.target.closest('.vch-ver-pdf');
   const btnEliminar = e.target.closest('.vch-eliminar-pdf');
+  const btnEditarBultos = e.target.closest('.vch-editar-bultos');
+  const btnGuardarBultos = e.target.closest('.vch-guardar-bultos');
+  const btnCancelarBultos = e.target.closest('.vch-cancelar-bultos');
   if(btnSubir || btnReemplazar){
     vchSubidaItemIdActual = (btnSubir||btnReemplazar).dataset.id;
     $('vch-pdf-input-global').click();
@@ -5674,8 +5685,35 @@ $('vch-items-body').addEventListener('click', (e)=>{
     mostrarVchPdf(btnVer.dataset.id);
   }else if(btnEliminar){
     eliminarVchPdf(btnEliminar.dataset.id);
+  }else if(btnEditarBultos){
+    vchEditandoBultosId = btnEditarBultos.dataset.id;
+    renderVchItemsTabla();
+  }else if(btnCancelarBultos){
+    vchEditandoBultosId = null;
+    renderVchItemsTabla();
+  }else if(btnGuardarBultos){
+    guardarVchBultos(btnGuardarBultos.dataset.id);
   }
 });
+
+async function guardarVchBultos(itemId){
+  const item = vchItemsCache.find(i=>i.id===itemId);
+  const input = document.querySelector(`.vch-bultos-edit-input[data-id="${itemId}"]`);
+  if(!item || !input) return;
+  const nuevoBultos = Number(input.value);
+  if(!nuevoBultos || nuevoBultos<=0){ showToast('Ingresa una cantidad de bultos válida.','err'); return; }
+  try{
+    await vouchersAgenciaItemsRef.doc(itemId).update({ bultos: nuevoBultos });
+    await logAccion('voucher_agencia_bultos_editado', {detalle:`Se cambiaron los bultos de la guía ${item.guia_correlativo} (voucher ${item.voucher_correlativo}) de ${item.bultos} a ${nuevoBultos}`});
+    item.bultos = nuevoBultos;
+    vchEditandoBultosId = null;
+    renderVchItemsTabla();
+    showToast('Bultos actualizados.','ok');
+  }catch(err){
+    console.error(err);
+    showToast('Error al actualizar los bultos: '+err.message,'err');
+  }
+}
 
 function mostrarVchPdf(itemId){
   const item = vchItemsCache.find(i=>i.id===itemId);
