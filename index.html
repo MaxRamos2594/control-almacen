@@ -81,6 +81,11 @@
 
   #camp-val-grid{display:grid; grid-template-columns:360px 1fr; gap:14px; align-items:start;}
   @media (max-width:1000px){ #camp-val-grid{grid-template-columns:1fr;} }
+  #camp-voucher-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start;}
+  @media (max-width:1000px){ #camp-voucher-grid{grid-template-columns:1fr;} }
+  .vch-pill{display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700;}
+  .vch-pill.ok{background:var(--green-bg); color:var(--green);}
+  .vch-pill.no{background:var(--red-bg); color:var(--red);}
   .bloque-card{border:1px solid var(--line); border-radius:6px; padding:10px 12px; margin-bottom:10px; background:#FAFBFC;}
   .bloque-card .bh{display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap;}
   .bloque-card .bh b{font-family:var(--mono); font-size:13px;}
@@ -583,6 +588,7 @@
     <button id="campsub-buscar">🔍 Buscar</button>
     <button id="campsub-analisis">📊 Análisis</button>
     <button id="campsub-validadores">✅ Validadores</button>
+    <button id="campsub-vouchers">📦 Vouchers Agencia</button>
   </div>
 
   <div id="campsub-panel-cargar-campana">
@@ -832,6 +838,56 @@
     </div>
   </div>
   </div>
+
+  <div id="campsub-panel-vouchers" style="display:none;">
+  <div id="camp-voucher-grid">
+    <div class="panel">
+      <h3>Crear voucher de agencia</h3>
+      <p class="hint" style="margin-bottom:10px;">Selecciona una campaña, elige una o varias guías de remisión activas (aún no incluidas en otro voucher) e indica los bultos de cada una.</p>
+      <div style="display:flex; gap:14px; align-items:end; flex-wrap:wrap; margin-bottom:12px;">
+        <div class="field" style="margin:0; max-width:340px;">
+          <label>Campaña</label>
+          <select id="vch-campana-select"><option value="">— Selecciona una campaña —</option></select>
+        </div>
+        <button class="btn btn-primary" id="btn-vch-cargar-guias">Cargar guías</button>
+      </div>
+      <div class="msg" id="vch-guias-msg"></div>
+      <div class="hist-wrap" style="max-height:320px; margin-bottom:12px;">
+        <table><thead><tr><th></th><th>Guía</th><th>N° guía</th><th>Tienda / destino</th><th>Bultos</th></tr></thead><tbody id="vch-guias-body"></tbody></table>
+        <div class="empty-state" id="vch-guias-empty">Elige una campaña y presiona "Cargar guías".</div>
+      </div>
+      <button class="btn btn-primary" id="btn-vch-crear">📦 Crear voucher con las guías marcadas</button>
+      <div class="msg" id="vch-crear-msg"></div>
+
+      <h3 style="margin-top:20px;">Vouchers de esta campaña</h3>
+      <div class="hist-wrap" style="max-height:320px;">
+        <table><thead><tr><th>Correlativo</th><th>Guías</th><th>Creado por</th><th>Fecha</th></tr></thead><tbody id="vch-lista-body"></tbody></table>
+        <div class="empty-state" id="vch-lista-empty">Aún no hay vouchers creados para esta campaña.</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Detalle del voucher</h3>
+      <div class="empty-state" id="vch-detalle-vacio">Selecciona un voucher de la lista de la izquierda para ver sus guías y PDFs.</div>
+      <div id="vch-detalle-contenido" style="display:none;">
+        <div id="vch-detalle-info" style="margin-bottom:12px;"></div>
+        <div class="hist-wrap" style="max-height:340px; margin-bottom:12px;">
+          <table><thead><tr><th>Guía</th><th>Tienda</th><th>Bultos</th><th>PDF</th><th></th></tr></thead><tbody id="vch-items-body"></tbody></table>
+        </div>
+        <div id="vch-pdf-wrap" style="display:none;">
+          <p class="hint" id="vch-pdf-info" style="margin-bottom:8px;"></p>
+          <iframe id="vch-pdf-iframe" style="width:100%; height:520px; border:1px solid var(--line-strong); border-radius:6px;" src=""></iframe>
+          <div style="margin-top:10px;"><a id="vch-pdf-abrir-nueva" href="#" target="_blank" rel="noopener" class="btn btn-ghost">⬇ Abrir en pestaña nueva</a></div>
+        </div>
+        <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--line-strong);">
+          <button class="btn" id="btn-vch-eliminar-voucher" style="background:#8A332A; color:#fff;">🗑 Eliminar este voucher (libera las guías)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <input type="file" id="vch-pdf-input-global" accept="application/pdf" style="display:none;">
 </div>
 
 <!-- TOMA DE INVENTARIO -->
@@ -1087,8 +1143,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v62';
-const APP_UPDATED = '31/08/2026 19:40';
+const APP_VERSION = 'v63';
+const APP_UPDATED = '31/08/2026 21:10';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -1122,6 +1178,8 @@ const guiaItemsRef = db.collection('guia_items');
 const mapeoDestinoParticipanteRef = db.collection('mapeo_destino_participante');
 const validadoresRef = db.collection('validadores_campana');
 const validadoresMaestroRef = db.collection('validadores_maestro'); // maestro de personas validadoras (DNI, nombre, foto)
+const vouchersAgenciaRef = db.collection('vouchers_agencia');
+const vouchersAgenciaItemsRef = db.collection('vouchers_agencia_items');
 const inventarioTomasRef = db.collection('inventario_tomas');
 const inventarioTomasItemsRef = db.collection('inventario_tomas_items');
 const inventarioObservacionesRef = db.collection('inventario_observaciones');
@@ -1250,7 +1308,7 @@ $('subtab-transferir').addEventListener('click', ()=>setSubtab('transferir'));
 $('subtab-retirar-campana').addEventListener('click', ()=>setSubtab('retirar-campana'));
 
 function setCampanasSubtab(name){
-  ['cargar-campana','cargar-guia','registros','buscar','analisis','validadores'].forEach(n=>{
+  ['cargar-campana','cargar-guia','registros','buscar','analisis','validadores','vouchers'].forEach(n=>{
     $('campsub-'+n).classList.toggle('active', n===name);
     $('campsub-panel-'+n).style.display = (n===name) ? 'block' : 'none';
   });
@@ -1261,6 +1319,7 @@ $('campsub-registros').addEventListener('click', ()=>setCampanasSubtab('registro
 $('campsub-buscar').addEventListener('click', ()=>setCampanasSubtab('buscar'));
 $('campsub-analisis').addEventListener('click', ()=>{ setCampanasSubtab('analisis'); poblarSelectCampanasAnalisis(); });
 $('campsub-validadores').addEventListener('click', ()=>{ setCampanasSubtab('validadores'); poblarSelectCampanasValidadores(); calcularPendientesGlobalValidadores(); });
+$('campsub-vouchers').addEventListener('click', ()=>{ setCampanasSubtab('vouchers'); poblarSelectCampanasVouchers(); });
 
 /* -------------------- Utilidades -------------------- */
 function indexToLetter(n){ n=n+1; let s=''; while(n>0){ n--; s=String.fromCharCode(65+(n%26))+s; n=Math.floor(n/26);} return s; }
@@ -5392,6 +5451,338 @@ async function eliminarPdfFirmado(correlativo){
   }
 }
 $('btn-ti-eliminar-pdf').addEventListener('click', ()=>{ if(tiSeleccionCorrelativo) eliminarPdfFirmado(tiSeleccionCorrelativo); });
+
+/* -------------------- Vouchers Agencia -------------------- */
+let vchCampanaActual = null;
+let vchGuiasCache = []; // guías activas de la campaña actual, aún no incluidas en ningún voucher
+let vchVouchersCache = []; // vouchers de la campaña actual
+let vchVoucherSeleccionado = null;
+let vchItemsCache = []; // items (guías) del voucher seleccionado
+let vchSubidaItemIdActual = null;
+
+async function generarCorrelativoVoucher(){
+  const counterRef = contadoresRef.doc('vouchers_agencia');
+  const siguiente = await db.runTransaction(async (tx)=>{
+    const snap = await tx.get(counterRef);
+    const actual = snap.exists ? (snap.data().ultimo || 0) : 0;
+    const nuevo = actual + 1;
+    tx.set(counterRef, {ultimo: nuevo}, {merge:true});
+    return nuevo;
+  });
+  return 'VOU-' + String(siguiente).padStart(5,'0');
+}
+
+async function poblarSelectCampanasVouchers(){
+  const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
+  const valorActual = $('vch-campana-select').value;
+  $('vch-campana-select').innerHTML = '<option value="">— Selecciona una campaña —</option>' +
+    activos.map(r=>`<option value="${r.correlativo}">${r.correlativo} — ${r.campana}</option>`).join('');
+  if(valorActual) $('vch-campana-select').value = valorActual;
+}
+
+async function cargarGuiasDisponiblesVoucher(correlativoCampana){
+  const snap = await guiasRegistrosRef.where('campana_correlativo','==',correlativoCampana).where('estado','==','ACTIVO').get();
+  vchGuiasCache = snap.docs.map(d=>d.data()).filter(g=>!g.voucher_correlativo);
+  renderVchGuiasChecklist();
+}
+
+$('btn-vch-cargar-guias').addEventListener('click', async ()=>{
+  const correlativo = $('vch-campana-select').value;
+  if(!correlativo){ showMsg('vch-guias-msg','err','Selecciona una campaña primero.'); return; }
+  vchCampanaActual = correlativo;
+  $('btn-vch-cargar-guias').disabled = true;
+  showMsg('vch-guias-msg','ok','Cargando…');
+  vchVoucherSeleccionado = null; vchItemsCache = [];
+  $('vch-detalle-vacio').style.display='block'; $('vch-detalle-contenido').style.display='none';
+  try{
+    await cargarGuiasDisponiblesVoucher(correlativo);
+    await cargarVouchersDeCampana(correlativo);
+    $('vch-guias-msg').style.display='none';
+  }catch(err){
+    console.error(err);
+    showMsg('vch-guias-msg','err','Error al cargar: '+err.message);
+  }finally{
+    $('btn-vch-cargar-guias').disabled=false;
+  }
+});
+
+function renderVchGuiasChecklist(){
+  const tbody = $('vch-guias-body');
+  $('vch-guias-empty').style.display = vchGuiasCache.length ? 'none' : 'block';
+  tbody.innerHTML = vchGuiasCache.map(g=>`
+    <tr>
+      <td><input type="checkbox" class="vch-guia-check" data-correlativo="${g.correlativo}" style="width:auto;"></td>
+      <td><b>${g.correlativo}</b></td>
+      <td>${g.nro_guia||''}</td>
+      <td>${g.participante||''} <span class="hint">(${g.punto_llegada||''})</span></td>
+      <td><input type="number" class="vch-guia-bultos" data-correlativo="${g.correlativo}" min="1" step="1" style="width:80px;" disabled></td>
+    </tr>
+  `).join('');
+}
+
+document.addEventListener('change', (e)=>{
+  if(e.target.classList && e.target.classList.contains('vch-guia-check')){
+    const correlativo = e.target.dataset.correlativo;
+    const bultosInput = document.querySelector(`.vch-guia-bultos[data-correlativo="${correlativo}"]`);
+    if(bultosInput){
+      bultosInput.disabled = !e.target.checked;
+      if(e.target.checked) bultosInput.focus(); else bultosInput.value = '';
+    }
+  }
+});
+
+$('btn-vch-crear').addEventListener('click', async ()=>{
+  if(!vchCampanaActual){ showMsg('vch-crear-msg','err','Selecciona y carga una campaña primero.'); return; }
+  const checks = [...document.querySelectorAll('.vch-guia-check:checked')];
+  if(checks.length===0){ showMsg('vch-crear-msg','err','Marca al menos una guía.'); return; }
+  const seleccion = [];
+  for(const chk of checks){
+    const correlativo = chk.dataset.correlativo;
+    const bultosInput = document.querySelector(`.vch-guia-bultos[data-correlativo="${correlativo}"]`);
+    const bultos = bultosInput ? Number(bultosInput.value) : 0;
+    if(!bultos || bultos<=0){
+      showMsg('vch-crear-msg','err',`Ingresa los bultos de la guía ${correlativo}.`);
+      return;
+    }
+    const guia = vchGuiasCache.find(g=>g.correlativo===correlativo);
+    if(guia) seleccion.push({guia, bultos});
+  }
+  $('btn-vch-crear').disabled = true;
+  showMsg('vch-crear-msg','ok','Creando voucher…');
+  try{
+    const correlativoVoucher = await generarCorrelativoVoucher();
+    const campaniaObj = campRegAllCache.find(r=>r.correlativo===vchCampanaActual);
+    const batch = db.batch();
+    batch.set(vouchersAgenciaRef.doc(correlativoVoucher), {
+      correlativo: correlativoVoucher,
+      campana_correlativo: vchCampanaActual,
+      campana_nombre: campaniaObj ? campaniaObj.campana : '',
+      guias: seleccion.map(s=>s.guia.correlativo),
+      cantidad_guias: seleccion.length,
+      estado: 'ACTIVO',
+      creado_por: currentUserAlias,
+      creado_en: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    seleccion.forEach(s=>{
+      const itemRef = vouchersAgenciaItemsRef.doc(`${correlativoVoucher}_${s.guia.correlativo}`);
+      batch.set(itemRef, {
+        voucher_correlativo: correlativoVoucher,
+        guia_correlativo: s.guia.correlativo,
+        nro_guia: s.guia.nro_guia || '',
+        participante: s.guia.participante || '',
+        bultos: s.bultos,
+        creado_por: currentUserAlias,
+        creado_en: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      batch.update(guiasRegistrosRef.doc(s.guia.correlativo), { voucher_correlativo: correlativoVoucher });
+    });
+    await batch.commit();
+    await logAccion('voucher_agencia_creado', {detalle:`Voucher ${correlativoVoucher} creado con ${seleccion.length} guía(s) de la campaña ${vchCampanaActual}`});
+    showMsg('vch-crear-msg','ok',`Voucher ${correlativoVoucher} creado correctamente.`);
+    showToast(`Voucher ${correlativoVoucher} creado.`,'ok');
+    await cargarGuiasDisponiblesVoucher(vchCampanaActual);
+    await cargarVouchersDeCampana(vchCampanaActual);
+    await seleccionarVoucher(correlativoVoucher);
+  }catch(err){
+    console.error(err);
+    showMsg('vch-crear-msg','err','Error al crear el voucher: '+err.message);
+  }finally{
+    $('btn-vch-crear').disabled = false;
+  }
+});
+
+async function cargarVouchersDeCampana(correlativoCampana){
+  const snap = await vouchersAgenciaRef.where('campana_correlativo','==',correlativoCampana).get();
+  vchVouchersCache = snap.docs.map(d=>d.data()).sort((a,b)=>{
+    const ta = a.creado_en && a.creado_en.toMillis ? a.creado_en.toMillis() : 0;
+    const tb = b.creado_en && b.creado_en.toMillis ? b.creado_en.toMillis() : 0;
+    return tb - ta;
+  });
+  renderVchListaVouchers();
+}
+
+function renderVchListaVouchers(){
+  const tbody = $('vch-lista-body');
+  $('vch-lista-empty').style.display = vchVouchersCache.length ? 'none' : 'block';
+  tbody.innerHTML = vchVouchersCache.map(v=>`
+    <tr class="vch-fila-voucher" data-correlativo="${v.correlativo}" style="cursor:pointer; ${vchVoucherSeleccionado===v.correlativo?'background:var(--lacre-bg);':''}">
+      <td><b>${v.correlativo}</b></td>
+      <td>${v.cantidad_guias||0}</td>
+      <td>${v.creado_por||''}</td>
+      <td>${v.creado_en && v.creado_en.toDate ? v.creado_en.toDate().toLocaleString('es-PE') : ''}</td>
+    </tr>
+  `).join('');
+}
+
+$('vch-lista-body').addEventListener('click', (e)=>{
+  const tr = e.target.closest('.vch-fila-voucher');
+  if(!tr) return;
+  seleccionarVoucher(tr.dataset.correlativo);
+});
+
+async function seleccionarVoucher(correlativo){
+  vchVoucherSeleccionado = correlativo;
+  renderVchListaVouchers();
+  $('vch-detalle-vacio').style.display = 'none';
+  $('vch-detalle-contenido').style.display = 'block';
+  $('vch-pdf-wrap').style.display = 'none';
+  const voucher = vchVouchersCache.find(v=>v.correlativo===correlativo);
+  $('vch-detalle-info').innerHTML = voucher ? `
+    <p class="hint"><b>${voucher.correlativo}</b> — ${voucher.campana_nombre||''}</p>
+    <p class="hint">Creado por <b>${voucher.creado_por||''}</b> el ${voucher.creado_en && voucher.creado_en.toDate ? voucher.creado_en.toDate().toLocaleString('es-PE') : ''}</p>
+  ` : '';
+  try{
+    const snap = await vouchersAgenciaItemsRef.where('voucher_correlativo','==',correlativo).get();
+    vchItemsCache = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    renderVchItemsTabla();
+  }catch(err){
+    console.error(err);
+    showToast('Error al cargar el detalle del voucher: '+err.message,'err');
+  }
+}
+
+function renderVchItemsTabla(){
+  const tbody = $('vch-items-body');
+  tbody.innerHTML = vchItemsCache.map(it=>{
+    const tienePdf = !!it.pdf_url;
+    return `
+    <tr>
+      <td>${it.guia_correlativo}<br><span class="hint">Nº ${it.nro_guia||''}</span></td>
+      <td>${it.participante||''}</td>
+      <td>${it.bultos||''}</td>
+      <td>
+        <span class="vch-pill ${tienePdf?'ok':'no'}">${tienePdf?'Subido':'Pendiente'}</span>
+        ${tienePdf?`<br><span class="hint">${it.pdf_subido_por||''} · ${it.pdf_subido_en && it.pdf_subido_en.toDate ? it.pdf_subido_en.toDate().toLocaleString('es-PE') : ''}</span>`:''}
+      </td>
+      <td style="white-space:nowrap;">
+        ${tienePdf?`<button class="btn btn-ghost btn-sm vch-ver-pdf" data-id="${it.id}">👁 Ver</button> <button class="btn btn-ghost btn-sm vch-reemplazar-pdf" data-id="${it.id}">↺</button> <button class="btn btn-sm vch-eliminar-pdf" data-id="${it.id}" style="background:#8A332A; color:#fff;">🗑</button>`
+        :`<button class="btn btn-primary btn-sm vch-subir-pdf" data-id="${it.id}">📤 Subir PDF</button>`}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+$('vch-items-body').addEventListener('click', (e)=>{
+  const btnSubir = e.target.closest('.vch-subir-pdf');
+  const btnReemplazar = e.target.closest('.vch-reemplazar-pdf');
+  const btnVer = e.target.closest('.vch-ver-pdf');
+  const btnEliminar = e.target.closest('.vch-eliminar-pdf');
+  if(btnSubir || btnReemplazar){
+    vchSubidaItemIdActual = (btnSubir||btnReemplazar).dataset.id;
+    $('vch-pdf-input-global').click();
+  }else if(btnVer){
+    mostrarVchPdf(btnVer.dataset.id);
+  }else if(btnEliminar){
+    eliminarVchPdf(btnEliminar.dataset.id);
+  }
+});
+
+function mostrarVchPdf(itemId){
+  const item = vchItemsCache.find(i=>i.id===itemId);
+  if(!item || !item.pdf_url) return;
+  $('vch-pdf-wrap').style.display = 'block';
+  $('vch-pdf-info').textContent = `Guía ${item.guia_correlativo} · Archivo: ${item.pdf_nombre||''} · Subido por ${item.pdf_subido_por||''} el ${item.pdf_subido_en && item.pdf_subido_en.toDate ? item.pdf_subido_en.toDate().toLocaleString('es-PE') : ''}`;
+  $('vch-pdf-iframe').src = item.pdf_url;
+  $('vch-pdf-abrir-nueva').href = item.pdf_url;
+}
+
+$('vch-pdf-input-global').addEventListener('change', async ()=>{
+  const file = $('vch-pdf-input-global').files[0];
+  if(!file || !vchSubidaItemIdActual) return;
+  if(!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf'){
+    showToast('El archivo debe ser un PDF.','err');
+    $('vch-pdf-input-global').value = ''; vchSubidaItemIdActual = null;
+    return;
+  }
+  const itemId = vchSubidaItemIdActual;
+  const item = vchItemsCache.find(i=>i.id===itemId);
+  if(!item){ $('vch-pdf-input-global').value=''; vchSubidaItemIdActual=null; return; }
+  showToast('Subiendo PDF…','ok');
+  try{
+    const path = `vouchers_agencia/${item.voucher_correlativo}/${item.guia_correlativo}/${Date.now()}_${file.name}`;
+    const ref = storage.ref().child(path);
+    await ref.put(file);
+    const url = await ref.getDownloadURL();
+    const ahora = firebase.firestore.Timestamp.now();
+    await vouchersAgenciaItemsRef.doc(itemId).update({
+      pdf_url: url,
+      pdf_nombre: file.name,
+      pdf_subido_por: currentUserAlias,
+      pdf_subido_en: ahora
+    });
+    await logAccion('voucher_agencia_pdf_subido', {detalle:`Se subió el PDF "${file.name}" a la guía ${item.guia_correlativo} del voucher ${item.voucher_correlativo}`});
+    item.pdf_url = url; item.pdf_nombre = file.name; item.pdf_subido_por = currentUserAlias; item.pdf_subido_en = ahora;
+    renderVchItemsTabla();
+    mostrarVchPdf(itemId);
+    showToast('PDF subido correctamente.','ok');
+  }catch(err){
+    console.error(err);
+    showToast('Error al subir el PDF: '+err.message,'err');
+  }finally{
+    $('vch-pdf-input-global').value = '';
+    vchSubidaItemIdActual = null;
+  }
+});
+
+async function eliminarVchPdf(itemId){
+  if(!(currentPermisos.admin || currentPermisos.eliminar)){ showToast('No tienes permiso para eliminar.','err'); return; }
+  const item = vchItemsCache.find(i=>i.id===itemId);
+  if(!item) return;
+  const ok = confirm(`¿Eliminar el PDF de la guía ${item.guia_correlativo}? El registro de la guía en el voucher no se borra, solo el archivo.`);
+  if(!ok) return;
+  try{
+    if(item.pdf_url){ try{ await storage.refFromURL(item.pdf_url).delete(); }catch(e){ console.error(e); } }
+    await vouchersAgenciaItemsRef.doc(itemId).update({
+      pdf_url: firebase.firestore.FieldValue.delete(),
+      pdf_nombre: firebase.firestore.FieldValue.delete(),
+      pdf_subido_por: firebase.firestore.FieldValue.delete(),
+      pdf_subido_en: firebase.firestore.FieldValue.delete()
+    });
+    await logAccion('voucher_agencia_pdf_eliminado', {detalle:`Se eliminó el PDF de la guía ${item.guia_correlativo} del voucher ${item.voucher_correlativo}`});
+    delete item.pdf_url; delete item.pdf_nombre; delete item.pdf_subido_por; delete item.pdf_subido_en;
+    renderVchItemsTabla();
+    $('vch-pdf-wrap').style.display = 'none';
+    showToast('PDF eliminado.','ok');
+  }catch(err){
+    console.error(err);
+    showToast('Error al eliminar el PDF: '+err.message,'err');
+  }
+}
+
+$('btn-vch-eliminar-voucher').addEventListener('click', async ()=>{
+  if(!(currentPermisos.admin || currentPermisos.eliminar)){ showToast('No tienes permiso para eliminar.','err'); return; }
+  if(!vchVoucherSeleccionado) return;
+  const voucher = vchVouchersCache.find(v=>v.correlativo===vchVoucherSeleccionado);
+  if(!voucher) return;
+  const ok = confirm(`¿Eliminar el voucher ${voucher.correlativo}? Las ${voucher.cantidad_guias||0} guía(s) incluidas volverán a estar disponibles para otro voucher.`);
+  if(!ok) return;
+  $('btn-vch-eliminar-voucher').disabled = true;
+  try{
+    for(const item of vchItemsCache){
+      if(item.pdf_url){ try{ await storage.refFromURL(item.pdf_url).delete(); }catch(e){ console.error(e); } }
+    }
+    const batch = db.batch();
+    vchItemsCache.forEach(item=> batch.delete(vouchersAgenciaItemsRef.doc(item.id)));
+    (voucher.guias||[]).forEach(g=> batch.update(guiasRegistrosRef.doc(g), { voucher_correlativo: firebase.firestore.FieldValue.delete() }));
+    batch.delete(vouchersAgenciaRef.doc(voucher.correlativo));
+    await batch.commit();
+    await logAccion('voucher_agencia_eliminado', {detalle:`Voucher ${voucher.correlativo} eliminado, se liberaron ${(voucher.guias||[]).length} guía(s)`});
+    showToast(`Voucher ${voucher.correlativo} eliminado.`,'ok');
+    vchVoucherSeleccionado = null;
+    vchItemsCache = [];
+    $('vch-detalle-vacio').style.display = 'block';
+    $('vch-detalle-contenido').style.display = 'none';
+    if(vchCampanaActual){
+      await cargarGuiasDisponiblesVoucher(vchCampanaActual);
+      await cargarVouchersDeCampana(vchCampanaActual);
+    }
+  }catch(err){
+    console.error(err);
+    showToast('Error al eliminar el voucher: '+err.message,'err');
+  }finally{
+    $('btn-vch-eliminar-voucher').disabled = false;
+  }
+});
 
 // Genera la hoja física de conteo en PDF: logo arriba-izquierda, cabecera, tabla con
 // casilleros SÍ/NO para marcar a mano, y bloque de firma profesional abajo-derecha.
