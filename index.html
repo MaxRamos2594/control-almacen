@@ -205,6 +205,26 @@
   .toast.ok{background:var(--green);}
   .toast.err{background:var(--red);}
 
+  #dl-popup{
+    position:fixed; left:16px; bottom:16px; z-index:200; width:300px;
+    background:var(--panel); border:1px solid var(--line); border-radius:8px;
+    box-shadow:0 8px 24px rgba(0,0,0,.22); padding:12px 14px;
+    font-family:var(--sans); display:none;
+    transition:opacity .3s ease, transform .3s ease; opacity:1; transform:translateY(0);
+  }
+  #dl-popup.dl-popup-hide{ opacity:0; transform:translateY(10px); }
+  .dl-popup-header{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .dl-popup-icon{font-size:14px; flex-shrink:0;}
+  .dl-popup-name{flex:1; font-size:12px; font-weight:600; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .dl-popup-close{background:none; border:none; color:var(--ink-soft); font-size:16px; line-height:1; cursor:pointer; padding:0 2px; flex-shrink:0;}
+  .dl-popup-close:hover{color:var(--ink);}
+  .dl-progress-track{height:6px; background:var(--line); border-radius:3px; overflow:hidden;}
+  .dl-progress-fill{height:100%; width:0%; background:var(--blue); border-radius:3px; transition:width .25s ease, background .25s ease;}
+  .dl-progress-fill.done{background:var(--green);}
+  .dl-popup-status{font-size:11px; color:var(--ink-soft); margin-top:6px;}
+  .dl-popup-status.done{color:var(--green); font-weight:600;}
+  .dl-popup-status.err{color:var(--red); font-weight:600;}
+
   .filters-grid{display:grid; grid-template-columns:repeat(6,1fr) auto; gap:10px; align-items:end;}
   @media (max-width:1200px){ .filters-grid{grid-template-columns:1fr 1fr;} }
 
@@ -1265,8 +1285,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v67';
-const APP_UPDATED = '01/09/2026 00:30';
+const APP_VERSION = 'v70';
+const APP_UPDATED = '01/09/2026 02:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -1320,6 +1340,68 @@ function showToast(text, type='ok'){
   const t = document.createElement('div'); t.className = 'toast '+type; t.textContent = text;
   $('toast-container').appendChild(t); setTimeout(()=>t.remove(), 4500);
 }
+
+/* -------------------- Popup de progreso de descarga -------------------- */
+// Barra de progreso flotante abajo a la izquierda, tipo gestor de descargas: se
+// usa al generar archivos (PDF/Excel) que toman un momento, y al terminar muestra
+// "Descarga finalizada" antes de ocultarse sola. Reutilizable desde cualquier
+// exportación de la app: mostrarProgresoDescarga(nombre) → actualizarProgresoDescarga(pct)
+// (opcional, según haya progreso real que medir) → finalizarProgresoDescarga().
+let dlPopupOcultarTimeout = null;
+function getDlPopupEl(){
+  let el = document.getElementById('dl-popup');
+  if(el) return el;
+  el = document.createElement('div');
+  el.id = 'dl-popup';
+  el.className = 'dl-popup';
+  el.innerHTML = `
+    <div class="dl-popup-header">
+      <span class="dl-popup-icon">⬇</span>
+      <span class="dl-popup-name" id="dl-popup-name"></span>
+      <button type="button" class="dl-popup-close" id="dl-popup-close" title="Cerrar">×</button>
+    </div>
+    <div class="dl-progress-track"><div class="dl-progress-fill" id="dl-progress-fill"></div></div>
+    <div class="dl-popup-status" id="dl-popup-status">Descargando…</div>
+  `;
+  document.body.appendChild(el);
+  document.getElementById('dl-popup-close').addEventListener('click', ocultarProgresoDescarga);
+  return el;
+}
+function mostrarProgresoDescarga(nombreArchivo){
+  clearTimeout(dlPopupOcultarTimeout);
+  const el = getDlPopupEl();
+  document.getElementById('dl-popup-name').textContent = nombreArchivo || 'Archivo';
+  const fill = document.getElementById('dl-progress-fill');
+  fill.style.width = '0%'; fill.classList.remove('done');
+  const status = document.getElementById('dl-popup-status');
+  status.textContent = 'Descargando…'; status.classList.remove('done','err');
+  el.style.display = 'block';
+  el.classList.remove('dl-popup-hide');
+}
+function actualizarProgresoDescarga(pct){
+  const fill = document.getElementById('dl-progress-fill');
+  if(fill) fill.style.width = Math.max(0, Math.min(100, pct)) + '%';
+}
+function finalizarProgresoDescarga(){
+  const fill = document.getElementById('dl-progress-fill');
+  const status = document.getElementById('dl-popup-status');
+  if(fill){ fill.style.width = '100%'; fill.classList.add('done'); }
+  if(status){ status.textContent = '✓ Descarga finalizada'; status.classList.remove('err'); status.classList.add('done'); }
+  clearTimeout(dlPopupOcultarTimeout);
+  dlPopupOcultarTimeout = setTimeout(ocultarProgresoDescarga, 3500);
+}
+function errorProgresoDescarga(mensaje){
+  const status = document.getElementById('dl-popup-status');
+  if(status){ status.textContent = mensaje || 'Error al generar el archivo'; status.classList.remove('done'); status.classList.add('err'); }
+  clearTimeout(dlPopupOcultarTimeout);
+  dlPopupOcultarTimeout = setTimeout(ocultarProgresoDescarga, 4500);
+}
+function ocultarProgresoDescarga(){
+  const el = document.getElementById('dl-popup');
+  if(!el) return;
+  el.classList.add('dl-popup-hide');
+  setTimeout(()=>{ if(el) el.style.display = 'none'; }, 300);
+}
 function showMsg(id, type, text){
   const el = $(id); el.className = 'msg '+type; el.textContent = text; el.style.display='block';
   setTimeout(()=>{ el.style.display='none'; }, 5000);
@@ -1352,7 +1434,7 @@ $('btn-logout').addEventListener('click', async ()=>{
 
 auth.onAuthStateChanged(async (user)=>{
   if(user){ await loadPermisos(user); resetInactivityTimer(); }
-  else{ if(inactivityTimer) clearTimeout(inactivityTimer); $('login-screen').style.display='block'; $('app-shell').style.display='none'; }
+  else{ if(inactivityTimer) clearTimeout(inactivityTimer); $('login-screen').style.display='flex'; $('app-shell').style.display='none'; }
 });
 
 async function loadPermisos(user){
@@ -1447,6 +1529,7 @@ $('campsub-vouchers').addEventListener('click', ()=>{ setCampanasSubtab('voucher
 function indexToLetter(n){ n=n+1; let s=''; while(n>0){ n--; s=String.fromCharCode(65+(n%26))+s; n=Math.floor(n/26);} return s; }
 function fmtMoney(v){ return (v===null||v===undefined||isNaN(v)) ? '-' : Number(v).toFixed(2); }
 function fmtMoneyComma(v){ return (v===null||v===undefined||isNaN(v)) ? '-' : Number(v).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function fmtEntero(v){ return (v===null||v===undefined||isNaN(v)) ? '-' : Math.round(Number(v)).toLocaleString('en-US'); }
 function getUltimoNichoGlobal(){
   let maxOrden=-1, letra=null;
   Object.entries(nichos).forEach(([l,n])=>{ if(n.orden>maxOrden){ maxOrden=n.orden; letra=l; } });
@@ -2373,23 +2456,58 @@ $('btn-exportar-inventario').addEventListener('click', ()=>{
   const inv = computeInventario();
   const entries = Object.entries(inv).sort((a,b)=>a[0].localeCompare(b[0]));
   if(entries.length===0){ showToast('No hay inventario para exportar.','err'); return; }
+  const nombreArchivo = `inventario_${new Date().toISOString().slice(0,10)}.xlsx`;
+  mostrarProgresoDescarga(nombreArchivo);
+  actualizarProgresoDescarga(30);
   const filas = entries.map(([codigo,data])=>({
     'Código': codigo, 'Descripción': data.descripcion||'', 'Proveedor': data.proveedor||'', 'Cantidad total': data.total,
     'Costo unitario': data.costo, 'Costo total': data.costoTotal
   }));
   const totalValorizado = entries.reduce((acc,[,d])=>acc+d.costoTotal, 0);
   filas.push({ 'Código':'', 'Descripción':'', 'Proveedor':'', 'Cantidad total':'', 'Costo unitario':'TOTAL VALORIZADO', 'Costo total': totalValorizado });
+  actualizarProgresoDescarga(65);
   const ws = XLSX.utils.json_to_sheet(filas);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Inventario');
-  XLSX.writeFile(wb, `inventario_${new Date().toISOString().slice(0,10)}.xlsx`);
+  actualizarProgresoDescarga(90);
+  XLSX.writeFile(wb, nombreArchivo);
+  finalizarProgresoDescarga();
   showToast('Inventario exportado.','ok');
 });
 
+// Descarga una imagen (típicamente una URL de Firebase Storage) y la convierte a
+// data URL en base64 para poder incrustarla con doc.addImage; también obtiene su
+// ancho/alto reales para poder escalarla manteniendo la proporción en el PDF.
+// Si falla (sin CORS, red, etc.) devuelve null y esa fila simplemente queda sin foto.
+async function cargarImagenComoDataURL(url){
+  try{
+    const resp = await fetch(url);
+    if(!resp.ok) return null;
+    const blob = await resp.blob();
+    const dataUrl = await new Promise((resolve, reject)=>{
+      const reader = new FileReader();
+      reader.onload = ()=> resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+    const dims = await new Promise((resolve)=>{
+      const img = new Image();
+      img.onload = ()=> resolve({w: img.naturalWidth||1, h: img.naturalHeight||1});
+      img.onerror = ()=> resolve(null);
+      img.src = dataUrl;
+    });
+    if(!dims) return null;
+    return { dataUrl, w: dims.w, h: dims.h };
+  }catch(e){
+    console.error('No se pudo cargar la imagen para el PDF:', url, e);
+    return null;
+  }
+}
+
 // Exporta el inventario acumulado a PDF: logo Joanis arriba a la derecha, título,
 // fecha/hora y usuario de exportación, ordenado de mayor a menor por costo total,
-// y totales de unidades y valorizado al final.
-function generarPDFInventarioAcumulado(){
+// foto del producto a la derecha de cada fila, y totales de unidades y valorizado al final.
+async function generarPDFInventarioAcumulado(){
   const inv = computeInventario();
   const buscar = ($('inv-buscar') ? $('inv-buscar').value.trim().toLowerCase() : '');
   const buscarProveedor = ($('inv-buscar-proveedor') ? $('inv-buscar-proveedor').value.trim().toLowerCase() : '');
@@ -2399,62 +2517,112 @@ function generarPDFInventarioAcumulado(){
   if(entries.length===0){ showToast('No hay inventario para exportar.','err'); return; }
   entries.sort((a,b)=> b[1].costoTotal - a[1].costoTotal); // mayor a menor por costo total
 
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit:'mm', format:'a4', orientation:'portrait' });
-  const pageW = doc.internal.pageSize.getWidth();
-  const margin = 10;
-
-  const logoRatio = 742/2084; // alto/ancho del logo vectorizado
-  const logoW = 34, logoH = logoW*logoRatio;
-  doc.addImage(LOGO_JOANIS_ALTA_B64, 'PNG', pageW-margin-logoW, 8, logoW, logoH);
-
-  doc.setFont('helvetica','bold'); doc.setFontSize(18);
-  doc.text('INVENTARIO', margin, 17);
-
-  doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
+  const btnExport = $('btn-exportar-inventario-pdf');
+  btnExport.disabled = true;
   const ahora = new Date();
-  const fechaStr = ahora.toLocaleDateString('es-PE');
-  const horaStr = ahora.toLocaleTimeString('es-PE');
-  let y = 25;
-  doc.text(`Fecha: ${fechaStr}   Hora: ${horaStr}`, margin, y);
-  y += 5.5;
-  doc.text(`Exportado por: ${currentUserAlias||''}`, margin, y);
+  const nombreArchivo = `inventario_${ahora.toISOString().slice(0,10)}.pdf`;
+  mostrarProgresoDescarga(nombreArchivo);
 
-  let totalUnidades = 0, totalValorizado = 0;
-  const filas = entries.map(([codigo,data])=>{
-    totalUnidades += Number(data.total)||0;
-    totalValorizado += Number(data.costoTotal)||0;
-    return [codigo, data.descripcion||'', data.proveedor||'', String(data.total), fmtMoney(data.costo), fmtMoney(data.costoTotal)];
-  });
+  try{
+    // Precarga en paralelo las fotos de los productos que tengan imagen registrada,
+    // reportando el avance real en la barra de progreso (hasta 80%; el 20% restante
+    // es armar y guardar el PDF en sí, que es prácticamente instantáneo).
+    const imagenesPorCodigo = {};
+    let cargadas = 0;
+    const totalAProcesar = entries.length;
+    await Promise.all(entries.map(async ([codigo])=>{
+      const prod = productos[codigo];
+      if(prod && prod.imagen_url){
+        const info = await cargarImagenComoDataURL(prod.imagen_url);
+        if(info) imagenesPorCodigo[codigo] = info;
+      }
+      cargadas++;
+      actualizarProgresoDescarga((cargadas/totalAProcesar)*80);
+    }));
+    actualizarProgresoDescarga(85);
 
-  doc.autoTable({
-    startY: y+5,
-    head: [['Código','Descripción','Proveedor','Cantidad total','Costo unitario','Costo total']],
-    body: filas,
-    styles: { fontSize: 8, cellPadding: 1.6, valign:'middle' },
-    headStyles: { fillColor: [30,58,95], textColor: 255, fontStyle:'bold' },
-    columnStyles: {
-      0: {cellWidth:26}, 3: {cellWidth:26, halign:'right'}, 4: {cellWidth:28, halign:'right'}, 5: {cellWidth:28, halign:'right'}
-    },
-    margin: { left: margin, right: margin, top: 32 },
-    didDrawPage: (data)=>{
-      doc.setFontSize(8); doc.setTextColor(120);
-      doc.text(`Página ${data.pageNumber}`, pageW-margin, doc.internal.pageSize.getHeight()-6, {align:'right'});
-      doc.setTextColor(0);
-    }
-  });
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'mm', format:'a4', orientation:'portrait' });
+    const pageW = doc.internal.pageSize.getWidth();
+    const margin = 10;
 
-  let yFinal = doc.lastAutoTable.finalY + 9;
-  const pageH = doc.internal.pageSize.getHeight();
-  if(yFinal > pageH - margin - 16){ doc.addPage(); yFinal = margin + 10; }
-  doc.setDrawColor(30,58,95); doc.setLineWidth(0.5);
-  doc.line(margin, yFinal-5, pageW-margin, yFinal-5);
-  doc.setFont('helvetica','bold'); doc.setFontSize(11);
-  doc.text(`TOTAL UNIDADES: ${totalUnidades.toLocaleString('es-PE')}`, margin, yFinal+1);
-  doc.text(`TOTAL VALORIZADO: S/ ${fmtMoneyComma(totalValorizado)}`, pageW-margin, yFinal+1, {align:'right'});
+    const logoRatio = 742/2084; // alto/ancho del logo vectorizado
+    const logoW = 34, logoH = logoW*logoRatio;
+    doc.addImage(LOGO_JOANIS_ALTA_B64, 'PNG', pageW-margin-logoW, 8, logoW, logoH);
 
-  doc.save(`inventario_${ahora.toISOString().slice(0,10)}.pdf`);
-  showToast('Inventario exportado a PDF.','ok');
+    doc.setFont('helvetica','bold'); doc.setFontSize(18);
+    doc.text('INVENTARIO', margin, 17);
+
+    doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
+    const fechaStr = ahora.toLocaleDateString('es-PE');
+    const horaStr = ahora.toLocaleTimeString('es-PE');
+    let y = 25;
+    doc.text(`Fecha: ${fechaStr}   Hora: ${horaStr}`, margin, y);
+    y += 5.5;
+    doc.text(`Exportado por: ${currentUserAlias||''}`, margin, y);
+
+    let totalUnidades = 0, totalValorizado = 0;
+    const filas = entries.map(([codigo,data])=>{
+      totalUnidades += Number(data.total)||0;
+      totalValorizado += Number(data.costoTotal)||0;
+      return [codigo, data.descripcion||'', data.proveedor||'', fmtEntero(data.total), fmtMoney(data.costo), fmtEntero(data.costoTotal), ''];
+    });
+
+    const COL_IMAGEN = 6;
+    doc.autoTable({
+      startY: y+5,
+      head: [['Código','Descripción','Proveedor','Cantidad total','Costo unitario','Costo total','Foto']],
+      body: filas,
+      styles: { fontSize: 8, cellPadding: 1.6, valign:'middle' },
+      headStyles: { fillColor: [30,58,95], textColor: 255, fontStyle:'bold' },
+      bodyStyles: { minCellHeight: 13 },
+      columnStyles: {
+        0: {cellWidth:22}, 3: {cellWidth:22, halign:'right'}, 4: {cellWidth:24, halign:'right'},
+        5: {cellWidth:26, halign:'right'}, [COL_IMAGEN]: {cellWidth:17, halign:'center'}
+      },
+      margin: { left: margin, right: margin, top: 32 },
+      didDrawCell: (data)=>{
+        if(data.section==='body' && data.column.index===COL_IMAGEN){
+          const codigo = data.row.raw[0];
+          const info = imagenesPorCodigo[codigo];
+          if(info){
+            const padding = 1.5;
+            const maxW = data.cell.width - padding*2, maxH = data.cell.height - padding*2;
+            let w = maxW, h = maxW * (info.h/info.w);
+            if(h > maxH){ h = maxH; w = maxH * (info.w/info.h); }
+            const x = data.cell.x + (data.cell.width - w)/2;
+            const yImg = data.cell.y + (data.cell.height - h)/2;
+            try{ doc.addImage(info.dataUrl, x, yImg, w, h); }catch(e){ console.error('No se pudo dibujar la imagen en el PDF:', e); }
+          }
+        }
+      },
+      didDrawPage: (data)=>{
+        doc.setFontSize(8); doc.setTextColor(120);
+        doc.text(`Página ${data.pageNumber}`, pageW-margin, doc.internal.pageSize.getHeight()-6, {align:'right'});
+        doc.setTextColor(0);
+      }
+    });
+
+    let yFinal = doc.lastAutoTable.finalY + 9;
+    const pageH = doc.internal.pageSize.getHeight();
+    if(yFinal > pageH - margin - 16){ doc.addPage(); yFinal = margin + 10; }
+    doc.setDrawColor(30,58,95); doc.setLineWidth(0.5);
+    doc.line(margin, yFinal-5, pageW-margin, yFinal-5);
+    doc.setFont('helvetica','bold'); doc.setFontSize(11);
+    doc.text(`TOTAL UNIDADES: ${fmtEntero(totalUnidades)}`, margin, yFinal+1);
+    doc.text(`TOTAL VALORIZADO: S/ ${fmtMoneyComma(totalValorizado)}`, pageW-margin, yFinal+1, {align:'right'});
+
+    actualizarProgresoDescarga(95);
+    doc.save(nombreArchivo);
+    finalizarProgresoDescarga();
+    showToast('Inventario exportado a PDF.','ok');
+  }catch(err){
+    console.error(err);
+    errorProgresoDescarga('Error al generar el PDF');
+    showToast('Error al generar el PDF: '+err.message,'err');
+  }finally{
+    btnExport.disabled = false;
+  }
 }
 $('btn-exportar-inventario-pdf').addEventListener('click', generarPDFInventarioAcumulado);
 
