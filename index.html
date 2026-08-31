@@ -78,6 +78,9 @@
 
   #diseno-grid{display:grid; grid-template-columns:320px 1fr; gap:14px;}
   @media (max-width:900px){ #diseno-grid{grid-template-columns:1fr;} }
+
+  #camp-val-grid{display:grid; grid-template-columns:360px 1fr; gap:14px; align-items:start;}
+  @media (max-width:1000px){ #camp-val-grid{grid-template-columns:1fr;} }
   .bloque-card{border:1px solid var(--line); border-radius:6px; padding:10px 12px; margin-bottom:10px; background:#FAFBFC;}
   .bloque-card .bh{display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap;}
   .bloque-card .bh b{font-family:var(--mono); font-size:13px;}
@@ -760,24 +763,50 @@
   </div>
 
   <div id="campsub-panel-validadores" style="display:none;">
-  <div class="panel" style="margin-bottom:14px;">
-    <h3>Validadores por campaña / tienda</h3>
-    <p class="hint" style="margin-bottom:10px;">Asigna quién valida cada tienda (participante) dentro de cada campaña. El sistema te avisa cuáles combinaciones aún no tienen validador asignado.</p>
-    <div id="val-pendientes-global" style="margin-bottom:14px;"></div>
-    <div style="display:flex; gap:14px; align-items:end; flex-wrap:wrap; margin-bottom:14px;">
-      <div class="field" style="margin:0; max-width:340px;">
-        <label>Campaña</label>
-        <select id="val-campana-select"><option value="">— Selecciona una campaña —</option></select>
+  <div id="camp-val-grid">
+    <div class="panel">
+      <h3>Validadores (maestro)</h3>
+      <p class="hint" style="margin-bottom:10px;">Registra aquí a las personas habilitadas para validar. Solo los validadores creados en esta lista se pueden asignar a la derecha.</p>
+      <div class="field" style="margin-bottom:8px;"><label>DNI</label><input type="text" id="vm-dni" class="upper" maxlength="8" inputmode="numeric" placeholder="EJ. 45678912"></div>
+      <div class="field" style="margin-bottom:8px;"><label>Nombre completo</label><input type="text" id="vm-nombre" class="upper" placeholder="EJ. JUAN PEREZ RAMOS"></div>
+      <div class="field" style="margin-bottom:8px;">
+        <label>Foto</label>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <input type="file" id="vm-foto-input" accept="image/*" style="flex:1; min-width:0;">
+          <img id="vm-foto-preview" src="" alt="" style="display:none; width:44px; height:44px; object-fit:cover; border-radius:50%; border:1px solid var(--line-strong); flex-shrink:0;">
+        </div>
       </div>
-      <button class="btn btn-primary" id="btn-val-cargar">Cargar tiendas</button>
+      <div style="display:flex; gap:8px; margin-top:2px;">
+        <button class="btn btn-primary" id="btn-vm-guardar">Guardar validador</button>
+        <button class="btn btn-ghost" id="btn-vm-cancelar" style="display:none;">Cancelar edición</button>
+      </div>
+      <div class="msg" id="vm-msg"></div>
+
+      <h3 style="margin-top:18px;">Validadores registrados</h3>
+      <div class="hist-wrap" style="max-height:420px;">
+        <table><thead><tr><th></th><th>DNI</th><th>Nombre</th><th></th></tr></thead><tbody id="vm-body"></tbody></table>
+        <div class="empty-state" id="vm-empty">Aún no registras validadores.</div>
+      </div>
     </div>
-    <div class="msg" id="val-msg"></div>
-    <div id="val-resumen" style="display:none; margin-bottom:10px;"></div>
-    <div class="hist-wrap" style="max-height:600px;">
-      <table><thead><tr><th>Tienda (participante)</th><th>Validador asignado</th><th>Estado</th><th></th></tr></thead><tbody id="val-body"></tbody></table>
-      <div class="empty-state" id="val-empty">Elige una campaña y presiona "Cargar tiendas".</div>
+
+    <div class="panel">
+      <h3>Validadores por campaña / tienda</h3>
+      <p class="hint" style="margin-bottom:10px;">Asigna quién valida cada tienda (participante) dentro de cada campaña. El sistema te avisa cuáles combinaciones aún no tienen validador asignado.</p>
+      <div id="val-pendientes-global" style="margin-bottom:14px;"></div>
+      <div style="display:flex; gap:14px; align-items:end; flex-wrap:wrap; margin-bottom:14px;">
+        <div class="field" style="margin:0; max-width:340px;">
+          <label>Campaña</label>
+          <select id="val-campana-select"><option value="">— Selecciona una campaña —</option></select>
+        </div>
+        <button class="btn btn-primary" id="btn-val-cargar">Cargar tiendas</button>
+      </div>
+      <div class="msg" id="val-msg"></div>
+      <div id="val-resumen" style="display:none; margin-bottom:10px;"></div>
+      <div class="hist-wrap" style="max-height:600px;">
+        <table><thead><tr><th>Tienda (participante)</th><th>Validador asignado</th><th>Estado</th><th></th></tr></thead><tbody id="val-body"></tbody></table>
+        <div class="empty-state" id="val-empty">Elige una campaña y presiona "Cargar tiendas".</div>
+      </div>
     </div>
-    <datalist id="validadores-conocidos"></datalist>
   </div>
   </div>
 </div>
@@ -1035,8 +1064,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v59';
-const APP_UPDATED = '26/08/2026 19:15';
+const APP_VERSION = 'v61';
+const APP_UPDATED = '31/08/2026 19:10';
 document.addEventListener('DOMContentLoaded', ()=>{
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -1069,6 +1098,7 @@ const guiasRegistrosRef = db.collection('guias_registros');
 const guiaItemsRef = db.collection('guia_items');
 const mapeoDestinoParticipanteRef = db.collection('mapeo_destino_participante');
 const validadoresRef = db.collection('validadores_campana');
+const validadoresMaestroRef = db.collection('validadores_maestro'); // maestro de personas validadoras (DNI, nombre, foto)
 const inventarioTomasRef = db.collection('inventario_tomas');
 const inventarioTomasItemsRef = db.collection('inventario_tomas_items');
 const inventarioObservacionesRef = db.collection('inventario_observaciones');
@@ -1077,6 +1107,7 @@ const kardexRef = db.collection('kardex');
 const contadorRef = db.collection('contadores').doc('global');
 
 let bloques = {}, nichos = {}, posiciones = {}, pallets = {}, productos = {};
+let validadoresMaestroCache = {}; // maestro de validadores, keyed por DNI
 let currentPermisos = {};
 let currentUserEmail = '';
 let currentUserAlias = '';
@@ -1267,6 +1298,11 @@ function startListeners(){
   posicionesRef.onSnapshot(snap=>{ posiciones={}; snap.forEach(d=>posiciones[d.id]=d.data()); checkReady(); renderAll(); }, onErr);
   palletsRef.onSnapshot(snap=>{ pallets={}; snap.forEach(d=>pallets[d.id]=d.data()); checkReady(); renderAll(); }, onErr);
   productosRef.onSnapshot(snap=>{ productos={}; snap.forEach(d=>productos[docIdACodigo(d.id)]=d.data()); checkReady(); renderProductosTabla(); renderInventario(); }, onErr);
+  validadoresMaestroRef.onSnapshot(snap=>{
+    validadoresMaestroCache = {};
+    snap.forEach(d=> validadoresMaestroCache[d.id] = Object.assign({dni:d.id}, d.data()));
+    renderValidadoresMaestroTabla();
+  }, onErr);
   retirosCampanaRef.orderBy('timestamp','desc').limit(300).onSnapshot(snap=>{
     const body = $('retiros-body');
     if(snap.empty){ body.innerHTML=''; $('retiros-empty').style.display='block'; return; }
@@ -4125,8 +4161,133 @@ function renderTablaDetalleAnalisis(){
 $('an-filtro-sku').addEventListener('input', renderTablaDetalleAnalisis);
 $('an-filtro-estado-sku').addEventListener('change', renderTablaDetalleAnalisis);
 
+/* -------------------- Validadores (maestro): DNI, nombre, foto -------------------- */
+let vmFotoFile = null;       // archivo nuevo seleccionado (pendiente de subir)
+let vmFotoUrlActual = null;  // url ya guardada en el validador cargado para edición (si existe)
+let vmEditandoDni = null;    // DNI en edición; null = registro nuevo
+
+function renderValidadoresMaestroTabla(){
+  const lista = Object.values(validadoresMaestroCache).sort((a,b)=> (a.nombre||'').localeCompare(b.nombre||''));
+  if(lista.length===0){
+    $('vm-body').innerHTML = '';
+    $('vm-empty').style.display = 'block';
+  }else{
+    $('vm-empty').style.display = 'none';
+    $('vm-body').innerHTML = lista.map(v=>{
+      const inicial = (v.nombre||'?').trim().charAt(0).toUpperCase();
+      const foto = v.foto_url
+        ? `<img src="${v.foto_url}" alt="" style="width:30px; height:30px; object-fit:cover; border-radius:50%; border:1px solid var(--line-strong);">`
+        : `<span style="display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:50%; background:var(--blue-bg); color:var(--blue); font-family:var(--mono); font-size:11px; font-weight:700;">${inicial}</span>`;
+      return `<tr>
+        <td>${foto}</td>
+        <td style="font-family:var(--mono);">${v.dni}</td>
+        <td>${v.nombre||''}</td>
+        <td style="white-space:nowrap;">
+          <button type="button" class="btn btn-sm btn-ghost btn-vm-editar" data-dni="${v.dni}">Editar</button>
+          <button type="button" class="btn btn-sm btn-danger btn-vm-eliminar" data-dni="${v.dni}">Eliminar</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+  // Si hay una tabla de asignación cargada a la derecha, refresca sus <select> con la lista actual.
+  if(valUltimaCarga) renderValidadoresTabla(valUltimaCarga.correlativo, valUltimaCarga.participantes, valUltimaCarga.asignados);
+}
+
+$('vm-foto-input').addEventListener('change', ()=>{
+  const file = $('vm-foto-input').files[0];
+  if(!file) return;
+  vmFotoFile = file;
+  const reader = new FileReader();
+  reader.onload = (e)=>{ $('vm-foto-preview').src = e.target.result; $('vm-foto-preview').style.display = 'inline-block'; };
+  reader.readAsDataURL(file);
+});
+
+function cancelarEdicionValidadorMaestro(){
+  vmEditandoDni = null; vmFotoFile = null; vmFotoUrlActual = null;
+  $('vm-dni').value = ''; $('vm-dni').disabled = false; $('vm-nombre').value = '';
+  $('vm-foto-input').value = '';
+  $('vm-foto-preview').style.display = 'none'; $('vm-foto-preview').src = '';
+  $('btn-vm-cancelar').style.display = 'none';
+  $('btn-vm-guardar').textContent = 'Guardar validador';
+  $('vm-msg').style.display = 'none';
+}
+$('btn-vm-cancelar').addEventListener('click', cancelarEdicionValidadorMaestro);
+
+$('btn-vm-guardar').addEventListener('click', async ()=>{
+  const dni = $('vm-dni').value.trim();
+  const nombre = $('vm-nombre').value.trim().toUpperCase();
+  if(!/^[0-9]{8}$/.test(dni)){ showMsg('vm-msg','err','Ingresa un DNI válido (8 dígitos).'); return; }
+  if(!nombre){ showMsg('vm-msg','err','Ingresa el nombre completo.'); return; }
+  const editando = vmEditandoDni;
+  if(!editando && validadoresMaestroCache[dni]){ showMsg('vm-msg','err','Ya existe un validador con ese DNI. Edítalo desde la tabla.'); return; }
+  $('btn-vm-guardar').disabled = true;
+  try{
+    let foto_url = vmFotoUrlActual;
+    if(vmFotoFile){
+      showMsg('vm-msg','ok','Subiendo foto…');
+      const ext = (vmFotoFile.name.split('.').pop() || 'jpg').toLowerCase();
+      const path = `validadores/${dni}.${ext}`;
+      const ref = storage.ref().child(path);
+      await ref.put(vmFotoFile);
+      foto_url = await ref.getDownloadURL();
+    }
+    const payload = {
+      nombre, foto_url: foto_url || null,
+      actualizado_en: firebase.firestore.FieldValue.serverTimestamp(), actualizado_por: currentUserEmail
+    };
+    if(!editando){ payload.creado_en = firebase.firestore.FieldValue.serverTimestamp(); payload.creado_por = currentUserEmail; }
+    await validadoresMaestroRef.doc(dni).set(payload, {merge:true});
+    await logAccion('validador_registrado', {detalle:`Validador ${nombre} (DNI ${dni}) ${editando?'actualizado':'creado'} en el maestro`});
+    showToast(`Validador ${editando?'actualizado':'registrado'}.`,'ok');
+    cancelarEdicionValidadorMaestro();
+  }catch(err){
+    console.error(err);
+    showMsg('vm-msg','err','Error al guardar: '+err.message);
+  }finally{
+    $('btn-vm-guardar').disabled = false;
+  }
+});
+
+$('vm-body').addEventListener('click', async (ev)=>{
+  const btnEditar = ev.target.closest('.btn-vm-editar');
+  const btnEliminar = ev.target.closest('.btn-vm-eliminar');
+
+  if(btnEditar){
+    const dni = btnEditar.dataset.dni;
+    const v = validadoresMaestroCache[dni];
+    if(!v) return;
+    vmEditandoDni = dni; vmFotoFile = null; vmFotoUrlActual = v.foto_url || null;
+    $('vm-dni').value = dni; $('vm-dni').disabled = true;
+    $('vm-nombre').value = v.nombre || '';
+    $('vm-foto-input').value = '';
+    if(v.foto_url){ $('vm-foto-preview').src = v.foto_url; $('vm-foto-preview').style.display = 'inline-block'; }
+    else{ $('vm-foto-preview').style.display = 'none'; $('vm-foto-preview').src = ''; }
+    $('btn-vm-cancelar').style.display = 'inline-block';
+    $('btn-vm-guardar').textContent = 'Actualizar validador';
+    $('vm-msg').style.display = 'none';
+  }
+
+  if(btnEliminar){
+    const dni = btnEliminar.dataset.dni;
+    const v = validadoresMaestroCache[dni];
+    if(!confirm(`¿Eliminar al validador ${v?v.nombre:''} (DNI ${dni})? Las asignaciones ya guardadas con este validador no se modifican.`)) return;
+    btnEliminar.disabled = true;
+    try{
+      await validadoresMaestroRef.doc(dni).delete();
+      await logAccion('validador_eliminado', {detalle:`Validador ${v?v.nombre:''} (DNI ${dni}) eliminado del maestro`});
+      if(vmEditandoDni===dni) cancelarEdicionValidadorMaestro();
+      showToast('Validador eliminado.','ok');
+    }catch(err){
+      console.error(err);
+      showToast('Error al eliminar: '+err.message,'err');
+    }finally{
+      btnEliminar.disabled = false;
+    }
+  }
+});
+
 /* -------------------- Validadores por campaña / tienda -------------------- */
-let validadoresConocidosCache = new Set();
+let valUltimaCarga = null; // {correlativo, participantes, asignados} — última tabla cargada, para refrescarla sin recargar Firestore
 
 async function poblarSelectCampanasValidadores(){
   const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
@@ -4136,8 +4297,10 @@ async function poblarSelectCampanasValidadores(){
   if(valorActual) $('val-campana-select').value = valorActual;
 }
 
-function refrescarDatalistValidadores(){
-  $('validadores-conocidos').innerHTML = [...validadoresConocidosCache].map(v=>`<option value="${v}">`).join('');
+// Genera las <option> de un <select> de validador a partir del maestro, ordenadas por nombre.
+function opcionesSelectValidador(dniSeleccionado){
+  const lista = Object.values(validadoresMaestroCache).sort((a,b)=> (a.nombre||'').localeCompare(b.nombre||''));
+  return lista.map(v=> `<option value="${v.dni}" ${v.dni===dniSeleccionado?'selected':''}>${v.nombre} — ${v.dni}</option>`).join('');
 }
 
 $('btn-val-cargar').addEventListener('click', async ()=>{
@@ -4158,9 +4321,7 @@ $('btn-val-cargar').addEventListener('click', async ()=>{
     const asignados = {};
     snapVal.docs.forEach(d=>{ const data = d.data(); asignados[data.participante] = data; });
 
-    participantes.forEach(p=>{ if(asignados[p] && asignados[p].validador) validadoresConocidosCache.add(asignados[p].validador); });
-    refrescarDatalistValidadores();
-
+    valUltimaCarga = { correlativo, participantes, asignados };
     renderValidadoresTabla(correlativo, participantes, asignados);
     $('val-msg').style.display = 'none';
   }catch(err){
@@ -4173,19 +4334,28 @@ $('btn-val-cargar').addEventListener('click', async ()=>{
 
 function renderValidadoresTabla(correlativo, participantes, asignados){
   $('val-empty').style.display = 'none';
-  const faltantes = participantes.filter(p=>!asignados[p] || !asignados[p].validador);
+  const faltantes = participantes.filter(p=>!asignados[p] || !asignados[p].validador_dni);
+  const hayValidadores = Object.keys(validadoresMaestroCache).length > 0;
+
   $('val-resumen').style.display = 'block';
-  $('val-resumen').innerHTML = faltantes.length
-    ? `<div class="msg err" style="display:block;">⚠ ${faltantes.length} de ${participantes.length} tiendas SIN validador: ${faltantes.join(', ')}</div>`
-    : `<div class="msg ok" style="display:block;">✓ Todas las tiendas de esta campaña tienen validador asignado.</div>`;
+  $('val-resumen').innerHTML =
+    (hayValidadores ? '' : `<div class="msg err" style="display:block; margin-bottom:8px;">⚠ Aún no registras validadores en el maestro (panel izquierdo). Regístralos ahí antes de poder asignarlos.</div>`) +
+    (faltantes.length
+      ? `<div class="msg err" style="display:block;">⚠ ${faltantes.length} de ${participantes.length} tiendas SIN validador: ${faltantes.join(', ')}</div>`
+      : `<div class="msg ok" style="display:block;">✓ Todas las tiendas de esta campaña tienen validador asignado.</div>`);
 
   $('val-body').innerHTML = participantes.map(p=>{
     const asignado = asignados[p];
-    const valorActual = asignado ? (asignado.validador||'') : '';
-    const estadoHtml = valorActual ? `<span style="color:#245C46;">✓ Asignado</span>` : `<span style="color:#8A332A; font-weight:700;">⚠ Falta</span>`;
+    const dniActual = asignado ? (asignado.validador_dni || '') : '';
+    const estadoHtml = dniActual ? `<span style="color:#245C46;">✓ Asignado</span>` : `<span style="color:#8A332A; font-weight:700;">⚠ Falta</span>`;
     return `<tr data-participante="${p.replace(/"/g,'&quot;')}">
       <td>${p}</td>
-      <td><input type="text" class="val-input-validador upper" list="validadores-conocidos" value="${valorActual}" placeholder="Nombre del validador" style="min-width:200px;"></td>
+      <td>
+        <select class="val-select-validador" style="min-width:220px;" ${hayValidadores?'':'disabled'}>
+          <option value="">— Selecciona un validador —</option>
+          ${opcionesSelectValidador(dniActual)}
+        </select>
+      </td>
       <td class="val-estado-celda">${estadoHtml}</td>
       <td><button type="button" class="btn btn-sm btn-primary btn-val-guardar" data-correlativo="${correlativo}" data-participante="${p.replace(/"/g,'&quot;')}">Guardar</button></td>
     </tr>`;
@@ -4198,21 +4368,23 @@ $('val-body').addEventListener('click', async (ev)=>{
   const correlativo = btn.dataset.correlativo;
   const participante = btn.dataset.participante;
   const tr = btn.closest('tr');
-  const input = tr.querySelector('.val-input-validador');
-  const validador = input.value.trim().toUpperCase();
-  if(!validador){ showToast('Escribe el nombre del validador.','err'); return; }
+  const select = tr.querySelector('.val-select-validador');
+  const dni = select.value;
+  if(!dni){ showToast('Selecciona un validador.','err'); return; }
+  const validadorInfo = validadoresMaestroCache[dni];
+  if(!validadorInfo){ showToast('Ese validador ya no existe en el maestro.','err'); return; }
   btn.disabled = true;
   try{
     const campaniaObj = campRegAllCache.find(r=>r.correlativo===correlativo);
     const docId = correlativo + '__' + codigoADocId(participante);
     await validadoresRef.doc(docId).set({
       correlativo, campana_nombre: campaniaObj ? campaniaObj.campana : '',
-      participante, validador,
+      participante,
+      validador: validadorInfo.nombre, // se conserva por compatibilidad con reportes existentes
+      validador_dni: dni,
       asignado_por: currentUserAlias,
       asignado_en: firebase.firestore.FieldValue.serverTimestamp()
     });
-    validadoresConocidosCache.add(validador);
-    refrescarDatalistValidadores();
     tr.querySelector('.val-estado-celda').innerHTML = `<span style="color:#245C46;">✓ Asignado</span>`;
     showToast(`Validador asignado a ${participante}.`,'ok');
     calcularPendientesGlobalValidadores();
