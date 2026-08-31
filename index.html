@@ -532,11 +532,11 @@
   <div style="display:grid; grid-template-columns:340px 1fr; gap:14px;">
     <div class="panel hidden-perm" id="prod-form-panel">
       <h3>Registrar / actualizar producto</h3>
-      <div class="field"><label>Código</label><input type="text" id="pr-codigo" class="upper" placeholder="COD."></div>
+      <div class="field"><label>Código</label><input type="text" id="pr-codigo" class="upper" placeholder="COD." list="pr-codigo-datalist" autocomplete="off"><datalist id="pr-codigo-datalist"></datalist></div>
       <div class="field"><label>Descripción</label><input type="text" id="pr-desc" class="upper"></div>
       <div class="hint" id="pr-dup-warning" style="display:none; color:#8A332A; margin-bottom:10px; line-height:1.6;"></div>
       <div class="field"><label>Costo</label><input type="number" id="pr-costo" step="0.01" min="0"></div>
-      <div class="field"><label>Proveedor</label><input type="text" id="pr-proveedor" class="upper" placeholder="EJ. DISTRIBUIDORA XYZ"></div>
+      <div class="field"><label>Proveedor</label><input type="text" id="pr-proveedor" class="upper" placeholder="EJ. DISTRIBUIDORA XYZ" list="pr-proveedor-datalist" autocomplete="off"><datalist id="pr-proveedor-datalist"></datalist></div>
       <div class="field"><label>Empaque 1 (unidades)</label><input type="number" id="pr-emp1" step="1" min="0" placeholder="EJ. 24"></div>
       <div class="field"><label>Empaque 2 (unidades)</label><input type="number" id="pr-emp2" step="1" min="0" placeholder="EJ. 48"></div>
       <div class="field">
@@ -1285,8 +1285,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v70';
-const APP_UPDATED = '01/09/2026 02:00';
+const APP_VERSION = 'v71';
+const APP_UPDATED = '01/09/2026 02:45';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -1584,7 +1584,7 @@ function startListeners(){
   nichosRef.onSnapshot(snap=>{ nichos={}; snap.forEach(d=>nichos[d.id]=d.data()); checkReady(); renderAll(); }, onErr);
   posicionesRef.onSnapshot(snap=>{ posiciones={}; snap.forEach(d=>posiciones[d.id]=d.data()); checkReady(); renderAll(); }, onErr);
   palletsRef.onSnapshot(snap=>{ pallets={}; snap.forEach(d=>pallets[d.id]=d.data()); checkReady(); renderAll(); }, onErr);
-  productosRef.onSnapshot(snap=>{ productos={}; snap.forEach(d=>productos[docIdACodigo(d.id)]=d.data()); checkReady(); renderProductosTabla(); renderInventario(); poblarProveedoresToma(); }, onErr);
+  productosRef.onSnapshot(snap=>{ productos={}; snap.forEach(d=>productos[docIdACodigo(d.id)]=d.data()); checkReady(); renderProductosTabla(); renderInventario(); poblarProveedoresToma(); poblarDatalistsProductos(); }, onErr);
   validadoresMaestroRef.onSnapshot(snap=>{
     validadoresMaestroCache = {};
     snap.forEach(d=> validadoresMaestroCache[d.id] = Object.assign({dni:d.id}, d.data()));
@@ -2479,29 +2479,60 @@ $('btn-exportar-inventario').addEventListener('click', ()=>{
 // data URL en base64 para poder incrustarla con doc.addImage; también obtiene su
 // ancho/alto reales para poder escalarla manteniendo la proporción en el PDF.
 // Si falla (sin CORS, red, etc.) devuelve null y esa fila simplemente queda sin foto.
+// Intento 1: fetch + blob → data URL. Es el método normal, pero requiere que el
+// bucket de Firebase Storage tenga CORS habilitado para este origen (fetch() SÍ
+// exige CORS, a diferencia de una etiqueta <img> normal, que por eso se ve bien
+// en la pantalla de Productos aunque falle aquí).
+async function cargarImagenViaFetch(url){
+  const resp = await fetch(url, { mode:'cors' });
+  if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  const blob = await resp.blob();
+  return await new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=> resolve(reader.result);
+    reader.onerror = ()=> reject(reader.error || new Error('Error leyendo el archivo'));
+    reader.readAsDataURL(blob);
+  });
+}
+// Intento 2 (respaldo): <img crossOrigin="anonymous"> dibujada en un <canvas>.
+// Sujeta a la misma restricción de CORS que fetch, pero cubre casos donde una de
+// las dos formas falla por un motivo distinto (red, caché, etc.).
+function cargarImagenViaCanvas(url){
+  return new Promise((resolve, reject)=>{
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = ()=>{
+      try{
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      }catch(e){ reject(e); }
+    };
+    img.onerror = ()=> reject(new Error('No se pudo cargar la imagen (crossOrigin)'));
+    img.src = url;
+  });
+}
 async function cargarImagenComoDataURL(url){
+  let dataUrl = null;
   try{
-    const resp = await fetch(url);
-    if(!resp.ok) return null;
-    const blob = await resp.blob();
-    const dataUrl = await new Promise((resolve, reject)=>{
-      const reader = new FileReader();
-      reader.onload = ()=> resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-    const dims = await new Promise((resolve)=>{
-      const img = new Image();
-      img.onload = ()=> resolve({w: img.naturalWidth||1, h: img.naturalHeight||1});
-      img.onerror = ()=> resolve(null);
-      img.src = dataUrl;
-    });
-    if(!dims) return null;
-    return { dataUrl, w: dims.w, h: dims.h };
-  }catch(e){
-    console.error('No se pudo cargar la imagen para el PDF:', url, e);
-    return null;
+    dataUrl = await cargarImagenViaFetch(url);
+  }catch(errFetch){
+    try{
+      dataUrl = await cargarImagenViaCanvas(url);
+    }catch(errCanvas){
+      console.error(`[PDF] No se pudo cargar la foto (falló por fetch y por canvas — revisa la configuración CORS del bucket de Firebase Storage). URL: ${url}`, {errFetch, errCanvas});
+      return null;
+    }
   }
+  const dims = await new Promise((resolve)=>{
+    const probe = new Image();
+    probe.onload = ()=> resolve({w: probe.naturalWidth||1, h: probe.naturalHeight||1});
+    probe.onerror = ()=> resolve(null);
+    probe.src = dataUrl;
+  });
+  if(!dims) return null;
+  return { dataUrl, w: dims.w, h: dims.h };
 }
 
 // Exporta el inventario acumulado a PDF: logo Joanis arriba a la derecha, título,
@@ -2528,18 +2559,23 @@ async function generarPDFInventarioAcumulado(){
     // reportando el avance real en la barra de progreso (hasta 80%; el 20% restante
     // es armar y guardar el PDF en sí, que es prácticamente instantáneo).
     const imagenesPorCodigo = {};
-    let cargadas = 0;
+    let cargadas = 0, conFotoRegistrada = 0, fotosFallidas = 0;
     const totalAProcesar = entries.length;
     await Promise.all(entries.map(async ([codigo])=>{
       const prod = productos[codigo];
       if(prod && prod.imagen_url){
+        conFotoRegistrada++;
         const info = await cargarImagenComoDataURL(prod.imagen_url);
         if(info) imagenesPorCodigo[codigo] = info;
+        else fotosFallidas++;
       }
       cargadas++;
       actualizarProgresoDescarga((cargadas/totalAProcesar)*80);
     }));
     actualizarProgresoDescarga(85);
+    if(fotosFallidas > 0){
+      console.warn(`[PDF] ${fotosFallidas} de ${conFotoRegistrada} foto(s) de producto no se pudieron incrustar en el PDF. Revisa la consola arriba para el detalle de cada URL — lo más probable es que falte habilitar CORS en el bucket de Firebase Storage para este dominio.`);
+    }
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit:'mm', format:'a4', orientation:'portrait' });
@@ -2616,6 +2652,9 @@ async function generarPDFInventarioAcumulado(){
     doc.save(nombreArchivo);
     finalizarProgresoDescarga();
     showToast('Inventario exportado a PDF.','ok');
+    if(fotosFallidas > 0){
+      showToast(`${fotosFallidas} foto(s) de producto no se pudieron incluir (revisa la consola / CORS de Storage).`, 'err');
+    }
   }catch(err){
     console.error(err);
     errorProgresoDescarga('Error al generar el PDF');
@@ -2719,6 +2758,18 @@ function resetImagenForm(){
   $('pr-imagen-input').value = '';
   $('pr-imagen-preview').style.display = 'none'; $('pr-imagen-preview').src = '';
   $('btn-quitar-imagen').style.display = 'none';
+}
+
+// Llena las listas de sugerencias (datalist) de Código y Proveedor en el formulario
+// de Registrar/actualizar producto, a partir del maestro de productos ya cargado.
+function poblarDatalistsProductos(){
+  const dlCodigo = document.getElementById('pr-codigo-datalist');
+  const dlProveedor = document.getElementById('pr-proveedor-datalist');
+  if(!dlCodigo || !dlProveedor) return;
+  const codigos = Object.keys(productos).sort((a,b)=>a.localeCompare(b));
+  dlCodigo.innerHTML = codigos.map(c=>`<option value="${c}"></option>`).join('');
+  const proveedores = [...new Set(Object.values(productos).map(p=>(p.proveedor||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  dlProveedor.innerHTML = proveedores.map(p=>`<option value="${p}"></option>`).join('');
 }
 
 function limpiarFormularioProducto(){
