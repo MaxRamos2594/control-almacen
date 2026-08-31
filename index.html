@@ -246,6 +246,17 @@
   #crop-modal .actions{display:flex; gap:8px; margin-top:16px;}
   #crop-modal .actions .btn{flex:1;}
 
+  #edit-part-overlay{
+    position:fixed; inset:0; background:rgba(15,21,29,.55); z-index:300;
+    display:flex; align-items:center; justify-content:center; padding:16px;
+  }
+  #edit-part-modal{
+    background:var(--panel); border-radius:10px; padding:20px; width:380px; max-width:100%;
+    box-shadow:0 18px 46px rgba(0,0,0,.32); font-family:var(--sans);
+  }
+  #edit-part-modal h3{margin:0 0 8px; font-size:15px; color:var(--ink);}
+  #edit-part-modal .hint{color:var(--ink-soft); font-size:11.5px; margin:0 0 14px; line-height:1.5;}
+
   #mez-stage{user-select:none;}
   .mez-tile{position:absolute; cursor:pointer; transition:filter .1s;}
   .mez-tile:hover{filter:brightness(1.6);}
@@ -1353,8 +1364,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v75';
-const APP_UPDATED = '31/08/2026 06:10';
+const APP_VERSION = 'v76';
+const APP_UPDATED = '31/08/2026 07:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4803,7 +4814,6 @@ function actualizarFilaTrasCambioCampana(idx){
 function renderGuiaBatch(){
   const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
   const opcionesCampana = '<option value="">— Selecciona —</option>' + activos.map(r=>`<option value="${r.correlativo}">${r.correlativo} — ${r.campana}</option>`).join('');
-  const puedeForzar = currentPermisos.admin || currentPermisos.eliminar;
 
   $('guia-batch-body').innerHTML = guiaBatch.map((item, idx)=>{
     if(!item.resultado){
@@ -4812,11 +4822,12 @@ function renderGuiaBatch(){
     const r = item.resultado;
     let dupHtml;
     if(item.duplicado){
-      dupHtml = `<span style="color:#8A332A; font-weight:700;">Ya existe (${item.duplicado.correlativo})</span>` +
-        (puedeForzar ? `<br><label style="font-weight:normal; font-size:11px; display:flex; align-items:center; gap:4px; margin-top:4px;"><input type="checkbox" class="guia-batch-forzar" data-idx="${idx}" style="width:auto;">Forzar guardado</label>` : '');
+      // No se permite forzar: un N° de guía solo puede existir una vez mientras esa
+      // carga original siga activa. Si de verdad hace falta volver a subirla, primero
+      // hay que eliminar (invalidar) el registro original desde "Registros y Detalle".
+      dupHtml = `<span style="color:#8A332A; font-weight:700;">Ya existe (${item.duplicado.correlativo}) — no se guardará</span>`;
     }else if(item.duplicadoEnLote){
-      dupHtml = `<span style="color:#8A332A; font-weight:700;">Repetida en este lote (igual que "${item.duplicadoEnLote}")</span>` +
-        (puedeForzar ? `<br><label style="font-weight:normal; font-size:11px; display:flex; align-items:center; gap:4px; margin-top:4px;"><input type="checkbox" class="guia-batch-forzar" data-idx="${idx}" style="width:auto;">Forzar guardado</label>` : '');
+      dupHtml = `<span style="color:#8A332A; font-weight:700;">Repetida en este lote (igual que "${item.duplicadoEnLote}") — no se guardará</span>`;
     }else{
       dupHtml = `<span style="color:#245C46;">Nueva ✓</span>`;
     }
@@ -4916,7 +4927,6 @@ $('btn-guardar-guias-lote').addEventListener('click', async ()=>{
     const selCampana = document.querySelector(`.guia-batch-campana[data-idx="${idx}"]`);
     const selParticipante = document.querySelector(`.guia-batch-participante[data-idx="${idx}"]`);
     const inpFecha = document.querySelector(`.guia-batch-fecha[data-idx="${idx}"]`);
-    const chkForzar = document.querySelector(`.guia-batch-forzar[data-idx="${idx}"]`);
     const campanaCorrelativo = selCampana ? selCampana.value : '';
     const participante = selParticipante ? selParticipante.value : '';
     const fechaTraslado = inpFecha ? inpFecha.value : '';
@@ -4925,7 +4935,10 @@ $('btn-guardar-guias-lote').addEventListener('click', async ()=>{
     if(!campanaCorrelativo){ omitidas++; detalleOmitidas.push(`${item.fileName}: falta elegir campaña`); continue; }
     if(!participante){ omitidas++; detalleOmitidas.push(`${item.fileName}: falta elegir participante`); continue; }
     if(!fechaTraslado){ omitidas++; detalleOmitidas.push(`${item.fileName}: falta la fecha de traslado`); continue; }
-    if((item.duplicado || item.duplicadoEnLote) && !(chkForzar && chkForzar.checked)){ omitidas++; detalleOmitidas.push(`${item.fileName}: ${item.duplicado ? 'ya existe' : 'repetida en este lote'}, no se forzó`); continue; }
+    // Un N° de guía solo puede existir una vez mientras el registro original siga
+    // ACTIVO. No hay forma de forzar el guardado — si el original fue eliminado
+    // (invalidado), buscarGuiaDuplicada() ya no lo encuentra y esto no se dispara.
+    if(item.duplicado || item.duplicadoEnLote){ omitidas++; detalleOmitidas.push(`${item.fileName}: N° de guía ${nroGuia||''} ${item.duplicado ? 'ya existe' : 'repetida en este lote'}, no se guardó`); continue; }
     if(nroGuia && nroGuiaGuardadosEnEstaEjecucion.has(nroGuia)){ omitidas++; detalleOmitidas.push(`${item.fileName}: N° de guía ${nroGuia} ya se guardó en esta misma tanda`); continue; }
 
     try{
@@ -4968,6 +4981,78 @@ async function cargarRegistrosGuias(reset){
   renderRegistrosGuias();
 }
 
+// Corrige el participante de una guía ya guardada (por ejemplo, cuando el sistema
+// sugirió/aprendió mal un destino y lo asoció al participante equivocado). Actualiza
+// la cabecera, todas las filas de detalle, Y el mapeo destino->participante aprendido
+// para ese punto de llegada, así las próximas guías al mismo destino ya sugieren bien.
+async function abrirEditorParticipanteGuia(correlativoGuia){
+  const g = guiaRegAllCache.find(r=>r.correlativo===correlativoGuia);
+  if(!g){ showToast('No se encontró la guía.','err'); return; }
+  let filas = campRegCache[g.campana_correlativo];
+  if(!filas){
+    try{
+      const snap = await campanaItemsRef.where('correlativo','==',g.campana_correlativo).limit(3000).get();
+      filas = snap.docs.map(d=>d.data());
+      campRegCache[g.campana_correlativo] = filas;
+    }catch(err){ showToast('Error al cargar los participantes de la campaña: '+err.message,'err'); return; }
+  }
+  const participantes = [...new Set(filas.map(f=>f.participante).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  if(participantes.length===0){ showToast('Esa campaña no tiene participantes registrados.','err'); return; }
+  if(!participantes.includes(g.participante)) participantes.unshift(g.participante || '(SIN PARTICIPANTE)');
+
+  const overlay = document.createElement('div');
+  overlay.id = 'edit-part-overlay';
+  overlay.innerHTML = `
+    <div id="edit-part-modal">
+      <h3>Corregir participante</h3>
+      <p class="hint">Guía ${correlativoGuia}${g.nro_guia?' — N° '+g.nro_guia:''}<br>Destino: ${g.punto_llegada || '(sin destino registrado)'}</p>
+      <div class="field"><label>Participante correcto</label>
+        <select id="edit-part-select">${participantes.map(p=>`<option value="${p}" ${p===g.participante?'selected':''}>${p}</option>`).join('')}</select>
+      </div>
+      <div class="msg" id="edit-part-msg"></div>
+      <div style="display:flex; gap:8px; margin-top:14px;">
+        <button type="button" class="btn btn-ghost" id="edit-part-cancelar" style="flex:1;">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="edit-part-guardar" style="flex:1;">Guardar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const cerrar = ()=>{ if(overlay.parentNode) document.body.removeChild(overlay); };
+  document.getElementById('edit-part-cancelar').onclick = cerrar;
+  document.getElementById('edit-part-guardar').onclick = async ()=>{
+    const nuevo = document.getElementById('edit-part-select').value;
+    const btn = document.getElementById('edit-part-guardar');
+    btn.disabled = true; btn.textContent = 'Guardando…';
+    try{
+      await corregirParticipanteGuia(correlativoGuia, nuevo);
+      cerrar();
+      showToast(`Participante corregido a ${nuevo}.`,'ok');
+    }catch(err){
+      const msgEl = document.getElementById('edit-part-msg');
+      msgEl.className = 'msg err'; msgEl.textContent = err.message; msgEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Guardar';
+    }
+  };
+}
+
+async function corregirParticipanteGuia(correlativoGuia, nuevoParticipante){
+  const g = guiaRegAllCache.find(r=>r.correlativo===correlativoGuia);
+  if(!g) throw new Error('Guía no encontrada.');
+  const anterior = g.participante || '';
+  if(anterior === nuevoParticipante) return;
+  const snap = await guiaItemsRef.where('correlativo_guia','==',correlativoGuia).limit(3000).get();
+  const docs = snap.docs;
+  for(let i=0;i<docs.length;i+=400){
+    const batch = db.batch();
+    docs.slice(i,i+400).forEach(d=> batch.update(d.ref, { participante: nuevoParticipante }));
+    await batch.commit();
+  }
+  await guiasRegistrosRef.doc(correlativoGuia).update({ participante: nuevoParticipante });
+  if(g.punto_llegada) await guardarMapeoDestinoParticipante(g.punto_llegada, nuevoParticipante);
+  delete guiaDetalleCache[correlativoGuia];
+  await logAccion('guia_participante_corregido', {detalle:`Guía ${correlativoGuia}: participante corregido de "${anterior}" a "${nuevoParticipante}" (destino: ${g.punto_llegada||''})`});
+  cargarRegistrosGuias(true);
+}
+
 function renderRegistrosGuias(){
   const estadoFiltro = $('guia-reg-filtro-estado').value;
   const fechaFiltro = $('guia-reg-filtro-fecha').value;
@@ -4995,7 +5080,7 @@ function renderRegistrosGuias(){
   $('guia-reg-body').innerHTML = filtrados.map(r=>{
     const estado = r.estado || 'ACTIVO';
     const accionHtml = estado === 'ACTIVO'
-      ? (puedeEliminar ? `<button class="btn btn-sm btn-ghost btn-invalidar-guia" data-correlativo="${r.correlativo}">Eliminar</button>` : '')
+      ? (puedeEliminar ? `<button class="btn btn-sm btn-ghost btn-invalidar-guia" data-correlativo="${r.correlativo}">Eliminar</button> <button class="btn btn-sm btn-ghost btn-editar-participante-guia" data-correlativo="${r.correlativo}" title="Corregir el participante de esta guía">✏️ Participante</button>` : '')
       : `<span class="hint">Invalidado${r.invalidado_por ? ' por '+r.invalidado_por : ''}</span>`;
     return `<tr><td>${r.correlativo}</td><td>${r.nro_guia||''}</td><td>${r.campana_correlativo||''} — ${r.campana_nombre||''}</td><td>${r.participante||''}</td><td>${r.fecha_traslado||''}</td><td>${r.punto_partida||''} → ${r.punto_llegada||''}</td><td>${r.total_items??''}</td><td>${r.bultos??''}</td><td>${r.usuario||''}</td><td><button class="btn btn-sm btn-ver-detalle-guia" data-correlativo="${r.correlativo}" data-nro="${(r.nro_guia||'').replace(/"/g,'&quot;')}">Ver detalle</button></td><td>${accionHtml}</td></tr>`;
   }).join('');
@@ -5017,6 +5102,12 @@ $('btn-ocultar-detalle-guia').addEventListener('click', ()=>{ $('guia-detalle-pa
 $('guia-reg-body').addEventListener('click', async (ev)=>{
   const btnVer = ev.target.closest('.btn-ver-detalle-guia');
   const btnInv = ev.target.closest('.btn-invalidar-guia');
+  const btnEditPart = ev.target.closest('.btn-editar-participante-guia');
+
+  if(btnEditPart){
+    abrirEditorParticipanteGuia(btnEditPart.dataset.correlativo);
+    return;
+  }
 
   if(btnVer){
     const correlativo = btnVer.dataset.correlativo;
