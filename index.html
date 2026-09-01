@@ -1073,7 +1073,7 @@
 
     <div class="panel">
       <h3>Validadores por campaña / tienda</h3>
-      <p class="hint" style="margin-bottom:10px;">Asigna quién valida cada tienda (participante) dentro de cada campaña. El sistema te avisa cuáles combinaciones aún no tienen validador asignado.</p>
+      <p class="hint" style="margin-bottom:10px;">Asigna hasta 3 validadores por cada tienda (participante) dentro de cada campaña. El sistema te avisa cuáles combinaciones aún no tienen ningún validador asignado.</p>
       <div id="val-pendientes-global" style="margin-bottom:14px;"></div>
       <div style="display:flex; gap:14px; align-items:end; flex-wrap:wrap; margin-bottom:14px;">
         <div class="field" style="margin:0; max-width:340px;">
@@ -1085,7 +1085,7 @@
       <div class="msg" id="val-msg"></div>
       <div id="val-resumen" style="display:none; margin-bottom:10px;"></div>
       <div class="hist-wrap" style="max-height:600px;">
-        <table><thead><tr><th>Tienda (participante)</th><th>Validador asignado</th><th>Estado</th><th></th></tr></thead><tbody id="val-body"></tbody></table>
+        <table><thead><tr><th>Tienda (participante)</th><th>Validadores asignados (hasta 3)</th><th>Estado</th><th></th></tr></thead><tbody id="val-body"></tbody></table>
         <div class="empty-state" id="val-empty">Elige una campaña y presiona "Cargar tiendas".</div>
       </div>
     </div>
@@ -1426,8 +1426,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v78';
-const APP_UPDATED = '01/09/2026 08:00';
+const APP_VERSION = 'v79';
+const APP_UPDATED = '01/09/2026 09:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -5683,10 +5683,27 @@ async function poblarSelectCampanasValidadores(){
 }
 
 // Genera las <option> de un <select> de validador a partir del maestro, ordenadas por nombre.
-function opcionesSelectValidador(dniSeleccionado){
-  const lista = Object.values(validadoresMaestroCache).sort((a,b)=> (a.nombre||'').localeCompare(b.nombre||''));
+// excluidos: DNIs que no deben aparecer como opción (ya elegidos en otra casilla de la misma fila),
+// salvo que sea justamente el DNI ya seleccionado en ESTA casilla (ese siempre se muestra).
+function opcionesSelectValidador(dniSeleccionado, excluidos){
+  excluidos = excluidos || [];
+  const lista = Object.values(validadoresMaestroCache)
+    .filter(v=> v.dni===dniSeleccionado || !excluidos.includes(v.dni))
+    .sort((a,b)=> (a.nombre||'').localeCompare(b.nombre||''));
   return lista.map(v=> `<option value="${v.dni}" ${v.dni===dniSeleccionado?'selected':''}>${v.nombre} — ${v.dni}</option>`).join('');
 }
+
+// Extrae hasta 3 DNIs de validadores ya asignados a una tienda, desde el nuevo formato
+// (arreglo "validadores") o desde el formato antiguo de un solo validador ("validador_dni").
+function listaDnisAsignado(asignado){
+  if(!asignado) return [];
+  if(Array.isArray(asignado.validadores) && asignado.validadores.length){
+    return asignado.validadores.map(v=>v.dni).filter(Boolean).slice(0,3);
+  }
+  if(asignado.validador_dni) return [asignado.validador_dni];
+  return [];
+}
+function tieneValidadores(asignado){ return listaDnisAsignado(asignado).length > 0; }
 
 $('btn-val-cargar').addEventListener('click', async ()=>{
   const correlativo = $('val-campana-select').value;
@@ -5719,33 +5736,55 @@ $('btn-val-cargar').addEventListener('click', async ()=>{
 
 function renderValidadoresTabla(correlativo, participantes, asignados){
   $('val-empty').style.display = 'none';
-  const faltantes = participantes.filter(p=>!asignados[p] || !asignados[p].validador_dni);
+  const faltantes = participantes.filter(p=> !tieneValidadores(asignados[p]));
   const hayValidadores = Object.keys(validadoresMaestroCache).length > 0;
 
   $('val-resumen').style.display = 'block';
   $('val-resumen').innerHTML =
     (hayValidadores ? '' : `<div class="msg err" style="display:block; margin-bottom:8px;">⚠ Aún no registras validadores en el maestro (panel izquierdo). Regístralos ahí antes de poder asignarlos.</div>`) +
     (faltantes.length
-      ? `<div class="msg err" style="display:block;">⚠ ${faltantes.length} de ${participantes.length} tiendas SIN validador: ${faltantes.join(', ')}</div>`
-      : `<div class="msg ok" style="display:block;">✓ Todas las tiendas de esta campaña tienen validador asignado.</div>`);
+      ? `<div class="msg err" style="display:block;">⚠ ${faltantes.length} de ${participantes.length} tiendas SIN ningún validador: ${faltantes.join(', ')}</div>`
+      : `<div class="msg ok" style="display:block;">✓ Todas las tiendas de esta campaña tienen al menos un validador asignado.</div>`);
 
   $('val-body').innerHTML = participantes.map(p=>{
     const asignado = asignados[p];
-    const dniActual = asignado ? (asignado.validador_dni || '') : '';
-    const estadoHtml = dniActual ? `<span style="color:#245C46;">✓ Asignado</span>` : `<span style="color:#8A332A; font-weight:700;">⚠ Falta</span>`;
+    const dnis = listaDnisAsignado(asignado);
+    const slots = [0,1,2].map(i=> dnis[i] || '');
+    const estadoHtml = dnis.length
+      ? `<span style="color:#245C46;">✓ ${dnis.length} validador${dnis.length>1?'es':''} asignado${dnis.length>1?'s':''}</span>`
+      : `<span style="color:#8A332A; font-weight:700;">⚠ Falta</span>`;
+    const selectsHtml = slots.map((dniSel,i)=>{
+      const excluir = slots.filter((d,j)=> j!==i && d);
+      return `<select class="val-select-validador" data-slot="${i}" style="min-width:220px; margin-bottom:4px;" ${hayValidadores?'':'disabled'}>
+        <option value="">— Validador ${i+1} —</option>
+        ${opcionesSelectValidador(dniSel, excluir)}
+      </select>`;
+    }).join('');
     return `<tr data-participante="${p.replace(/"/g,'&quot;')}">
       <td>${p}</td>
-      <td>
-        <select class="val-select-validador" style="min-width:220px;" ${hayValidadores?'':'disabled'}>
-          <option value="">— Selecciona un validador —</option>
-          ${opcionesSelectValidador(dniActual)}
-        </select>
-      </td>
+      <td><div style="display:flex; flex-direction:column;">${selectsHtml}</div></td>
       <td class="val-estado-celda">${estadoHtml}</td>
       <td><button type="button" class="btn btn-sm btn-primary btn-val-guardar" data-correlativo="${correlativo}" data-participante="${p.replace(/"/g,'&quot;')}">Guardar</button></td>
     </tr>`;
   }).join('');
 }
+
+// Cuando el usuario elige un validador en una casilla, refresca las otras 2 casillas de
+// la misma fila para que no se pueda repetir el mismo validador dos veces.
+$('val-body').addEventListener('change', (ev)=>{
+  const sel = ev.target.closest('.val-select-validador');
+  if(!sel) return;
+  const tr = sel.closest('tr');
+  const selects = Array.from(tr.querySelectorAll('.val-select-validador'));
+  const valores = selects.map(s=>s.value);
+  selects.forEach((s,i)=>{
+    if(s===sel) return; // esta ya está como el usuario la dejó
+    const dniSel = s.value;
+    const excluir = valores.filter((d,j)=> j!==i && d);
+    s.innerHTML = `<option value="">— Validador ${i+1} —</option>` + opcionesSelectValidador(dniSel, excluir);
+    s.value = dniSel;
+  });
+});
 
 $('val-body').addEventListener('click', async (ev)=>{
   const btn = ev.target.closest('.btn-val-guardar');
@@ -5753,11 +5792,13 @@ $('val-body').addEventListener('click', async (ev)=>{
   const correlativo = btn.dataset.correlativo;
   const participante = btn.dataset.participante;
   const tr = btn.closest('tr');
-  const select = tr.querySelector('.val-select-validador');
-  const dni = select.value;
-  if(!dni){ showToast('Selecciona un validador.','err'); return; }
-  const validadorInfo = validadoresMaestroCache[dni];
-  if(!validadorInfo){ showToast('Ese validador ya no existe en el maestro.','err'); return; }
+  const selects = Array.from(tr.querySelectorAll('.val-select-validador'));
+  const dnisElegidos = selects.map(s=>s.value).filter(Boolean);
+  const dnisUnicos = [...new Set(dnisElegidos)];
+  if(dnisUnicos.length===0){ showToast('Selecciona al menos un validador.','err'); return; }
+  if(dnisUnicos.length !== dnisElegidos.length){ showToast('No repitas el mismo validador en más de una casilla.','err'); return; }
+  const validadoresInfo = dnisUnicos.map(dni=> validadoresMaestroCache[dni]).filter(Boolean);
+  if(validadoresInfo.length !== dnisUnicos.length){ showToast('Alguno de los validadores ya no existe en el maestro.','err'); return; }
   btn.disabled = true;
   try{
     const campaniaObj = campRegAllCache.find(r=>r.correlativo===correlativo);
@@ -5765,13 +5806,15 @@ $('val-body').addEventListener('click', async (ev)=>{
     await validadoresRef.doc(docId).set({
       correlativo, campana_nombre: campaniaObj ? campaniaObj.campana : '',
       participante,
-      validador: validadorInfo.nombre, // se conserva por compatibilidad con reportes existentes
-      validador_dni: dni,
+      validadores: validadoresInfo.map(v=>({dni:v.dni, nombre:v.nombre})),
+      validador: validadoresInfo[0].nombre, // se conserva por compatibilidad con reportes existentes (el primero de la lista)
+      validador_dni: validadoresInfo[0].dni, // ídem
       asignado_por: currentUserAlias,
       asignado_en: firebase.firestore.FieldValue.serverTimestamp()
     });
-    tr.querySelector('.val-estado-celda').innerHTML = `<span style="color:#245C46;">✓ Asignado</span>`;
-    showToast(`Validador asignado a ${participante}.`,'ok');
+    const n = validadoresInfo.length;
+    tr.querySelector('.val-estado-celda').innerHTML = `<span style="color:#245C46;">✓ ${n} validador${n>1?'es':''} asignado${n>1?'s':''}</span>`;
+    showToast(`${n} validador${n>1?'es':''} asignado${n>1?'s':''} a ${participante}.`,'ok');
     calcularPendientesGlobalValidadores();
     $('btn-val-cargar').click();
   }catch(err){
@@ -5798,7 +5841,7 @@ async function calcularPendientesGlobalValidadores(){
       const participantes = [...new Set(filas.map(f=>f.participante).filter(Boolean))];
       const snapVal = await validadoresRef.where('correlativo','==',campania.correlativo).get();
       const asignadosMap = {};
-      snapVal.docs.forEach(d=>{ const data = d.data(); if(data.validador) asignadosMap[data.participante] = true; });
+      snapVal.docs.forEach(d=>{ const data = d.data(); if(tieneValidadores(data)) asignadosMap[data.participante] = true; });
       const faltantes = participantes.filter(p=>!asignadosMap[p]);
       if(faltantes.length) pendientesPorCampana.push({correlativo: campania.correlativo, campana: campania.campana, faltantes});
     }
