@@ -257,6 +257,46 @@
   #edit-part-modal h3{margin:0 0 8px; font-size:15px; color:var(--ink);}
   #edit-part-modal .hint{color:var(--ink-soft); font-size:11.5px; margin:0 0 14px; line-height:1.5;}
 
+  .val-slots-mosaico{display:flex; flex-wrap:wrap; gap:8px;}
+  .val-slot{
+    position:relative; display:flex; align-items:center; gap:6px; min-width:170px; max-width:230px;
+    padding:6px 26px 6px 10px; border-radius:20px; border:1px dashed var(--line-strong); background:var(--bg);
+    cursor:pointer; font-size:12px; color:var(--ink-soft); transition:background .1s, border-color .1s;
+  }
+  .val-slot:hover{background:#dde3ea;}
+  .val-slot.val-slot-filled{border-style:solid; border-color:var(--line-strong); background:var(--panel); color:var(--ink);}
+  .val-slot-placeholder{color:var(--ink-soft);}
+  .val-slot-nombre{font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:150px;}
+  .val-slot-quitar{
+    position:absolute; right:4px; top:50%; transform:translateY(-50%); width:18px; height:18px; border-radius:50%;
+    background:rgba(0,0,0,.08); border:none; font-size:10px; cursor:pointer; line-height:18px; padding:0; color:var(--ink-soft);
+  }
+  .val-slot-quitar:hover{background:#8A332A; color:#fff;}
+
+  #val-picker-overlay{
+    position:fixed; inset:0; background:rgba(15,21,29,.55); z-index:300;
+    display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  #val-picker-modal{
+    background:var(--panel); border-radius:12px; padding:20px; width:min(640px,92vw); max-height:82vh;
+    display:flex; flex-direction:column; box-shadow:0 18px 46px rgba(0,0,0,.32); font-family:var(--sans);
+  }
+  #val-picker-modal h3{margin:0 0 12px; font-size:15px; color:var(--ink);}
+  #val-picker-buscar{
+    padding:8px 10px; border:1px solid var(--line-strong); border-radius:6px; font-size:13px; margin-bottom:12px;
+    font-family:var(--sans);
+  }
+  #val-picker-grid{
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(110px,1fr)); gap:10px; overflow-y:auto; padding:4px; flex:1; min-height:80px;
+  }
+  .val-picker-card{
+    display:flex; flex-direction:column; align-items:center; gap:6px; padding:10px 6px; border-radius:10px;
+    border:1px solid var(--line); cursor:pointer; text-align:center;
+  }
+  .val-picker-card:hover{background:var(--bg); border-color:var(--line-strong);}
+  .val-picker-card-actual{background:var(--blue-bg); border-color:var(--blue);}
+  .val-picker-nombre{font-size:11.5px; font-weight:600; color:var(--ink); line-height:1.25; word-break:break-word;}
+
   #img-viewer-overlay{
     position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:400;
     display:flex; align-items:center; justify-content:center; padding:24px; cursor:zoom-out;
@@ -1426,8 +1466,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v79';
-const APP_UPDATED = '01/09/2026 09:00';
+const APP_VERSION = 'v80';
+const APP_UPDATED = '01/09/2026 10:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -5682,17 +5722,6 @@ async function poblarSelectCampanasValidadores(){
   if(valorActual) $('val-campana-select').value = valorActual;
 }
 
-// Genera las <option> de un <select> de validador a partir del maestro, ordenadas por nombre.
-// excluidos: DNIs que no deben aparecer como opción (ya elegidos en otra casilla de la misma fila),
-// salvo que sea justamente el DNI ya seleccionado en ESTA casilla (ese siempre se muestra).
-function opcionesSelectValidador(dniSeleccionado, excluidos){
-  excluidos = excluidos || [];
-  const lista = Object.values(validadoresMaestroCache)
-    .filter(v=> v.dni===dniSeleccionado || !excluidos.includes(v.dni))
-    .sort((a,b)=> (a.nombre||'').localeCompare(b.nombre||''));
-  return lista.map(v=> `<option value="${v.dni}" ${v.dni===dniSeleccionado?'selected':''}>${v.nombre} — ${v.dni}</option>`).join('');
-}
-
 // Extrae hasta 3 DNIs de validadores ya asignados a una tienda, desde el nuevo formato
 // (arreglo "validadores") o desde el formato antiguo de un solo validador ("validador_dni").
 function listaDnisAsignado(asignado){
@@ -5753,50 +5782,138 @@ function renderValidadoresTabla(correlativo, participantes, asignados){
     const estadoHtml = dnis.length
       ? `<span style="color:#245C46;">✓ ${dnis.length} validador${dnis.length>1?'es':''} asignado${dnis.length>1?'s':''}</span>`
       : `<span style="color:#8A332A; font-weight:700;">⚠ Falta</span>`;
-    const selectsHtml = slots.map((dniSel,i)=>{
-      const excluir = slots.filter((d,j)=> j!==i && d);
-      return `<select class="val-select-validador" data-slot="${i}" style="min-width:220px; margin-bottom:4px;" ${hayValidadores?'':'disabled'}>
-        <option value="">— Validador ${i+1} —</option>
-        ${opcionesSelectValidador(dniSel, excluir)}
-      </select>`;
-    }).join('');
+    const slotsHtml = slots.map((dniSel,i)=> renderValSlotHtml(i, dniSel, p, hayValidadores)).join('');
     return `<tr data-participante="${p.replace(/"/g,'&quot;')}">
       <td>${p}</td>
-      <td><div style="display:flex; flex-direction:column;">${selectsHtml}</div></td>
+      <td><div class="val-slots-mosaico">${slotsHtml}</div></td>
       <td class="val-estado-celda">${estadoHtml}</td>
       <td><button type="button" class="btn btn-sm btn-primary btn-val-guardar" data-correlativo="${correlativo}" data-participante="${p.replace(/"/g,'&quot;')}">Guardar</button></td>
     </tr>`;
   }).join('');
 }
 
-// Cuando el usuario elige un validador en una casilla, refresca las otras 2 casillas de
-// la misma fila para que no se pueda repetir el mismo validador dos veces.
-$('val-body').addEventListener('change', (ev)=>{
-  const sel = ev.target.closest('.val-select-validador');
-  if(!sel) return;
-  const tr = sel.closest('tr');
-  const selects = Array.from(tr.querySelectorAll('.val-select-validador'));
-  const valores = selects.map(s=>s.value);
-  selects.forEach((s,i)=>{
-    if(s===sel) return; // esta ya está como el usuario la dejó
-    const dniSel = s.value;
-    const excluir = valores.filter((d,j)=> j!==i && d);
-    s.innerHTML = `<option value="">— Validador ${i+1} —</option>` + opcionesSelectValidador(dniSel, excluir);
-    s.value = dniSel;
+// Contenido interno (foto circular + nombre) de una casilla ya asignada.
+function renderValSlotContenido(dni){
+  const v = validadoresMaestroCache[dni];
+  if(!v) return '';
+  const inicial = (v.nombre||'?').trim().charAt(0).toUpperCase();
+  const foto = v.foto_url
+    ? `<img src="${v.foto_url}" alt="" style="width:26px; height:26px; border-radius:50%; object-fit:cover; border:1px solid var(--line-strong); flex-shrink:0;">`
+    : `<span style="display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:var(--blue-bg); color:var(--blue); font-family:var(--mono); font-size:10px; font-weight:700; flex-shrink:0;">${inicial}</span>`;
+  return `${foto}<span class="val-slot-nombre">${v.nombre||''}</span>`;
+}
+
+// Una casilla (tile) de "Validador N": gris con placeholder si está vacía, o
+// foto circular + nombre completo si ya tiene alguien asignado. Clic abre el mosaico selector.
+function renderValSlotHtml(i, dniSel, participante, hayValidadores){
+  const disabledAttr = hayValidadores ? '' : ' style="opacity:.5; pointer-events:none;"';
+  return `<div class="val-slot ${dniSel?'val-slot-filled':''}" data-slot="${i}" data-dni="${dniSel}" tabindex="0" role="button"${disabledAttr}>
+    ${dniSel ? renderValSlotContenido(dniSel) : `<span class="val-slot-placeholder">Seleccione validador ${i+1}</span>`}
+    ${dniSel ? `<button type="button" class="val-slot-quitar" title="Quitar">✕</button>` : ''}
+  </div>`;
+}
+
+// Actualiza visualmente una casilla tras elegir (o quitar) un validador en el selector mosaico.
+function aplicarSeleccionSlotValidador(slotEl, dni){
+  const i = parseInt(slotEl.dataset.slot, 10);
+  slotEl.dataset.dni = dni || '';
+  slotEl.classList.toggle('val-slot-filled', !!dni);
+  slotEl.innerHTML = dni
+    ? renderValSlotContenido(dni) + `<button type="button" class="val-slot-quitar" title="Quitar">✕</button>`
+    : `<span class="val-slot-placeholder">Seleccione validador ${i+1}</span>`;
+}
+
+// Abre el popup tipo mosaico (foto circular + nombre completo de cada validador del maestro)
+// para elegir a quién asignar en esta casilla. Excluye a quienes ya estén en las otras 2 casillas
+// de la misma fila, para no poder repetir al mismo validador dos veces.
+function abrirSelectorValidadorMosaico(slotEl){
+  if(Object.keys(validadoresMaestroCache).length === 0){
+    showToast('Aún no registras validadores en el maestro (panel izquierdo).','err');
+    return;
+  }
+  const tr = slotEl.closest('tr');
+  const otrasCasillas = Array.from(tr.querySelectorAll('.val-slot')).filter(s=> s!==slotEl);
+  const excluidos = otrasCasillas.map(s=> s.dataset.dni).filter(Boolean);
+  const dniActual = slotEl.dataset.dni || '';
+  const numSlot = parseInt(slotEl.dataset.slot, 10);
+
+  const lista = Object.values(validadoresMaestroCache)
+    .filter(v=> !excluidos.includes(v.dni))
+    .sort((a,b)=> (a.nombre||'').localeCompare(b.nombre||''));
+
+  function renderGrid(filtroTexto){
+    const filtro = (filtroTexto||'').trim().toUpperCase();
+    const filtrada = filtro
+      ? lista.filter(v=> (v.nombre||'').toUpperCase().includes(filtro) || (v.dni||'').includes(filtro))
+      : lista;
+    if(!filtrada.length) return `<p class="hint" style="grid-column:1/-1; text-align:center; padding:16px;">Sin resultados.</p>`;
+    return filtrada.map(v=>{
+      const inicial = (v.nombre||'?').trim().charAt(0).toUpperCase();
+      const esActual = v.dni===dniActual;
+      const foto = v.foto_url
+        ? `<img src="${v.foto_url}" alt="" style="width:56px; height:56px; border-radius:50%; object-fit:cover; border:2px solid ${esActual?'var(--blue)':'var(--line-strong)'};">`
+        : `<span style="display:flex; align-items:center; justify-content:center; width:56px; height:56px; border-radius:50%; background:var(--blue-bg); color:var(--blue); font-family:var(--mono); font-size:18px; font-weight:700; border:2px solid ${esActual?'var(--blue)':'transparent'};">${inicial}</span>`;
+      return `<div class="val-picker-card ${esActual?'val-picker-card-actual':''}" data-dni="${v.dni}" title="${(v.nombre||'').replace(/"/g,'&quot;')}">
+        ${foto}
+        <div class="val-picker-nombre">${v.nombre||''}</div>
+      </div>`;
+    }).join('');
+  }
+
+  const overlay = document.createElement('div');
+  overlay.id = 'val-picker-overlay';
+  overlay.innerHTML = `
+    <div id="val-picker-modal">
+      <h3>Selecciona validador ${numSlot+1}</h3>
+      <input type="text" id="val-picker-buscar" placeholder="Buscar por nombre o DNI…" autocomplete="off">
+      <div id="val-picker-grid">${renderGrid('')}</div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px;">
+        ${dniActual ? `<button type="button" class="btn btn-ghost" id="val-picker-quitar">Quitar de esta casilla</button>` : `<span></span>`}
+        <button type="button" class="btn btn-ghost" id="val-picker-cancelar">Cancelar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  const onKey = (e)=>{ if(e.key==='Escape') cerrar(); };
+  function cerrar(){ document.removeEventListener('keydown', onKey); overlay.remove(); }
+  document.addEventListener('keydown', onKey);
+  overlay.addEventListener('click', (e)=>{ if(e.target===overlay) cerrar(); });
+  $('val-picker-cancelar').addEventListener('click', cerrar);
+  const btnQuitar = document.getElementById('val-picker-quitar');
+  if(btnQuitar) btnQuitar.addEventListener('click', ()=>{ aplicarSeleccionSlotValidador(slotEl, ''); cerrar(); });
+  $('val-picker-buscar').addEventListener('input', ()=>{
+    $('val-picker-grid').innerHTML = renderGrid($('val-picker-buscar').value);
   });
-});
+  $('val-picker-grid').addEventListener('click', (ev)=>{
+    const card = ev.target.closest('.val-picker-card');
+    if(!card) return;
+    aplicarSeleccionSlotValidador(slotEl, card.dataset.dni);
+    cerrar();
+  });
+  $('val-picker-buscar').focus();
+}
 
 $('val-body').addEventListener('click', async (ev)=>{
+  const btnQuitar = ev.target.closest('.val-slot-quitar');
+  if(btnQuitar){
+    ev.stopPropagation();
+    aplicarSeleccionSlotValidador(btnQuitar.closest('.val-slot'), '');
+    return;
+  }
+  const slot = ev.target.closest('.val-slot');
+  if(slot){
+    abrirSelectorValidadorMosaico(slot);
+    return;
+  }
   const btn = ev.target.closest('.btn-val-guardar');
   if(!btn) return;
   const correlativo = btn.dataset.correlativo;
   const participante = btn.dataset.participante;
   const tr = btn.closest('tr');
-  const selects = Array.from(tr.querySelectorAll('.val-select-validador'));
-  const dnisElegidos = selects.map(s=>s.value).filter(Boolean);
+  const slots = Array.from(tr.querySelectorAll('.val-slot'));
+  const dnisElegidos = slots.map(s=> s.dataset.dni).filter(Boolean);
   const dnisUnicos = [...new Set(dnisElegidos)];
   if(dnisUnicos.length===0){ showToast('Selecciona al menos un validador.','err'); return; }
-  if(dnisUnicos.length !== dnisElegidos.length){ showToast('No repitas el mismo validador en más de una casilla.','err'); return; }
   const validadoresInfo = dnisUnicos.map(dni=> validadoresMaestroCache[dni]).filter(Boolean);
   if(validadoresInfo.length !== dnisUnicos.length){ showToast('Alguno de los validadores ya no existe en el maestro.','err'); return; }
   btn.disabled = true;
