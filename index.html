@@ -261,12 +261,45 @@
     position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:400;
     display:flex; align-items:center; justify-content:center; padding:24px; cursor:zoom-out;
   }
-  #img-viewer-box{position:relative; max-width:90vw; max-height:90vh;}
-  #img-viewer-box img{max-width:90vw; max-height:90vh; display:block; border-radius:8px; box-shadow:0 18px 60px rgba(0,0,0,.5); cursor:default;}
+  #img-viewer-box{position:relative; cursor:default;}
+  #img-viewer-frame{
+    width:min(90vw,1200px); height:min(78vh,820px); max-width:90vw; max-height:78vh;
+    overflow:auto; background:rgba(0,0,0,.15); border-radius:8px; text-align:center; cursor:default;
+  }
+  #img-viewer-frame::after{ content:''; display:inline-block; height:100%; vertical-align:middle; }
+  #img-viewer-frame img{display:inline-block; margin:0; max-width:100%; max-height:100%; border-radius:8px; box-shadow:0 18px 60px rgba(0,0,0,.5); vertical-align:middle;}
   #img-viewer-cerrar{
     position:absolute; top:-14px; right:-14px; width:32px; height:32px; border-radius:50%;
     background:#fff; border:none; font-size:18px; line-height:32px; text-align:center; cursor:pointer;
-    box-shadow:0 4px 12px rgba(0,0,0,.3); padding:0;
+    box-shadow:0 4px 12px rgba(0,0,0,.3); padding:0; z-index:2;
+  }
+  #img-viewer-prev, #img-viewer-next{
+    position:absolute; top:50%; transform:translateY(-50%); width:40px; height:40px; border-radius:50%;
+    background:rgba(255,255,255,.92); border:none; font-size:18px; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,.3); z-index:2;
+  }
+  #img-viewer-prev{left:-52px;}
+  #img-viewer-next{right:-52px;}
+  #img-viewer-toolbar{
+    display:flex; align-items:center; justify-content:center; gap:8px; margin-top:12px;
+    background:rgba(255,255,255,.95); padding:6px 10px; border-radius:8px; box-shadow:0 4px 14px rgba(0,0,0,.25);
+  }
+  #img-viewer-toolbar button{
+    border:none; background:#eef1f5; border-radius:6px; min-width:30px; height:30px; cursor:pointer; font-size:14px; padding:0 8px;
+  }
+  #img-viewer-toolbar button:hover{background:#dde3ea;}
+  #img-viewer-toolbar .iv-label{font-family:var(--mono); font-size:12px; color:var(--ink-soft); min-width:64px; text-align:center;}
+
+  #ti-img-grid{display:flex; flex-wrap:wrap; gap:12px; margin:12px 0;}
+  .ti-img-card{position:relative; width:150px; height:150px; border-radius:8px; overflow:hidden; border:1px solid var(--line-strong); cursor:pointer; background:var(--panel);}
+  .ti-img-card img{width:100%; height:100%; object-fit:cover; display:block;}
+  .ti-img-card .ti-img-del{
+    position:absolute; top:4px; right:4px; width:24px; height:24px; border-radius:50%;
+    background:rgba(0,0,0,.55); color:#fff; border:none; font-size:13px; cursor:pointer; line-height:24px; padding:0;
+  }
+  .ti-img-card .ti-img-del:hover{background:#8A332A;}
+  .ti-img-card .ti-img-nombre{
+    position:absolute; left:0; right:0; bottom:0; background:rgba(0,0,0,.55); color:#fff; font-size:10px;
+    padding:3px 6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
 
   #mez-stage{user-select:none;}
@@ -1179,6 +1212,7 @@
       <div class="subtabs" style="margin-bottom:14px;">
         <button class="active" id="tisub-conteo">Resultado del conteo</button>
         <button id="tisub-pdf">PDF firmado</button>
+        <button id="tisub-img">Imágenes</button>
       </div>
 
       <div id="tisub-panel-conteo">
@@ -1238,6 +1272,21 @@
         </div>
       </div>
       </div>
+
+      <div id="tisub-panel-img" style="display:none;">
+      <div class="panel">
+        <h3>Imágenes</h3>
+        <div class="empty-state" id="ti-img-vacio">Selecciona una toma para ver o subir sus imágenes.</div>
+        <div id="ti-img-contenido" style="display:none;">
+          <p class="hint" id="ti-img-info" style="margin-bottom:10px;">Sube hasta 5 fotos de respaldo (opcional). Es solo un respaldo visual — el sistema no lee datos de las fotos; para registrar el conteo usa el panel "Resultado del conteo" de arriba. Las imágenes pesadas se comprimen automáticamente al subirlas.</p>
+          <div id="ti-img-grid"></div>
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:4px;">
+            <button class="btn btn-primary" id="btn-ti-subir-img-panel">📤 Agregar imagen</button>
+            <span class="hint" id="ti-img-contador"></span>
+          </div>
+        </div>
+      </div>
+      </div>
     </div>
 
   </div>
@@ -1278,6 +1327,7 @@
   </div>
 
   <input type="file" id="ti-pdf-input-global" accept="application/pdf" style="display:none;">
+  <input type="file" id="ti-img-input-global" accept="image/*" multiple style="display:none;">
 </div>
 
 <!-- KARDEX -->
@@ -1376,8 +1426,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v77';
-const APP_UPDATED = '01/09/2026 07:00';
+const APP_VERSION = 'v78';
+const APP_UPDATED = '01/09/2026 08:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -5488,24 +5538,92 @@ $('btn-vm-guardar').addEventListener('click', async ()=>{
   }
 });
 
-function abrirVisorImagen(url, titulo){
-  if(!url) return;
+// Visor de imagen(es) en grande, con zoom y navegación entre varias (gallery).
+// lista = [{url, nombre}, ...]. Si solo hay una imagen, no muestra flechas ni contador.
+let ivState = { lista: [], idx: 0, zoomPct: null };
+
+function abrirVisorImagenes(lista, idx){
+  lista = (lista||[]).filter(x=> x && x.url);
+  if(!lista.length) return;
   cerrarVisorImagen();
+  ivState = { lista, idx: Math.max(0, Math.min(idx||0, lista.length-1)), zoomPct: null };
   const overlay = document.createElement('div');
   overlay.id = 'img-viewer-overlay';
+  const multiple = lista.length > 1;
   overlay.innerHTML = `
     <div id="img-viewer-box">
-      <button type="button" id="img-viewer-cerrar" title="Cerrar">✕</button>
-      <img src="${url}" alt="${(titulo||'').replace(/"/g,'&quot;')}">
+      <button type="button" id="img-viewer-cerrar" title="Cerrar (Esc)">✕</button>
+      ${multiple ? `<button type="button" id="img-viewer-prev" title="Anterior">‹</button>
+      <button type="button" id="img-viewer-next" title="Siguiente">›</button>` : ''}
+      <div id="img-viewer-frame"><img id="img-viewer-imgtag" src="" alt=""></div>
+      <div id="img-viewer-toolbar">
+        <button type="button" id="img-viewer-zoom-out" title="Alejar">−</button>
+        <span class="iv-label" id="img-viewer-zoom-label">Ajustado</span>
+        <button type="button" id="img-viewer-zoom-in" title="Acercar">+</button>
+        <button type="button" id="img-viewer-zoom-reset" title="Restablecer">Ajustar</button>
+        ${multiple ? `<span class="iv-label" id="img-viewer-contador"></span>` : ''}
+      </div>
     </div>
   `;
   document.body.appendChild(overlay);
-  const onKey = (e)=>{ if(e.key==='Escape') cerrarVisorImagen(); };
+  const onKey = (e)=>{
+    if(e.key==='Escape') cerrarVisorImagen();
+    else if(e.key==='ArrowLeft') navegarVisorImagen(-1);
+    else if(e.key==='ArrowRight') navegarVisorImagen(1);
+  };
   overlay._onKey = onKey;
   document.addEventListener('keydown', onKey);
   overlay.addEventListener('click', (e)=>{ if(e.target===overlay) cerrarVisorImagen(); });
   $('img-viewer-cerrar').addEventListener('click', cerrarVisorImagen);
+  if(multiple){
+    $('img-viewer-prev').addEventListener('click', ()=> navegarVisorImagen(-1));
+    $('img-viewer-next').addEventListener('click', ()=> navegarVisorImagen(1));
+  }
+  $('img-viewer-zoom-in').addEventListener('click', ()=> ajustarZoomVisor(50));
+  $('img-viewer-zoom-out').addEventListener('click', ()=> ajustarZoomVisor(-50));
+  $('img-viewer-zoom-reset').addEventListener('click', ()=>{ ivState.zoomPct = null; renderZoomVisor(); });
+  renderVisorImagenActual();
 }
+
+// Atajo para ver una sola imagen (sin gallery), usado por Validadores.
+function abrirVisorImagen(url, titulo){
+  abrirVisorImagenes([{url, nombre:titulo||''}], 0);
+}
+
+function navegarVisorImagen(delta){
+  if(ivState.lista.length<2) return;
+  ivState.idx = (ivState.idx + delta + ivState.lista.length) % ivState.lista.length;
+  ivState.zoomPct = null;
+  renderVisorImagenActual();
+}
+
+function renderVisorImagenActual(){
+  const item = ivState.lista[ivState.idx];
+  const img = $('img-viewer-imgtag');
+  if(img){ img.src = item.url; img.alt = item.nombre||''; }
+  if(ivState.lista.length>1 && $('img-viewer-contador')) $('img-viewer-contador').textContent = `${ivState.idx+1} / ${ivState.lista.length}`;
+  renderZoomVisor();
+}
+
+function ajustarZoomVisor(delta){
+  const base = ivState.zoomPct || 100;
+  ivState.zoomPct = Math.max(100, Math.min(400, base + delta));
+  renderZoomVisor();
+}
+
+function renderZoomVisor(){
+  const img = $('img-viewer-imgtag');
+  if(!img) return;
+  if(!ivState.zoomPct){
+    img.style.maxWidth = '100%'; img.style.maxHeight = '100%'; img.style.width = ''; img.style.height = '';
+    if($('img-viewer-zoom-label')) $('img-viewer-zoom-label').textContent = 'Ajustado';
+  }else{
+    img.style.maxWidth = 'none'; img.style.maxHeight = 'none';
+    img.style.width = ivState.zoomPct + '%'; img.style.height = 'auto';
+    if($('img-viewer-zoom-label')) $('img-viewer-zoom-label').textContent = ivState.zoomPct + '%';
+  }
+}
+
 function cerrarVisorImagen(){
   const overlay = document.getElementById('img-viewer-overlay');
   if(!overlay) return;
@@ -5954,13 +6072,14 @@ $('btn-ti-confirmar').addEventListener('click', async ()=>{
 });
 
 function setTiSubtab(name){
-  ['conteo','pdf'].forEach(n=>{
+  ['conteo','pdf','img'].forEach(n=>{
     $('tisub-'+n).classList.toggle('active', n===name);
     $('tisub-panel-'+n).style.display = (n===name) ? 'block' : 'none';
   });
 }
 $('tisub-conteo').addEventListener('click', ()=> setTiSubtab('conteo'));
 $('tisub-pdf').addEventListener('click', ()=> setTiSubtab('pdf'));
+$('tisub-img').addEventListener('click', ()=> setTiSubtab('img'));
 
 let tiRegRawLastDoc = null;
 let tiRegAllCache = [];
@@ -6044,6 +6163,7 @@ async function seleccionarToma(correlativo){
     tiConteoActual = { correlativo, items };
     renderResultadoConteo();
     renderPanelPdf();
+    renderPanelImg();
     cargarSobrantesToma(correlativo);
   }catch(err){
     console.error(err);
@@ -6464,7 +6584,7 @@ async function eliminarTomaCompleta(correlativo){
   if(!(currentPermisos.admin || currentPermisos.eliminar)){ showToast('No tienes permiso para eliminar.','err'); return; }
   const header = tiRegAllCache.find(r=>r.correlativo===correlativo);
   const finalizada = header && header.estado === 'FINALIZADO';
-  const ok = confirm(`¿Eliminar definitivamente la toma ${correlativo}? Se borrará todo su detalle (y su PDF firmado, si tiene) y no se puede deshacer.`);
+  const ok = confirm(`¿Eliminar definitivamente la toma ${correlativo}? Se borrará todo su detalle (su PDF firmado y sus imágenes, si tiene) y no se puede deshacer.`);
   if(!ok) return;
   if(finalizada){
     const clave = prompt('Esta toma ya está FINALIZADA. Escribe la clave de confirmación para eliminarla:');
@@ -6484,6 +6604,11 @@ async function eliminarTomaCompleta(correlativo){
     if(header && header.pdf_firmado_url){
       try{ await storage.refFromURL(header.pdf_firmado_url).delete(); }catch(e){ console.error('No se pudo borrar el PDF de Storage', e); }
     }
+    if(header && Array.isArray(header.imagenes)){
+      for(const im of header.imagenes){
+        try{ await storage.refFromURL(im.url).delete(); }catch(e){ console.error('No se pudo borrar una imagen de Storage', e); }
+      }
+    }
     const snapObs = await inventarioObservacionesRef.where('correlativo_toma','==',correlativo).limit(3000).get();
     for(let i=0;i<snapObs.docs.length;i+=400){
       const batchObs = db.batch();
@@ -6495,7 +6620,7 @@ async function eliminarTomaCompleta(correlativo){
     tiRegAllCache = tiRegAllCache.filter(r=>r.correlativo!==correlativo);
     if(tiSeleccionCorrelativo===correlativo){
       tiSeleccionCorrelativo = null; tiConteoActual = null;
-      renderResultadoConteo(); renderPanelPdf();
+      renderResultadoConteo(); renderPanelPdf(); renderPanelImg();
     }
     renderTomasInventario();
     showToast(`Toma ${correlativo} eliminada.`,'ok');
@@ -6614,6 +6739,171 @@ async function eliminarPdfFirmado(correlativo){
   }
 }
 $('btn-ti-eliminar-pdf').addEventListener('click', ()=>{ if(tiSeleccionCorrelativo) eliminarPdfFirmado(tiSeleccionCorrelativo); });
+
+// -------- Panel derecho inferior: Imágenes (subir hasta 5 / ver como cards / eliminar) --------
+const TI_IMG_MAX = 5;
+
+function renderPanelImg(){
+  if(!tiConteoActual){
+    $('ti-img-vacio').style.display = 'block';
+    $('ti-img-contenido').style.display = 'none';
+    return;
+  }
+  $('ti-img-vacio').style.display = 'none';
+  $('ti-img-contenido').style.display = 'block';
+  const header = tiRegAllCache.find(r=>r.correlativo===tiConteoActual.correlativo);
+  const imagenes = (header && Array.isArray(header.imagenes)) ? header.imagenes : [];
+  $('ti-img-grid').innerHTML = imagenes.map((im,i)=>`
+    <div class="ti-img-card" data-idx="${i}" title="Clic para ver en grande">
+      <img src="${im.url}" alt="">
+      <button type="button" class="ti-img-del" data-idx="${i}" title="Eliminar esta imagen">✕</button>
+      ${im.nombre ? `<div class="ti-img-nombre">${im.nombre.replace(/</g,'&lt;')}</div>` : ''}
+    </div>
+  `).join('');
+  $('ti-img-contador').textContent = `${imagenes.length} / ${TI_IMG_MAX} imágenes`;
+  $('btn-ti-subir-img-panel').style.display = imagenes.length>=TI_IMG_MAX ? 'none' : 'inline-block';
+}
+
+// Comprime una imagen redimensionándola (máx 1600px de lado) y bajando la
+// calidad JPEG hasta que pese menos de ~700KB. Si ya pesa poco, no la toca.
+function comprimirImagenSiPesada(file){
+  const MAX_BYTES = 700*1024;
+  const MAX_DIM = 1600;
+  return new Promise((resolve)=>{
+    if(!file.type || !file.type.startsWith('image/') || file.size <= MAX_BYTES){ resolve(file); return; }
+    const reader = new FileReader();
+    reader.onload = (e)=>{
+      const img = new Image();
+      img.onload = ()=>{
+        let w = img.naturalWidth, h = img.naturalHeight;
+        if(w > MAX_DIM || h > MAX_DIM){
+          const ratio = Math.min(MAX_DIM/w, MAX_DIM/h);
+          w = Math.round(w*ratio); h = Math.round(h*ratio);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        let calidad = 0.85;
+        const intentar = ()=>{
+          canvas.toBlob((blob)=>{
+            if(!blob){ resolve(file); return; }
+            if(blob.size <= MAX_BYTES || calidad <= 0.4){
+              const nombre = (file.name||'imagen').replace(/\.[^.]+$/,'') + '.jpg';
+              resolve(new File([blob], nombre, {type:'image/jpeg'}));
+            }else{
+              calidad -= 0.15;
+              intentar();
+            }
+          }, 'image/jpeg', calidad);
+        };
+        intentar();
+      };
+      img.onerror = ()=> resolve(file);
+      img.src = e.target.result;
+    };
+    reader.onerror = ()=> resolve(file);
+    reader.readAsDataURL(file);
+  });
+}
+
+async function subirImagenesToma(correlativo, files){
+  const nuevos = [];
+  for(const rawFile of files){
+    const file = await comprimirImagenSiPesada(rawFile);
+    const path = `tomas_inventario/${correlativo}/img_${Date.now()}_${Math.random().toString(36).slice(2,7)}_${file.name}`;
+    const ref = storage.ref().child(path);
+    await ref.put(file);
+    const url = await ref.getDownloadURL();
+    nuevos.push({ url, nombre: file.name, subido_por: currentUserAlias, subido_en: new Date().toISOString() });
+  }
+  await inventarioTomasRef.doc(correlativo).update({
+    imagenes: firebase.firestore.FieldValue.arrayUnion(...nuevos)
+  });
+  await logAccion('toma_inventario_imagenes_subidas', {detalle:`Se subieron ${nuevos.length} imagen(es) a la toma ${correlativo}`});
+  return nuevos;
+}
+
+let tiSubidaImgCorrelativoActual = null;
+
+$('btn-ti-subir-img-panel').addEventListener('click', ()=>{
+  if(!tiSeleccionCorrelativo) return;
+  tiSubidaImgCorrelativoActual = tiSeleccionCorrelativo;
+  $('ti-img-input-global').click();
+});
+
+$('ti-img-input-global').addEventListener('change', async ()=>{
+  const files = Array.from($('ti-img-input-global').files || []);
+  const correlativo = tiSubidaImgCorrelativoActual;
+  if(!files.length || !correlativo){ $('ti-img-input-global').value=''; tiSubidaImgCorrelativoActual=null; return; }
+  const soloImagenes = files.filter(f=> f.type && f.type.startsWith('image/'));
+  if(soloImagenes.length !== files.length){ showToast('Solo se permiten archivos de imagen.','err'); }
+  if(!soloImagenes.length){ $('ti-img-input-global').value=''; tiSubidaImgCorrelativoActual=null; return; }
+  const header = tiRegAllCache.find(r=>r.correlativo===correlativo);
+  const actuales = (header && Array.isArray(header.imagenes)) ? header.imagenes.length : 0;
+  const espacio = TI_IMG_MAX - actuales;
+  if(espacio<=0){
+    showToast(`Esta toma ya tiene ${TI_IMG_MAX} imágenes (máximo permitido).`,'err');
+    $('ti-img-input-global').value=''; tiSubidaImgCorrelativoActual=null;
+    return;
+  }
+  let aSubir = soloImagenes;
+  if(aSubir.length > espacio){
+    showToast(`Solo se subirán ${espacio} imagen(es): el máximo por toma es ${TI_IMG_MAX}.`,'err');
+    aSubir = aSubir.slice(0, espacio);
+  }
+  showToast('Subiendo imágenes…','ok');
+  try{
+    const nuevos = await subirImagenesToma(correlativo, aSubir);
+    const idx = tiRegAllCache.findIndex(r=>r.correlativo===correlativo);
+    if(idx>=0){ tiRegAllCache[idx].imagenes = [...((tiRegAllCache[idx].imagenes)||[]), ...nuevos]; }
+    renderTomasInventario();
+    if(tiSeleccionCorrelativo===correlativo) renderPanelImg();
+    showToast('Imágenes subidas correctamente.','ok');
+  }catch(err){
+    console.error(err);
+    showToast('Error al subir imágenes: '+err.message,'err');
+  }finally{
+    $('ti-img-input-global').value = '';
+    tiSubidaImgCorrelativoActual = null;
+  }
+});
+
+async function eliminarImagenToma(correlativo, idx){
+  if(!(currentPermisos.admin || currentPermisos.eliminar)){ showToast('No tienes permiso para eliminar.','err'); return; }
+  const header = tiRegAllCache.find(r=>r.correlativo===correlativo);
+  if(!header || !Array.isArray(header.imagenes) || !header.imagenes[idx]) return;
+  if(!confirm('¿Eliminar esta imagen? No se puede deshacer.')) return;
+  try{
+    const img = header.imagenes[idx];
+    try{ await storage.refFromURL(img.url).delete(); }catch(e){ console.error(e); }
+    const nuevasImagenes = header.imagenes.filter((_,i)=> i!==idx);
+    await inventarioTomasRef.doc(correlativo).update({ imagenes: nuevasImagenes });
+    header.imagenes = nuevasImagenes;
+    await logAccion('toma_inventario_imagen_eliminada', {detalle:`Se eliminó una imagen de la toma ${correlativo}`});
+    renderTomasInventario();
+    if(tiSeleccionCorrelativo===correlativo) renderPanelImg();
+    showToast('Imagen eliminada.','ok');
+  }catch(err){
+    console.error(err);
+    showToast('Error al eliminar la imagen: '+err.message,'err');
+  }
+}
+
+$('ti-img-grid').addEventListener('click', (ev)=>{
+  const btnDel = ev.target.closest('.ti-img-del');
+  if(btnDel){
+    ev.stopPropagation();
+    if(tiSeleccionCorrelativo) eliminarImagenToma(tiSeleccionCorrelativo, parseInt(btnDel.dataset.idx,10));
+    return;
+  }
+  const card = ev.target.closest('.ti-img-card');
+  if(card){
+    const header = tiRegAllCache.find(r=>r.correlativo===tiSeleccionCorrelativo);
+    const imagenes = (header && header.imagenes) || [];
+    abrirVisorImagenes(imagenes.map(im=>({url:im.url, nombre:im.nombre})), parseInt(card.dataset.idx,10));
+  }
+});
 
 /* -------------------- Vouchers Agencia -------------------- */
 let vchCampanaActual = null;
