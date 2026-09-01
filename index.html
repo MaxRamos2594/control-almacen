@@ -257,6 +257,18 @@
   #edit-part-modal h3{margin:0 0 8px; font-size:15px; color:var(--ink);}
   #edit-part-modal .hint{color:var(--ink-soft); font-size:11.5px; margin:0 0 14px; line-height:1.5;}
 
+  #img-viewer-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:400;
+    display:flex; align-items:center; justify-content:center; padding:24px; cursor:zoom-out;
+  }
+  #img-viewer-box{position:relative; max-width:90vw; max-height:90vh;}
+  #img-viewer-box img{max-width:90vw; max-height:90vh; display:block; border-radius:8px; box-shadow:0 18px 60px rgba(0,0,0,.5); cursor:default;}
+  #img-viewer-cerrar{
+    position:absolute; top:-14px; right:-14px; width:32px; height:32px; border-radius:50%;
+    background:#fff; border:none; font-size:18px; line-height:32px; text-align:center; cursor:pointer;
+    box-shadow:0 4px 12px rgba(0,0,0,.3); padding:0;
+  }
+
   #mez-stage{user-select:none;}
   .mez-tile{position:absolute; cursor:pointer; transition:filter .1s;}
   .mez-tile:hover{filter:brightness(1.6);}
@@ -1364,8 +1376,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v76';
-const APP_UPDATED = '31/08/2026 07:00';
+const APP_VERSION = 'v77';
+const APP_UPDATED = '01/09/2026 07:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -5404,7 +5416,7 @@ function renderValidadoresMaestroTabla(){
     $('vm-body').innerHTML = lista.map(v=>{
       const inicial = (v.nombre||'?').trim().charAt(0).toUpperCase();
       const foto = v.foto_url
-        ? `<img src="${v.foto_url}" alt="" style="width:30px; height:30px; object-fit:cover; border-radius:50%; border:1px solid var(--line-strong);">`
+        ? `<img src="${v.foto_url}" alt="" class="vm-foto-thumb" data-foto="${v.foto_url}" data-nombre="${(v.nombre||'').replace(/"/g,'&quot;')}" title="Clic para ver en grande" style="width:30px; height:30px; object-fit:cover; border-radius:50%; border:1px solid var(--line-strong); cursor:pointer;">`
         : `<span style="display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:50%; background:var(--blue-bg); color:var(--blue); font-family:var(--mono); font-size:11px; font-weight:700;">${inicial}</span>`;
       return `<tr>
         <td>${foto}</td>
@@ -5476,7 +5488,34 @@ $('btn-vm-guardar').addEventListener('click', async ()=>{
   }
 });
 
+function abrirVisorImagen(url, titulo){
+  if(!url) return;
+  cerrarVisorImagen();
+  const overlay = document.createElement('div');
+  overlay.id = 'img-viewer-overlay';
+  overlay.innerHTML = `
+    <div id="img-viewer-box">
+      <button type="button" id="img-viewer-cerrar" title="Cerrar">✕</button>
+      <img src="${url}" alt="${(titulo||'').replace(/"/g,'&quot;')}">
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  const onKey = (e)=>{ if(e.key==='Escape') cerrarVisorImagen(); };
+  overlay._onKey = onKey;
+  document.addEventListener('keydown', onKey);
+  overlay.addEventListener('click', (e)=>{ if(e.target===overlay) cerrarVisorImagen(); });
+  $('img-viewer-cerrar').addEventListener('click', cerrarVisorImagen);
+}
+function cerrarVisorImagen(){
+  const overlay = document.getElementById('img-viewer-overlay');
+  if(!overlay) return;
+  if(overlay._onKey) document.removeEventListener('keydown', overlay._onKey);
+  overlay.remove();
+}
+
 $('vm-body').addEventListener('click', async (ev)=>{
+  const btnFoto = ev.target.closest('.vm-foto-thumb');
+  if(btnFoto){ abrirVisorImagen(btnFoto.dataset.foto, btnFoto.dataset.nombre); return; }
   const btnEditar = ev.target.closest('.btn-vm-editar');
   const btnEliminar = ev.target.closest('.btn-vm-eliminar');
 
