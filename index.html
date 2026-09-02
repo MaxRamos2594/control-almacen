@@ -1004,20 +1004,16 @@
       <button class="btn btn-primary" id="btn-buscar-campana">Buscar</button>
     </div>
     <div class="msg" id="camp-buscar-msg"></div>
-    <p class="hint" style="margin-bottom:6px;">Haz clic en el encabezado de una columna para ordenar por ella.</p>
-    <div class="hist-wrap" style="max-height:600px;">
+    <p class="hint" style="margin-bottom:6px;">Primero se muestra un resumen por campaña/tienda. Haz clic en una fila para cargar su detalle (SKU por SKU). Clic en un encabezado de columna para ordenar.</p>
+    <div class="hist-wrap" style="max-height:400px;">
       <table>
         <thead id="camp-buscar-thead">
           <tr>
             <th class="th-ordenable" data-key="campana">Campaña</th>
             <th class="th-ordenable" data-key="participante">Participante</th>
-            <th class="th-ordenable" data-key="sku">SKU</th>
-            <th class="th-ordenable" data-key="producto">Producto</th>
-            <th class="th-ordenable" data-key="area">Área</th>
-            <th class="th-ordenable" data-key="cantidad">Cantidad</th>
-            <th class="th-ordenable" data-key="cantidad_guia">Cant. Guía</th>
-            <th class="th-ordenable" data-key="desglose">Desglose</th>
-            <th class="th-ordenable" data-key="fecha_transaccion">Fecha</th>
+            <th class="th-ordenable" data-key="lineas">Líneas</th>
+            <th class="th-ordenable" data-key="cantidad_total">Cantidad</th>
+            <th></th>
           </tr>
         </thead>
         <tbody id="camp-buscar-body"></tbody>
@@ -1026,6 +1022,16 @@
       <div class="empty-state" id="camp-buscar-empty">Llena al menos un filtro y presiona "Buscar".</div>
     </div>
     <div id="camp-buscar-paginacion" style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:8px; font-size:11px; color:var(--ink-soft);"></div>
+  </div>
+
+  <div class="panel" id="camp-buscar-detalle-panel" style="display:none; margin-top:14px;">
+    <h3 style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+      <span id="camp-buscar-detalle-titulo-text">Detalle</span>
+      <button class="btn btn-sm btn-ghost" id="btn-ocultar-detalle-buscar">Ocultar detalle ✕</button>
+    </h3>
+    <div class="hist-wrap" style="max-height:500px;">
+      <table><thead><tr><th>SKU</th><th>Producto</th><th>Área</th><th>Cantidad</th><th>Cant. Guía</th><th>Desglose</th><th>Fecha</th></tr></thead><tbody id="camp-buscar-detalle-body"></tbody></table>
+    </div>
   </div>
   </div>
 
@@ -1466,8 +1472,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v82';
-const APP_UPDATED = '02/09/2026 08:00';
+const APP_VERSION = 'v83';
+const APP_UPDATED = '02/09/2026 09:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4404,15 +4410,32 @@ $('btn-limpiar-legacy').addEventListener('click', async ()=>{
   }
 });
 
-// ---- Tabla de resultados: orden por columna + paginación de 30 en 30 ----
-let campBuscarResultados = [];               // filas ya enriquecidas con cantidad_guia
+// ---- Resultados: primero un resumen por campaña/tienda (cabecera), sin tocar guías —
+// el detalle SKU x SKU (con su Cant. Guía) recién se busca/calcula cuando el usuario
+// hace clic en una cabecera, así no se leen guías de campañas que ni le interesan. ----
+let campBuscarResultados = [];               // filas SKU coincidentes, SIN cantidad_guia (se calcula al abrir el detalle)
+let campBuscarCabeceras = [];                // campBuscarResultados agrupado por (correlativo, participante)
 let campBuscarPagina = 1;
 let campBuscarOrden = { campo: null, dir: 1 }; // dir: 1 asc, -1 desc
 const CAMP_BUSCAR_POR_PAGINA = 30;
 const CAMP_BUSCAR_COLUMNAS = {
-  campana:'Campaña', participante:'Participante', sku:'SKU', producto:'Producto', area:'Área',
-  cantidad:'Cantidad', cantidad_guia:'Cant. Guía', desglose:'Desglose', fecha_transaccion:'Fecha'
+  campana:'Campaña', participante:'Participante', lineas:'Líneas', cantidad_total:'Cantidad'
 };
+
+// Agrupa las filas SKU coincidentes en "cabeceras" por campaña + tienda/participante.
+function agruparCabecerasBusqueda(filas){
+  const mapa = {};
+  filas.forEach(r=>{
+    const clave = `${r.correlativo}||${r.participante||''}`;
+    if(!mapa[clave]){
+      mapa[clave] = { correlativo: r.correlativo, campana: r.campana||'', participante: r.participante||'', lineas: 0, cantidad_total: 0, items: [] };
+    }
+    mapa[clave].lineas += 1;
+    mapa[clave].cantidad_total += Number(r.cantidad)||0;
+    mapa[clave].items.push(r);
+  });
+  return Object.values(mapa);
+}
 
 $('btn-buscar-campana').addEventListener('click', async ()=>{
   const tienda = $('camp-f-tienda').value.trim().toUpperCase();
@@ -4426,6 +4449,7 @@ $('btn-buscar-campana').addEventListener('click', async ()=>{
     return;
   }
 
+  $('camp-buscar-detalle-panel').style.display = 'none';
   $('btn-buscar-campana').disabled = true;
   const bmsg = $('camp-buscar-msg');
   bmsg.className = 'msg'; bmsg.style.display='none'; bmsg.innerHTML='';
@@ -4455,9 +4479,14 @@ $('btn-buscar-campana').addEventListener('click', async ()=>{
     const docs = snap.docs.map(d=>d.data()).filter(checks);
     const docsLimitados = docs.slice(0,1000);
 
-    if(docsLimitados.length === 0){
-      campBuscarResultados = [];
-      campBuscarPagina = 1;
+    // Importante: aquí NO se buscan las guías de cada campaña — eso sería "cargar todo de
+    // una". Solo se arma el resumen (cabecera) con lo que ya tenemos. El detalle SKU x SKU,
+    // con su Cant. Guía, se calcula recién cuando el usuario abre una cabecera puntual.
+    campBuscarResultados = docsLimitados;
+    campBuscarCabeceras = agruparCabecerasBusqueda(campBuscarResultados);
+    campBuscarPagina = 1;
+
+    if(campBuscarCabeceras.length === 0){
       $('camp-buscar-body').innerHTML = '';
       $('camp-buscar-tfoot').innerHTML = '';
       $('camp-buscar-paginacion').innerHTML = '';
@@ -4465,30 +4494,6 @@ $('btn-buscar-campana').addEventListener('click', async ()=>{
       $('camp-buscar-empty').textContent = 'No se encontraron registros para ese filtro.';
     }else{
       $('camp-buscar-empty').style.display = 'none';
-      bmsg.className = 'msg ok'; bmsg.innerHTML = 'Buscando cantidades de guía…'; bmsg.style.display = 'block';
-
-      // Trae (o reutiliza del caché de Análisis) las guías de cada campaña involucrada,
-      // para poder mostrar por fila cuánto de ese SKU salió realmente en guía a esa tienda.
-      const correlativos = [...new Set(docsLimitados.map(r=>r.correlativo).filter(Boolean))];
-      await Promise.all(correlativos.map(async (correlativo)=>{
-        if(anGuiaPorCampanaCache[correlativo]) return;
-        const snapG = await guiaItemsRef.where('campana_correlativo','==',correlativo).limit(5000).get();
-        anGuiaPorCampanaCache[correlativo] = snapG.docs.map(d=>d.data());
-      }));
-
-      const guiaPorClave = {}; // "correlativo|participante|codigo" -> cantidad sumada en guía
-      correlativos.forEach(correlativo=>{
-        (anGuiaPorCampanaCache[correlativo]||[]).forEach(g=>{
-          const clave = `${correlativo}|${g.participante||''}|${g.codigo||''}`;
-          guiaPorClave[clave] = (guiaPorClave[clave]||0) + (Number(g.cantidad)||0);
-        });
-      });
-
-      campBuscarResultados = docsLimitados.map(r=>{
-        const clave = `${r.correlativo}|${r.participante||''}|${r.sku||''}`;
-        return Object.assign({}, r, { cantidad_guia: guiaPorClave[clave] || 0 });
-      });
-      campBuscarPagina = 1;
       renderCampBuscarTabla();
 
       const avisos = [];
@@ -4514,14 +4519,14 @@ $('btn-buscar-campana').addEventListener('click', async ()=>{
   }
 });
 
-// Renderiza la página actual de campBuscarResultados aplicando el orden activo,
-// más el total (sobre TODOS los resultados, no solo la página visible) y la paginación.
+// Renderiza la página actual de campBuscarCabeceras (resumen por campaña/tienda) aplicando
+// el orden activo, más el total (sobre TODAS las cabeceras, no solo la página visible).
 function renderCampBuscarTabla(){
-  const filas = campBuscarResultados.slice();
+  const filas = campBuscarCabeceras.slice();
   if(campBuscarOrden.campo){
     const campo = campBuscarOrden.campo;
     const dir = campBuscarOrden.dir;
-    const esNumerico = campo==='cantidad' || campo==='cantidad_guia';
+    const esNumerico = campo==='lineas' || campo==='cantidad_total';
     filas.sort((a,b)=>{
       if(esNumerico) return ((Number(a[campo])||0) - (Number(b[campo])||0)) * dir;
       return (a[campo]||'').toString().localeCompare((b[campo]||'').toString()) * dir;
@@ -4534,31 +4539,27 @@ function renderCampBuscarTabla(){
   const inicio = (campBuscarPagina - 1) * CAMP_BUSCAR_POR_PAGINA;
   const pagina = filas.slice(inicio, inicio + CAMP_BUSCAR_POR_PAGINA);
 
-  $('camp-buscar-body').innerHTML = pagina.map(r=>
-    `<tr>
-      <td>${r.campana||''}</td>
-      <td>${r.participante||''}</td>
-      <td><span style="background:var(--blue-bg); color:var(--blue); font-weight:700; padding:2px 7px; border-radius:4px; display:inline-block;">${r.sku||''}</span></td>
-      <td>${r.producto||''}</td>
-      <td>${r.area||''}</td>
-      <td><span style="background:var(--green-bg); color:#245C46; font-weight:700; padding:2px 7px; border-radius:4px; display:inline-block;">${r.cantidad!=null?r.cantidad:0}</span></td>
-      <td><span style="background:#FDF0E4; color:var(--lacre-line); font-weight:700; padding:2px 7px; border-radius:4px; display:inline-block;">${r.cantidad_guia!=null?r.cantidad_guia:0}</span></td>
-      <td>${r.desglose||''}</td>
-      <td>${r.fecha_transaccion||''}</td>
+  $('camp-buscar-body').innerHTML = pagina.map(g=>
+    `<tr class="camp-buscar-fila-cabecera" data-correlativo="${g.correlativo}" data-participante="${(g.participante||'').replace(/"/g,'&quot;')}" style="cursor:pointer;">
+      <td>${g.campana||''}</td>
+      <td>${g.participante||''}</td>
+      <td>${g.lineas}</td>
+      <td><span style="background:var(--green-bg); color:#245C46; font-weight:700; padding:2px 7px; border-radius:4px; display:inline-block;">${g.cantidad_total.toLocaleString('es-PE')}</span></td>
+      <td><span class="hint">👁 Ver detalle</span></td>
     </tr>`
   ).join('');
 
-  const totalCantidad = filas.reduce((a,r)=> a + (Number(r.cantidad)||0), 0);
-  const totalGuia = filas.reduce((a,r)=> a + (Number(r.cantidad_guia)||0), 0);
+  const totalLineas = filas.reduce((a,g)=> a + g.lineas, 0);
+  const totalCantidad = filas.reduce((a,g)=> a + g.cantidad_total, 0);
   $('camp-buscar-tfoot').innerHTML = `<tr>
-    <td colspan="5" style="text-align:right;">TOTAL — ${filas.length} registro${filas.length===1?'':'s'}</td>
+    <td colspan="2" style="text-align:right;">TOTAL — ${filas.length} campaña/tienda</td>
+    <td>${totalLineas.toLocaleString('es-PE')}</td>
     <td>${totalCantidad.toLocaleString('es-PE')}</td>
-    <td>${totalGuia.toLocaleString('es-PE')}</td>
-    <td colspan="2"></td>
+    <td></td>
   </tr>`;
 
   $('camp-buscar-paginacion').innerHTML = `
-    <span>${filas.length} registro(s) · página ${campBuscarPagina} de ${totalPaginas}</span>
+    <span>${filas.length} resultado(s) · página ${campBuscarPagina} de ${totalPaginas}</span>
     <div style="display:flex; gap:6px;">
       <button type="button" class="btn btn-ghost btn-sm" id="btn-cb-pag-prev" ${campBuscarPagina<=1?'disabled':''}>‹ Anterior</button>
       <button type="button" class="btn btn-ghost btn-sm" id="btn-cb-pag-next" ${campBuscarPagina>=totalPaginas?'disabled':''}>Siguiente ›</button>
@@ -4576,7 +4577,7 @@ function renderCampBuscarTabla(){
 
 $('camp-buscar-thead').addEventListener('click', (ev)=>{
   const th = ev.target.closest('.th-ordenable');
-  if(!th || campBuscarResultados.length===0) return;
+  if(!th || campBuscarCabeceras.length===0) return;
   const campo = th.dataset.key;
   if(campBuscarOrden.campo === campo) campBuscarOrden.dir *= -1;
   else{ campBuscarOrden.campo = campo; campBuscarOrden.dir = 1; }
@@ -4587,6 +4588,57 @@ $('camp-buscar-paginacion').addEventListener('click', (ev)=>{
   if(ev.target.closest('#btn-cb-pag-prev')){ campBuscarPagina--; renderCampBuscarTabla(); }
   else if(ev.target.closest('#btn-cb-pag-next')){ campBuscarPagina++; renderCampBuscarTabla(); }
 });
+
+// Abre el detalle SKU x SKU de una cabecera puntual (correlativo + participante). Recién
+// aquí se busca (o reutiliza del caché) la guía de ESA campaña, para calcular Cant. Guía
+// solo de lo que el usuario realmente pidió ver — no de todo el resultado de la búsqueda.
+$('camp-buscar-body').addEventListener('click', (ev)=>{
+  const fila = ev.target.closest('.camp-buscar-fila-cabecera');
+  if(!fila) return;
+  abrirDetalleCabeceraBusqueda(fila.dataset.correlativo, fila.dataset.participante);
+});
+
+async function abrirDetalleCabeceraBusqueda(correlativo, participante){
+  const grupo = campBuscarCabeceras.find(g=> g.correlativo===correlativo && (g.participante||'')===participante);
+  if(!grupo) return;
+  $('camp-buscar-detalle-panel').style.display = 'block';
+  $('camp-buscar-detalle-titulo-text').textContent = `Detalle — ${grupo.campana||grupo.correlativo} · ${participante||'(sin participante)'}`;
+  $('camp-buscar-detalle-body').innerHTML = `<tr><td colspan="7" class="hint" style="text-align:center; padding:14px;">Cargando cantidades de guía…</td></tr>`;
+  $('camp-buscar-detalle-panel').scrollIntoView({behavior:'smooth', block:'nearest'});
+  try{
+    if(!anGuiaPorCampanaCache[correlativo]){
+      const snapG = await guiaItemsRef.where('campana_correlativo','==',correlativo).limit(5000).get();
+      anGuiaPorCampanaCache[correlativo] = snapG.docs.map(d=>d.data());
+    }
+    const guiaPorClave = {}; // "participante|codigo" -> cantidad sumada en guía (dentro de esta campaña)
+    (anGuiaPorCampanaCache[correlativo]||[]).forEach(g=>{
+      const clave = `${g.participante||''}|${g.codigo||''}`;
+      guiaPorClave[clave] = (guiaPorClave[clave]||0) + (Number(g.cantidad)||0);
+    });
+
+    const filas = grupo.items.map(r=>{
+      const clave = `${r.participante||''}|${r.sku||''}`;
+      return Object.assign({}, r, { cantidad_guia: guiaPorClave[clave] || 0 });
+    }).sort((a,b)=> (a.sku||'').localeCompare(b.sku||''));
+
+    $('camp-buscar-detalle-body').innerHTML = filas.map(r=>
+      `<tr>
+        <td><span style="background:var(--blue-bg); color:var(--blue); font-weight:700; padding:2px 7px; border-radius:4px; display:inline-block;">${r.sku||''}</span></td>
+        <td>${r.producto||''}</td>
+        <td>${r.area||''}</td>
+        <td><span style="background:var(--green-bg); color:#245C46; font-weight:700; padding:2px 7px; border-radius:4px; display:inline-block;">${r.cantidad!=null?r.cantidad:0}</span></td>
+        <td><span style="background:#FDF0E4; color:var(--lacre-line); font-weight:700; padding:2px 7px; border-radius:4px; display:inline-block;">${r.cantidad_guia}</span></td>
+        <td>${r.desglose||''}</td>
+        <td>${r.fecha_transaccion||''}</td>
+      </tr>`
+    ).join('');
+  }catch(err){
+    console.error(err);
+    $('camp-buscar-detalle-body').innerHTML = `<tr><td colspan="7" class="hint" style="color:#8A332A; text-align:center; padding:14px;">Error al cargar el detalle: ${err.message}</td></tr>`;
+  }
+}
+
+$('btn-ocultar-detalle-buscar').addEventListener('click', ()=>{ $('camp-buscar-detalle-panel').style.display = 'none'; });
 
 /* -------------------- Guías de Remisión (salida) -------------------- */
 let guiaParsedItems = [];
