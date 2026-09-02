@@ -1242,7 +1242,7 @@
         </div>
         <p class="hint" style="margin-bottom:8px;">Clic en una fila para ver/registrar su conteo y su PDF a la derecha.</p>
         <div class="hist-wrap" style="max-height:480px;">
-          <table><thead><tr><th>Correlativo</th><th>Fecha</th><th>Pos.</th><th>Líneas</th><th>ERI</th><th>ERU</th><th>PDF</th><th></th></tr></thead><tbody id="ti-reg-body"></tbody></table>
+          <table><thead><tr><th>Correlativo</th><th>Fecha</th><th>Pos.</th><th>Líneas</th><th>ERI</th><th>ERU</th><th>PSM</th><th>PDF</th><th></th></tr></thead><tbody id="ti-reg-body"></tbody></table>
           <div class="empty-state" id="ti-reg-empty">Aún no hay tomas de inventario.</div>
         </div>
       </div>
@@ -1348,7 +1348,7 @@
       </div>
       <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:14px;" id="res-kpis"></div>
       <div class="hist-wrap" style="max-height:460px;">
-        <table><thead><tr><th>Correlativo</th><th>Fecha</th><th>ERI</th><th>ERU</th><th>Observ.</th><th>Pendientes</th></tr></thead><tbody id="res-tomas-body"></tbody></table>
+        <table><thead><tr><th>Correlativo</th><th>Fecha</th><th>ERI</th><th>ERU</th><th>PSM</th><th>Observ.</th><th>Pendientes</th></tr></thead><tbody id="res-tomas-body"></tbody></table>
         <div class="empty-state" id="res-tomas-empty">No hay tomas finalizadas para este filtro.</div>
       </div>
       <div id="res-tomas-paginacion" style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:8px; font-size:11px; color:var(--ink-soft);"></div>
@@ -1466,8 +1466,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v81';
-const APP_UPDATED = '02/09/2026 07:00';
+const APP_VERSION = 'v82';
+const APP_UPDATED = '02/09/2026 08:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -6286,7 +6286,7 @@ function renderTomasInventario(){
     const pdfIcon = r.pdf_firmado_url ? '📄✓' : '—';
     return `<tr class="ti-fila-toma" data-correlativo="${r.correlativo}" style="cursor:pointer; ${activo?'background:#EEF3FB;':''}">
       <td>${r.correlativo}${r.proveedor_filtro?`<br><span class="hint">🏭 ${r.proveedor_filtro}</span>`:''}</td><td>${r.fecha||''}</td><td>${r.cantidad_generada??''}</td><td>${r.total_lineas??''}</td>
-      <td>${fmtPct2(r.eri)}</td><td>${fmtPct2(r.eru)}</td><td>${pdfIcon}</td>
+      <td>${fmtPct2(r.eri)}</td><td>${fmtPct2(r.eru)}</td><td>${fmtPct2(calcularPsm(r.eri, r.eru))}</td><td>${pdfIcon}</td>
       <td>${puedeEliminar?`<button type="button" class="btn btn-sm btn-ghost ti-btn-eliminar-toma" data-correlativo="${r.correlativo}" title="Eliminar toma">🗑</button>`:''}</td>
     </tr>`;
   }).join('');
@@ -6334,6 +6334,14 @@ async function seleccionarToma(correlativo){
 // Formatea un porcentaje con 2 decimales fijos (ej. 99.85%). Acepta null/undefined.
 function fmtPct2(n){ return (n==null || isNaN(n)) ? '—' : Number(n).toFixed(2)+'%'; }
 
+// PSM (Perfect SKU Match) = ERI × ERU — el % de exactitud combinada: una posición
+// solo cuenta como "perfecta" si acertó en cantidad (ERI) Y en ubicación (ERU) a la vez.
+// Se calcula al vuelo a partir del ERI y ERU ya guardados (no se persiste aparte).
+function calcularPsm(eri, eru){
+  if(eri==null || eru==null || isNaN(eri) || isNaN(eru)) return null;
+  return Math.round((eri/100)*(eru/100)*10000)/100;
+}
+
 // ERI (Exactitud de Registro de Inventario) — Método del Valor Absoluto:
 // mide la desviación total (el error) sin importar si falta o sobra mercancía,
 // restando ese error del 100%. Penaliza cualquier tipo de desajuste por igual.
@@ -6364,8 +6372,9 @@ function actualizarResumenConteo(){
   const contadas = items.filter(it=>it.estado==='CONTADO');
   const conDiferencia = contadas.filter(it=>Number(it.diferencia)!==0).length;
   const { eri, eru } = calcularEriEru(items);
+  const psm = calcularPsm(eri, eru);
   $('ti-conteo-resumen').innerHTML = `<span class="hint">${contadas.length}/${items.length} líneas contadas · <b style="color:${conDiferencia>0?'#8A332A':'#245C46'};">${conDiferencia} con diferencia</b>` +
-    (contadas.length ? ` · ERI (exactitud de unidades): <b>${fmtPct2(eri)}</b> · ERU (exactitud de posición): <b>${fmtPct2(eru)}</b>` : '') + `</span>`;
+    (contadas.length ? ` · ERI (exactitud de unidades): <b>${fmtPct2(eri)}</b> · ERU (exactitud de posición): <b>${fmtPct2(eru)}</b> · PSM (Perfect SKU Match): <b>${fmtPct2(psm)}</b>` : '') + `</span>`;
 }
 
 // Panel derecho superior: si la toma NO está finalizada, se muestra editable
@@ -6609,7 +6618,7 @@ async function recalcularTomaFinalizada(correlativo){
 
   const idx = tiRegAllCache.findIndex(r=>r.correlativo===correlativo);
   if(idx>=0){ Object.assign(tiRegAllCache[idx], { eri, eru, con_diferencia: conDiferencia }); }
-  await logAccion('toma_inventario_eri_eru_recalculado', {detalle:`Se recalculó ERI/ERU de ${correlativo}: nuevo ERI ${fmtPct2(eri)}, ERU ${fmtPct2(eru)}`});
+  await logAccion('toma_inventario_eri_eru_recalculado', {detalle:`Se recalculó ERI/ERU de ${correlativo}: nuevo ERI ${fmtPct2(eri)}, ERU ${fmtPct2(eru)}, PSM ${fmtPct2(calcularPsm(eri,eru))}`});
   return { eri, eru };
 }
 
@@ -6622,7 +6631,7 @@ $('btn-ti-recalcular-eri-eru').addEventListener('click', async ()=>{
     renderResultadoConteo();
     renderTomasInventario();
     renderDashboardResultados();
-    showToast(`ERI/ERU recalculado: ERI ${fmtPct2(eri)} · ERU ${fmtPct2(eru)}`,'ok');
+    showToast(`ERI/ERU recalculado: ERI ${fmtPct2(eri)} · ERU ${fmtPct2(eru)} · PSM ${fmtPct2(calcularPsm(eri,eru))}`,'ok');
   }catch(err){
     console.error(err);
     showToast('Error al recalcular: '+err.message,'err');
@@ -6727,10 +6736,10 @@ $('btn-ti-finalizar').addEventListener('click', async ()=>{
       total_observaciones: itemsConProblema.length, observaciones_pendientes: itemsConProblema.length,
       finalizado_por: currentUserAlias, finalizado_en: firebase.firestore.FieldValue.serverTimestamp()
     });
-    await logAccion('toma_inventario_finalizada', {detalle:`Toma ${tiConteoActual.correlativo} finalizada: ${contadas} contadas, ${conDiferencia} con diferencia, ERI ${fmtPct2(eri)}, ERU ${fmtPct2(eru)}, ${itemsConProblema.length} observación(es) generada(s)`});
+    await logAccion('toma_inventario_finalizada', {detalle:`Toma ${tiConteoActual.correlativo} finalizada: ${contadas} contadas, ${conDiferencia} con diferencia, ERI ${fmtPct2(eri)}, ERU ${fmtPct2(eru)}, PSM ${fmtPct2(calcularPsm(eri,eru))}, ${itemsConProblema.length} observación(es) generada(s)`});
     const idx = tiRegAllCache.findIndex(r=>r.correlativo===tiConteoActual.correlativo);
     if(idx>=0){ Object.assign(tiRegAllCache[idx], {estado:'FINALIZADO', contadas, con_diferencia:conDiferencia, eri, eru, total_observaciones:itemsConProblema.length, observaciones_pendientes:itemsConProblema.length}); }
-    showToast(`Toma ${tiConteoActual.correlativo} finalizada. ERI ${fmtPct2(eri)} · ERU ${fmtPct2(eru)}${itemsConProblema.length?` · ${itemsConProblema.length} observación(es) por resolver`:''}`,'ok');
+    showToast(`Toma ${tiConteoActual.correlativo} finalizada. ERI ${fmtPct2(eri)} · ERU ${fmtPct2(eru)} · PSM ${fmtPct2(calcularPsm(eri,eru))}${itemsConProblema.length?` · ${itemsConProblema.length} observación(es) por resolver`:''}`,'ok');
     $('ti-filtro-estado').value = 'FINALIZADO';
     renderTomasInventario();
     renderResultadoConteo();
@@ -7768,11 +7777,15 @@ function renderResKpis(){
   const pctResuelto = totalObs>0 ? Math.round((totalSolucionadas/totalObs)*100) : 100;
   const eriProm = totalTomas ? Math.round((finalizadas.reduce((a,r)=>a+(r.eri||0),0)/totalTomas)*100)/100 : 0;
   const eruProm = totalTomas ? Math.round((finalizadas.reduce((a,r)=>a+(r.eru||0),0)/totalTomas)*100)/100 : 0;
+  // Promedio de PSM: se promedia el PSM de CADA toma (eri×eru de esa toma), no eriProm×eruProm —
+  // así refleja el verdadero % de coincidencia perfecta en promedio, no una aproximación.
+  const psmProm = totalTomas ? Math.round((finalizadas.reduce((a,r)=>a+(calcularPsm(r.eri,r.eru)||0),0)/totalTomas)*100)/100 : 0;
 
   const estadoResuelto = pctResuelto>=100 ? {accent:'var(--green)', bg:'var(--green-bg)'} : (pctResuelto>=70 ? {accent:'#8A6D1D', bg:'#FBF1E1'} : {accent:'var(--red)', bg:'var(--red-bg)'});
   const eriEstado = estadoExactitudKpi(eriProm);
   const eruEstado = estadoExactitudKpi(eruProm);
-  const estadoEriEru = estadoExactitudKpi(Math.min(eriProm, eruProm));
+  const psmEstado = estadoExactitudKpi(psmProm);
+  const estadoEriEru = estadoExactitudKpi(Math.min(eriProm, eruProm, psmProm));
 
   $('res-kpis').className = 'kpi-strip';
   $('res-kpis').innerHTML =
@@ -7797,7 +7810,7 @@ function renderResKpis(){
     }) +
     `<div class="kpi-card" style="--kpi-accent:${estadoEriEru.accent}; --kpi-accent-bg:${estadoEriEru.bg}; --kpi-card-bg:${estadoEriEru.bg};">
       <div class="kpi-top"><span class="kpi-icon">${KPI_ICONOS.barras}</span></div>
-      <div class="kpi-label" style="margin-top:0; margin-bottom:8px;">ERI / ERU promedio</div>
+      <div class="kpi-label" style="margin-top:0; margin-bottom:8px;">ERI / ERU / PSM promedio</div>
       <div class="kpi-dual">
         <div class="kpi-dual-row">
           <span class="kpi-dual-tag">ERI</span>
@@ -7808,6 +7821,11 @@ function renderResKpis(){
           <span class="kpi-dual-tag">ERU</span>
           <div class="kpi-value" data-target="${eruProm}" data-decimales="2" data-sufijo="%" style="font-size:14px; width:58px; flex-shrink:0; color:${eruEstado.accent};">0%</div>
           <div class="kpi-bar-track" style="flex:1;"><span class="kpi-bar-fill" style="background:${eruEstado.accent};" data-fill="${eruProm}"></span></div>
+        </div>
+        <div class="kpi-dual-row">
+          <span class="kpi-dual-tag">PSM</span>
+          <div class="kpi-value" data-target="${psmProm}" data-decimales="2" data-sufijo="%" style="font-size:14px; width:58px; flex-shrink:0; color:${psmEstado.accent};">0%</div>
+          <div class="kpi-bar-track" style="flex:1;"><span class="kpi-bar-fill" style="background:${psmEstado.accent};" data-fill="${psmProm}"></span></div>
         </div>
       </div>
     </div>`;
@@ -7837,7 +7855,7 @@ function renderResTablaTomas(){
     const activo = r.correlativo === resSeleccionCorrelativo;
     const pend = r.observaciones_pendientes || 0;
     return `<tr class="res-fila-toma" data-correlativo="${r.correlativo}" style="cursor:pointer; ${activo?'background:#EEF3FB;':''}">
-      <td>${r.correlativo}</td><td>${r.fecha||''}</td><td>${fmtPct2(r.eri)}</td><td>${fmtPct2(r.eru)}</td>
+      <td>${r.correlativo}</td><td>${r.fecha||''}</td><td>${fmtPct2(r.eri)}</td><td>${fmtPct2(r.eru)}</td><td>${fmtPct2(calcularPsm(r.eri, r.eru))}</td>
       <td>${r.total_observaciones??0}</td>
       <td style="color:${pend>0?'#8A332A':'#245C46'}; font-weight:700;">${pend}</td>
     </tr>`;
