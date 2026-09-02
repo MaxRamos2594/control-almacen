@@ -1466,8 +1466,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v80';
-const APP_UPDATED = '01/09/2026 10:00';
+const APP_VERSION = 'v81';
+const APP_UPDATED = '02/09/2026 07:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -6334,17 +6334,26 @@ async function seleccionarToma(correlativo){
 // Formatea un porcentaje con 2 decimales fijos (ej. 99.85%). Acepta null/undefined.
 function fmtPct2(n){ return (n==null || isNaN(n)) ? '—' : Number(n).toFixed(2)+'%'; }
 
-// ERI (Exactitud de Registro de Inventario) = unidades contadas / unidades del
-// sistema, sobre todas las líneas contadas (Σcantidad_contada / Σcantidad_sistema).
+// ERI (Exactitud de Registro de Inventario) — Método del Valor Absoluto:
+// mide la desviación total (el error) sin importar si falta o sobra mercancía,
+// restando ese error del 100%. Penaliza cualquier tipo de desajuste por igual.
+//   ERI = (1 − Σ|Físico − Sistema| / Σ Sistema) × 100
+// (se calcula sobre todas las líneas CONTADAS de la toma, sumando el error absoluto
+// de cada línea contra la suma de sus cantidades de sistema)
 // ERU (Exactitud de Registro de Unidades... a nivel de posición) = % de líneas
 // contadas donde el producto SÍ se encontró físicamente en su posición.
 // Ambos se guardan con 2 decimales de precisión (ej. 99.85), no enteros redondeados.
 function calcularEriEru(items){
   const contadas = items.filter(it=>it.estado==='CONTADO');
   if(contadas.length===0) return { eri: 0, eru: 0 };
-  let sumaSistema = 0, sumaContada = 0;
-  contadas.forEach(it=>{ sumaSistema += Number(it.cantidad_sistema)||0; sumaContada += Number(it.cantidad_contada)||0; });
-  const eri = sumaSistema>0 ? Math.round((sumaContada/sumaSistema)*10000)/100 : 100;
+  let sumaSistema = 0, sumaErrorAbsoluto = 0;
+  contadas.forEach(it=>{
+    const sistema = Number(it.cantidad_sistema)||0;
+    const fisico = Number(it.cantidad_contada)||0;
+    sumaSistema += sistema;
+    sumaErrorAbsoluto += Math.abs(fisico - sistema);
+  });
+  const eri = sumaSistema>0 ? Math.round((1 - (sumaErrorAbsoluto/sumaSistema))*10000)/100 : 100;
   const encontradas = contadas.filter(it=>it.encontrado !== false).length;
   const eru = Math.round((encontradas / contadas.length) * 10000)/100;
   return { eri, eru };
