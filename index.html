@@ -1004,7 +1004,7 @@
       <button class="btn btn-primary" id="btn-buscar-campana">Buscar</button>
     </div>
     <div class="msg" id="camp-buscar-msg"></div>
-    <p class="hint" style="margin-bottom:6px;">Primero se muestra un resumen por campaña/tienda. Haz clic en una fila para cargar su detalle (SKU por SKU). Clic en un encabezado de columna para ordenar.</p>
+    <p class="hint" style="margin-bottom:6px;">Primero se muestra un resumen por campaña/tienda, ordenado de la guía más reciente a la más antigua. Haz clic en una fila para cargar su detalle (SKU por SKU). Clic en un encabezado de columna para ordenar.</p>
     <div class="hist-wrap" style="max-height:400px;">
       <table>
         <thead id="camp-buscar-thead">
@@ -1013,6 +1013,9 @@
             <th class="th-ordenable" data-key="participante">Participante</th>
             <th class="th-ordenable" data-key="lineas">Líneas</th>
             <th class="th-ordenable" data-key="cantidad_total">Cantidad</th>
+            <th class="th-ordenable" data-key="nro_guia">Guía de remisión</th>
+            <th class="th-ordenable" data-key="bultos_total">Bultos</th>
+            <th class="th-ordenable" data-key="fecha_guia">Fecha</th>
             <th></th>
           </tr>
         </thead>
@@ -1472,8 +1475,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v83';
-const APP_UPDATED = '02/09/2026 09:00';
+const APP_VERSION = 'v84';
+const APP_UPDATED = '03/09/2026 07:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4416,11 +4419,13 @@ $('btn-limpiar-legacy').addEventListener('click', async ()=>{
 let campBuscarResultados = [];               // filas SKU coincidentes, SIN cantidad_guia (se calcula al abrir el detalle)
 let campBuscarCabeceras = [];                // campBuscarResultados agrupado por (correlativo, participante)
 let campBuscarPagina = 1;
-let campBuscarOrden = { campo: null, dir: 1 }; // dir: 1 asc, -1 desc
+let campBuscarOrden = { campo: 'fecha_guia', dir: -1 }; // por defecto: guía más reciente primero
 const CAMP_BUSCAR_POR_PAGINA = 30;
 const CAMP_BUSCAR_COLUMNAS = {
-  campana:'Campaña', participante:'Participante', lineas:'Líneas', cantidad_total:'Cantidad'
+  campana:'Campaña', participante:'Participante', lineas:'Líneas', cantidad_total:'Cantidad',
+  nro_guia:'Guía de remisión', bultos_total:'Bultos', fecha_guia:'Fecha'
 };
+let guiaHeadersPorCampanaCache = {}; // correlativo campaña -> cabeceras de guía ACTIVAS (livianas, sin ítems)
 
 // Agrupa las filas SKU coincidentes en "cabeceras" por campaña + tienda/participante.
 function agruparCabecerasBusqueda(filas){
@@ -4435,6 +4440,30 @@ function agruparCabecerasBusqueda(filas){
     mapa[clave].items.push(r);
   });
   return Object.values(mapa);
+}
+
+// Completa cada cabecera con su(s) guía(s) de remisión ACTIVA(S): N° de guía, bultos (sumados
+// si hay más de una) y la fecha de traslado más reciente (usada para el orden por defecto).
+// Solo trae la CABECERA de la guía (no sus ítems) — una consulta liviana por campaña, cacheada.
+async function enriquecerCabecerasConGuia(cabeceras){
+  const correlativos = [...new Set(cabeceras.map(g=>g.correlativo).filter(Boolean))];
+  await Promise.all(correlativos.map(async (correlativo)=>{
+    if(guiaHeadersPorCampanaCache[correlativo]) return;
+    try{
+      const snap = await guiasRegistrosRef.where('campana_correlativo','==',correlativo).where('estado','==','ACTIVO').get();
+      guiaHeadersPorCampanaCache[correlativo] = snap.docs.map(d=>d.data());
+    }catch(err){
+      console.error('No se pudieron cargar las guías de', correlativo, err);
+      guiaHeadersPorCampanaCache[correlativo] = [];
+    }
+  }));
+  cabeceras.forEach(g=>{
+    const guias = (guiaHeadersPorCampanaCache[g.correlativo]||[]).filter(x=> (x.participante||'')===(g.participante||''));
+    g.guias = guias;
+    g.nro_guia = guias.map(x=>x.nro_guia).filter(Boolean).join(', ');
+    g.bultos_total = guias.reduce((a,x)=> a + (Number(x.bultos)||0), 0);
+    g.fecha_guia = guias.reduce((max,x)=> (x.fecha_traslado && x.fecha_traslado > max) ? x.fecha_traslado : max, '');
+  });
 }
 
 $('btn-buscar-campana').addEventListener('click', async ()=>{
@@ -4479,9 +4508,10 @@ $('btn-buscar-campana').addEventListener('click', async ()=>{
     const docs = snap.docs.map(d=>d.data()).filter(checks);
     const docsLimitados = docs.slice(0,1000);
 
-    // Importante: aquí NO se buscan las guías de cada campaña — eso sería "cargar todo de
-    // una". Solo se arma el resumen (cabecera) con lo que ya tenemos. El detalle SKU x SKU,
-    // con su Cant. Guía, se calcula recién cuando el usuario abre una cabecera puntual.
+    // El detalle SKU x SKU con su Cant. Guía (que exige leer los ÍTEMS de la guía) recién se
+    // calcula cuando el usuario abre una cabecera puntual — eso sería "cargar todo de una".
+    // Pero la CABECERA de la guía (N° guía, bultos, fecha) es liviana, así que sí se trae de
+    // una vez por cada campaña involucrada, para poder mostrarla y ordenar por fecha.
     campBuscarResultados = docsLimitados;
     campBuscarCabeceras = agruparCabecerasBusqueda(campBuscarResultados);
     campBuscarPagina = 1;
@@ -4494,6 +4524,8 @@ $('btn-buscar-campana').addEventListener('click', async ()=>{
       $('camp-buscar-empty').textContent = 'No se encontraron registros para ese filtro.';
     }else{
       $('camp-buscar-empty').style.display = 'none';
+      bmsg.className = 'msg ok'; bmsg.innerHTML = 'Buscando guías de remisión asociadas…'; bmsg.style.display = 'block';
+      await enriquecerCabecerasConGuia(campBuscarCabeceras);
       renderCampBuscarTabla();
 
       const avisos = [];
@@ -4526,7 +4558,7 @@ function renderCampBuscarTabla(){
   if(campBuscarOrden.campo){
     const campo = campBuscarOrden.campo;
     const dir = campBuscarOrden.dir;
-    const esNumerico = campo==='lineas' || campo==='cantidad_total';
+    const esNumerico = campo==='lineas' || campo==='cantidad_total' || campo==='bultos_total';
     filas.sort((a,b)=>{
       if(esNumerico) return ((Number(a[campo])||0) - (Number(b[campo])||0)) * dir;
       return (a[campo]||'').toString().localeCompare((b[campo]||'').toString()) * dir;
@@ -4545,17 +4577,23 @@ function renderCampBuscarTabla(){
       <td>${g.participante||''}</td>
       <td>${g.lineas}</td>
       <td><span style="background:var(--green-bg); color:#245C46; font-weight:700; padding:2px 7px; border-radius:4px; display:inline-block;">${g.cantidad_total.toLocaleString('es-PE')}</span></td>
+      <td>${g.nro_guia ? `<span style="background:var(--blue-bg); color:var(--blue); font-weight:700; padding:2px 7px; border-radius:4px; display:inline-block;">${g.nro_guia}</span>` : '<span class="hint">Sin guía</span>'}</td>
+      <td>${g.bultos_total ? `<span style="background:#FDF0E4; color:var(--lacre-line); font-weight:700; padding:2px 7px; border-radius:4px; display:inline-block;">${g.bultos_total.toLocaleString('es-PE')}</span>` : '—'}</td>
+      <td>${g.fecha_guia || '—'}</td>
       <td><span class="hint">👁 Ver detalle</span></td>
     </tr>`
   ).join('');
 
   const totalLineas = filas.reduce((a,g)=> a + g.lineas, 0);
   const totalCantidad = filas.reduce((a,g)=> a + g.cantidad_total, 0);
+  const totalBultos = filas.reduce((a,g)=> a + (g.bultos_total||0), 0);
   $('camp-buscar-tfoot').innerHTML = `<tr>
     <td colspan="2" style="text-align:right;">TOTAL — ${filas.length} campaña/tienda</td>
     <td>${totalLineas.toLocaleString('es-PE')}</td>
     <td>${totalCantidad.toLocaleString('es-PE')}</td>
     <td></td>
+    <td>${totalBultos.toLocaleString('es-PE')}</td>
+    <td colspan="2"></td>
   </tr>`;
 
   $('camp-buscar-paginacion').innerHTML = `
