@@ -760,19 +760,52 @@
 
 <!-- PALLETS -->
 <div class="view" id="view-pallets">
-  <div class="panel" style="margin-bottom:14px;">
-    <h3>Pallets en el almacén</h3>
-    <div class="hist-wrap" style="max-height:600px;">
-      <table><thead><tr><th>Código pallet</th><th>Posición</th><th>Nicho</th><th>Bloque</th><th>Productos</th></tr></thead><tbody id="pallets-body"></tbody></table>
-      <div class="empty-state" id="pallets-empty">Sin pallets todavía.</div>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start;">
+    <div class="panel">
+      <h3>Pallets en el almacén</h3>
+      <div class="field" style="margin:0 0 10px; max-width:260px;">
+        <label>Filtro de pallet</label>
+        <input type="text" class="upper" id="pallets-filtro-codigo" placeholder="EJ. CD0005">
+      </div>
+      <div class="hist-wrap" style="max-height:600px;">
+        <table><thead id="pallets-thead"><tr>
+          <th class="th-ordenable" data-key="codigo">Código pallet</th>
+          <th class="th-ordenable" data-key="posicion">Posición</th>
+          <th class="th-ordenable" data-key="nicho">Nicho</th>
+          <th class="th-ordenable" data-key="bloque">Bloque</th>
+          <th class="th-ordenable" data-key="nProductos">Productos</th>
+        </tr></thead><tbody id="pallets-body"></tbody></table>
+        <div class="empty-state" id="pallets-empty">Sin pallets todavía.</div>
+      </div>
     </div>
-  </div>
-  <div class="panel">
-    <h3><span style="display:flex; align-items:center; gap:10px;"><span>Detalle de pallets (para exportar)</span><button class="btn btn-primary btn-sm" id="btn-exportar-pallets" type="button">⬇ Exportar a Excel</button></span></h3>
-    <p class="hint" style="margin-bottom:10px;">Una fila por cada producto dentro de cada pallet.</p>
-    <div class="hist-wrap" style="max-height:600px;">
-      <table><thead><tr><th>Pallet</th><th>Posición</th><th>Código</th><th>Descripción</th><th>Costo</th><th>Cantidad</th></tr></thead><tbody id="pallet-detalle-body"></tbody></table>
-      <div class="empty-state" id="pallet-detalle-empty">Sin datos todavía.</div>
+    <div class="panel">
+      <h3><span style="display:flex; align-items:center; gap:10px;"><span>Detalle de pallets (para exportar)</span><button class="btn btn-primary btn-sm" id="btn-exportar-pallets" type="button">⬇ Exportar a Excel</button></span></h3>
+      <p class="hint" style="margin-bottom:10px;">Una fila por cada producto dentro de cada pallet.</p>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+        <div class="field" style="margin:0; max-width:170px;">
+          <label>Filtro de código</label>
+          <input type="text" class="upper" id="pd-filtro-codigo" placeholder="EJ. SKU-001">
+        </div>
+        <div class="field" style="margin:0; max-width:170px;">
+          <label>Filtro de pallet</label>
+          <input type="text" class="upper" id="pd-filtro-pallet" placeholder="EJ. CD0005">
+        </div>
+        <div class="field" style="margin:0; max-width:210px;">
+          <label>Filtro por descripción</label>
+          <input type="text" class="upper" id="pd-filtro-descripcion" placeholder="EJ. CASACA">
+        </div>
+      </div>
+      <div class="hist-wrap" style="max-height:600px;">
+        <table><thead id="pallet-detalle-thead"><tr>
+          <th class="th-ordenable" data-key="pallet">Pallet</th>
+          <th class="th-ordenable" data-key="posicion">Posición</th>
+          <th class="th-ordenable" data-key="codigo">Código</th>
+          <th class="th-ordenable" data-key="descripcion">Descripción</th>
+          <th class="th-ordenable" data-key="costo">Costo</th>
+          <th class="th-ordenable" data-key="cantidad">Cantidad</th>
+        </tr></thead><tbody id="pallet-detalle-body"></tbody></table>
+        <div class="empty-state" id="pallet-detalle-empty">Sin datos todavía.</div>
+      </div>
     </div>
   </div>
 </div>
@@ -991,10 +1024,10 @@
   <div id="campsub-panel-buscar" style="display:none;">
   <div class="panel">
     <h3>Buscar en todo el historial</h3>
-    <p class="hint" style="margin-bottom:10px;">Llena uno o más filtros. Elige si deben cumplirse TODOS (Y) o CUALQUIERA (O).</p>
+    <p class="hint" style="margin-bottom:10px;">Llena uno o más filtros. Elige si deben cumplirse TODOS (Y) o CUALQUIERA (O). Con "TODOS (Y)", buscar por SKU es mucho más rápido, pero busca códigos que EMPIECEN con lo escrito (no en cualquier parte del código).</p>
     <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
       <div class="field" style="margin:0; max-width:200px;"><label>Tienda / Participante</label><input type="text" id="camp-f-tienda" class="upper" placeholder="EJ. HUAYCÁN"></div>
-      <div class="field" style="margin:0; max-width:180px;"><label>SKU</label><input type="text" id="camp-f-sku" class="upper" placeholder="EJ. TP24"></div>
+      <div class="field" style="margin:0; max-width:180px;"><label>SKU (empieza con…)</label><input type="text" id="camp-f-sku" class="upper" placeholder="EJ. TP24" title="Con 'Cumplir TODOS (Y)', busca códigos que EMPIECEN con este texto — así la búsqueda es mucho más rápida."></div>
       <div class="field" style="margin:0; max-width:220px;"><label>Descripción (contiene)</label><input type="text" id="camp-f-desc" class="upper" placeholder="EJ. ESCOBA"></div>
       <div class="field" style="margin:0; max-width:170px;"><label>Fecha de transacción</label><input type="date" id="camp-f-fecha"></div>
       <div class="field" style="margin:0; max-width:150px;">
@@ -1475,8 +1508,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v84';
-const APP_UPDATED = '03/09/2026 07:00';
+const APP_VERSION = 'v86';
+const APP_UPDATED = '06/09/2026 08:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3151,20 +3184,62 @@ async function generarPDFInventarioAcumulado(){
 $('btn-exportar-inventario-pdf').addEventListener('click', generarPDFInventarioAcumulado);
 
 /* -------------------- Tabla de pallets -------------------- */
+let palletsOrden = { campo: null, dir: 1 };
+let palletDetalleOrden = { campo: null, dir: 1 };
+const PALLETS_COLUMNAS = { codigo:'Código pallet', posicion:'Posición', nicho:'Nicho', bloque:'Bloque', nProductos:'Productos' };
+const PALLET_DETALLE_COLUMNAS = { pallet:'Pallet', posicion:'Posición', codigo:'Código', descripcion:'Descripción', costo:'Costo', cantidad:'Cantidad' };
+
+function computePalletsLista(){
+  return Object.entries(pallets).map(([codigo,p])=>{
+    const posId = p.posicion_actual || '';
+    const posData = posId ? posiciones[posId] : null;
+    const nicho = posData ? (posData.nicho || '') : '';
+    const bloqueNombre = posData && posData.bloque_id && bloques[posData.bloque_id] ? bloques[posData.bloque_id].nombre : '';
+    const nProductos = (p.items||[]).length;
+    return { codigo, posicion: posId, nicho, bloque: bloqueNombre, nProductos };
+  });
+}
+
 function renderPalletsTabla(){
   const body = $('pallets-body'); if(!body) return;
-  const entries = Object.entries(pallets).sort((a,b)=>a[0].localeCompare(b[0]));
-  if(entries.length===0){ body.innerHTML=''; $('pallets-empty').style.display='block'; return; }
-  $('pallets-empty').style.display='none';
-  body.innerHTML = entries.map(([codigo,p])=>{
-    const posId = p.posicion_actual;
-    const posData = posId ? posiciones[posId] : null;
-    const nicho = posData ? posData.nicho : '—';
-    const bloqueNombre = posData && posData.bloque_id && bloques[posData.bloque_id] ? bloques[posData.bloque_id].nombre : '—';
-    const nProductos = (p.items||[]).length;
-    return `<tr><td>${codigo}</td><td>${posId||'—'}</td><td>${nicho||'—'}</td><td>${bloqueNombre}</td><td>${nProductos} producto(s)</td></tr>`;
-  }).join('');
+  let filas = computePalletsLista();
+  const filtroCodigo = ($('pallets-filtro-codigo') ? $('pallets-filtro-codigo').value.trim().toLowerCase() : '');
+  if(filtroCodigo){
+    filas = filas.filter(f=> f.codigo.toLowerCase().includes(filtroCodigo));
+  }
+  filas.sort((a,b)=>a.codigo.localeCompare(b.codigo));
+  if(palletsOrden.campo){
+    const campo = palletsOrden.campo, dir = palletsOrden.dir;
+    const esNumerico = campo==='nProductos';
+    filas.sort((a,b)=>{
+      if(esNumerico) return ((Number(a[campo])||0) - (Number(b[campo])||0)) * dir;
+      return (a[campo]||'').toString().localeCompare((b[campo]||'').toString()) * dir;
+    });
+  }
+  if(filas.length===0){ body.innerHTML=''; $('pallets-empty').style.display='block'; $('pallets-empty').textContent = filtroCodigo ? 'Sin resultados para ese filtro.' : 'Sin pallets todavía.'; }
+  else{
+    $('pallets-empty').style.display='none';
+    body.innerHTML = filas.map(f=>
+      `<tr><td>${f.codigo}</td><td>${f.posicion||'—'}</td><td>${f.nicho||'—'}</td><td>${f.bloque||'—'}</td><td>${f.nProductos} producto(s)</td></tr>`
+    ).join('');
+  }
+  document.querySelectorAll('#pallets-thead .th-ordenable').forEach(th=>{
+    const campo = th.dataset.key;
+    const activo = palletsOrden.campo === campo;
+    th.classList.toggle('th-activo', activo);
+    const arrow = activo ? (palletsOrden.dir===1 ? '▲' : '▼') : '';
+    th.innerHTML = `${PALLETS_COLUMNAS[campo]||campo}<span class="th-arrow">${arrow}</span>`;
+  });
 }
+$('pallets-thead').addEventListener('click', (ev)=>{
+  const th = ev.target.closest('.th-ordenable');
+  if(!th) return;
+  const campo = th.dataset.key;
+  if(palletsOrden.campo === campo) palletsOrden.dir *= -1;
+  else{ palletsOrden.campo = campo; palletsOrden.dir = 1; }
+  renderPalletsTabla();
+});
+$('pallets-filtro-codigo').addEventListener('input', renderPalletsTabla);
 
 function computePalletDetalle(){
   const filas = [];
@@ -3186,13 +3261,47 @@ function computePalletDetalle(){
 
 function renderPalletDetalleTabla(){
   const body = $('pallet-detalle-body'); if(!body) return;
-  const filas = computePalletDetalle();
-  if(filas.length===0){ body.innerHTML=''; $('pallet-detalle-empty').style.display='block'; return; }
-  $('pallet-detalle-empty').style.display='none';
-  body.innerHTML = filas.map(f=>
-    `<tr><td>${f.pallet}</td><td>${f.posicion||'—'}</td><td>${f.codigo}</td><td>${f.descripcion}</td><td>${fmtMoney(f.costo)}</td><td>${f.cantidad}</td></tr>`
-  ).join('');
+  let filas = computePalletDetalle();
+  const fCodigo = ($('pd-filtro-codigo') ? $('pd-filtro-codigo').value.trim().toLowerCase() : '');
+  const fPallet = ($('pd-filtro-pallet') ? $('pd-filtro-pallet').value.trim().toLowerCase() : '');
+  const fDesc = ($('pd-filtro-descripcion') ? $('pd-filtro-descripcion').value.trim().toLowerCase() : '');
+  if(fCodigo) filas = filas.filter(f=> f.codigo.toLowerCase().includes(fCodigo));
+  if(fPallet) filas = filas.filter(f=> f.pallet.toLowerCase().includes(fPallet));
+  if(fDesc) filas = filas.filter(f=> (f.descripcion||'').toLowerCase().includes(fDesc));
+  if(palletDetalleOrden.campo){
+    const campo = palletDetalleOrden.campo, dir = palletDetalleOrden.dir;
+    const esNumerico = campo==='costo' || campo==='cantidad';
+    filas.sort((a,b)=>{
+      if(esNumerico) return ((Number(a[campo])||0) - (Number(b[campo])||0)) * dir;
+      return (a[campo]||'').toString().localeCompare((b[campo]||'').toString()) * dir;
+    });
+  }
+  if(filas.length===0){ body.innerHTML=''; $('pallet-detalle-empty').style.display='block'; $('pallet-detalle-empty').textContent = (fCodigo||fPallet||fDesc) ? 'Sin resultados para esos filtros.' : 'Sin datos todavía.'; }
+  else{
+    $('pallet-detalle-empty').style.display='none';
+    body.innerHTML = filas.map(f=>
+      `<tr><td>${f.pallet}</td><td>${f.posicion||'—'}</td><td>${f.codigo}</td><td>${f.descripcion}</td><td>${fmtMoney(f.costo)}</td><td>${f.cantidad}</td></tr>`
+    ).join('');
+  }
+  document.querySelectorAll('#pallet-detalle-thead .th-ordenable').forEach(th=>{
+    const campo = th.dataset.key;
+    const activo = palletDetalleOrden.campo === campo;
+    th.classList.toggle('th-activo', activo);
+    const arrow = activo ? (palletDetalleOrden.dir===1 ? '▲' : '▼') : '';
+    th.innerHTML = `${PALLET_DETALLE_COLUMNAS[campo]||campo}<span class="th-arrow">${arrow}</span>`;
+  });
 }
+$('pallet-detalle-thead').addEventListener('click', (ev)=>{
+  const th = ev.target.closest('.th-ordenable');
+  if(!th) return;
+  const campo = th.dataset.key;
+  if(palletDetalleOrden.campo === campo) palletDetalleOrden.dir *= -1;
+  else{ palletDetalleOrden.campo = campo; palletDetalleOrden.dir = 1; }
+  renderPalletDetalleTabla();
+});
+['pd-filtro-codigo','pd-filtro-pallet','pd-filtro-descripcion'].forEach(id=>{
+  $(id).addEventListener('input', renderPalletDetalleTabla);
+});
 
 $('btn-exportar-pallets').addEventListener('click', ()=>{
   const filas = computePalletDetalle();
@@ -4485,14 +4594,25 @@ $('btn-buscar-campana').addEventListener('click', async ()=>{
   try{
     const LIMITE = 3000;
     let snap;
-    // Si la condición es Y (AND) y hay fecha, podemos filtrar por fecha del lado del
-    // servidor (barato) porque toda fila resultante DEBE cumplir esa fecha de todos modos.
-    // Si la condición es O (OR), NO se puede pre-filtrar por fecha sin perder resultados
-    // que cumplan otro criterio en otra fecha, así que se trae un lote acotado reciente.
-    if(condicion === 'AND' && fecha){
+    let estrategia; // solo para el aviso de abajo: qué filtro usamos del lado del servidor
+    // Con condición Y (AND), cualquier filtro que agreguemos del lado del servidor es seguro,
+    // porque TODA fila resultante debe cumplirlo de todos modos. Con O (OR) no se puede
+    // pre-filtrar por nada sin arriesgarse a perder filas que cumplan otro criterio, así que
+    // ahí se sigue trayendo un lote acotado de los más recientes y filtrando en el navegador.
+    //
+    // Firestore no soporta "contiene" del lado del servidor, así que el SKU se busca por
+    // PREFIJO (código que EMPIECE con lo escrito) usando un rango — eso sí usa el índice
+    // automático del campo "sku" (no hay que crear ningún índice a mano) y es muchísimo más
+    // rápido que descargar miles de registros para filtrarlos uno por uno en el navegador.
+    if(condicion === 'AND' && sku){
+      snap = await campanaItemsRef.where('sku','>=', sku).where('sku','<=', sku+'').limit(LIMITE).get();
+      estrategia = 'sku';
+    }else if(condicion === 'AND' && fecha){
       snap = await campanaItemsRef.where('fecha_transaccion','==', fecha).limit(LIMITE).get();
+      estrategia = 'fecha';
     }else{
       snap = await campanaItemsRef.orderBy('timestamp','desc').limit(LIMITE).get();
+      estrategia = 'reciente';
     }
 
     const checks = (row)=>{
@@ -4529,8 +4649,11 @@ $('btn-buscar-campana').addEventListener('click', async ()=>{
       renderCampBuscarTabla();
 
       const avisos = [];
-      if(snap.docs.length === LIMITE){
-        avisos.push(`Se revisaron los ${LIMITE} registros más recientes; si no encuentras lo que buscas, acota más con la fecha.`);
+      if(estrategia === 'reciente' && snap.docs.length === LIMITE){
+        avisos.push(`Se revisaron los ${LIMITE} registros más recientes; si no encuentras lo que buscas, acota más con la fecha o el SKU (con "Cumplir TODOS").`);
+      }
+      if(estrategia === 'sku' && snap.docs.length === LIMITE){
+        avisos.push(`Hay más de ${LIMITE} códigos que empiezan con "${sku}"; acota más el SKU o agrega otro filtro.`);
       }
       if(docs.length > 1000){
         avisos.push(`Se encontraron ${docs.length} coincidencias, mostrando las primeras 1000.`);
