@@ -10,10 +10,12 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-storage-compat.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<!-- Librerías de export/import: defer para no bloquear el primer pintado.
+     Sólo se usan dentro de manejadores de eventos, nunca al arrancar. -->
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <style>
   :root{
@@ -38,11 +40,55 @@
   .userbox b{font-family:var(--mono);}
   .link-btn{background:none; border:none; color:#B8C0CC; text-decoration:underline; cursor:pointer; font-size:12px;}
 
-  nav.tabs{display:flex; gap:2px; background:#1B2430; padding:0 12px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none;}
-  nav.tabs::-webkit-scrollbar{display:none;}
-  nav.tabs button{background:transparent; border:none; color:#B8C0CC; padding:12px 16px; font-weight:600; font-size:13px; cursor:pointer; border-bottom:3px solid transparent; white-space:nowrap; flex-shrink:0;}
-  nav.tabs button.active{color:#fff; border-bottom-color:var(--lacre);}
+  /* ---- Menú lateral (cajón) ---- */
+  #btn-menu{
+    background:transparent; border:1px solid #3A4552; border-radius:6px; color:#fff;
+    width:40px; height:40px; flex-shrink:0; cursor:pointer; display:flex;
+    flex-direction:column; align-items:center; justify-content:center; gap:4px;
+  }
+  #btn-menu span{display:block; width:18px; height:2px; background:#fff; border-radius:2px;}
+  #btn-menu:hover{background:#2A3542;}
+  #drawer-backdrop{
+    position:fixed; inset:0; background:rgba(11,16,22,.55); z-index:70;
+    opacity:0; pointer-events:none; transition:opacity .18s ease;
+  }
+  body.drawer-open #drawer-backdrop{opacity:1; pointer-events:auto;}
+  nav.tabs{
+    position:fixed; top:0; left:0; height:100%; width:274px; max-width:86vw; z-index:80;
+    display:flex; flex-direction:column; gap:0; background:#161E27; padding:0 0 18px;
+    overflow-y:auto; -webkit-overflow-scrolling:touch;
+    transform:translateX(-100%); transition:transform .22s cubic-bezier(.22,.85,.32,1);
+    box-shadow:2px 0 22px rgba(0,0,0,.35);
+  }
+  body.drawer-open nav.tabs{transform:translateX(0);}
+  .drawer-head{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:16px 16px 14px; border-bottom:1px solid #2A3542; position:sticky; top:0; background:#161E27; z-index:2;
+  }
+  .drawer-head span{font-family:var(--mono); font-size:11px; letter-spacing:.08em; color:#8FA3B8; text-transform:uppercase;}
+  #btn-menu-cerrar{background:none; border:none; color:#B8C0CC; font-size:20px; line-height:1; cursor:pointer; width:32px; height:32px; border-radius:4px;}
+  #btn-menu-cerrar:hover{background:#2A3542; color:#fff;}
+  .drawer-group{display:flex; flex-direction:column; padding:10px 0 4px;}
+  .drawer-group + .drawer-group{border-top:1px solid #232D38;}
+  .drawer-group-title{font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:#6F8298; padding:6px 18px 6px;}
+  nav.tabs button{
+    background:transparent; border:none; color:#C9D2DC; padding:11px 18px; min-height:44px;
+    font-weight:600; font-size:13.5px; cursor:pointer; text-align:left; width:100%;
+    border-left:3px solid transparent; font-family:var(--sans);
+  }
+  nav.tabs button:hover{background:#1F2A35; color:#fff;}
+  nav.tabs button.active{color:#fff; background:#22303D; border-left-color:var(--lacre);}
   nav.tabs button.hidden-perm{display:none;}
+  nav.tabs .drawer-group.hidden-perm{display:none;}
+  .drawer-user{
+    margin-top:auto; padding:14px 18px 0; border-top:1px solid #2A3542; display:flex;
+    flex-direction:column; gap:8px; font-size:12px; color:#8FA3B8;
+  }
+  .drawer-user b{font-family:var(--mono); color:#fff; font-size:12.5px; word-break:break-all;}
+  .drawer-user .link-btn{align-self:flex-start; min-height:36px; color:#E9A47D;}
+
+  .grid-lateral{display:grid; grid-template-columns:340px 1fr; gap:14px; align-items:start;}
+  @media (max-width:900px){ .grid-lateral{grid-template-columns:1fr;} }
 
   .view{display:none; padding:14px;}
   .view.active{display:block;}
@@ -180,7 +226,9 @@
   th.th-ordenable .th-arrow{display:inline-block; width:10px; font-size:9px; opacity:.7;}
   th.th-ordenable.th-activo{color:var(--blue);}
   tfoot td{border-bottom:none; border-top:2px solid var(--line-strong); font-weight:700; background:#FAFBFC;}
-  .hist-wrap{max-height:420px; overflow-y:auto;}
+  .hist-wrap{max-height:420px; overflow:auto;}
+  .hist-wrap thead th{position:sticky; top:0; background:#fff; z-index:2;}
+  @media (max-width:900px){ .hist-wrap table{min-width:700px;} }
   .items-table input{width:100%; padding:4px 6px; font-size:11px; border:1px solid var(--line-strong); border-radius:3px; font-family:var(--mono);}
   .items-table input[readonly]{background:#EFEFEF;}
   .items-table td{padding:3px;}
@@ -350,7 +398,7 @@
   .mez-tile{position:absolute; cursor:pointer; transition:filter .1s;}
   .mez-tile:hover{filter:brightness(1.6);}
   .mez-tile.mez-tile-hover{filter:brightness(2.2);}
-  .mez-box{position:absolute; cursor:grab;}
+  .mez-box{position:absolute; cursor:grab; touch-action:none;}
   .mez-box.mez-box-dragging{cursor:grabbing; opacity:.85; z-index:9999 !important;}
   .mez-box .mez-face{position:absolute; left:0; top:0;}
   .mez-box .mez-label{
@@ -368,6 +416,28 @@
   .filters-grid{display:grid; grid-template-columns:repeat(6,1fr) auto; gap:10px; align-items:end;}
   @media (max-width:1200px){ .filters-grid{grid-template-columns:1fr 1fr;} }
 
+  /* ---- Tablas como tarjetas en móvil ---- */
+  @media (max-width:640px){
+    .hist-wrap:has(table.tabla-tarjetas){overflow:visible; max-height:none;}
+    table.tabla-tarjetas{min-width:0 !important; width:100%; border-collapse:separate; border-spacing:0 8px;}
+    table.tabla-tarjetas thead{display:none;}
+    table.tabla-tarjetas tbody tr{
+      display:block; background:#fff; border:1px solid var(--line-strong);
+      border-radius:8px; padding:6px 10px;
+    }
+    table.tabla-tarjetas tbody td{
+      display:flex; gap:10px; align-items:baseline; border:none; padding:4px 0;
+      font-size:12.5px; border-bottom:1px dotted var(--line);
+    }
+    table.tabla-tarjetas tbody td:last-child{border-bottom:none;}
+    table.tabla-tarjetas tbody td[data-col]::before{
+      content:attr(data-col); flex:0 0 104px; font-family:var(--sans); font-size:10px;
+      text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); line-height:1.5;
+    }
+    table.tabla-tarjetas tbody tr[id^="inv-det-"] td{display:block; overflow-x:auto;}
+    table.tabla-tarjetas tfoot td{display:flex; gap:10px;}
+  }
+
   /* ---- MÓVIL ---- */
   @media (max-width:640px){
     header{padding:10px 12px; gap:4px;}
@@ -381,8 +451,21 @@
     .panel{padding:12px;}
     #mov-grid, #diseno-grid{gap:8px;}
     .filters-grid{grid-template-columns:1fr;}
-    .slot{width:24px; height:24px;}
-    .nicho{width:62px;}
+    .slot{width:34px; height:34px; font-size:9px;}
+    .nicho{width:74px;}
+    #diseno-grid, #mov-grid{overflow-x:auto;}
+    .hist-wrap{max-height:none;}
+    .btn-sm{min-height:36px; padding:6px 10px; font-size:12px;}
+    .panel .field{max-width:100% !important;}
+    .panel .field[style*="width"]{width:auto !important;}
+    header{flex-wrap:nowrap;}
+    header h1{flex:1; min-width:0;}
+    header h1 span.tag{display:none;}
+    .subtabs button{min-height:38px;}
+    td{font-size:12px;}
+    nav.tabs{scrollbar-width:thin;}
+    nav.tabs::-webkit-scrollbar{display:block; height:3px;}
+    nav.tabs::-webkit-scrollbar-thumb{background:var(--lacre);}
   }
   #app-footer{
     display:flex; align-items:center; gap:12px; padding:12px 20px; background:var(--ink); color:#fff;
@@ -523,26 +606,47 @@
 
 <div id="app-shell" style="display:none;">
 <header>
+  <button id="btn-menu" aria-label="Abrir menú" aria-expanded="false"><span></span><span></span><span></span></button>
   <h1>CONTROL DE ALMACÉN <span class="tag">LAYOUT + MOVIMIENTOS</span></h1>
   <div style="display:flex; align-items:center; gap:18px;">
     <div class="status"><span class="dot" id="dot"></span><span id="status-text">Conectando…</span></div>
-    <div class="userbox"><b id="user-email-label"></b><button class="link-btn" id="btn-logout">Cerrar sesión</button></div>
   </div>
 </header>
+<div id="drawer-backdrop"></div>
 
-<nav class="tabs">
-  <button class="active" data-tab="diseno" id="tab-diseno">Diseño de Layout</button>
-  <button data-tab="mov" id="tab-mov">Movimientos</button>
-  <button data-tab="productos" id="tab-productos">Productos</button>
-  <button data-tab="inventario" id="tab-inventario">Inventario</button>
-  <button data-tab="pallets" id="tab-pallets">Pallets</button>
-  <button data-tab="rotulos" id="tab-rotulos">Rótulos PDF</button>
-  <button data-tab="retiros" id="tab-retiros">Retiros Campaña</button>
-  <button data-tab="campanas" id="tab-campanas">Campañas (PDF)</button>
-  <button data-tab="toma_inventario" id="tab-toma_inventario">Toma de Inventario</button>
-  <button data-tab="kardex" id="tab-kardex">Kardex</button>
-  <button data-tab="bitacora" id="tab-bitacora">Bitácora</button>
-  <button data-tab="usuarios" id="tab-usuarios">Usuarios</button>
+<nav class="tabs" id="drawer">
+  <div class="drawer-head">
+    <span>Menú</span>
+    <button id="btn-menu-cerrar" aria-label="Cerrar menú">×</button>
+  </div>
+  <div class="drawer-group">
+    <div class="drawer-group-title">Almacén</div>
+    <button class="active" data-tab="diseno" id="tab-diseno">Diseño de Layout</button>
+    <button data-tab="mov" id="tab-mov">Movimientos</button>
+    <button data-tab="pallets" id="tab-pallets">Pallets</button>
+  </div>
+  <div class="drawer-group">
+    <div class="drawer-group-title">Productos e inventario</div>
+    <button data-tab="productos" id="tab-productos">Productos</button>
+    <button data-tab="inventario" id="tab-inventario">Inventario</button>
+    <button data-tab="toma_inventario" id="tab-toma_inventario">Toma de Inventario</button>
+    <button data-tab="kardex" id="tab-kardex">Kardex</button>
+  </div>
+  <div class="drawer-group">
+    <div class="drawer-group-title">Campañas</div>
+    <button data-tab="retiros" id="tab-retiros">Retiros Campaña</button>
+    <button data-tab="campanas" id="tab-campanas">Campañas (PDF)</button>
+    <button data-tab="rotulos" id="tab-rotulos">Rótulos PDF</button>
+  </div>
+  <div class="drawer-group">
+    <div class="drawer-group-title">Administración</div>
+    <button data-tab="bitacora" id="tab-bitacora">Bitácora</button>
+    <button data-tab="usuarios" id="tab-usuarios">Usuarios</button>
+  </div>
+  <div class="drawer-user">
+    <b id="user-email-label"></b>
+    <button class="link-btn" id="btn-logout">Cerrar sesión</button>
+  </div>
 </nav>
 
 <!-- DISEÑO -->
@@ -690,7 +794,7 @@
 
 <!-- PRODUCTOS -->
 <div class="view" id="view-productos">
-  <div style="display:grid; grid-template-columns:340px 1fr; gap:14px;">
+  <div class="grid-lateral">
     <div class="panel hidden-perm" id="prod-form-panel">
       <h3>Registrar / actualizar producto</h3>
       <div class="field"><label>Código</label><input type="text" id="pr-codigo" class="upper" placeholder="COD." list="pr-codigo-datalist" autocomplete="off"><datalist id="pr-codigo-datalist"></datalist></div>
@@ -822,7 +926,7 @@
   </div>
 
   <div id="rotsub-panel-pallet">
-  <div style="display:grid; grid-template-columns:360px 1fr; gap:14px;">
+  <div class="grid-lateral">
     <div class="panel">
       <h3>Generar rótulos de pallet (PDF)</h3>
       <div class="field"><label>Empresa / encabezado (opcional)</label><input type="text" id="rot-empresa" class="upper" placeholder="EJ. CD VENEZUELA" value="CD VENEZUELA"></div>
@@ -856,7 +960,7 @@
   </div>
 
   <div id="rotsub-panel-campana" style="display:none;">
-  <div style="display:grid; grid-template-columns:360px 1fr; gap:14px;">
+  <div class="grid-lateral">
     <div class="panel">
       <h3>Generar rótulos de campaña (PDF)</h3>
       <div class="field"><label>Tienda</label><select id="rotc-tienda-select"><option value="">— Selecciona una tienda —</option></select></div>
@@ -1546,6 +1650,24 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+// Las pantallas de campañas/guías guardan sus lecturas en caché de memoria para
+// ahorrar lecturas de Firestore. Cualquier escritura por lotes puede dejar esa
+// caché obsoleta, así que se limpia al confirmar el batch.
+(function(){
+  const batchOriginal = db.batch.bind(db);
+  db.batch = function(){
+    const b = batchOriginal();
+    const commitOriginal = b.commit.bind(b);
+    b.commit = async function(){
+      const res = await commitOriginal();
+      try{
+        campRegCache = {}; guiaDetalleCache = {}; anGuiaPorCampanaCache = {};
+      }catch(e){}
+      return res;
+    };
+    return b;
+  };
+})();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
@@ -1699,7 +1821,11 @@ $('btn-logout').addEventListener('click', async ()=>{
 
 auth.onAuthStateChanged(async (user)=>{
   if(user){ await loadPermisos(user); resetInactivityTimer(); }
-  else{ if(inactivityTimer) clearTimeout(inactivityTimer); $('login-screen').style.display='flex'; $('app-shell').style.display='none'; }
+  else{
+    if(inactivityTimer) clearTimeout(inactivityTimer);
+    stopListeners();
+    $('login-screen').style.display='flex'; $('app-shell').style.display='none';
+  }
 });
 
 async function loadPermisos(user){
@@ -1715,10 +1841,14 @@ async function loadPermisos(user){
     }
   }
   currentPermisos = snap.data().permisos || {};
+  const tabGuardada = (location.hash || '').replace('#tab-','');
   currentUserEmail = email;
   currentUserAlias = snap.data().alias || email;
   $('user-email-label').textContent = currentUserAlias;
   applyPermisosUI();
+  // Restaura la pestaña de la URL si el usuario tiene permiso para verla.
+  const btnGuardada = tabGuardada ? $('tab-'+tabGuardada) : null;
+  if(btnGuardada && !btnGuardada.classList.contains('hidden-perm')) switchTab(tabGuardada);
   $('login-screen').style.display='none';
   $('app-shell').style.display='block';
   if(!listenersStarted){ listenersStarted = true; startListeners(); }
@@ -1746,6 +1876,11 @@ function applyPermisosUI(){
     const btn = $('tab-'+tab);
     if(btn) btn.classList.toggle('hidden-perm', !allowed);
   });
+  // Un grupo del menú sin secciones permitidas se oculta completo.
+  document.querySelectorAll('nav.tabs .drawer-group').forEach(g=>{
+    const visibles = [...g.querySelectorAll('button[data-tab]')].some(b=>!b.classList.contains('hidden-perm'));
+    g.classList.toggle('hidden-perm', !visibles);
+  });
   $('op-panel').classList.toggle('hidden-perm', !map.mov);
   $('prod-form-panel').classList.toggle('hidden-perm', !map.productos);
   $('fusion-panel').classList.toggle('hidden-perm', !(admin || !!p.eliminar));
@@ -1762,8 +1897,26 @@ function switchTab(name){
   $('tab-'+name).classList.add('active');
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   $('view-'+name).classList.add('active');
+  // La vista oculta no se repinta con cada snapshot: al abrirla se pinta lo pendiente.
+  if(typeof flushRendersPendientes === 'function') flushRendersPendientes(name);
+  try{ history.replaceState(null, '', '#tab-'+name); }catch(e){}
 }
 document.querySelectorAll('nav.tabs button').forEach(btn=> btn.addEventListener('click', ()=> switchTab(btn.dataset.tab)));
+
+/* -------------------- Menú lateral -------------------- */
+function abrirMenu(){
+  document.body.classList.add('drawer-open');
+  $('btn-menu').setAttribute('aria-expanded','true');
+}
+function cerrarMenu(){
+  document.body.classList.remove('drawer-open');
+  $('btn-menu').setAttribute('aria-expanded','false');
+}
+$('btn-menu').addEventListener('click', ()=> document.body.classList.contains('drawer-open') ? cerrarMenu() : abrirMenu());
+$('btn-menu-cerrar').addEventListener('click', cerrarMenu);
+$('drawer-backdrop').addEventListener('click', cerrarMenu);
+document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') cerrarMenu(); });
+document.querySelectorAll('nav.tabs button[data-tab]').forEach(btn=> btn.addEventListener('click', cerrarMenu));
 
 function setSubtab(name){
   ['crear','mover','transferir','retirar-campana'].forEach(n=>{
@@ -1841,20 +1994,45 @@ function tipoLabel(tipo){
 
 /* -------------------- Listeners -------------------- */
 let readyCount = 0;
-function checkReady(){ readyCount++; if(readyCount>=5){ $('dot').classList.add('live'); $('status-text').textContent='Sincronizado en vivo'; } }
+let datosListos = false;
+let listenerUnsubs = [];
+function checkReady(){
+  readyCount++;
+  if(readyCount>=5){
+    datosListos = true;
+    $('dot').classList.add('live'); $('status-text').textContent='Sincronizado en vivo';
+  }
+}
+// Aplica sólo los documentos que cambiaron en vez de reconstruir la colección
+// completa en cada snapshot.
+function aplicarCambios(snap, destino, mapId){
+  snap.docChanges().forEach(ch=>{
+    const clave = mapId ? mapId(ch.doc.id) : ch.doc.id;
+    if(ch.type==='removed') delete destino[clave];
+    else destino[clave] = ch.doc.data();
+  });
+}
+function stopListeners(){
+  listenerUnsubs.forEach(un=>{ try{ un(); }catch(e){} });
+  listenerUnsubs = [];
+  listenersStarted = false;
+  readyCount = 0; datosListos = false;
+  $('dot').classList.remove('live');
+  $('status-text').textContent = 'Desconectado';
+}
 function onErr(err){ $('status-text').textContent='Error de conexión'; $('dot').classList.remove('live'); console.error(err); }
 
 function startListeners(){
-  bloquesRef.onSnapshot(snap=>{ bloques={}; snap.forEach(d=>bloques[d.id]=d.data()); checkReady(); renderAll(); }, onErr);
-  nichosRef.onSnapshot(snap=>{ nichos={}; snap.forEach(d=>nichos[d.id]=d.data()); checkReady(); renderAll(); }, onErr);
-  posicionesRef.onSnapshot(snap=>{ posiciones={}; snap.forEach(d=>posiciones[d.id]=d.data()); checkReady(); renderAll(); }, onErr);
-  palletsRef.onSnapshot(snap=>{ pallets={}; snap.forEach(d=>pallets[d.id]=d.data()); checkReady(); renderAll(); }, onErr);
+  listenerUnsubs.push(bloquesRef.onSnapshot(snap=>{ aplicarCambios(snap, bloques); checkReady(); renderAll(); }, onErr));
+  listenerUnsubs.push(nichosRef.onSnapshot(snap=>{ aplicarCambios(snap, nichos); checkReady(); renderAll(); }, onErr));
+  listenerUnsubs.push(posicionesRef.onSnapshot(snap=>{ aplicarCambios(snap, posiciones); checkReady(); renderAll(); }, onErr));
+  listenerUnsubs.push(palletsRef.onSnapshot(snap=>{ aplicarCambios(snap, pallets); checkReady(); renderAll(); }, onErr));
   // Config del Mezzanine (tamaño de la grilla): reutiliza el mismo documento de
   // contadores/global (ya usado para nicho_index), en vez de una colección nueva,
   // para no depender de reglas de seguridad de Firestore que aún no contemplan una
   // colección nueva. No cuenta para checkReady() — es un detalle adicional del
   // layout, no una de las 5 colecciones núcleo que definen "sincronizado en vivo".
-  contadorRef.onSnapshot(snap=>{
+  listenerUnsubs.push(contadorRef.onSnapshot(snap=>{
     const d = snap.exists ? snap.data() : {};
     mezanineConfig = {
       filas: d.mezanine_filas || 6,
@@ -1862,14 +2040,14 @@ function startListeners(){
       niveles_max: d.mezanine_niveles_max || 4
     };
     renderMezanine();
-  }, onErr);
-  productosRef.onSnapshot(snap=>{ productos={}; snap.forEach(d=>productos[docIdACodigo(d.id)]=d.data()); checkReady(); renderProductosTabla(); renderInventario(); poblarProveedoresToma(); poblarDatalistsProductos(); }, onErr);
-  validadoresMaestroRef.onSnapshot(snap=>{
+  }, onErr));
+  listenerUnsubs.push(productosRef.onSnapshot(snap=>{ aplicarCambios(snap, productos, docIdACodigo); checkReady(); renderProductosTabla(); renderInventario(); poblarProveedoresToma(); poblarDatalistsProductos(); }, onErr));
+  listenerUnsubs.push(validadoresMaestroRef.onSnapshot(snap=>{
     validadoresMaestroCache = {};
     snap.forEach(d=> validadoresMaestroCache[d.id] = Object.assign({dni:d.id}, d.data()));
     renderValidadoresMaestroTabla();
-  }, onErr);
-  retirosCampanaRef.orderBy('timestamp','desc').limit(300).onSnapshot(snap=>{
+  }, onErr));
+  listenerUnsubs.push(retirosCampanaRef.orderBy('timestamp','desc').limit(300).onSnapshot(snap=>{
     const body = $('retiros-body');
     if(snap.empty){ body.innerHTML=''; $('retiros-empty').style.display='block'; return; }
     $('retiros-empty').style.display='none';
@@ -1878,25 +2056,42 @@ function startListeners(){
       const fecha = d.timestamp ? d.timestamp.toDate().toLocaleString('es-PE') : '…';
       return `<tr><td>${d.pallet_codigo||''}</td><td>${d.producto||''}</td><td>${d.descripcion||''}</td><td>${fmtMoney(d.costo)}</td><td>${d.cantidad}</td><td>${d.usuario||''}</td><td>${fecha}</td></tr>`;
     }).join('');
-  }, onErr);
+  }, onErr));
   cargarRegistrosCampana(true);
   cargarRegistrosGuias(true);
   cargarTomasInventario(true);
 }
 
+/* Render agrupado: varios snapshots seguidos producen UNA sola pasada (un frame),
+   y las vistas que no están visibles quedan marcadas como pendientes para
+   pintarse al abrir su pestaña. */
+const RENDERS_POR_VISTA = {
+  diseno: ()=>{ renderBloqueForms(); renderPreviewGrid(); },
+  mov: ()=>{
+    renderMovGrid(); renderMezanine(); applyFilters();
+    if(selectedPosId && posiciones[selectedPosId]){ renderDetalle(selectedPosId, posiciones[selectedPosId]); }
+  },
+  inventario: ()=>{ renderInventario(); },
+  pallets: ()=>{ renderPalletsTabla(); renderPalletDetalleTabla(); }
+};
+const rendersPendientes = new Set();
+function vistaVisible(v){ const el = $('view-'+v); return !!el && el.classList.contains('active'); }
+function renderVista(v){
+  const fn = RENDERS_POR_VISTA[v]; if(!fn) return;
+  if(vistaVisible(v)){ rendersPendientes.delete(v); fn(); }
+  else rendersPendientes.add(v);
+}
+function flushRendersPendientes(v){ if(rendersPendientes.has(v)) renderVista(v); }
+let renderPedido = null;
 function renderAll(){
-  renderBloqueForms();
-  renderPreviewGrid();
-  renderMovGrid();
-  renderMezanine();
+  if(renderPedido !== null) return;
+  renderPedido = requestAnimationFrame(()=>{ renderPedido = null; renderAllNow(); });
+}
+function renderAllNow(){
   renderFiltroBloques();
   renderSelects();
   renderResumen();
-  renderInventario();
-  renderPalletsTabla();
-  renderPalletDetalleTabla();
-  if(selectedPosId && posiciones[selectedPosId]){ renderDetalle(selectedPosId, posiciones[selectedPosId]); }
-  applyFilters();
+  Object.keys(RENDERS_POR_VISTA).forEach(renderVista);
 }
 
 /* -------------------- DISEÑO -------------------- */
@@ -2204,6 +2399,7 @@ function wireMezBoxInteraction(el){
     }
   }
   function onMouseMove(e){
+    if(e.cancelable) e.preventDefault();
     const dx = e.clientX-startX, dy = e.clientY-startY;
     if(!dragging && (Math.abs(dx)>5 || Math.abs(dy)>5)){ dragging = true; el.classList.add('mez-box-dragging'); }
     if(dragging){
@@ -2214,8 +2410,9 @@ function wireMezBoxInteraction(el){
     }
   }
   function onMouseUp(){
-    window.removeEventListener('mousemove', onMouseMove);
-    window.removeEventListener('mouseup', onMouseUp);
+    window.removeEventListener('pointermove', onMouseMove);
+    window.removeEventListener('pointerup', onMouseUp);
+    window.removeEventListener('pointercancel', onMouseUp);
     el.classList.remove('mez-box-dragging');
     document.querySelectorAll('.mez-tile-hover').forEach(t=>t.classList.remove('mez-tile-hover'));
     if(dragging && moved){
@@ -2228,14 +2425,15 @@ function wireMezBoxInteraction(el){
     }
     dragging = false; moved = false;
   }
-  el.addEventListener('mousedown', (e)=>{
-    if(e.button !== 0) return;
+  el.addEventListener('pointerdown', (e)=>{
+    if(e.pointerType === 'mouse' && e.button !== 0) return;
     e.preventDefault();
     const p = posiciones[id]; nivelOriginal = (p && p.nivel_apilado) || 1;
     startX = e.clientX; startY = e.clientY;
     startLeft = parseFloat(el.style.left); startTop = parseFloat(el.style.top);
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+    window.addEventListener('pointermove', onMouseMove, {passive:false});
+    window.addEventListener('pointerup', onMouseUp);
+    window.addEventListener('pointercancel', onMouseUp);
   });
   el.addEventListener('mouseenter', (e)=> showMezTooltip(e,id));
   el.addEventListener('mouseleave', hideTooltip);
@@ -2975,6 +3173,7 @@ function computeInventario(){
   });
   return inv;
 }
+let invDetalleCache = {};
 function renderInventario(){
   const body = $('inv-body'); if(!body) return;
   const inv = computeInventario();
@@ -2990,20 +3189,33 @@ function renderInventario(){
   let totalValorizado = 0;
   entries.forEach(([,data])=>{ totalValorizado += data.costoTotal; });
   $('inv-total-valorizado').innerHTML = `<b>S/ ${fmtMoneyComma(totalValorizado)}</b>`;
-  if(entries.length===0){ body.innerHTML=''; $('inv-empty').style.display='block'; $('inv-empty').textContent = (buscar||buscarProveedor) ? 'Sin resultados para esa búsqueda.' : 'Sin inventario todavía.'; return; }
+  if(entries.length===0){
+    body.innerHTML=''; $('inv-empty').style.display='block';
+    $('inv-empty').textContent = (buscar||buscarProveedor)
+      ? 'Sin resultados para esa búsqueda.'
+      : (datosListos ? 'Sin inventario todavía.' : 'Cargando inventario…');
+    return;
+  }
+  invDetalleCache = {};
   $('inv-empty').style.display='none';
+  // La subtabla de pallets de cada producto se construye al pulsar "Ver detalle";
+  // antes se generaba para todos los productos en cada render, aunque estuviera oculta.
   body.innerHTML = entries.map(([codigo,data])=>{
     const detId = `inv-det-${codigo}`;
-    const detalleFilas = data.detalle.map(d=>`<tr><td>${d.pallet}</td><td>${d.posicion||'—'}</td><td>${d.cantidad}</td></tr>`).join('');
+    invDetalleCache[detId] = data.detalle;
     return `<tr><td>${codigo}</td><td>${data.descripcion||''}</td><td>${data.proveedor||''}</td><td>${data.total}</td><td>${fmtMoney(data.costo)}</td><td>${fmtMoney(data.costoTotal)}</td><td><button class="btn btn-ghost btn-sm" data-toggle-inv="${detId}">Ver detalle</button></td></tr>
-    <tr id="${detId}" style="display:none;"><td colspan="7">
-      <table style="margin-top:4px;"><thead><tr><th>Pallet</th><th>Posición</th><th>Cantidad</th></tr></thead><tbody>${detalleFilas}</tbody></table>
-    </td></tr>`;
+    <tr id="${detId}" style="display:none;"><td colspan="7"></td></tr>`;
   }).join('');
   body.querySelectorAll('[data-toggle-inv]').forEach(btn=>{
     btn.onclick = () => {
-      const row = document.getElementById(btn.dataset.toggleInv);
+      const detId = btn.dataset.toggleInv;
+      const row = document.getElementById(detId);
       const showing = row.style.display !== 'none';
+      if(!showing && !row.dataset.montado){
+        const filas = (invDetalleCache[detId]||[]).map(d=>`<tr><td>${d.pallet}</td><td>${d.posicion||'—'}</td><td>${d.cantidad}</td></tr>`).join('');
+        row.firstElementChild.innerHTML = `<table style="margin-top:4px;"><thead><tr><th>Pallet</th><th>Posición</th><th>Cantidad</th></tr></thead><tbody>${filas}</tbody></table>`;
+        row.dataset.montado = '1';
+      }
       row.style.display = showing ? 'none' : 'table-row';
       btn.textContent = showing ? 'Ver detalle' : 'Ocultar detalle';
     };
@@ -8617,19 +8829,49 @@ function setupCollapsiblePanels(){
 }
 setupCollapsiblePanels();
 
+/* -------------------- Tablas como tarjetas en móvil --------------------
+   Copia el título de cada columna en la celda (data-col) para que en pantallas
+   pequeñas cada fila pueda leerse como una tarjeta con etiquetas. Se re-etiqueta
+   sola cuando el cuerpo de la tabla se vuelve a pintar. */
+const TABLAS_TARJETA = ['prod-body','inv-body','pallet-detalle-body','kx-body','camp-reg-body','bit-body'];
+function etiquetarCeldas(tbody){
+  const tabla = tbody.closest('table'); if(!tabla) return;
+  const titulos = [...tabla.querySelectorAll('thead th')].map(th=>th.textContent.trim());
+  tbody.querySelectorAll('tr').forEach(tr=>{
+    const celdas = tr.children;
+    if(celdas.length !== titulos.length) return;
+    for(let i=0;i<celdas.length;i++){
+      if(titulos[i]) celdas[i].setAttribute('data-col', titulos[i]);
+      else celdas[i].removeAttribute('data-col');
+    }
+  });
+}
+TABLAS_TARJETA.forEach(id=>{
+  const tbody = document.getElementById(id);
+  if(!tbody){ console.warn('[tarjetas] no existe #'+id); return; }
+  const tabla = tbody.closest('table');
+  if(tabla) tabla.classList.add('tabla-tarjetas');
+  etiquetarCeldas(tbody);
+  new MutationObserver(()=> etiquetarCeldas(tbody)).observe(tbody, {childList:true});
+});
+
 /* -------------------- Cierre de sesión por inactividad -------------------- */
 const INACTIVITY_LIMIT_MS = 20 * 60 * 1000;
 let inactivityTimer = null;
-function resetInactivityTimer(){
-  if(inactivityTimer) clearTimeout(inactivityTimer);
+let ultimaActividad = Date.now();
+function resetInactivityTimer(){ ultimaActividad = Date.now(); }
+// Antes cada movimiento del ratón reprogramaba un setTimeout; ahora sólo se
+// anota la hora y un único intervalo comprueba el límite.
+if(inactivityTimer) clearInterval(inactivityTimer);
+inactivityTimer = setInterval(async ()=>{
   if(!auth.currentUser) return;
-  inactivityTimer = setTimeout(async ()=>{
-    try{ await logAccion('sesion_cerrada_inactividad', {detalle:'Cierre de sesión automático por 20 minutos de inactividad'}); }
-    catch(e){ console.error(e); }
-    await auth.signOut();
-    showToast('Tu sesión se cerró por 20 minutos de inactividad.','err');
-  }, INACTIVITY_LIMIT_MS);
-}
+  if(Date.now() - ultimaActividad < INACTIVITY_LIMIT_MS) return;
+  ultimaActividad = Date.now();
+  try{ await logAccion('sesion_cerrada_inactividad', {detalle:'Cierre de sesión automático por 20 minutos de inactividad'}); }
+  catch(e){ console.error(e); }
+  await auth.signOut();
+  showToast('Tu sesión se cerró por 20 minutos de inactividad.','err');
+}, 30000);
 ['mousemove','keydown','click','scroll','touchstart'].forEach(evt=>{
   document.addEventListener(evt, resetInactivityTimer, {passive:true});
 });
