@@ -87,6 +87,12 @@
   .drawer-user b{font-family:var(--mono); color:#fff; font-size:12.5px; word-break:break-all;}
   .drawer-user .link-btn{align-self:flex-start; min-height:36px; color:#E9A47D;}
 
+  .pager{
+    display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap;
+    padding:10px 0 2px; font-family:var(--mono); font-size:11px; color:var(--ink-soft);
+  }
+  .pager button[disabled]{opacity:.4; cursor:default;}
+
   .grid-lateral{display:grid; grid-template-columns:340px 1fr; gap:14px; align-items:start;}
   @media (max-width:900px){ .grid-lateral{grid-template-columns:1fr;} }
 
@@ -419,7 +425,9 @@
   /* ---- Tablas como tarjetas en móvil ---- */
   @media (max-width:640px){
     .hist-wrap:has(table.tabla-tarjetas){overflow:visible; max-height:none;}
-    table.tabla-tarjetas{min-width:0 !important; width:100%; border-collapse:separate; border-spacing:0 8px;}
+    table.tabla-tarjetas, table.tabla-tarjetas tbody{display:block; width:100%;}
+    table.tabla-tarjetas{min-width:0 !important; border-collapse:separate; border-spacing:0;}
+    table.tabla-tarjetas tbody tr + tr{margin-top:8px;}
     table.tabla-tarjetas thead{display:none;}
     table.tabla-tarjetas tbody tr{
       display:block; background:#fff; border:1px solid var(--line-strong);
@@ -436,14 +444,19 @@
     }
     table.tabla-tarjetas tbody tr[id^="inv-det-"] td{display:block; overflow-x:auto;}
     table.tabla-tarjetas tfoot td{display:flex; gap:10px;}
+    table.tabla-compacta{min-width:520px !important;}
+    table.tabla-compacta th{font-size:9px; padding:4px 5px;}
+    table.tabla-compacta td{font-size:10.5px; padding:4px 5px;}
+    table.tabla-compacta .btn-sm{min-height:28px; padding:3px 6px; font-size:10px;}
   }
 
   /* ---- MÓVIL ---- */
   @media (max-width:640px){
-    header{padding:10px 12px; gap:4px;}
-    header h1{font-size:12px; gap:6px;}
+    header{padding:10px 12px; gap:10px; flex-wrap:nowrap;}
+    header h1{font-size:12px; gap:6px; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; flex:1;}
     header h1 .tag{display:none;}
-    header > div{width:100%; justify-content:space-between; flex-wrap:wrap; gap:6px;}
+    header > div{width:auto; flex:0 0 auto; justify-content:flex-end; flex-wrap:nowrap; gap:6px;}
+    .status{white-space:nowrap;}
     .status{font-size:10px;}
     .userbox{font-size:10px; gap:6px;}
     .userbox b{max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
@@ -453,7 +466,10 @@
     .filters-grid{grid-template-columns:1fr;}
     .slot{width:34px; height:34px; font-size:9px;}
     .nicho{width:74px;}
-    #diseno-grid, #mov-grid{overflow-x:auto;}
+    .view{overflow-x:hidden; padding-bottom:26px;}
+    #diseno-grid, #mov-grid{overflow:visible;}
+    #diseno-grid > *, #mov-grid > *{min-width:0;}
+    .panel{overflow-x:auto; -webkit-overflow-scrolling:touch;}
     .hist-wrap{max-height:none;}
     .btn-sm{min-height:36px; padding:6px 10px; font-size:12px;}
     .panel .field{max-width:100% !important;}
@@ -859,7 +875,7 @@
       <div class="field" style="max-width:260px;"><label>Proveedor (nombre que contenga)</label><input type="text" id="inv-buscar-proveedor" class="upper" placeholder="EJ. DISTRIBUIDORA XYZ"></div>
     </div>
     <div class="hist-wrap" style="max-height:600px;">
-      <table><thead><tr><th>Código</th><th>Descripción</th><th>Proveedor</th><th>Cantidad total</th><th>Costo unitario</th><th>Costo total</th><th></th></tr></thead><tbody id="inv-body"></tbody></table>
+      <table class="tabla-compacta"><thead><tr><th>Código</th><th>Descripción</th><th>Proveedor</th><th>Cantidad total</th><th>Costo unitario</th><th>Costo total</th><th></th></tr></thead><tbody id="inv-body"></tbody></table>
       <div class="empty-state" id="inv-empty">Sin inventario todavía.</div>
     </div>
     <div class="total-line" style="font-size:15px; margin-top:12px;"><span><b>TOTAL VALORIZADO DEL ALMACÉN</b></span><span id="inv-total-valorizado"><b>0.00</b></span></div>
@@ -8833,7 +8849,14 @@ setupCollapsiblePanels();
    Copia el título de cada columna en la celda (data-col) para que en pantallas
    pequeñas cada fila pueda leerse como una tarjeta con etiquetas. Se re-etiqueta
    sola cuando el cuerpo de la tabla se vuelve a pintar. */
-const TABLAS_TARJETA = ['prod-body','inv-body','pallet-detalle-body','kx-body','camp-reg-body','bit-body'];
+const TABLAS_MOVIL = [
+  {id:'prod-body', tarjetas:true, porPagina:10},
+  {id:'inv-body', tarjetas:false, porPagina:30},
+  {id:'pallet-detalle-body', tarjetas:true},
+  {id:'kx-body', tarjetas:true},
+  {id:'camp-reg-body', tarjetas:true},
+  {id:'bit-body', tarjetas:true}
+];
 function etiquetarCeldas(tbody){
   const tabla = tbody.closest('table'); if(!tabla) return;
   const titulos = [...tabla.querySelectorAll('thead th')].map(th=>th.textContent.trim());
@@ -8846,13 +8869,60 @@ function etiquetarCeldas(tbody){
     }
   });
 }
-TABLAS_TARJETA.forEach(id=>{
-  const tbody = document.getElementById(id);
-  if(!tbody){ console.warn('[tarjetas] no existe #'+id); return; }
+
+/* Paginación sobre las filas ya pintadas: agrupa cada fila con su fila de
+   detalle (Inventario) y muestra sólo el tramo de la página actual. */
+const PAGINAS = {};
+function paginarTabla(tbodyId, porPagina){
+  const tbody = document.getElementById(tbodyId); if(!tbody) return;
+  const tabla = tbody.closest('table'); if(!tabla) return;
+  let pager = document.getElementById('pager-'+tbodyId);
+  if(!pager){
+    pager = document.createElement('div');
+    pager.id = 'pager-'+tbodyId;
+    pager.className = 'pager';
+    (tabla.closest('.hist-wrap') || tabla).insertAdjacentElement('afterend', pager);
+  }
+  const est = PAGINAS[tbodyId] || (PAGINAS[tbodyId] = {pagina:1});
+  const grupos = [];
+  [...tbody.children].forEach(tr=>{
+    if(/^inv-det-/.test(tr.id||'') && grupos.length) grupos[grupos.length-1].push(tr);
+    else grupos.push([tr]);
+  });
+  const paginas = Math.max(1, Math.ceil(grupos.length/porPagina));
+  if(est.pagina > paginas) est.pagina = paginas;
+  if(est.pagina < 1) est.pagina = 1;
+  const desde = (est.pagina-1)*porPagina;
+  grupos.forEach((g,i)=>{
+    const visible = i>=desde && i<desde+porPagina;
+    if(visible){ g[0].style.display=''; }
+    else { g.forEach(tr=> tr.style.display='none'); }
+  });
+  if(grupos.length <= porPagina){ pager.innerHTML=''; pager.style.display='none'; return; }
+  pager.style.display='flex';
+  pager.innerHTML =
+    '<button class="btn btn-ghost btn-sm" data-p="prev"' + (est.pagina===1?' disabled':'') + '>&lsaquo; Anterior</button>' +
+    '<span>' + (desde+1) + '–' + Math.min(desde+porPagina, grupos.length) + ' de ' + grupos.length + '</span>' +
+    '<button class="btn btn-ghost btn-sm" data-p="next"' + (est.pagina===paginas?' disabled':'') + '>Siguiente &rsaquo;</button>';
+  pager.querySelector('[data-p="prev"]').onclick = ()=>{ est.pagina--; paginarTabla(tbodyId, porPagina); };
+  pager.querySelector('[data-p="next"]').onclick = ()=>{ est.pagina++; paginarTabla(tbodyId, porPagina); };
+}
+
+TABLAS_MOVIL.forEach(cfg=>{
+  const tbody = document.getElementById(cfg.id);
+  if(!tbody){ console.warn('[móvil] no existe #'+cfg.id); return; }
   const tabla = tbody.closest('table');
-  if(tabla) tabla.classList.add('tabla-tarjetas');
-  etiquetarCeldas(tbody);
-  new MutationObserver(()=> etiquetarCeldas(tbody)).observe(tbody, {childList:true});
+  if(tabla && cfg.tarjetas) tabla.classList.add('tabla-tarjetas');
+  const refrescar = (reiniciar)=>{
+    if(cfg.tarjetas) etiquetarCeldas(tbody);
+    if(cfg.porPagina){
+      if(reiniciar && PAGINAS[cfg.id]) PAGINAS[cfg.id].pagina = 1;
+      paginarTabla(cfg.id, cfg.porPagina);
+    }
+  };
+  refrescar(true);
+  // El cuerpo se repinta completo en cada render: al cambiar, se vuelve a la página 1.
+  new MutationObserver(()=> refrescar(true)).observe(tbody, {childList:true});
 });
 
 /* -------------------- Cierre de sesión por inactividad -------------------- */
