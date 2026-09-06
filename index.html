@@ -95,6 +95,10 @@
 
   .grid-lateral{display:grid; grid-template-columns:340px 1fr; gap:14px; align-items:start;}
   @media (max-width:900px){ .grid-lateral{grid-template-columns:1fr;} }
+  .grid-mitades{display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start;}
+  @media (max-width:1000px){ .grid-mitades{grid-template-columns:1fr;} }
+  .grid-doble{display:grid; grid-template-columns:1fr 1.3fr; gap:14px; align-items:start;}
+  @media (max-width:1000px){ .grid-doble{grid-template-columns:1fr;} }
 
   .view{display:none; padding:14px;}
   .view.active{display:block;}
@@ -884,7 +888,7 @@
 
 <!-- PALLETS -->
 <div class="view" id="view-pallets">
-  <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start;">
+  <div class="grid-mitades">
     <div class="panel">
       <h3>Pallets en el almacén</h3>
       <div class="field" style="margin:0 0 10px; max-width:260px;">
@@ -1357,7 +1361,7 @@
   </div>
 
   <div id="timain-panel-ejecucion">
-  <div style="display:grid; grid-template-columns: 1fr 1.3fr; gap:14px; align-items:start;">
+  <div class="grid-doble">
 
     <div>
       <div class="panel" style="margin-bottom:14px;">
@@ -1435,7 +1439,7 @@
         </div>
         <p class="hint" style="margin-bottom:8px;">Clic en una fila para ver/registrar su conteo y su PDF a la derecha. Clic en una cabecera para ordenar.</p>
         <div class="hist-wrap" style="max-height:480px;">
-          <table><thead id="ti-reg-thead"><tr>
+          <table class="tabla-compacta"><thead id="ti-reg-thead"><tr>
             <th class="th-ordenable" data-key="correlativo">Correlativo</th>
             <th class="th-ordenable" data-key="fecha">Fecha</th>
             <th class="th-ordenable" data-key="cantidad_generada">Pos.</th>
@@ -1536,7 +1540,7 @@
   </div>
 
   <div id="timain-panel-resultados" style="display:none;">
-  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; align-items:start;">
+  <div class="grid-mitades">
     <div class="panel">
       <h3>Dashboard de resultados</h3>
       <p class="hint" style="margin-bottom:10px;">Solo las tomas finalizadas generan observaciones. Filtra por fecha y por si les faltan observaciones pendientes por resolver.</p>
@@ -2042,7 +2046,7 @@ function startListeners(){
   listenerUnsubs.push(bloquesRef.onSnapshot(snap=>{ aplicarCambios(snap, bloques); checkReady(); renderAll(); }, onErr));
   listenerUnsubs.push(nichosRef.onSnapshot(snap=>{ aplicarCambios(snap, nichos); checkReady(); renderAll(); }, onErr));
   listenerUnsubs.push(posicionesRef.onSnapshot(snap=>{ aplicarCambios(snap, posiciones); checkReady(); renderAll(); }, onErr));
-  listenerUnsubs.push(palletsRef.onSnapshot(snap=>{ aplicarCambios(snap, pallets); checkReady(); renderAll(); }, onErr));
+  listenerUnsubs.push(palletsRef.onSnapshot(snap=>{ aplicarCambios(snap, pallets); invalidarInventario(); checkReady(); renderAll(); }, onErr));
   // Config del Mezzanine (tamaño de la grilla): reutiliza el mismo documento de
   // contadores/global (ya usado para nicho_index), en vez de una colección nueva,
   // para no depender de reglas de seguridad de Firestore que aún no contemplan una
@@ -2057,7 +2061,7 @@ function startListeners(){
     };
     renderMezanine();
   }, onErr));
-  listenerUnsubs.push(productosRef.onSnapshot(snap=>{ aplicarCambios(snap, productos, docIdACodigo); checkReady(); renderProductosTabla(); renderInventario(); poblarProveedoresToma(); poblarDatalistsProductos(); }, onErr));
+  listenerUnsubs.push(productosRef.onSnapshot(snap=>{ aplicarCambios(snap, productos, docIdACodigo); invalidarInventario(); checkReady(); renderProductosTabla(); renderInventario(); poblarProveedoresToma(); poblarDatalistsProductos(); }, onErr));
   listenerUnsubs.push(validadoresMaestroRef.onSnapshot(snap=>{
     validadoresMaestroCache = {};
     snap.forEach(d=> validadoresMaestroCache[d.id] = Object.assign({dni:d.id}, d.data()));
@@ -3170,7 +3174,12 @@ $('btn-transferir').addEventListener('click', async ()=>{
 });
 
 /* -------------------- Inventario acumulado -------------------- */
+// El acumulado se recalcula sólo cuando cambian pallets o productos; antes se
+// recorría todo el almacén en cada render (incluido cada cambio de página).
+let invCache = null;
+function invalidarInventario(){ invCache = null; }
 function computeInventario(){
+  if(invCache) return invCache;
   const inv = {};
   Object.entries(pallets).forEach(([codigoPallet, p])=>{
     (p.items||[]).forEach(it=>{
@@ -3187,6 +3196,7 @@ function computeInventario(){
     inv[codigo].proveedor = prod ? (prod.proveedor || '') : '';
     if(prod && prod.descripcion) inv[codigo].descripcion = prod.descripcion;
   });
+  invCache = inv;
   return inv;
 }
 let invDetalleCache = {};
@@ -8833,17 +8843,30 @@ $('res-obs-body').addEventListener('click', async (ev)=>{
 });
 
 /* -------------------- Paneles colapsables -------------------- */
+const ES_MOVIL = ()=> window.matchMedia('(max-width:640px)').matches;
+function clavePanel(h3){
+  const panel = h3.parentElement;
+  return 'panel-abierto:' + (panel.id || (h3.textContent||'').trim().slice(0,48));
+}
 function setupCollapsiblePanels(){
   document.querySelectorAll('.panel > h3').forEach(h3=>{
     if(h3.querySelector('.collapse-toggle')) return;
+    const panel = h3.parentElement;
     const btn = document.createElement('button');
-    btn.type = 'button'; btn.className = 'collapse-toggle'; btn.textContent = '▾';
+    btn.type = 'button'; btn.className = 'collapse-toggle';
     btn.title = 'Ocultar/mostrar sección';
     h3.appendChild(btn);
+    // En móvil todas las secciones arrancan comprimidas; se recuerda lo que abras.
+    let guardado = null;
+    try{ guardado = localStorage.getItem(clavePanel(h3)); }catch(e){}
+    const abierto = guardado ? guardado === '1' : !ES_MOVIL();
+    panel.classList.toggle('collapsed', !abierto);
+    btn.textContent = abierto ? '▾' : '▸';
     btn.addEventListener('click', ()=>{
-      const panel = h3.parentElement;
       panel.classList.toggle('collapsed');
-      btn.textContent = panel.classList.contains('collapsed') ? '▸' : '▾';
+      const ahoraAbierto = !panel.classList.contains('collapsed');
+      btn.textContent = ahoraAbierto ? '▾' : '▸';
+      try{ localStorage.setItem(clavePanel(h3), ahoraAbierto ? '1' : '0'); }catch(e){}
     });
   });
 }
@@ -8859,7 +8882,9 @@ const TABLAS_MOVIL = [
   {id:'pallet-detalle-body', tarjetas:true},
   {id:'kx-body', tarjetas:true},
   {id:'camp-reg-body', tarjetas:true},
-  {id:'bit-body', tarjetas:true}
+  {id:'bit-body', tarjetas:true},
+  {id:'ti-preview-body', tarjetas:true},
+  {id:'ti-conteo-body', tarjetas:true}
 ];
 function etiquetarCeldas(tbody){
   const tabla = tbody.closest('table'); if(!tabla) return;
