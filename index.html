@@ -424,7 +424,7 @@
 
   /* ---- Tablas como tarjetas en móvil ---- */
   @media (max-width:640px){
-    .hist-wrap:has(table.tabla-tarjetas){overflow:visible; max-height:none;}
+    .hist-wrap-tarjetas{overflow:visible !important; max-height:none !important;}
     table.tabla-tarjetas, table.tabla-tarjetas tbody{display:block; width:100%;}
     table.tabla-tarjetas{min-width:0 !important; border-collapse:separate; border-spacing:0;}
     table.tabla-tarjetas tbody tr + tr{margin-top:8px;}
@@ -3216,7 +3216,8 @@ function renderInventario(){
   $('inv-empty').style.display='none';
   // La subtabla de pallets de cada producto se construye al pulsar "Ver detalle";
   // antes se generaba para todos los productos en cada render, aunque estuviera oculta.
-  body.innerHTML = entries.map(([codigo,data])=>{
+  const entriesPagina = tramoPaginado('inv-body', entries, 30, renderInventario);
+  body.innerHTML = entriesPagina.map(([codigo,data])=>{
     const detId = `inv-det-${codigo}`;
     invDetalleCache[detId] = data.detalle;
     return `<tr><td>${codigo}</td><td>${data.descripcion||''}</td><td>${data.proveedor||''}</td><td>${data.total}</td><td>${fmtMoney(data.costo)}</td><td>${fmtMoney(data.costoTotal)}</td><td><button class="btn btn-ghost btn-sm" data-toggle-inv="${detId}">Ver detalle</button></td></tr>
@@ -3237,8 +3238,9 @@ function renderInventario(){
     };
   });
 }
-$('inv-buscar').addEventListener('input', renderInventario);
-$('inv-buscar-proveedor').addEventListener('input', renderInventario);
+function reiniciarPaginaInventario(){ fijarPagina('inv-body', 1); renderInventario(); }
+$('inv-buscar').addEventListener('input', reiniciarPaginaInventario);
+$('inv-buscar-proveedor').addEventListener('input', reiniciarPaginaInventario);
 $('btn-exportar-inventario').addEventListener('click', ()=>{
   const inv = computeInventario();
   const entries = Object.entries(inv).sort((a,b)=>a[0].localeCompare(b[0]));
@@ -3601,16 +3603,18 @@ function renderProductosTabla(){
   if(!body) return;
   if(entries.length===0){ body.innerHTML=''; $('prod-empty').style.display='block'; $('prod-empty').textContent = (buscar||buscarProveedor) ? 'Sin resultados para esa búsqueda.' : 'Sin productos registrados aún.'; return; }
   $('prod-empty').style.display='none';
-  body.innerHTML = entries.map(([codigo,p])=>{
+  const entriesPagina = tramoPaginado('prod-body', entries, 10, renderProductosTabla);
+  body.innerHTML = entriesPagina.map(([codigo,p])=>{
     const fecha = p.creado_en ? p.creado_en.toDate().toLocaleString('es-PE') : '—';
     const img = p.imagen_url
-      ? `<img src="${p.imagen_url}" alt="" style="width:42px; height:42px; object-fit:cover; border-radius:5px; border:1px solid var(--line-strong);">`
+      ? `<img src="${p.imagen_url}" alt="" loading="lazy" decoding="async" style="width:42px; height:42px; object-fit:cover; border-radius:5px; border:1px solid var(--line-strong);">`
       : `<div style="width:42px; height:42px; border-radius:5px; border:1px dashed var(--line-strong); display:flex; align-items:center; justify-content:center; font-size:9px; color:var(--ink-soft);">S/I</div>`;
     return `<tr><td>${img}</td><td>${codigo}</td><td>${p.descripcion||''}</td><td>${fmtMoney(p.costo)}</td><td>${p.proveedor||''}</td><td>${p.empaque1 ?? ''}</td><td>${p.empaque2 ?? ''}</td><td>${fecha}</td><td>${p.creado_por||''}</td></tr>`;
   }).join('');
 }
-$('prod-buscar').addEventListener('input', renderProductosTabla);
-$('prod-buscar-proveedor').addEventListener('input', renderProductosTabla);
+function reiniciarPaginaProductos(){ fijarPagina('prod-body', 1); renderProductosTabla(); }
+$('prod-buscar').addEventListener('input', reiniciarPaginaProductos);
+$('prod-buscar-proveedor').addEventListener('input', reiniciarPaginaProductos);
 
 /* -------------------- Recortador cuadrado de imágenes -------------------- */
 // Modal reutilizable: recibe un File de imagen y devuelve una Promise que resuelve
@@ -8870,59 +8874,55 @@ function etiquetarCeldas(tbody){
   });
 }
 
-/* Paginación sobre las filas ya pintadas: agrupa cada fila con su fila de
-   detalle (Inventario) y muestra sólo el tramo de la página actual. */
+/* Paginación: el render sólo construye las filas de la página actual, así que
+   no se pintan cientos de filas (ni se piden cientos de imágenes) de golpe. */
 const PAGINAS = {};
-function paginarTabla(tbodyId, porPagina){
-  const tbody = document.getElementById(tbodyId); if(!tbody) return;
-  const tabla = tbody.closest('table'); if(!tabla) return;
-  let pager = document.getElementById('pager-'+tbodyId);
-  if(!pager){
-    pager = document.createElement('div');
-    pager.id = 'pager-'+tbodyId;
-    pager.className = 'pager';
-    (tabla.closest('.hist-wrap') || tabla).insertAdjacentElement('afterend', pager);
+function paginaActual(id){ return PAGINAS[id] && PAGINAS[id].pagina ? PAGINAS[id].pagina : 1; }
+function fijarPagina(id, n){ (PAGINAS[id] = PAGINAS[id] || {}).pagina = n; }
+// Devuelve el tramo visible y dibuja la barra de páginas bajo la tabla.
+function tramoPaginado(tbodyId, entries, porPagina, repintar){
+  const paginas = Math.max(1, Math.ceil(entries.length/porPagina));
+  let pagina = Math.min(Math.max(1, paginaActual(tbodyId)), paginas);
+  fijarPagina(tbodyId, pagina);
+  const desde = (pagina-1)*porPagina;
+  const tbody = document.getElementById(tbodyId);
+  const tabla = tbody ? tbody.closest('table') : null;
+  if(tabla){
+    let pager = document.getElementById('pager-'+tbodyId);
+    if(!pager){
+      pager = document.createElement('div');
+      pager.id = 'pager-'+tbodyId;
+      pager.className = 'pager';
+      (tabla.closest('.hist-wrap') || tabla).insertAdjacentElement('afterend', pager);
+    }
+    if(entries.length <= porPagina){ pager.innerHTML=''; pager.style.display='none'; }
+    else{
+      pager.style.display='flex';
+      pager.innerHTML =
+        '<button class="btn btn-ghost btn-sm" data-p="prev"' + (pagina===1?' disabled':'') + '>&lsaquo; Anterior</button>' +
+        '<span>' + (desde+1) + '\u2013' + Math.min(desde+porPagina, entries.length) + ' de ' + entries.length + '</span>' +
+        '<button class="btn btn-ghost btn-sm" data-p="next"' + (pagina===paginas?' disabled':'') + '>Siguiente &rsaquo;</button>';
+      pager.querySelector('[data-p="prev"]').onclick = ()=>{ fijarPagina(tbodyId, pagina-1); repintar(); };
+      pager.querySelector('[data-p="next"]').onclick = ()=>{ fijarPagina(tbodyId, pagina+1); repintar(); };
+    }
   }
-  const est = PAGINAS[tbodyId] || (PAGINAS[tbodyId] = {pagina:1});
-  const grupos = [];
-  [...tbody.children].forEach(tr=>{
-    if(/^inv-det-/.test(tr.id||'') && grupos.length) grupos[grupos.length-1].push(tr);
-    else grupos.push([tr]);
-  });
-  const paginas = Math.max(1, Math.ceil(grupos.length/porPagina));
-  if(est.pagina > paginas) est.pagina = paginas;
-  if(est.pagina < 1) est.pagina = 1;
-  const desde = (est.pagina-1)*porPagina;
-  grupos.forEach((g,i)=>{
-    const visible = i>=desde && i<desde+porPagina;
-    if(visible){ g[0].style.display=''; }
-    else { g.forEach(tr=> tr.style.display='none'); }
-  });
-  if(grupos.length <= porPagina){ pager.innerHTML=''; pager.style.display='none'; return; }
-  pager.style.display='flex';
-  pager.innerHTML =
-    '<button class="btn btn-ghost btn-sm" data-p="prev"' + (est.pagina===1?' disabled':'') + '>&lsaquo; Anterior</button>' +
-    '<span>' + (desde+1) + '–' + Math.min(desde+porPagina, grupos.length) + ' de ' + grupos.length + '</span>' +
-    '<button class="btn btn-ghost btn-sm" data-p="next"' + (est.pagina===paginas?' disabled':'') + '>Siguiente &rsaquo;</button>';
-  pager.querySelector('[data-p="prev"]').onclick = ()=>{ est.pagina--; paginarTabla(tbodyId, porPagina); };
-  pager.querySelector('[data-p="next"]').onclick = ()=>{ est.pagina++; paginarTabla(tbodyId, porPagina); };
+  return entries.slice(desde, desde+porPagina);
 }
-
 TABLAS_MOVIL.forEach(cfg=>{
   const tbody = document.getElementById(cfg.id);
   if(!tbody){ console.warn('[móvil] no existe #'+cfg.id); return; }
   const tabla = tbody.closest('table');
-  if(tabla && cfg.tarjetas) tabla.classList.add('tabla-tarjetas');
-  const refrescar = (reiniciar)=>{
-    if(cfg.tarjetas) etiquetarCeldas(tbody);
-    if(cfg.porPagina){
-      if(reiniciar && PAGINAS[cfg.id]) PAGINAS[cfg.id].pagina = 1;
-      paginarTabla(cfg.id, cfg.porPagina);
+  if(cfg.tarjetas){
+    if(tabla){
+      tabla.classList.add('tabla-tarjetas');
+      // El alto fijo del contenedor no funciona con tarjetas: la barra de páginas
+      // acababa encima de ellas. Se libera por clase (sin depender de :has).
+      const wrap = tabla.closest('.hist-wrap');
+      if(wrap) wrap.classList.add('hist-wrap-tarjetas');
     }
-  };
-  refrescar(true);
-  // El cuerpo se repinta completo en cada render: al cambiar, se vuelve a la página 1.
-  new MutationObserver(()=> refrescar(true)).observe(tbody, {childList:true});
+    etiquetarCeldas(tbody);
+    new MutationObserver(()=> etiquetarCeldas(tbody)).observe(tbody, {childList:true});
+  }
 });
 
 /* -------------------- Cierre de sesión por inactividad -------------------- */
