@@ -341,6 +341,10 @@
     position:absolute; left:0; right:0; bottom:0; background:rgba(0,0,0,.55); color:#fff; font-size:10px;
     padding:3px 6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
+  .ti-img-card-vacia{display:flex; flex-direction:column; align-items:center; justify-content:center; border-style:dashed; background:var(--bg-soft, #F5F6F8);}
+  .ti-img-card-vacia:hover{border-color:var(--blue); background:var(--blue-bg);}
+  .ti-img-placeholder{text-align:center; font-size:11px; color:var(--ink-soft); line-height:1.5;}
+  .ti-img-card-vacia .ti-img-nombre{position:static; background:none; color:var(--ink-soft); text-align:center; margin-top:2px;}
 
   #mez-stage{user-select:none;}
   .mez-tile{position:absolute; cursor:pointer; transition:filter .1s;}
@@ -1238,9 +1242,11 @@
     <div>
       <div class="panel" style="margin-bottom:14px;">
         <h3>Generar toma de inventario</h3>
-        <div style="display:flex; gap:8px; margin-bottom:10px;">
+        <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
           <button type="button" class="btn btn-sm btn-primary" id="ti-modo-cantidad-btn">🎲 Por cantidad (aleatorio)</button>
           <button type="button" class="btn btn-sm btn-ghost" id="ti-modo-proveedor-btn">🏭 Por proveedor</button>
+          <button type="button" class="btn btn-sm btn-ghost" id="ti-modo-pallets-btn">📦 Por pallets</button>
+          <button type="button" class="btn btn-sm btn-ghost" id="ti-modo-nicho-btn">🗂 Por nicho</button>
         </div>
         <div id="ti-modo-cantidad-wrap">
           <p class="hint" style="margin-bottom:10px;">20% Rack / 80% Piso, solo posiciones ocupadas, sin bloquear, con stock &gt;0. Si ya sorteaste posiciones hoy en una toma activa, no se vuelven a repetir en un sorteo nuevo del mismo día.</p>
@@ -1255,6 +1261,31 @@
             <div class="field" style="margin:0; max-width:280px;"><label>Proveedor</label><select id="ti-proveedor-select"><option value="">— Selecciona un proveedor —</option></select></div>
             <button class="btn btn-primary" id="btn-ti-generar-proveedor">🏭 Generar por proveedor</button>
           </div>
+        </div>
+        <div id="ti-modo-pallets-wrap" style="display:none;">
+          <p class="hint" style="margin-bottom:10px;">Incluye todo el stock (con cantidad &gt;0) de los pallets que agregues a la lista, sin importar su ubicación.</p>
+          <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
+            <div class="field" style="margin:0; max-width:200px;"><label>Código de pallet</label><input type="text" class="upper" id="ti-pallet-input" list="dl-pallets" placeholder="CD0000"></div>
+            <button class="btn btn-ghost btn-sm" id="btn-ti-pallet-agregar">+ Agregar a la lista</button>
+          </div>
+          <div id="ti-pallets-lista" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;"></div>
+          <button class="btn btn-primary" id="btn-ti-generar-pallets">📦 Generar por pallets</button>
+        </div>
+        <div id="ti-modo-nicho-wrap" style="display:none;">
+          <p class="hint" style="margin-bottom:10px;">Incluye todas las posiciones ocupadas con stock &gt;0 del nicho elegido, o solo las ubicaciones que selecciones dentro de él.</p>
+          <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
+            <div class="field" style="margin:0; max-width:280px;"><label>Nicho</label><select id="ti-nicho-select"><option value="">— Selecciona un nicho —</option></select></div>
+          </div>
+          <div style="display:flex; gap:16px; margin-bottom:10px; align-items:center; flex-wrap:wrap;">
+            <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;"><input type="radio" name="ti-nicho-modo" id="ti-nicho-modo-todas" value="todas" checked> Todas las ubicaciones ocupadas del nicho</label>
+            <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;"><input type="radio" name="ti-nicho-modo" id="ti-nicho-modo-selec" value="selec"> Selecciono ubicaciones específicas</label>
+          </div>
+          <div id="ti-nicho-ubic-wrap" style="display:none; margin-bottom:12px;">
+            <div class="hist-wrap" style="max-height:220px; padding:8px;">
+              <div id="ti-nicho-ubic-lista" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+            </div>
+          </div>
+          <button class="btn btn-primary" id="btn-ti-generar-nicho">🗂 Generar por nicho</button>
         </div>
         <div class="msg" id="ti-msg"></div>
         <div id="ti-preview-wrap" style="display:none; margin-top:14px;">
@@ -1282,11 +1313,21 @@
           </div>
           <button class="btn btn-ghost btn-sm" id="btn-ti-limpiar-filtro-fecha">Quitar filtro</button>
         </div>
-        <p class="hint" style="margin-bottom:8px;">Clic en una fila para ver/registrar su conteo y su PDF a la derecha.</p>
+        <p class="hint" style="margin-bottom:8px;">Clic en una fila para ver/registrar su conteo y su PDF a la derecha. Clic en una cabecera para ordenar.</p>
         <div class="hist-wrap" style="max-height:480px;">
-          <table><thead><tr><th>Correlativo</th><th>Fecha</th><th>Pos.</th><th>Líneas</th><th>ERI</th><th>ERU</th><th>PSM</th><th>PDF</th><th></th></tr></thead><tbody id="ti-reg-body"></tbody></table>
+          <table><thead id="ti-reg-thead"><tr>
+            <th class="th-ordenable" data-key="correlativo">Correlativo</th>
+            <th class="th-ordenable" data-key="fecha">Fecha</th>
+            <th class="th-ordenable" data-key="cantidad_generada">Pos.</th>
+            <th class="th-ordenable" data-key="total_lineas">Líneas</th>
+            <th class="th-ordenable" data-key="eri">ERI</th>
+            <th class="th-ordenable" data-key="eru">ERU</th>
+            <th class="th-ordenable" data-key="psm">PSM</th>
+            <th>PDF</th><th></th>
+          </tr></thead><tbody id="ti-reg-body"></tbody></table>
           <div class="empty-state" id="ti-reg-empty">Aún no hay tomas de inventario.</div>
         </div>
+        <div id="ti-reg-paginacion" style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:8px; font-size:11px; color:var(--ink-soft);"></div>
       </div>
     </div>
 
@@ -1360,7 +1401,7 @@
         <h3>Imágenes</h3>
         <div class="empty-state" id="ti-img-vacio">Selecciona una toma para ver o subir sus imágenes.</div>
         <div id="ti-img-contenido" style="display:none;">
-          <p class="hint" id="ti-img-info" style="margin-bottom:10px;">Sube hasta 5 fotos de respaldo (opcional). Es solo un respaldo visual — el sistema no lee datos de las fotos; para registrar el conteo usa el panel "Resultado del conteo" de arriba. Las imágenes pesadas se comprimen automáticamente al subirlas.</p>
+          <p class="hint" id="ti-img-info" style="margin-bottom:10px;">Una foto por cada pallet inventariado en esta toma (respaldo visual de la cantidad de pallets contados). Haz clic en una casilla vacía para subir la foto de ese pallet. Es solo un respaldo visual — el sistema no lee datos de las fotos; para registrar el conteo usa el panel "Resultado del conteo" de arriba. Las imágenes pesadas se comprimen automáticamente al subirlas.</p>
           <div id="ti-img-grid"></div>
           <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:4px;">
             <button class="btn btn-primary" id="btn-ti-subir-img-panel">📤 Agregar imagen</button>
@@ -1409,7 +1450,7 @@
   </div>
 
   <input type="file" id="ti-pdf-input-global" accept="application/pdf" style="display:none;">
-  <input type="file" id="ti-img-input-global" accept="image/*" multiple style="display:none;">
+  <input type="file" id="ti-img-input-global" accept="image/*" style="display:none;">
 </div>
 
 <!-- KARDEX -->
@@ -1508,8 +1549,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v86';
-const APP_UPDATED = '06/09/2026 08:00';
+const APP_VERSION = 'v87';
+const APP_UPDATED = '06/09/2026 09:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -6273,23 +6314,25 @@ function generarSeleccionToma(cantidadSolicitada, posicionesExcluidas){
 }
 
 let tiSeleccionActual = null;
-let tiModoGeneracion = 'cantidad'; // 'cantidad' (sorteo aleatorio) | 'proveedor' (todo el proveedor, sin importar pallet/ubicación)
+let tiModoGeneracion = 'cantidad'; // 'cantidad' (sorteo aleatorio) | 'proveedor' | 'pallets' | 'nicho'
 
 function setTiModoGeneracion(modo){
   tiModoGeneracion = modo;
-  $('ti-modo-cantidad-btn').classList.toggle('btn-primary', modo==='cantidad');
-  $('ti-modo-cantidad-btn').classList.toggle('btn-ghost', modo!=='cantidad');
-  $('ti-modo-proveedor-btn').classList.toggle('btn-primary', modo==='proveedor');
-  $('ti-modo-proveedor-btn').classList.toggle('btn-ghost', modo!=='proveedor');
-  $('ti-modo-cantidad-wrap').style.display = modo==='cantidad' ? 'block' : 'none';
-  $('ti-modo-proveedor-wrap').style.display = modo==='proveedor' ? 'block' : 'none';
+  ['cantidad','proveedor','pallets','nicho'].forEach(m=>{
+    $('ti-modo-'+m+'-btn').classList.toggle('btn-primary', modo===m);
+    $('ti-modo-'+m+'-btn').classList.toggle('btn-ghost', modo!==m);
+    $('ti-modo-'+m+'-wrap').style.display = modo===m ? 'block' : 'none';
+  });
   tiSeleccionActual = null;
   $('ti-preview-wrap').style.display = 'none';
   $('ti-msg').style.display = 'none';
   if(modo==='proveedor') poblarProveedoresToma();
+  if(modo==='nicho') poblarNichosToma();
 }
 $('ti-modo-cantidad-btn').addEventListener('click', ()=> setTiModoGeneracion('cantidad'));
 $('ti-modo-proveedor-btn').addEventListener('click', ()=> setTiModoGeneracion('proveedor'));
+$('ti-modo-pallets-btn').addEventListener('click', ()=> setTiModoGeneracion('pallets'));
+$('ti-modo-nicho-btn').addEventListener('click', ()=> setTiModoGeneracion('nicho'));
 
 // Llena el <select> de proveedores con los valores distintos y no vacíos presentes
 // en el maestro de productos, en orden alfabético.
@@ -6360,6 +6403,195 @@ $('btn-ti-generar-proveedor').addEventListener('click', ()=>{
   showMsg('ti-msg','ok', `Selección generada: ${resultado.seleccionPosiciones.length} posiciones del proveedor "${proveedor}".`);
 });
 
+// Selecciona TODO el stock disponible de una lista puntual de pallets, sin
+// importar en qué posición estén — pensado para inventariar pallets específicos
+// que el usuario elige a mano por su código.
+function generarSeleccionTomaPorPallets(codigosPallets, posicionesExcluidas){
+  posicionesExcluidas = posicionesExcluidas || new Set();
+  const codigosSet = new Set(codigosPallets.map(c=>String(c).toUpperCase().trim()));
+  const seleccionFinal = [];
+  const filas = [];
+  Object.entries(posiciones).forEach(([id,p])=>{
+    if(posicionesExcluidas.has(id)) return;
+    if(p.estado !== 'ocupado' || !p.pallet_codigo) return;
+    if(!codigosSet.has(p.pallet_codigo)) return;
+    if(p.bloqueada) return;
+    const pal = pallets[p.pallet_codigo];
+    if(!pal || !pal.items || pal.items.length===0) return;
+    const itemsConStock = pal.items.filter(it=> Number(it.cantidad) > 0);
+    if(itemsConStock.length === 0) return;
+    const tipo = p.tipo==='rack' ? 'rack' : 'piso';
+    seleccionFinal.push({id, tipo, pallet_codigo:p.pallet_codigo});
+    itemsConStock.forEach(it=>{
+      const prod = productos[it.producto];
+      filas.push({
+        posicion_id: id,
+        tipo_posicion: tipo,
+        pallet_codigo: p.pallet_codigo,
+        producto_codigo: it.producto,
+        producto_descripcion: prod ? (prod.descripcion||'') : (it.descripcion||''),
+        cantidad_sistema: Number(it.cantidad)
+      });
+    });
+  });
+  return { seleccionPosiciones: seleccionFinal, filas };
+}
+
+let tiPalletsSeleccionados = [];
+
+function renderTiPalletsLista(){
+  const cont = $('ti-pallets-lista');
+  if(!cont) return;
+  if(tiPalletsSeleccionados.length === 0){ cont.innerHTML = '<span class="hint">Sin pallets agregados todavía.</span>'; return; }
+  cont.innerHTML = tiPalletsSeleccionados.map(c=>
+    `<span style="display:inline-flex; align-items:center; gap:6px; background:var(--blue-bg); color:var(--blue); font-weight:700; padding:3px 8px; border-radius:5px; font-family:var(--mono); font-size:11px;">
+      ${c}<button type="button" class="ti-pallet-quitar" data-codigo="${c}" style="background:none; border:none; cursor:pointer; color:inherit; font-weight:700; padding:0;">✕</button>
+    </span>`
+  ).join('');
+}
+$('btn-ti-pallet-agregar').addEventListener('click', ()=>{
+  const val = $('ti-pallet-input').value.trim().toUpperCase();
+  if(!val) return;
+  if(!pallets[val]){ showMsg('ti-msg','err', `El pallet "${val}" no existe en el almacén.`); return; }
+  if(!tiPalletsSeleccionados.includes(val)) tiPalletsSeleccionados.push(val);
+  $('ti-pallet-input').value = '';
+  $('ti-msg').style.display = 'none';
+  renderTiPalletsLista();
+});
+$('ti-pallet-input').addEventListener('keydown', (ev)=>{ if(ev.key==='Enter'){ ev.preventDefault(); $('btn-ti-pallet-agregar').click(); } });
+$('ti-pallets-lista').addEventListener('click', (ev)=>{
+  const btn = ev.target.closest('.ti-pallet-quitar');
+  if(!btn) return;
+  tiPalletsSeleccionados = tiPalletsSeleccionados.filter(c=>c!==btn.dataset.codigo);
+  renderTiPalletsLista();
+});
+
+$('btn-ti-generar-pallets').addEventListener('click', ()=>{
+  if(tiPalletsSeleccionados.length === 0){ showMsg('ti-msg','err','Agrega al menos un pallet a la lista.'); return; }
+  const excluidas = obtenerPosicionesActivasHoy();
+  const resultado = generarSeleccionTomaPorPallets(tiPalletsSeleccionados, excluidas);
+  if(resultado.seleccionPosiciones.length === 0){
+    showMsg('ti-msg','err','No se encontró stock disponible en esos pallets (o ya están todos en una toma activa de hoy).');
+    $('ti-preview-wrap').style.display = 'none';
+    return;
+  }
+  tiSeleccionActual = resultado;
+  tiSeleccionActual.palletsFiltro = tiPalletsSeleccionados.slice();
+  const nRack = resultado.seleccionPosiciones.filter(s=>s.tipo==='rack').length;
+  const nPiso = resultado.seleccionPosiciones.filter(s=>s.tipo==='piso').length;
+  $('ti-preview-resumen').textContent = `Pallets seleccionados (${tiPalletsSeleccionados.join(', ')}): ${resultado.seleccionPosiciones.length} posición(es) (${nRack} de Rack, ${nPiso} de Piso) — ${resultado.filas.length} línea(s) de producto a contar. Puedes volver a generar si quieres actualizar la selección antes de confirmar.`;
+  $('ti-preview-body').innerHTML = resultado.filas.map(f=>
+    `<tr><td>${f.posicion_id}</td><td>${f.tipo_posicion==='piso'?'Piso':'Rack'}</td><td>${f.pallet_codigo}</td><td>${f.producto_codigo}</td><td>${f.producto_descripcion}</td><td>${f.cantidad_sistema}</td></tr>`
+  ).join('');
+  $('ti-preview-wrap').style.display = 'block';
+  showMsg('ti-msg','ok', `Selección generada: ${resultado.seleccionPosiciones.length} posiciones de ${tiPalletsSeleccionados.length} pallet(s).`);
+});
+
+// Llena el <select> de nichos con todos los nichos existentes (letra + bloque al
+// que pertenecen), ordenados según su orden visual en el layout.
+function poblarNichosToma(){
+  const sel = $('ti-nicho-select');
+  if(!sel) return;
+  const valorActual = sel.value;
+  const entradas = Object.entries(nichos).sort((a,b)=>(a[1].orden||0)-(b[1].orden||0));
+  sel.innerHTML = '<option value="">— Selecciona un nicho —</option>' + entradas.map(([letra,n])=>{
+    const bloqueNombre = n.bloque_id && bloques[n.bloque_id] ? bloques[n.bloque_id].nombre : '—';
+    return `<option value="${letra}">${letra} — ${bloqueNombre}</option>`;
+  }).join('');
+  if(valorActual && nichos[valorActual]) sel.value = valorActual;
+}
+
+function ubicacionesOcupadasDeNicho(letra){
+  return Object.entries(posiciones).filter(([id,p])=> p.nicho===letra && p.estado==='ocupado' && !p.bloqueada && p.pallet_codigo)
+    .map(([id,p])=>({id, tipo:p.tipo}))
+    .sort((a,b)=>a.id.localeCompare(b.id));
+}
+
+function renderTiNichoUbicaciones(){
+  const letra = $('ti-nicho-select').value;
+  const cont = $('ti-nicho-ubic-lista');
+  if(!letra){ cont.innerHTML = '<span class="hint">Selecciona primero un nicho.</span>'; return; }
+  const ubic = ubicacionesOcupadasDeNicho(letra);
+  if(ubic.length === 0){ cont.innerHTML = '<span class="hint">Este nicho no tiene posiciones ocupadas con stock.</span>'; return; }
+  cont.innerHTML = ubic.map(u=>
+    `<label style="display:flex; align-items:center; gap:5px; font-family:var(--mono); font-size:11px; border:1px solid var(--line-strong); border-radius:4px; padding:3px 7px; cursor:pointer;">
+      <input type="checkbox" class="ti-nicho-ubic-check" value="${u.id}" checked> ${u.id}
+    </label>`
+  ).join('');
+}
+$('ti-nicho-select').addEventListener('change', ()=>{
+  if($('ti-nicho-modo-selec').checked) renderTiNichoUbicaciones();
+});
+document.querySelectorAll('input[name="ti-nicho-modo"]').forEach(r=>{
+  r.addEventListener('change', ()=>{
+    const modoSelec = $('ti-nicho-modo-selec').checked;
+    $('ti-nicho-ubic-wrap').style.display = modoSelec ? 'block' : 'none';
+    if(modoSelec) renderTiNichoUbicaciones();
+  });
+});
+
+// Selecciona posiciones dentro de UN nicho: todas las ocupadas del nicho, o solo
+// el subconjunto de ids que el usuario marcó en la lista de ubicaciones.
+function generarSeleccionTomaPorNicho(letraNicho, idsSeleccionados, posicionesExcluidas){
+  posicionesExcluidas = posicionesExcluidas || new Set();
+  const idsSet = idsSeleccionados ? new Set(idsSeleccionados) : null; // null = todas las ocupadas del nicho
+  const seleccionFinal = [];
+  const filas = [];
+  Object.entries(posiciones).forEach(([id,p])=>{
+    if(p.nicho !== letraNicho) return;
+    if(idsSet && !idsSet.has(id)) return;
+    if(posicionesExcluidas.has(id)) return;
+    if(p.estado !== 'ocupado' || !p.pallet_codigo) return;
+    if(p.bloqueada) return;
+    const pal = pallets[p.pallet_codigo];
+    if(!pal || !pal.items || pal.items.length===0) return;
+    const itemsConStock = pal.items.filter(it=> Number(it.cantidad) > 0);
+    if(itemsConStock.length === 0) return;
+    const tipo = p.tipo==='rack' ? 'rack' : 'piso';
+    seleccionFinal.push({id, tipo, pallet_codigo:p.pallet_codigo});
+    itemsConStock.forEach(it=>{
+      const prod = productos[it.producto];
+      filas.push({
+        posicion_id: id,
+        tipo_posicion: tipo,
+        pallet_codigo: p.pallet_codigo,
+        producto_codigo: it.producto,
+        producto_descripcion: prod ? (prod.descripcion||'') : (it.descripcion||''),
+        cantidad_sistema: Number(it.cantidad)
+      });
+    });
+  });
+  return { seleccionPosiciones: seleccionFinal, filas };
+}
+
+$('btn-ti-generar-nicho').addEventListener('click', ()=>{
+  const letra = $('ti-nicho-select').value;
+  if(!letra){ showMsg('ti-msg','err','Selecciona un nicho.'); return; }
+  const modoSelec = $('ti-nicho-modo-selec').checked;
+  let idsSeleccionados = null;
+  if(modoSelec){
+    idsSeleccionados = [...document.querySelectorAll('.ti-nicho-ubic-check:checked')].map(c=>c.value);
+    if(idsSeleccionados.length === 0){ showMsg('ti-msg','err','Selecciona al menos una ubicación del nicho.'); return; }
+  }
+  const excluidas = obtenerPosicionesActivasHoy();
+  const resultado = generarSeleccionTomaPorNicho(letra, idsSeleccionados, excluidas);
+  if(resultado.seleccionPosiciones.length === 0){
+    showMsg('ti-msg','err', `No se encontraron posiciones con stock disponibles en el nicho ${letra} (o ya están todas en una toma activa de hoy).`);
+    $('ti-preview-wrap').style.display = 'none';
+    return;
+  }
+  tiSeleccionActual = resultado;
+  tiSeleccionActual.nichoFiltro = letra;
+  const nRack = resultado.seleccionPosiciones.filter(s=>s.tipo==='rack').length;
+  const nPiso = resultado.seleccionPosiciones.filter(s=>s.tipo==='piso').length;
+  $('ti-preview-resumen').textContent = `Nicho ${letra}: ${resultado.seleccionPosiciones.length} posición(es) (${nRack} de Rack, ${nPiso} de Piso) — ${resultado.filas.length} línea(s) de producto a contar. Puedes volver a generar si quieres actualizar la selección antes de confirmar.`;
+  $('ti-preview-body').innerHTML = resultado.filas.map(f=>
+    `<tr><td>${f.posicion_id}</td><td>${f.tipo_posicion==='piso'?'Piso':'Rack'}</td><td>${f.pallet_codigo}</td><td>${f.producto_codigo}</td><td>${f.producto_descripcion}</td><td>${f.cantidad_sistema}</td></tr>`
+  ).join('');
+  $('ti-preview-wrap').style.display = 'block';
+  showMsg('ti-msg','ok', `Selección generada: ${resultado.seleccionPosiciones.length} posiciones del nicho ${letra}.`);
+});
+
 $('btn-ti-generar').addEventListener('click', ()=>{
   const cantidad = parseInt($('ti-cantidad').value, 10);
   if(!cantidad || cantidad <= 0){ showMsg('ti-msg','err','Ingresa cuántas posiciones quieres inventariar.'); return; }
@@ -6385,6 +6617,8 @@ $('btn-ti-generar').addEventListener('click', ()=>{
 
 $('btn-ti-regenerar').addEventListener('click', ()=> {
   if(tiModoGeneracion==='proveedor') $('btn-ti-generar-proveedor').click();
+  else if(tiModoGeneracion==='pallets') $('btn-ti-generar-pallets').click();
+  else if(tiModoGeneracion==='nicho') $('btn-ti-generar-nicho').click();
   else $('btn-ti-generar').click();
 });
 
@@ -6396,10 +6630,12 @@ $('btn-ti-confirmar').addEventListener('click', async ()=>{
     const correlativo = await generarCorrelativoToma();
     const hoy = todayLocalStr();
     const esPorProveedor = !!tiSeleccionActual.proveedorFiltro;
+    const esPorPallets = !!(tiSeleccionActual.palletsFiltro && tiSeleccionActual.palletsFiltro.length);
+    const esPorNicho = !!tiSeleccionActual.nichoFiltro;
     const headerData = {
       correlativo,
       fecha: hoy,
-      cantidad_solicitada: esPorProveedor ? null : (parseInt($('ti-cantidad').value,10)||null),
+      cantidad_solicitada: (tiModoGeneracion==='cantidad') ? (parseInt($('ti-cantidad').value,10)||null) : null,
       cantidad_generada: tiSeleccionActual.seleccionPosiciones.length,
       total_lineas: tiSeleccionActual.filas.length,
       posiciones_ids: tiSeleccionActual.seleccionPosiciones.map(s=>s.id),
@@ -6408,6 +6644,8 @@ $('btn-ti-confirmar').addEventListener('click', async ()=>{
       generado_en: firebase.firestore.FieldValue.serverTimestamp()
     };
     if(esPorProveedor) headerData.proveedor_filtro = tiSeleccionActual.proveedorFiltro;
+    if(esPorPallets) headerData.pallets_filtro = tiSeleccionActual.palletsFiltro;
+    if(esPorNicho) headerData.nicho_filtro = tiSeleccionActual.nichoFiltro;
     await inventarioTomasRef.doc(correlativo).set(headerData);
     const CHUNK = 400;
     const filas = tiSeleccionActual.filas;
@@ -6425,7 +6663,10 @@ $('btn-ti-confirmar').addEventListener('click', async ()=>{
       });
       await batch.commit();
     }
-    await logAccion('toma_inventario_generada', {detalle:`Toma ${correlativo}: ${tiSeleccionActual.seleccionPosiciones.length} posiciones, ${filas.length} líneas${esPorProveedor?` (por proveedor: ${tiSeleccionActual.proveedorFiltro})`:''}`});
+    const detalleOrigen = esPorProveedor ? ` (por proveedor: ${tiSeleccionActual.proveedorFiltro})`
+      : esPorPallets ? ` (por pallets: ${tiSeleccionActual.palletsFiltro.join(', ')})`
+      : esPorNicho ? ` (por nicho: ${tiSeleccionActual.nichoFiltro})` : '';
+    await logAccion('toma_inventario_generada', {detalle:`Toma ${correlativo}: ${tiSeleccionActual.seleccionPosiciones.length} posiciones, ${filas.length} líneas${detalleOrigen}`});
     showMsg('ti-msg','ok', `¡Guardado! Correlativo ${correlativo}.`);
     showToast(`Toma de inventario generada: ${correlativo}`,'ok');
     tiRegAllCache.unshift(headerData);
@@ -6433,6 +6674,9 @@ $('btn-ti-confirmar').addEventListener('click', async ()=>{
     $('ti-preview-wrap').style.display = 'none';
     $('ti-cantidad').value = '';
     $('ti-proveedor-select').value = '';
+    tiPalletsSeleccionados = [];
+    renderTiPalletsLista();
+    $('ti-nicho-select').value = '';
     $('ti-filtro-estado').value = 'EN_PROCESO';
     renderTomasInventario();
     seleccionarToma(correlativo); // abre de inmediato el conteo a la derecha, listo para registrar
@@ -6479,34 +6723,96 @@ async function cargarTomasInventario(reset){
   renderTomasInventario();
 }
 
+let tiRegOrden = { campo: null, dir: 1 };
+let tiRegPagina = 1;
+const TI_REG_POR_PAGINA = 10;
+const TI_REG_COLUMNAS = { correlativo:'Correlativo', fecha:'Fecha', cantidad_generada:'Pos.', total_lineas:'Líneas', eri:'ERI', eru:'ERU', psm:'PSM' };
+
+function origenTomaTag(r){
+  if(r.proveedor_filtro) return `<br><span class="hint">🏭 ${r.proveedor_filtro}</span>`;
+  if(r.pallets_filtro && r.pallets_filtro.length) return `<br><span class="hint">📦 ${r.pallets_filtro.join(', ')}</span>`;
+  if(r.nicho_filtro) return `<br><span class="hint">🗂 Nicho ${r.nicho_filtro}</span>`;
+  return '';
+}
+
 function renderTomasInventario(){
   const filtro = $('ti-filtro-estado').value;
   const fechaFiltro = $('ti-filtro-fecha').value;
   let filtradas = tiRegAllCache.filter(r=>(r.estado||'EN_PROCESO')===filtro);
   if(fechaFiltro) filtradas = filtradas.filter(r=>r.fecha===fechaFiltro);
+
+  if(tiRegOrden.campo){
+    const campo = tiRegOrden.campo, dir = tiRegOrden.dir;
+    const esNumerico = campo==='cantidad_generada' || campo==='total_lineas' || campo==='eri' || campo==='eru' || campo==='psm';
+    filtradas = filtradas.slice().sort((a,b)=>{
+      if(esNumerico){
+        const va = campo==='psm' ? (calcularPsm(a.eri,a.eru)||0) : (Number(a[campo])||0);
+        const vb = campo==='psm' ? (calcularPsm(b.eri,b.eru)||0) : (Number(b[campo])||0);
+        return (va-vb) * dir;
+      }
+      return (a[campo]||'').toString().localeCompare((b[campo]||'').toString()) * dir;
+    });
+  }
+
+  document.querySelectorAll('#ti-reg-thead .th-ordenable').forEach(th=>{
+    const campo = th.dataset.key;
+    const activo = tiRegOrden.campo === campo;
+    th.classList.toggle('th-activo', activo);
+    const arrow = activo ? (tiRegOrden.dir===1 ? '▲' : '▼') : '';
+    th.innerHTML = `${TI_REG_COLUMNAS[campo]||campo}<span class="th-arrow">${arrow}</span>`;
+  });
+
   if(filtradas.length===0){
     $('ti-reg-body').innerHTML = '';
     $('ti-reg-empty').style.display = 'block';
     $('ti-reg-empty').textContent = fechaFiltro
       ? `No hay tomas ${filtro==='EN_PROCESO'?'en proceso':'finalizadas'} en esa fecha.`
       : (filtro==='EN_PROCESO' ? 'No hay tomas en proceso.' : 'No hay tomas finalizadas.');
+    $('ti-reg-paginacion').innerHTML = '';
     return;
   }
   $('ti-reg-empty').style.display = 'none';
+
+  const totalPaginas = Math.max(1, Math.ceil(filtradas.length / TI_REG_POR_PAGINA));
+  if(tiRegPagina > totalPaginas) tiRegPagina = totalPaginas;
+  if(tiRegPagina < 1) tiRegPagina = 1;
+  const inicio = (tiRegPagina-1) * TI_REG_POR_PAGINA;
+  const pagina = filtradas.slice(inicio, inicio + TI_REG_POR_PAGINA);
+
   const puedeEliminar = currentPermisos.admin || currentPermisos.eliminar;
-  $('ti-reg-body').innerHTML = filtradas.map(r=>{
+  $('ti-reg-body').innerHTML = pagina.map(r=>{
     const activo = r.correlativo === tiSeleccionCorrelativo;
     const pdfIcon = r.pdf_firmado_url ? '📄✓' : '—';
     return `<tr class="ti-fila-toma" data-correlativo="${r.correlativo}" style="cursor:pointer; ${activo?'background:#EEF3FB;':''}">
-      <td>${r.correlativo}${r.proveedor_filtro?`<br><span class="hint">🏭 ${r.proveedor_filtro}</span>`:''}</td><td>${r.fecha||''}</td><td>${r.cantidad_generada??''}</td><td>${r.total_lineas??''}</td>
+      <td>${r.correlativo}${origenTomaTag(r)}</td><td>${r.fecha||''}</td><td>${r.cantidad_generada??''}</td><td>${r.total_lineas??''}</td>
       <td>${fmtPct2(r.eri)}</td><td>${fmtPct2(r.eru)}</td><td>${fmtPct2(calcularPsm(r.eri, r.eru))}</td><td>${pdfIcon}</td>
       <td>${puedeEliminar?`<button type="button" class="btn btn-sm btn-ghost ti-btn-eliminar-toma" data-correlativo="${r.correlativo}" title="Eliminar toma">🗑</button>`:''}</td>
     </tr>`;
   }).join('');
+
+  $('ti-reg-paginacion').innerHTML = `
+    <span>${filtradas.length} toma(s) · página ${tiRegPagina} de ${totalPaginas}</span>
+    <div style="display:flex; gap:6px;">
+      <button type="button" class="btn btn-ghost btn-sm" id="btn-ti-reg-pag-prev" ${tiRegPagina<=1?'disabled':''}>‹ Anterior</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="btn-ti-reg-pag-next" ${tiRegPagina>=totalPaginas?'disabled':''}>Siguiente ›</button>
+    </div>`;
 }
-$('ti-filtro-estado').addEventListener('change', renderTomasInventario);
-$('ti-filtro-fecha').addEventListener('change', renderTomasInventario);
-$('btn-ti-limpiar-filtro-fecha').addEventListener('click', ()=>{ $('ti-filtro-fecha').value=''; renderTomasInventario(); });
+$('ti-reg-thead').addEventListener('click', (ev)=>{
+  const th = ev.target.closest('.th-ordenable');
+  if(!th) return;
+  const campo = th.dataset.key;
+  if(tiRegOrden.campo === campo) tiRegOrden.dir *= -1;
+  else{ tiRegOrden.campo = campo; tiRegOrden.dir = 1; }
+  tiRegPagina = 1;
+  renderTomasInventario();
+});
+$('ti-reg-paginacion').addEventListener('click', (ev)=>{
+  if(ev.target.closest('#btn-ti-reg-pag-prev')){ tiRegPagina--; renderTomasInventario(); }
+  else if(ev.target.closest('#btn-ti-reg-pag-next')){ tiRegPagina++; renderTomasInventario(); }
+});
+$('ti-filtro-estado').addEventListener('change', ()=>{ tiRegPagina = 1; renderTomasInventario(); });
+$('ti-filtro-fecha').addEventListener('change', ()=>{ tiRegPagina = 1; renderTomasInventario(); });
+$('btn-ti-limpiar-filtro-fecha').addEventListener('click', ()=>{ $('ti-filtro-fecha').value=''; tiRegPagina = 1; renderTomasInventario(); });
 
 function setTiMainSubtab(name){
   ['ejecucion','resultados'].forEach(n=>{
@@ -7131,8 +7437,17 @@ async function eliminarPdfFirmado(correlativo){
 }
 $('btn-ti-eliminar-pdf').addEventListener('click', ()=>{ if(tiSeleccionCorrelativo) eliminarPdfFirmado(tiSeleccionCorrelativo); });
 
-// -------- Panel derecho inferior: Imágenes (subir hasta 5 / ver como cards / eliminar) --------
-const TI_IMG_MAX = 5;
+// -------- Panel derecho inferior: Imágenes (una foto por cada pallet de la toma) --------
+const TI_IMG_MAX = 5; // límite para fotos "sueltas" heredadas de tomas generadas antes de este cambio
+
+// Devuelve los códigos de pallet distintos incluidos en la toma seleccionada,
+// ordenados alfabéticamente — cada uno tendrá su propia casilla de foto.
+function palletsDeToma(conteo){
+  if(!conteo || !Array.isArray(conteo.items)) return [];
+  const set = new Set();
+  conteo.items.forEach(it=>{ if(it.pallet_codigo) set.add(it.pallet_codigo); });
+  return [...set].sort((a,b)=>a.localeCompare(b));
+}
 
 function renderPanelImg(){
   if(!tiConteoActual){
@@ -7144,15 +7459,41 @@ function renderPanelImg(){
   $('ti-img-contenido').style.display = 'block';
   const header = tiRegAllCache.find(r=>r.correlativo===tiConteoActual.correlativo);
   const imagenes = (header && Array.isArray(header.imagenes)) ? header.imagenes : [];
-  $('ti-img-grid').innerHTML = imagenes.map((im,i)=>`
-    <div class="ti-img-card" data-idx="${i}" title="Clic para ver en grande">
-      <img src="${im.url}" alt="">
-      <button type="button" class="ti-img-del" data-idx="${i}" title="Eliminar esta imagen">✕</button>
-      ${im.nombre ? `<div class="ti-img-nombre">${im.nombre.replace(/</g,'&lt;')}</div>` : ''}
-    </div>
-  `).join('');
-  $('ti-img-contador').textContent = `${imagenes.length} / ${TI_IMG_MAX} imágenes`;
-  $('btn-ti-subir-img-panel').style.display = imagenes.length>=TI_IMG_MAX ? 'none' : 'inline-block';
+  const codigosPallets = palletsDeToma(tiConteoActual);
+  const conPallet = imagenes.filter(im=>im.pallet_codigo);
+  const sinPallet = imagenes.filter(im=>!im.pallet_codigo); // fotos sueltas de tomas anteriores a este cambio
+
+  let html = codigosPallets.map(codigo=>{
+    const im = conPallet.find(x=>x.pallet_codigo===codigo);
+    if(im){
+      return `<div class="ti-img-card" data-pallet="${codigo}" title="Clic para ver en grande">
+        <img src="${im.url}" alt="">
+        <button type="button" class="ti-img-del" data-pallet="${codigo}" title="Eliminar esta foto">✕</button>
+        <div class="ti-img-nombre">Pallet ${codigo}</div>
+      </div>`;
+    }
+    return `<div class="ti-img-card ti-img-card-vacia" data-pallet-vacio="${codigo}" title="Subir foto de este pallet">
+      <div class="ti-img-placeholder">📷<br>+ Foto</div>
+      <div class="ti-img-nombre">Pallet ${codigo}</div>
+    </div>`;
+  }).join('');
+
+  if(sinPallet.length){
+    html += `<div class="hint" style="width:100%; margin:8px 0 0;">Fotos previas sin pallet asignado:</div>` +
+      sinPallet.map((im,i)=>`
+        <div class="ti-img-card" data-idx-legado="${i}" title="Clic para ver en grande">
+          <img src="${im.url}" alt="">
+          <button type="button" class="ti-img-del-legado" data-idx-legado="${i}" title="Eliminar esta foto">✕</button>
+          ${im.nombre ? `<div class="ti-img-nombre">${im.nombre.replace(/</g,'&lt;')}</div>` : ''}
+        </div>
+      `).join('');
+  }
+
+  $('ti-img-grid').innerHTML = html;
+  $('ti-img-contador').textContent = codigosPallets.length
+    ? `${conPallet.length} / ${codigosPallets.length} pallet(s) con foto`
+    : 'Esta toma no tiene pallets asociados.';
+  $('btn-ti-subir-img-panel').style.display = 'none'; // la subida ahora se hace haciendo clic en la casilla de cada pallet
 }
 
 // Comprime una imagen redimensionándola (máx 1600px de lado) y bajando la
@@ -7198,86 +7539,111 @@ function comprimirImagenSiPesada(file){
   });
 }
 
-async function subirImagenesToma(correlativo, files){
-  const nuevos = [];
-  for(const rawFile of files){
-    const file = await comprimirImagenSiPesada(rawFile);
-    const path = `tomas_inventario/${correlativo}/img_${Date.now()}_${Math.random().toString(36).slice(2,7)}_${file.name}`;
-    const ref = storage.ref().child(path);
-    await ref.put(file);
-    const url = await ref.getDownloadURL();
-    nuevos.push({ url, nombre: file.name, subido_por: currentUserAlias, subido_en: new Date().toISOString() });
+// Sube UNA foto y la asocia a un pallet específico de la toma. Si ese pallet ya
+// tenía foto, la reemplaza (se borra el archivo anterior del Storage).
+async function subirImagenPallet(correlativo, palletCodigo, rawFile){
+  const file = await comprimirImagenSiPesada(rawFile);
+  const path = `tomas_inventario/${correlativo}/pallet_${palletCodigo}_${Date.now()}_${Math.random().toString(36).slice(2,7)}.jpg`;
+  const ref = storage.ref().child(path);
+  await ref.put(file);
+  const url = await ref.getDownloadURL();
+  const nuevo = { pallet_codigo: palletCodigo, url, nombre: file.name, subido_por: currentUserAlias, subido_en: new Date().toISOString() };
+  const header = tiRegAllCache.find(r=>r.correlativo===correlativo);
+  const actuales = (header && Array.isArray(header.imagenes)) ? header.imagenes : [];
+  const anterior = actuales.find(im=>im.pallet_codigo===palletCodigo);
+  if(anterior && anterior.url){
+    try{ await storage.refFromURL(anterior.url).delete(); }catch(e){ console.error(e); }
   }
-  await inventarioTomasRef.doc(correlativo).update({
-    imagenes: firebase.firestore.FieldValue.arrayUnion(...nuevos)
-  });
-  await logAccion('toma_inventario_imagenes_subidas', {detalle:`Se subieron ${nuevos.length} imagen(es) a la toma ${correlativo}`});
-  return nuevos;
+  const nuevasImagenes = actuales.filter(im=>im.pallet_codigo!==palletCodigo).concat([nuevo]);
+  await inventarioTomasRef.doc(correlativo).update({ imagenes: nuevasImagenes });
+  await logAccion('toma_inventario_imagenes_subidas', {detalle:`Se asignó foto al pallet ${palletCodigo} en la toma ${correlativo}`});
+  return nuevasImagenes;
 }
 
 let tiSubidaImgCorrelativoActual = null;
+let tiSubidaImgPalletActual = null;
 
 $('btn-ti-subir-img-panel').addEventListener('click', ()=>{
-  if(!tiSeleccionCorrelativo) return;
-  tiSubidaImgCorrelativoActual = tiSeleccionCorrelativo;
-  $('ti-img-input-global').click();
+  // Botón heredado, oculto por defecto (ver renderPanelImg): ya no se usa para
+  // subir, pero se conserva el listener para no romper el elemento del DOM.
 });
 
 $('ti-img-input-global').addEventListener('change', async ()=>{
   const files = Array.from($('ti-img-input-global').files || []);
   const correlativo = tiSubidaImgCorrelativoActual;
-  if(!files.length || !correlativo){ $('ti-img-input-global').value=''; tiSubidaImgCorrelativoActual=null; return; }
-  const soloImagenes = files.filter(f=> f.type && f.type.startsWith('image/'));
-  if(soloImagenes.length !== files.length){ showToast('Solo se permiten archivos de imagen.','err'); }
-  if(!soloImagenes.length){ $('ti-img-input-global').value=''; tiSubidaImgCorrelativoActual=null; return; }
-  const header = tiRegAllCache.find(r=>r.correlativo===correlativo);
-  const actuales = (header && Array.isArray(header.imagenes)) ? header.imagenes.length : 0;
-  const espacio = TI_IMG_MAX - actuales;
-  if(espacio<=0){
-    showToast(`Esta toma ya tiene ${TI_IMG_MAX} imágenes (máximo permitido).`,'err');
-    $('ti-img-input-global').value=''; tiSubidaImgCorrelativoActual=null;
+  const palletCodigo = tiSubidaImgPalletActual;
+  if(!files.length || !correlativo || !palletCodigo){
+    $('ti-img-input-global').value=''; tiSubidaImgCorrelativoActual=null; tiSubidaImgPalletActual=null;
     return;
   }
-  let aSubir = soloImagenes;
-  if(aSubir.length > espacio){
-    showToast(`Solo se subirán ${espacio} imagen(es): el máximo por toma es ${TI_IMG_MAX}.`,'err');
-    aSubir = aSubir.slice(0, espacio);
+  const file = files[0];
+  if(!file.type || !file.type.startsWith('image/')){
+    showToast('Solo se permiten archivos de imagen.','err');
+    $('ti-img-input-global').value=''; tiSubidaImgCorrelativoActual=null; tiSubidaImgPalletActual=null;
+    return;
   }
-  showToast('Subiendo imágenes…','ok');
+  showToast('Subiendo foto…','ok');
   try{
-    const nuevos = await subirImagenesToma(correlativo, aSubir);
+    const nuevasImagenes = await subirImagenPallet(correlativo, palletCodigo, file);
     const idx = tiRegAllCache.findIndex(r=>r.correlativo===correlativo);
-    if(idx>=0){ tiRegAllCache[idx].imagenes = [...((tiRegAllCache[idx].imagenes)||[]), ...nuevos]; }
+    if(idx>=0){ tiRegAllCache[idx].imagenes = nuevasImagenes; }
     renderTomasInventario();
     if(tiSeleccionCorrelativo===correlativo) renderPanelImg();
-    showToast('Imágenes subidas correctamente.','ok');
+    showToast(`Foto asignada al pallet ${palletCodigo}.`,'ok');
   }catch(err){
     console.error(err);
-    showToast('Error al subir imágenes: '+err.message,'err');
+    showToast('Error al subir la foto: '+err.message,'err');
   }finally{
     $('ti-img-input-global').value = '';
     tiSubidaImgCorrelativoActual = null;
+    tiSubidaImgPalletActual = null;
   }
 });
 
-async function eliminarImagenToma(correlativo, idx){
+async function eliminarImagenPallet(correlativo, palletCodigo){
   if(!(currentPermisos.admin || currentPermisos.eliminar)){ showToast('No tienes permiso para eliminar.','err'); return; }
   const header = tiRegAllCache.find(r=>r.correlativo===correlativo);
-  if(!header || !Array.isArray(header.imagenes) || !header.imagenes[idx]) return;
-  if(!confirm('¿Eliminar esta imagen? No se puede deshacer.')) return;
+  if(!header || !Array.isArray(header.imagenes)) return;
+  const img = header.imagenes.find(im=>im.pallet_codigo===palletCodigo);
+  if(!img) return;
+  if(!confirm(`¿Eliminar la foto del pallet ${palletCodigo}? No se puede deshacer.`)) return;
   try{
-    const img = header.imagenes[idx];
     try{ await storage.refFromURL(img.url).delete(); }catch(e){ console.error(e); }
-    const nuevasImagenes = header.imagenes.filter((_,i)=> i!==idx);
+    const nuevasImagenes = header.imagenes.filter(im=>im.pallet_codigo!==palletCodigo);
     await inventarioTomasRef.doc(correlativo).update({ imagenes: nuevasImagenes });
     header.imagenes = nuevasImagenes;
-    await logAccion('toma_inventario_imagen_eliminada', {detalle:`Se eliminó una imagen de la toma ${correlativo}`});
+    await logAccion('toma_inventario_imagen_eliminada', {detalle:`Se eliminó la foto del pallet ${palletCodigo} en la toma ${correlativo}`});
     renderTomasInventario();
     if(tiSeleccionCorrelativo===correlativo) renderPanelImg();
-    showToast('Imagen eliminada.','ok');
+    showToast('Foto eliminada.','ok');
   }catch(err){
     console.error(err);
-    showToast('Error al eliminar la imagen: '+err.message,'err');
+    showToast('Error al eliminar la foto: '+err.message,'err');
+  }
+}
+
+// Elimina, por índice dentro del subconjunto "sin pallet", una foto suelta
+// heredada de tomas generadas antes de este cambio (reutiliza el array completo).
+async function eliminarImagenTomaLegado(correlativo, idxEnSinPallet){
+  if(!(currentPermisos.admin || currentPermisos.eliminar)){ showToast('No tienes permiso para eliminar.','err'); return; }
+  const header = tiRegAllCache.find(r=>r.correlativo===correlativo);
+  if(!header || !Array.isArray(header.imagenes)) return;
+  const sinPallet = header.imagenes.filter(im=>!im.pallet_codigo);
+  const img = sinPallet[idxEnSinPallet];
+  if(!img) return;
+  if(!confirm('¿Eliminar esta foto? No se puede deshacer.')) return;
+  try{
+    try{ await storage.refFromURL(img.url).delete(); }catch(e){ console.error(e); }
+    const nuevasImagenes = header.imagenes.filter(im=>im!==img);
+    await inventarioTomasRef.doc(correlativo).update({ imagenes: nuevasImagenes });
+    header.imagenes = nuevasImagenes;
+    await logAccion('toma_inventario_imagen_eliminada', {detalle:`Se eliminó una foto suelta de la toma ${correlativo}`});
+    renderTomasInventario();
+    if(tiSeleccionCorrelativo===correlativo) renderPanelImg();
+    showToast('Foto eliminada.','ok');
+  }catch(err){
+    console.error(err);
+    showToast('Error al eliminar la foto: '+err.message,'err');
   }
 }
 
@@ -7285,14 +7651,38 @@ $('ti-img-grid').addEventListener('click', (ev)=>{
   const btnDel = ev.target.closest('.ti-img-del');
   if(btnDel){
     ev.stopPropagation();
-    if(tiSeleccionCorrelativo) eliminarImagenToma(tiSeleccionCorrelativo, parseInt(btnDel.dataset.idx,10));
+    if(tiSeleccionCorrelativo) eliminarImagenPallet(tiSeleccionCorrelativo, btnDel.dataset.pallet);
     return;
   }
-  const card = ev.target.closest('.ti-img-card');
+  const btnDelLeg = ev.target.closest('.ti-img-del-legado');
+  if(btnDelLeg){
+    ev.stopPropagation();
+    if(tiSeleccionCorrelativo) eliminarImagenTomaLegado(tiSeleccionCorrelativo, parseInt(btnDelLeg.dataset.idxLegado,10));
+    return;
+  }
+  const vacia = ev.target.closest('.ti-img-card-vacia');
+  if(vacia){
+    if(!tiSeleccionCorrelativo) return;
+    tiSubidaImgCorrelativoActual = tiSeleccionCorrelativo;
+    tiSubidaImgPalletActual = vacia.dataset.palletVacio;
+    $('ti-img-input-global').click();
+    return;
+  }
+  const cardLegado = ev.target.closest('[data-idx-legado]');
+  if(cardLegado){
+    const header = tiRegAllCache.find(r=>r.correlativo===tiSeleccionCorrelativo);
+    const imagenes = (header && header.imagenes) || [];
+    const sinPallet = imagenes.filter(im=>!im.pallet_codigo);
+    abrirVisorImagenes(sinPallet.map(im=>({url:im.url, nombre:im.nombre})), parseInt(cardLegado.dataset.idxLegado,10));
+    return;
+  }
+  const card = ev.target.closest('.ti-img-card[data-pallet]');
   if(card){
     const header = tiRegAllCache.find(r=>r.correlativo===tiSeleccionCorrelativo);
     const imagenes = (header && header.imagenes) || [];
-    abrirVisorImagenes(imagenes.map(im=>({url:im.url, nombre:im.nombre})), parseInt(card.dataset.idx,10));
+    const conPallet = imagenes.filter(im=>im.pallet_codigo);
+    const idx = conPallet.findIndex(im=>im.pallet_codigo===card.dataset.pallet);
+    abrirVisorImagenes(conPallet.map(im=>({url:im.url, nombre:'Pallet '+im.pallet_codigo})), Math.max(0,idx));
   }
 });
 
