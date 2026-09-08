@@ -671,6 +671,7 @@
     <button data-tab="inventario" id="tab-inventario">Inventario</button>
     <button data-tab="toma_inventario" id="tab-toma_inventario">Toma de Inventario</button>
     <button data-tab="kardex" id="tab-kardex">Kardex</button>
+    <button data-tab="merma" id="tab-merma">Merma</button>
   </div>
   <div class="drawer-group">
     <div class="drawer-group-title">Campañas</div>
@@ -1113,7 +1114,16 @@
       <button class="btn btn-ghost" id="btn-limpiar-legacy" style="margin-left:auto;">🧹 Eliminar registros antiguos sin correlativo</button>
     </div>
     <div class="hist-wrap" style="max-height:500px;">
-      <table><thead><tr><th>Correlativo</th><th>Campaña</th><th>Código</th><th>Fecha transacción</th><th>SKU distintos</th><th>Total filas</th><th>Cargado por</th><th>Detalle</th><th>Acción</th></tr></thead><tbody id="camp-reg-body"></tbody></table>
+      <table><thead id="camp-reg-thead"><tr>
+        <th class="th-ordenable" data-key="correlativo">Correlativo</th>
+        <th class="th-ordenable" data-key="campana">Campaña</th>
+        <th class="th-ordenable" data-key="codigo">Código</th>
+        <th class="th-ordenable" data-key="fecha_transaccion">Fecha transacción</th>
+        <th class="th-ordenable" data-key="sku_distintos">SKU distintos</th>
+        <th class="th-ordenable" data-key="total_filas">Total filas</th>
+        <th class="th-ordenable" data-key="usuario">Cargado por</th>
+        <th>Detalle</th><th>Acción</th>
+      </tr></thead><tbody id="camp-reg-body"></tbody></table>
       <div class="empty-state" id="camp-reg-empty">Aún no hay campañas guardadas.</div>
     </div>
     <button class="btn" id="btn-reg-cargar-mas" style="margin-top:10px; display:none;">Cargar más registros</button>
@@ -1147,12 +1157,24 @@
         <select id="guia-reg-filtro-estado"><option value="ACTIVO">Activos</option><option value="INVALIDADO">Invalidados</option></select>
       </div>
       <div class="field" style="margin:0; max-width:170px;"><label>Fecha de traslado</label><input type="date" id="guia-reg-filtro-fecha"></div>
+      <div class="field" style="margin:0; max-width:180px;"><label>N° guía (contiene)</label><input type="text" id="guia-reg-filtro-nroguia" class="upper" placeholder="EJ. TG02"></div>
       <div class="field" style="margin:0; max-width:180px;"><label>Participante (contiene)</label><input type="text" id="guia-reg-filtro-participante" class="upper" placeholder="EJ. MAGDALENA"></div>
       <div class="field" style="margin:0; max-width:220px;"><label>Campaña (contiene)</label><input type="text" id="guia-reg-filtro-campana" class="upper" placeholder="EJ. CAMPAÑA 30-08"></div>
       <button class="btn btn-ghost btn-sm" id="btn-guia-reg-limpiar-filtros">Limpiar filtros</button>
     </div>
     <div class="hist-wrap" style="max-height:500px;">
-      <table><thead><tr><th>Correlativo guía</th><th>N° guía</th><th>Campaña</th><th>Participante</th><th>Fecha traslado</th><th>Partida → Llegada</th><th>Ítems</th><th>Bultos</th><th>Cargado por</th><th>Detalle</th><th>Acción</th></tr></thead><tbody id="guia-reg-body"></tbody></table>
+      <table><thead id="guia-reg-thead"><tr>
+        <th class="th-ordenable" data-key="correlativo">Correlativo guía</th>
+        <th class="th-ordenable" data-key="nro_guia">N° guía</th>
+        <th class="th-ordenable" data-key="campana_nombre">Campaña</th>
+        <th class="th-ordenable" data-key="participante">Participante</th>
+        <th class="th-ordenable" data-key="fecha_traslado">Fecha traslado</th>
+        <th class="th-ordenable" data-key="punto_partida">Partida → Llegada</th>
+        <th class="th-ordenable" data-key="total_items">Ítems</th>
+        <th class="th-ordenable" data-key="bultos">Bultos</th>
+        <th class="th-ordenable" data-key="usuario">Cargado por</th>
+        <th>Detalle</th><th>Acción</th>
+      </tr></thead><tbody id="guia-reg-body"></tbody></table>
       <div class="empty-state" id="guia-reg-empty">Aún no hay guías cargadas.</div>
     </div>
     <button class="btn" id="btn-guia-reg-cargar-mas" style="margin-top:10px; display:none;">Cargar más registros</button>
@@ -1597,6 +1619,222 @@
   <input type="file" id="ti-img-input-global" accept="image/*" style="display:none;">
 </div>
 
+<!-- MERMA -->
+<div class="view" id="view-merma">
+  <div class="subtabs">
+    <button class="active" id="mermasub-cargar">🚚 Cargar Guía</button>
+    <button id="mermasub-registros">🗂 Registros y Detalle</button>
+    <button id="mermasub-formato">🖨 Generar Formato</button>
+    <button id="mermasub-formatos">📁 Formatos Generados</button>
+    <button id="mermasub-auditoria">🎯 Auditoría Rápida</button>
+  </div>
+
+  <div id="mermasub-panel-cargar">
+  <div class="panel" style="margin-bottom:14px;">
+    <h3>Cargar Guía de Remisión (merma)</h3>
+    <p class="hint" style="margin-bottom:10px;">Puedes seleccionar <b>varios PDFs a la vez</b>. Se extrae de cada uno N° de guía, punto de partida, punto de llegada e ítems — los archivos no se guardan, solo esta información. La <b>sede</b> se sugiere a partir del punto de llegada; corrígela si hace falta antes de guardar.</p>
+    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
+      <div class="field" style="margin:0; max-width:420px;"><label>Archivos PDF (guías de remisión) — puedes elegir varios</label><input type="file" id="merma-pdf-input" accept="application/pdf" multiple></div>
+      <button class="btn btn-primary" id="btn-procesar-guia-merma">Procesar PDF(s)</button>
+    </div>
+    <div class="msg" id="merma-msg"></div>
+    <div id="merma-batch-wrap" style="display:none; margin-top:14px;">
+      <p class="hint" id="merma-batch-resumen" style="margin-bottom:10px;"></p>
+      <div class="hist-wrap" style="max-height:600px;">
+        <table><thead><tr><th>Archivo</th><th>N° guía</th><th>Fecha traslado</th><th>Bultos</th><th>Ítems</th><th>Sede (editable)</th><th>Estado</th></tr></thead><tbody id="merma-batch-body"></tbody></table>
+      </div>
+      <button class="btn btn-primary" id="btn-guardar-guias-lote-merma" style="margin-top:12px;">Guardar todas las guías válidas</button>
+    </div>
+  </div>
+  </div>
+
+  <div id="mermasub-panel-registros" style="display:none;">
+  <div class="panel" style="margin-bottom:14px;">
+    <h3>Guías de merma cargadas</h3>
+    <p class="hint" style="margin-bottom:10px;">Cada carga guardada genera un correlativo. El detalle (ítems) solo se consulta al presionar "Ver detalle". Al eliminar un registro se borra su detalle y la cabecera queda marcada como INVALIDADA (no se borra el correlativo).</p>
+    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
+      <div class="field" style="margin:0; max-width:190px;">
+        <label>Mostrar</label>
+        <select id="merma-reg-filtro-estado"><option value="ACTIVO">Activos</option><option value="INVALIDADO">Invalidados</option></select>
+      </div>
+      <div class="field" style="margin:0; max-width:170px;"><label>Fecha de traslado</label><input type="date" id="merma-reg-filtro-fecha"></div>
+      <div class="field" style="margin:0; max-width:200px;"><label>Sede (contiene)</label><input type="text" id="merma-reg-filtro-sede" class="upper" placeholder="EJ. MALL COMAS"></div>
+      <div class="field" style="margin:0; max-width:180px;"><label>N° guía (contiene)</label><input type="text" id="merma-reg-filtro-nroguia" class="upper" placeholder="EJ. TG02"></div>
+      <button class="btn btn-ghost btn-sm" id="btn-merma-reg-limpiar-filtros">Limpiar filtros</button>
+    </div>
+    <div class="hist-wrap" style="max-height:500px;">
+      <table><thead><tr><th>Correlativo</th><th>N° guía</th><th>Sede</th><th>Fecha traslado</th><th>Partida → Llegada</th><th>Bultos</th><th>Ítems</th><th>Cargado por</th><th>Formato</th><th>Auditoría</th><th>Detalle</th><th>Acción</th></tr></thead><tbody id="merma-reg-body"></tbody></table>
+      <div class="empty-state" id="merma-reg-empty">Aún no hay guías de merma cargadas.</div>
+    </div>
+  </div>
+
+  <div class="panel" id="merma-detalle-panel" style="display:none; margin-bottom:14px;">
+    <h3 id="merma-detalle-titulo" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+      <span id="merma-detalle-titulo-text">Detalle de guía</span>
+      <button class="btn btn-sm btn-ghost" id="btn-ocultar-detalle-merma">Ocultar detalle ✕</button>
+    </h3>
+    <p class="hint" style="margin-bottom:8px;">Ajusta "Total de unidades" (conteo físico real), "No apta para la venta" y "Observación" de cada ítem, y guarda los cambios. Estos valores son los que se usan al generar el Formato de Merma.</p>
+    <div class="hist-wrap" style="max-height:600px;">
+      <table><thead><tr><th>Item</th><th>Código</th><th>Descripción</th><th>Unidad</th><th>Cant. guía</th><th>Total unidades</th><th>Diferencia</th><th>No apta venta</th><th>Observación</th></tr></thead><tbody id="merma-detalle-body"></tbody></table>
+    </div>
+    <div class="msg" id="merma-detalle-msg"></div>
+    <button class="btn btn-primary" id="btn-guardar-detalle-merma" style="margin-top:12px;">💾 Guardar cambios de esta guía</button>
+  </div>
+  </div>
+
+  <div id="mermasub-panel-formato" style="display:none;">
+  <div class="panel" style="margin-bottom:14px;">
+    <h3>Generar Formato de Merma</h3>
+    <p class="hint" style="margin-bottom:10px;">Elige la sede y las guías activas de esa sede que quieres incluir en un mismo formato impreso (uno o varios N° de guía). Se parte de los valores ya guardados en "Registros y Detalle" — puedes ajustarlos aquí una última vez antes de generar el PDF.</p>
+    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
+      <div class="field" style="margin:0; max-width:280px;">
+        <label>Sede</label>
+        <select id="merma-fmt-sede"><option value="">— Elige una sede —</option></select>
+      </div>
+    </div>
+    <div id="merma-fmt-guias-wrap" style="display:none;">
+      <p class="hint" style="margin-bottom:6px;">Guías ACTIVAS disponibles para "<b><span id="merma-fmt-sede-label"></span></b>":</p>
+      <div class="hist-wrap" style="max-height:220px; margin-bottom:14px;">
+        <table><thead><tr><th style="width:34px;"><input type="checkbox" id="merma-fmt-check-all"></th><th>Correlativo</th><th>N° guía</th><th>Fecha traslado</th><th>Ítems</th><th>Formato previo</th></tr></thead><tbody id="merma-fmt-guias-body"></tbody></table>
+      </div>
+      <div class="empty-state" id="merma-fmt-guias-empty" style="display:none;">Esta sede no tiene guías activas.</div>
+      <button class="btn btn-primary" id="btn-merma-fmt-cargar-filas" style="margin-bottom:14px;">Cargar ítems de las guías seleccionadas</button>
+
+      <div id="merma-fmt-filas-wrap" style="display:none;">
+        <div class="hist-wrap" style="max-height:520px;">
+          <table><thead><tr><th>N°</th><th>Sede</th><th>N° guía</th><th>Código</th><th>Descripción</th><th>Cant. guía</th><th>Total unidades</th><th>Diferencia</th><th>No apta venta</th><th>Observación</th></tr></thead><tbody id="merma-fmt-filas-body"></tbody></table>
+        </div>
+        <div class="msg" id="merma-fmt-msg"></div>
+        <button class="btn btn-primary" id="btn-merma-fmt-generar" style="margin-top:12px;">🖨 Generar PDF de Formato de Merma</button>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <div id="mermasub-panel-formatos" style="display:none;">
+  <div class="panel" style="margin-bottom:14px;">
+    <h3>Formatos de merma generados</h3>
+    <p class="hint" style="margin-bottom:10px;">Aquí puedes revisar qué formatos ya se generaron, volver a descargar el PDF, y subir o reemplazar su versión firmada escaneada — tu previsualizador de guías con formato firmado.</p>
+    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
+      <div class="field" style="margin:0; max-width:190px;">
+        <label>Mostrar</label>
+        <select id="merma-fmt-list-filtro-estado"><option value="ACTIVO">Activos</option><option value="INVALIDADO">Invalidados</option></select>
+      </div>
+      <div class="field" style="margin:0; max-width:220px;"><label>Sede (contiene)</label><input type="text" id="merma-fmt-list-filtro-sede" class="upper" placeholder="EJ. MALL COMAS"></div>
+      <div class="field" style="margin:0; max-width:190px;">
+        <label>PDF firmado</label>
+        <select id="merma-fmt-list-filtro-firmado"><option value="">Todos</option><option value="si">Con PDF firmado</option><option value="no">Sin PDF firmado</option></select>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="btn-merma-fmt-list-limpiar-filtros">Limpiar filtros</button>
+    </div>
+    <div class="hist-wrap" style="max-height:460px;">
+      <table><thead><tr><th>Correlativo</th><th>Sede</th><th>Fecha generado</th><th>Guías</th><th>Filas</th><th>Generado por</th><th>¿PDF firmado?</th><th>Acción</th></tr></thead><tbody id="merma-formatos-body"></tbody></table>
+      <div class="empty-state" id="merma-formatos-empty">Aún no se han generado formatos de merma.</div>
+    </div>
+  </div>
+
+  <div class="panel" id="merma-fmt-pdf-panel" style="display:none;">
+    <h3 id="merma-fmt-pdf-titulo" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+      <span id="merma-fmt-pdf-titulo-text">PDF firmado</span>
+      <button class="btn btn-sm btn-ghost" id="btn-ocultar-merma-fmt-pdf">Ocultar ✕</button>
+    </h3>
+    <div id="merma-fmt-pdf-sin-archivo" style="display:none;">
+      <p class="hint" style="margin-bottom:10px;">Aún no se ha subido un PDF firmado para este formato.</p>
+      <button class="btn btn-primary" id="btn-merma-subir-pdf-panel">📤 Subir PDF firmado</button>
+    </div>
+    <div id="merma-fmt-pdf-con-archivo" style="display:none;">
+      <p class="hint" id="merma-fmt-pdf-info" style="margin-bottom:10px;"></p>
+      <iframe id="merma-fmt-pdf-iframe" style="width:100%; height:760px; border:1px solid var(--line-strong); border-radius:6px;" src=""></iframe>
+      <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+        <a id="merma-fmt-pdf-abrir-nueva" href="#" target="_blank" rel="noopener" class="btn btn-ghost">⬇ Abrir en pestaña nueva</a>
+        <button class="btn btn-ghost" id="btn-merma-reemplazar-pdf">↺ Reemplazar PDF</button>
+        <button class="btn" id="btn-merma-eliminar-pdf" style="background:#8A332A; color:#fff;">🗑 Eliminar PDF</button>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <div id="mermasub-panel-auditoria" style="display:none;">
+  <div class="panel" style="margin-bottom:14px;">
+    <h3>Auditoría Rápida de Recepción por Muestreo</h3>
+    <p class="hint" style="margin-bottom:10px;">Calcula cuántos bultos abrir y cuántos ítems inspeccionar por guía, sin superar un presupuesto de <b>60 minutos</b>. El resultado no rechaza la guía: solo la clasifica como <b>CONFIABLE</b> o <b>NO CONFIABLE</b> para que sigas el flujo normal y, si hace falta, se concilie después.</p>
+    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
+      <div class="field" style="margin:0; max-width:320px;">
+        <label>Guía de merma cargada (opcional)</label>
+        <select id="aud-guia-select"><option value="">— Ingresar datos manualmente —</option></select>
+      </div>
+    </div>
+    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:6px;">
+      <div class="field" style="margin:0; max-width:170px;"><label>Total de bultos recibidos</label><input type="number" id="aud-total-bultos" min="1" placeholder="EJ. 12"></div>
+      <div class="field" style="margin:0; max-width:200px;"><label>Total de ítems según guía</label><input type="number" id="aud-total-items" min="1" placeholder="EJ. 8"></div>
+      <div class="field" style="margin:0; max-width:220px;">
+        <label>Tipo de embalaje</label>
+        <select id="aud-tipo-embalaje">
+          <option value="HOMOGENEO">Homogéneo (1 ítem por bulto)</option>
+          <option value="MIXTO">Mixto (varios ítems por bulto)</option>
+        </select>
+      </div>
+      <div class="field" style="margin:0; max-width:260px;">
+        <label>Tiempo por ítem revisado</label>
+        <select id="aud-tiempo-item">
+          <option value="3">3 min — revisión rápida / código de barras</option>
+          <option value="5" selected>5 min — revisión estándar / conteo</option>
+          <option value="10">10 min — revisión exhaustiva / técnica</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" id="btn-aud-calcular">📐 Calcular muestra</button>
+    </div>
+    <div class="msg" id="aud-calc-msg"></div>
+
+    <div id="aud-resultado-wrap" style="display:none; margin-top:14px;">
+      <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:14px;" id="aud-resultado-kpis"></div>
+
+      <div class="panel" style="background:var(--bg-soft, #F7F7F5); margin-bottom:14px;">
+        <h4 style="margin-bottom:8px;">Resultado de la inspección</h4>
+        <p class="hint" style="margin-bottom:10px;">Registra cada discrepancia encontrada al abrir los bultos y revisar los ítems de la muestra. Si no encuentras ninguna, deja la lista vacía.</p>
+        <div class="hist-wrap" style="max-height:280px; margin-bottom:10px;">
+          <table><thead><tr><th>Código / ítem</th><th>Motivo</th><th>Detalle (opcional)</th><th></th></tr></thead><tbody id="aud-discrepancias-body"></tbody></table>
+          <div class="empty-state" id="aud-discrepancias-empty">Sin discrepancias registradas — de guardar así, la guía queda CONFIABLE.</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="btn-aud-agregar-discrepancia">➕ Agregar discrepancia</button>
+      </div>
+
+      <button class="btn btn-primary" id="btn-aud-guardar" style="margin-bottom:6px;">💾 Guardar auditoría</button>
+      <div class="msg" id="aud-guardar-msg"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Auditorías registradas</h3>
+    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
+      <div class="field" style="margin:0; max-width:200px;">
+        <label>Dictamen</label>
+        <select id="aud-list-filtro-dictamen"><option value="">Todos</option><option value="CONFIABLE">Confiable</option><option value="NO_CONFIABLE">No confiable</option></select>
+      </div>
+      <div class="field" style="margin:0; max-width:220px;"><label>Sede (contiene)</label><input type="text" id="aud-list-filtro-sede" class="upper" placeholder="EJ. MALL COMAS"></div>
+      <button class="btn btn-ghost btn-sm" id="btn-aud-list-limpiar-filtros">Limpiar filtros</button>
+    </div>
+    <div class="hist-wrap" style="max-height:480px;">
+      <table><thead><tr><th>Correlativo</th><th>Guía</th><th>Sede</th><th>Bultos abiertos</th><th>Ítems revisados</th><th>Tiempo est.</th><th>Discrepancias</th><th>Dictamen</th><th>Fecha</th><th>Usuario</th><th></th></tr></thead><tbody id="aud-list-body"></tbody></table>
+      <div class="empty-state" id="aud-list-empty">Aún no se han registrado auditorías rápidas.</div>
+    </div>
+  </div>
+
+  <div class="panel" id="aud-detalle-panel" style="display:none;">
+    <h3 style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+      <span id="aud-detalle-titulo-text">Detalle de auditoría</span>
+      <button class="btn btn-sm btn-ghost" id="btn-ocultar-aud-detalle">Ocultar ✕</button>
+    </h3>
+    <div class="hist-wrap" style="max-height:320px;">
+      <table><thead><tr><th>Código / ítem</th><th>Motivo</th><th>Detalle</th></tr></thead><tbody id="aud-detalle-body"></tbody></table>
+      <div class="empty-state" id="aud-detalle-empty">Esta auditoría no registró discrepancias.</div>
+    </div>
+  </div>
+  </div>
+
+  <input type="file" id="merma-pdf-input-global" accept="application/pdf" style="display:none;">
+</div>
+
 <!-- KARDEX -->
 <div class="view" id="view-kardex">
   <div class="panel">
@@ -1652,6 +1890,7 @@
     <div class="field"><label><input type="checkbox" id="us-campanas" style="width:auto; margin-right:6px;">Campañas (PDF)</label></div>
     <div class="field"><label><input type="checkbox" id="us-toma-inventario" style="width:auto; margin-right:6px;">Toma de Inventario</label></div>
     <div class="field"><label><input type="checkbox" id="us-kardex" style="width:auto; margin-right:6px;">Kardex</label></div>
+    <div class="field"><label><input type="checkbox" id="us-merma" style="width:auto; margin-right:6px;">Merma</label></div>
     <div class="field"><label><input type="checkbox" id="us-bitacora" style="width:auto; margin-right:6px;">Bitácora</label></div>
     <p class="hint" style="margin:10px 0 4px;">Permiso adicional (aplica dentro de los módulos ya marcados):</p>
     <div class="field"><label><input type="checkbox" id="us-eliminar" style="width:auto; margin-right:6px;">Puede editar/eliminar/bloquear registros</label></div>
@@ -1711,8 +1950,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v89';
-const APP_UPDATED = '08/09/2026 10:00';
+const APP_VERSION = 'v92';
+const APP_UPDATED = '08/09/2026 21:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -1753,6 +1992,10 @@ const inventarioTomasItemsRef = db.collection('inventario_tomas_items');
 const inventarioObservacionesRef = db.collection('inventario_observaciones');
 const contadoresRef = db.collection('contadores');
 const kardexRef = db.collection('kardex');
+const mermaGuiasRef = db.collection('merma_guias');
+const mermaGuiaItemsRef = db.collection('merma_guia_items');
+const mermaFormatosRef = db.collection('merma_formatos');
+const mermaAuditoriasRef = db.collection('merma_auditorias');
 const contadorRef = db.collection('contadores').doc('global');
 
 let bloques = {}, nichos = {}, posiciones = {}, pallets = {}, productos = {};
@@ -1873,7 +2116,7 @@ async function loadPermisos(user){
   let snap = await usuariosRef.doc(email).get();
   if(!snap.exists){
     if(email === ADMIN_EMAIL){
-      await usuariosRef.doc(email).set({ email, alias:'Administrador', permisos:{diseno:true, movimientos:true, productos:true, inventario:true, pallets:true, retiros:true, campanas:true, kardex:true, bitacora:true, eliminar:true, admin:true}, creado_en: firebase.firestore.FieldValue.serverTimestamp() });
+      await usuariosRef.doc(email).set({ email, alias:'Administrador', permisos:{diseno:true, movimientos:true, productos:true, inventario:true, pallets:true, retiros:true, campanas:true, toma_inventario:true, kardex:true, merma:true, bitacora:true, eliminar:true, admin:true}, creado_en: firebase.firestore.FieldValue.serverTimestamp() });
       snap = await usuariosRef.doc(email).get();
     }else{
       showToast('No tienes permisos asignados. Contacta al administrador.','err');
@@ -1909,6 +2152,7 @@ function applyPermisosUI(){
     campanas: admin || !!p.campanas,
     toma_inventario: admin || !!p.toma_inventario,
     kardex: admin || !!p.kardex,
+    merma: admin || !!p.merma,
     bitacora: admin || !!p.bitacora,
     usuarios: admin
   };
@@ -2025,6 +2269,7 @@ function moduloOf(tipo){
   if(['producto_registrado','producto_fusionado'].includes(tipo)) return 'productos';
   if(['permisos_actualizados','sesion_cerrada','sesion_cerrada_inactividad','sesion_iniciada'].includes(tipo)) return 'usuarios';
   if(['toma_inventario_generada','toma_inventario_finalizada','toma_inventario_eliminada','toma_inventario_pdf_subido','toma_inventario_pdf_eliminado','toma_inventario_observacion_resuelta','toma_inventario_observacion_reabierta','toma_inventario_conteo_corregido','toma_inventario_sobrante_registrado','toma_inventario_eri_eru_recalculado'].includes(tipo)) return 'toma_inventario';
+  if(['merma_guia_cargada','merma_guia_eliminada','merma_sede_corregida','merma_formato_generado','merma_formato_eliminado','merma_formato_pdf_subido','merma_formato_pdf_eliminado','merma_auditoria_registrada','merma_auditoria_alerta','merma_auditoria_eliminada'].includes(tipo)) return 'merma';
   return '';
 }
 function tipoLabel(tipo){
@@ -2040,7 +2285,14 @@ function tipoLabel(tipo){
     toma_inventario_pdf_eliminado:'Toma de inventario: PDF eliminado',
     toma_inventario_observacion_resuelta:'Observación resuelta', toma_inventario_observacion_reabierta:'Observación reabierta',
     toma_inventario_conteo_corregido:'Conteo corregido', toma_inventario_sobrante_registrado:'Código sobrante registrado',
-    toma_inventario_eri_eru_recalculado:'ERI/ERU recalculado'
+    toma_inventario_eri_eru_recalculado:'ERI/ERU recalculado',
+    merma_guia_cargada:'Merma: guía cargada', merma_guia_eliminada:'Merma: guía eliminada',
+    merma_sede_corregida:'Merma: sede corregida', merma_formato_generado:'Merma: formato generado',
+    merma_formato_eliminado:'Merma: formato eliminado', merma_formato_pdf_subido:'Merma: PDF firmado subido',
+    merma_formato_pdf_eliminado:'Merma: PDF firmado eliminado',
+    merma_auditoria_registrada:'Merma: auditoría rápida registrada (CONFIABLE)',
+    merma_auditoria_alerta:'⚠ Merma: auditoría rápida con discrepancias (NO CONFIABLE)',
+    merma_auditoria_eliminada:'Merma: auditoría rápida eliminada'
   };
   return map[tipo] || tipo || '';
 }
@@ -2113,6 +2365,9 @@ function startListeners(){
   cargarRegistrosCampana(true);
   cargarRegistrosGuias(true);
   cargarTomasInventario(true);
+  cargarRegistrosMerma(true);
+  cargarFormatosMerma(true);
+  cargarAuditoriasMerma(true);
 }
 
 /* Render agrupado: varios snapshots seguidos producen UNA sola pasada (un frame),
@@ -4696,6 +4951,24 @@ async function cargarRegistrosCampana(reset){
   renderRegistrosCampana();
 }
 
+// Refresca las flechas ▲▼ y la clase "activa" de las cabeceras ordenables de una tabla.
+// Reutilizable por cualquier tabla que use el patrón .th-ordenable/data-key.
+function actualizarFlechasOrden(theadId, ordenState, columnasMap){
+  const thead = document.getElementById(theadId);
+  if(!thead) return;
+  thead.querySelectorAll('.th-ordenable').forEach(th=>{
+    const campo = th.dataset.key;
+    const activo = ordenState.campo === campo;
+    th.classList.toggle('th-activo', activo);
+    const arrow = activo ? (ordenState.dir===1 ? '▲' : '▼') : '';
+    th.innerHTML = `${(columnasMap && columnasMap[campo]) || campo}<span class="th-arrow">${arrow}</span>`;
+  });
+}
+
+let campRegOrden = { campo: null, dir: 1 };
+const CAMP_REG_COLUMNAS = { correlativo:'Correlativo', campana:'Campaña', codigo:'Código', fecha_transaccion:'Fecha transacción', sku_distintos:'SKU distintos', total_filas:'Total filas', usuario:'Cargado por' };
+const CAMP_REG_NUMERICOS = new Set(['sku_distintos','total_filas']);
+
 function renderRegistrosCampana(){
   const estadoFiltro = $('camp-reg-filtro-estado').value;
   const fechaFiltro = $('camp-reg-filtro-fecha').value;
@@ -4703,12 +4976,20 @@ function renderRegistrosCampana(){
   const hayFiltrosExtra = !!(fechaFiltro || campanaFiltro);
   // Los registros antiguos (guardados antes de existir el campo "estado") se
   // consideran ACTIVOS por defecto.
-  const filtrados = campRegAllCache.filter(r => {
+  let filtrados = campRegAllCache.filter(r => {
     if((r.estado || 'ACTIVO') !== estadoFiltro) return false;
     if(fechaFiltro && r.fecha_transaccion !== fechaFiltro) return false;
     if(campanaFiltro && !(r.campana||'').toUpperCase().includes(campanaFiltro)) return false;
     return true;
   });
+  if(campRegOrden.campo){
+    const campo = campRegOrden.campo, dir = campRegOrden.dir;
+    const esNumerico = CAMP_REG_NUMERICOS.has(campo);
+    filtrados = filtrados.slice().sort((a,b)=>{
+      if(esNumerico) return ((Number(a[campo])||0) - (Number(b[campo])||0)) * dir;
+      return (a[campo]||'').toString().localeCompare((b[campo]||'').toString()) * dir;
+    });
+  }
   if(filtrados.length === 0){
     $('camp-reg-body').innerHTML = '';
     $('camp-reg-empty').style.display = 'block';
@@ -4716,6 +4997,7 @@ function renderRegistrosCampana(){
       ? 'No hay registros que coincidan con los filtros.'
       : (estadoFiltro === 'ACTIVO' ? 'Aún no hay campañas guardadas.' : 'No hay registros invalidados.');
     $('btn-reg-cargar-mas').style.display = 'none';
+    actualizarFlechasOrden('camp-reg-thead', campRegOrden, CAMP_REG_COLUMNAS);
     return;
   }
   $('camp-reg-empty').style.display = 'none';
@@ -4728,7 +5010,16 @@ function renderRegistrosCampana(){
     return `<tr><td>${r.correlativo}</td><td>${r.campana||''}</td><td>${r.codigo||''}</td><td>${fmtFechaCorta(r.fecha_transaccion)}</td><td>${r.sku_distintos!=null?r.sku_distintos:''}</td><td>${r.total_filas!=null?r.total_filas:''}</td><td>${r.usuario||''}</td><td><button class="btn btn-sm btn-ver-detalle-campana" data-correlativo="${r.correlativo}" data-campana="${(r.campana||'').replace(/"/g,'&quot;')}">Ver detalle</button></td><td>${accionHtml}</td></tr>`;
   }).join('');
   $('btn-reg-cargar-mas').style.display = !campRegNoMore ? 'inline-block' : 'none';
+  actualizarFlechasOrden('camp-reg-thead', campRegOrden, CAMP_REG_COLUMNAS);
 }
+$('camp-reg-thead').addEventListener('click', (ev)=>{
+  const th = ev.target.closest('.th-ordenable');
+  if(!th) return;
+  const campo = th.dataset.key;
+  if(campRegOrden.campo === campo) campRegOrden.dir *= -1;
+  else{ campRegOrden.campo = campo; campRegOrden.dir = 1; }
+  renderRegistrosCampana();
+});
 
 $('camp-reg-filtro-estado').addEventListener('change', ()=> renderRegistrosCampana());
 $('camp-reg-filtro-fecha').addEventListener('change', ()=> renderRegistrosCampana());
@@ -5735,19 +6026,33 @@ async function corregirParticipanteGuia(correlativoGuia, nuevoParticipante){
   cargarRegistrosGuias(true);
 }
 
+let guiaRegOrden = { campo: null, dir: 1 };
+const GUIA_REG_COLUMNAS = { correlativo:'Correlativo guía', nro_guia:'N° guía', campana_nombre:'Campaña', participante:'Participante', fecha_traslado:'Fecha traslado', punto_partida:'Partida → Llegada', total_items:'Ítems', bultos:'Bultos', usuario:'Cargado por' };
+const GUIA_REG_NUMERICOS = new Set(['total_items','bultos']);
+
 function renderRegistrosGuias(){
   const estadoFiltro = $('guia-reg-filtro-estado').value;
   const fechaFiltro = $('guia-reg-filtro-fecha').value;
+  const nroGuiaFiltro = $('guia-reg-filtro-nroguia').value.trim().toUpperCase();
   const participanteFiltro = $('guia-reg-filtro-participante').value.trim().toUpperCase();
   const campanaFiltro = $('guia-reg-filtro-campana').value.trim().toUpperCase();
-  const hayFiltrosExtra = !!(fechaFiltro || participanteFiltro || campanaFiltro);
-  const filtrados = guiaRegAllCache.filter(r => {
+  const hayFiltrosExtra = !!(fechaFiltro || nroGuiaFiltro || participanteFiltro || campanaFiltro);
+  let filtrados = guiaRegAllCache.filter(r => {
     if((r.estado||'ACTIVO') !== estadoFiltro) return false;
     if(fechaFiltro && r.fecha_traslado !== fechaFiltro) return false;
+    if(nroGuiaFiltro && !(r.nro_guia||'').toUpperCase().includes(nroGuiaFiltro)) return false;
     if(participanteFiltro && !(r.participante||'').toUpperCase().includes(participanteFiltro)) return false;
     if(campanaFiltro && !(r.campana_nombre||'').toUpperCase().includes(campanaFiltro)) return false;
     return true;
   });
+  if(guiaRegOrden.campo){
+    const campo = guiaRegOrden.campo, dir = guiaRegOrden.dir;
+    const esNumerico = GUIA_REG_NUMERICOS.has(campo);
+    filtrados = filtrados.slice().sort((a,b)=>{
+      if(esNumerico) return ((Number(a[campo])||0) - (Number(b[campo])||0)) * dir;
+      return (a[campo]||'').toString().localeCompare((b[campo]||'').toString()) * dir;
+    });
+  }
   if(filtrados.length === 0){
     $('guia-reg-body').innerHTML = '';
     $('guia-reg-empty').style.display = 'block';
@@ -5755,6 +6060,7 @@ function renderRegistrosGuias(){
       ? 'No hay guías que coincidan con los filtros.'
       : (estadoFiltro==='ACTIVO' ? 'Aún no hay guías cargadas.' : 'No hay guías invalidadas.');
     $('btn-guia-reg-cargar-mas').style.display = 'none';
+    actualizarFlechasOrden('guia-reg-thead', guiaRegOrden, GUIA_REG_COLUMNAS);
     return;
   }
   $('guia-reg-empty').style.display = 'none';
@@ -5767,13 +6073,24 @@ function renderRegistrosGuias(){
     return `<tr><td>${r.correlativo}</td><td>${r.nro_guia||''}</td><td>${r.campana_correlativo||''} — ${r.campana_nombre||''}</td><td>${r.participante||''}</td><td>${r.fecha_traslado||''}</td><td>${r.punto_partida||''} → ${r.punto_llegada||''}</td><td>${r.total_items??''}</td><td>${r.bultos??''}</td><td>${r.usuario||''}</td><td><button class="btn btn-sm btn-ver-detalle-guia" data-correlativo="${r.correlativo}" data-nro="${(r.nro_guia||'').replace(/"/g,'&quot;')}">Ver detalle</button></td><td>${accionHtml}</td></tr>`;
   }).join('');
   $('btn-guia-reg-cargar-mas').style.display = !guiaRegNoMore ? 'inline-block' : 'none';
+  actualizarFlechasOrden('guia-reg-thead', guiaRegOrden, GUIA_REG_COLUMNAS);
 }
+$('guia-reg-thead').addEventListener('click', (ev)=>{
+  const th = ev.target.closest('.th-ordenable');
+  if(!th) return;
+  const campo = th.dataset.key;
+  if(guiaRegOrden.campo === campo) guiaRegOrden.dir *= -1;
+  else{ guiaRegOrden.campo = campo; guiaRegOrden.dir = 1; }
+  renderRegistrosGuias();
+});
 $('guia-reg-filtro-estado').addEventListener('change', ()=> renderRegistrosGuias());
 $('guia-reg-filtro-fecha').addEventListener('change', ()=> renderRegistrosGuias());
+$('guia-reg-filtro-nroguia').addEventListener('input', ()=> renderRegistrosGuias());
 $('guia-reg-filtro-participante').addEventListener('input', ()=> renderRegistrosGuias());
 $('guia-reg-filtro-campana').addEventListener('input', ()=> renderRegistrosGuias());
 $('btn-guia-reg-limpiar-filtros').addEventListener('click', ()=>{
   $('guia-reg-filtro-fecha').value = '';
+  $('guia-reg-filtro-nroguia').value = '';
   $('guia-reg-filtro-participante').value = '';
   $('guia-reg-filtro-campana').value = '';
   renderRegistrosGuias();
@@ -5855,6 +6172,1208 @@ $('guia-reg-body').addEventListener('click', async (ev)=>{
     return;
   }
 });
+
+/* ==================== MÓDULO DE MERMA ====================
+   Reutiliza extractGuiaLineGroups()/parseGuiaPDF()/txtItem() (definidas arriba,
+   en la sección de Campañas) para leer las mismas guías de remisión en PDF, pero
+   sin vincularlas a ninguna campaña. En su lugar cada guía se asocia a una SEDE
+   (sugerida desde el punto de llegada del PDF, editable). El detalle de cada
+   ítem guarda además "total_unidades" (conteo físico real), "no_apta_venta" y
+   "observacion" — estos tres son los que se ajustan antes de imprimir el
+   Formato de Merma. */
+
+function setMermaSubtab(name){
+  ['cargar','registros','formato','formatos','auditoria'].forEach(n=>{
+    $('mermasub-'+n).classList.toggle('active', n===name);
+    $('mermasub-panel-'+n).style.display = (n===name) ? 'block' : 'none';
+  });
+}
+$('mermasub-cargar').addEventListener('click', ()=> setMermaSubtab('cargar'));
+$('mermasub-registros').addEventListener('click', ()=> setMermaSubtab('registros'));
+$('mermasub-formato').addEventListener('click', ()=>{ setMermaSubtab('formato'); poblarSelectSedesMerma(); });
+$('mermasub-formatos').addEventListener('click', ()=>{ setMermaSubtab('formatos'); renderFormatosMerma(); });
+$('mermasub-auditoria').addEventListener('click', ()=>{ setMermaSubtab('auditoria'); poblarSelectGuiasAuditoria(); renderAuditoriasMerma(); });
+
+async function generarCorrelativoMerma(){
+  const counterRef = contadoresRef.doc('merma_guias');
+  const siguiente = await db.runTransaction(async (tx)=>{
+    const snap = await tx.get(counterRef);
+    const actual = snap.exists ? (snap.data().ultimo || 0) : 0;
+    const nuevo = actual + 1;
+    tx.set(counterRef, {ultimo: nuevo}, {merge:true});
+    return nuevo;
+  });
+  return 'MRM-' + String(siguiente).padStart(5,'0');
+}
+async function generarCorrelativoFormatoMerma(){
+  const counterRef = contadoresRef.doc('merma_formatos');
+  const siguiente = await db.runTransaction(async (tx)=>{
+    const snap = await tx.get(counterRef);
+    const actual = snap.exists ? (snap.data().ultimo || 0) : 0;
+    const nuevo = actual + 1;
+    tx.set(counterRef, {ultimo: nuevo}, {merge:true});
+    return nuevo;
+  });
+  return 'FRM-' + String(siguiente).padStart(5,'0');
+}
+
+function calcularDiferenciaMerma(cantidadGuia, totalUnidades){
+  const c = Number(cantidadGuia) || 0;
+  if(totalUnidades === '' || totalUnidades === null || totalUnidades === undefined || isNaN(Number(totalUnidades))) return '';
+  const t = Number(totalUnidades);
+  const diff = t - c;
+  if(diff === 0) return '-';
+  return diff > 0 ? `SOBRA ${diff}` : `FALTA ${Math.abs(diff)}`;
+}
+
+async function buscarMermaGuiaDuplicada(nroGuia){
+  if(!nroGuia) return null;
+  const snap = await mermaGuiasRef.where('nro_guia','==',nroGuia).limit(5).get();
+  return snap.docs.map(d=>d.data()).find(r=>(r.estado||'ACTIVO')==='ACTIVO') || null;
+}
+
+/* -------- Cargar Guía -------- */
+let mermaBatch = []; // [{ fileName, resultado, error, duplicado, duplicadoEnLote }]
+
+$('btn-procesar-guia-merma').addEventListener('click', async ()=>{
+  const files = [...$('merma-pdf-input').files];
+  if(files.length === 0){ showMsg('merma-msg','err','Selecciona al menos un archivo PDF.'); return; }
+  const noPdf = files.find(f=> !/\.pdf$/i.test(f.name) && f.type !== 'application/pdf');
+  if(noPdf){ showMsg('merma-msg','err',`"${noPdf.name}" no es un PDF.`); return; }
+
+  $('btn-procesar-guia-merma').disabled = true;
+  mermaBatch = [];
+  $('merma-batch-wrap').style.display = 'none';
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  for(let i=0;i<files.length;i++){
+    const file = files[i];
+    showMsg('merma-msg','ok', `Procesando ${i+1}/${files.length}: ${file.name}…`);
+    try{
+      const arrayBuffer = await file.arrayBuffer();
+      const paginas = await extractGuiaLineGroups(arrayBuffer);
+      const resultado = parseGuiaPDF(paginas);
+      if(resultado.items.length === 0){
+        mermaBatch.push({ fileName: file.name, resultado: null, error: 'No se reconocieron ítems en este PDF.' });
+      }else{
+        mermaBatch.push({ fileName: file.name, resultado, sedeSugerida: resultado.punto_llegada, duplicado:null });
+      }
+    }catch(err){
+      console.error(err);
+      mermaBatch.push({ fileName: file.name, resultado: null, error: err.message });
+    }
+  }
+
+  showMsg('merma-msg','ok', 'Verificando duplicados…');
+  for(const item of mermaBatch){
+    if(!item.resultado) continue;
+    try{ item.duplicado = await buscarMermaGuiaDuplicada(item.resultado.nro_guia); }
+    catch(err){ console.error(err); }
+  }
+  const vistosEnLote = new Map();
+  mermaBatch.forEach(item=>{
+    if(!item.resultado || item.duplicado) return;
+    const nro = item.resultado.nro_guia;
+    if(!nro) return;
+    if(vistosEnLote.has(nro)) item.duplicadoEnLote = vistosEnLote.get(nro);
+    else vistosEnLote.set(nro, item.fileName);
+  });
+
+  renderMermaBatch();
+  const validas = mermaBatch.filter(it=>it.resultado && !it.duplicado && !it.duplicadoEnLote).length;
+  const dups = mermaBatch.filter(it=>it.duplicado).length;
+  const dupsLote = mermaBatch.filter(it=>it.duplicadoEnLote).length;
+  const errores = mermaBatch.filter(it=>!it.resultado).length;
+  $('merma-batch-resumen').textContent = `${mermaBatch.length} archivo(s) procesado(s): ${validas} listo(s) para guardar${dups?`, ${dups} ya existían (duplicados)`:''}${dupsLote?`, ${dupsLote} repetidos dentro de este mismo lote`:''}${errores?`, ${errores} con error`:''}. Revisa/edita fecha y sede de cada uno antes de guardar.`;
+  $('merma-batch-wrap').style.display = 'block';
+  showMsg('merma-msg','ok', `Se procesaron ${mermaBatch.length} archivo(s).`);
+  $('btn-procesar-guia-merma').disabled = false;
+});
+
+function renderMermaBatch(){
+  $('merma-batch-body').innerHTML = mermaBatch.map((item, idx)=>{
+    if(!item.resultado){
+      return `<tr><td>${item.fileName}</td><td colspan="6" style="color:#8A332A;">⚠ ${item.error||'No se pudo procesar.'}</td></tr>`;
+    }
+    const r = item.resultado;
+    let dupHtml;
+    if(item.duplicado) dupHtml = `<span style="color:#8A332A; font-weight:700;">Ya existe (${item.duplicado.correlativo}) — no se guardará</span>`;
+    else if(item.duplicadoEnLote) dupHtml = `<span style="color:#8A332A; font-weight:700;">Repetida en este lote (igual que "${item.duplicadoEnLote}") — no se guardará</span>`;
+    else dupHtml = `<span style="color:#245C46;">Nueva ✓</span>`;
+    const fechaISO = fechaDDMMYYYYaISO(r.fecha_traslado);
+    return `<tr data-idx="${idx}">
+      <td>${item.fileName}</td>
+      <td>${r.nro_guia||'—'}</td>
+      <td><input type="date" class="merma-batch-fecha" data-idx="${idx}" value="${fechaISO}" style="width:150px;"></td>
+      <td>${r.bultos ?? '—'}</td>
+      <td>${r.items.length} <button type="button" class="btn btn-ghost btn-sm merma-batch-ver-items" data-idx="${idx}">Ver</button></td>
+      <td><input type="text" class="upper merma-batch-sede" data-idx="${idx}" value="${(item.sedeSugerida||'').toUpperCase()}" style="min-width:200px;" placeholder="EJ. MALL COMAS"></td>
+      <td>${dupHtml}</td>
+    </tr>
+    <tr class="merma-batch-items-row" data-items-for="${idx}" style="display:none;"><td colspan="7">
+      <table style="margin:6px 0;"><thead><tr><th>Item</th><th>Código</th><th>Descripción</th><th>Unidad</th><th>Cantidad</th></tr></thead><tbody>
+      ${r.items.map(it=>`<tr><td>${it.item}</td><td>${it.codigo}</td><td>${it.descripcion}</td><td>${it.unidad}</td><td>${it.cantidad}</td></tr>`).join('')}
+      </tbody></table>
+    </td></tr>`;
+  }).join('');
+
+  document.querySelectorAll('.merma-batch-ver-items').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const idx = btn.dataset.idx;
+      const row = document.querySelector(`.merma-batch-items-row[data-items-for="${idx}"]`);
+      const showing = row.style.display !== 'none';
+      row.style.display = showing ? 'none' : 'table-row';
+      btn.textContent = showing ? 'Ver' : 'Ocultar';
+    });
+  });
+}
+
+async function guardarUnaGuiaMerma(resultado, sede, fechaTraslado){
+  const correlativoGuia = await generarCorrelativoMerma();
+  const skuDistintos = new Set(resultado.items.map(it=>it.codigo)).size;
+  await mermaGuiasRef.doc(correlativoGuia).set({
+    correlativo: correlativoGuia,
+    nro_guia: resultado.nro_guia,
+    punto_partida: resultado.punto_partida,
+    punto_llegada: resultado.punto_llegada,
+    fecha_traslado: fechaTraslado,
+    sede,
+    bultos: resultado.bultos,
+    total_items: resultado.items.length,
+    sku_distintos: skuDistintos,
+    estado: 'ACTIVO',
+    usuario: currentUserAlias,
+    fecha_carga: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  const CHUNK = 400;
+  for(let i=0;i<resultado.items.length;i+=CHUNK){
+    const batch = db.batch();
+    resultado.items.slice(i,i+CHUNK).forEach(it=>{
+      const docRef = mermaGuiaItemsRef.doc();
+      batch.set(docRef, {
+        correlativo_guia: correlativoGuia,
+        nro_guia: resultado.nro_guia,
+        sede,
+        fecha_traslado: fechaTraslado,
+        item: it.item, codigo: it.codigo, descripcion: it.descripcion, unidad: it.unidad,
+        cantidad: it.cantidad,
+        total_unidades: it.cantidad,
+        no_apta_venta: null,
+        observacion: 'MERMA',
+        usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    });
+    await batch.commit();
+  }
+  await logAccion('merma_guia_cargada', {detalle:`Correlativo ${correlativoGuia} (N° ${resultado.nro_guia}) — sede ${sede}: ${resultado.items.length} ítems`});
+  return correlativoGuia;
+}
+
+$('btn-guardar-guias-lote-merma').addEventListener('click', async ()=>{
+  const filas = [...document.querySelectorAll('#merma-batch-body tr[data-idx]')];
+  if(filas.length === 0){ showMsg('merma-msg','err','No hay guías para guardar.'); return; }
+  $('btn-guardar-guias-lote-merma').disabled = true;
+  let guardadas = 0, omitidas = 0;
+  const detalleOmitidas = [];
+  const nroGuiaGuardadosEnEstaEjecucion = new Set();
+  for(const tr of filas){
+    const idx = Number(tr.dataset.idx);
+    const item = mermaBatch[idx];
+    if(!item || !item.resultado) continue;
+    const inpFecha = document.querySelector(`.merma-batch-fecha[data-idx="${idx}"]`);
+    const inpSede = document.querySelector(`.merma-batch-sede[data-idx="${idx}"]`);
+    const fechaTraslado = inpFecha ? inpFecha.value : '';
+    const sede = inpSede ? inpSede.value.trim().toUpperCase() : '';
+    const nroGuia = item.resultado.nro_guia;
+
+    if(!sede){ omitidas++; detalleOmitidas.push(`${item.fileName}: falta la sede`); continue; }
+    if(!fechaTraslado){ omitidas++; detalleOmitidas.push(`${item.fileName}: falta la fecha de traslado`); continue; }
+    if(item.duplicado || item.duplicadoEnLote){ omitidas++; detalleOmitidas.push(`${item.fileName}: N° de guía ${nroGuia||''} ${item.duplicado ? 'ya existe' : 'repetida en este lote'}, no se guardó`); continue; }
+    if(nroGuia && nroGuiaGuardadosEnEstaEjecucion.has(nroGuia)){ omitidas++; detalleOmitidas.push(`${item.fileName}: N° de guía ${nroGuia} ya se guardó en esta misma tanda`); continue; }
+
+    try{
+      await guardarUnaGuiaMerma(item.resultado, sede, fechaTraslado);
+      if(nroGuia) nroGuiaGuardadosEnEstaEjecucion.add(nroGuia);
+      guardadas++;
+    }catch(err){
+      console.error(err);
+      omitidas++;
+      detalleOmitidas.push(`${item.fileName}: error (${err.message})`);
+    }
+  }
+  showMsg('merma-msg', guardadas>0 ? 'ok' : 'err', `Listo: ${guardadas} guía(s) guardada(s)${omitidas?`, ${omitidas} omitida(s)`:''}.`);
+  if(detalleOmitidas.length){ showToast('Omitidas: '+detalleOmitidas.join(' | '),'err'); }
+  mermaBatch = [];
+  $('merma-batch-wrap').style.display = 'none';
+  $('merma-pdf-input').value = '';
+  cargarRegistrosMerma(true);
+  $('btn-guardar-guias-lote-merma').disabled = false;
+});
+
+/* -------- Registros y Detalle -------- */
+let mermaRegRawLastDoc = null;
+let mermaRegAllCache = [];
+let mermaRegNoMore = false;
+let mermaDetalleCache = {}; // correlativo -> filas de detalle
+let mermaDetalleCorrelativoActual = null;
+
+async function cargarRegistrosMerma(reset){
+  if(reset){ mermaRegRawLastDoc = null; mermaRegAllCache = []; mermaRegNoMore = false; }
+  if(!mermaRegNoMore){
+    try{
+      let q = mermaGuiasRef.orderBy('fecha_carga','desc').limit(500);
+      if(mermaRegRawLastDoc) q = q.startAfter(mermaRegRawLastDoc);
+      const snap = await q.get();
+      mermaRegAllCache = mermaRegAllCache.concat(snap.docs.map(d=>d.data()));
+      mermaRegRawLastDoc = snap.docs.length ? snap.docs[snap.docs.length-1] : mermaRegRawLastDoc;
+      if(snap.docs.length < 500) mermaRegNoMore = true;
+    }catch(err){
+      console.error(err);
+      showToast('Error al cargar guías de merma: '+err.message,'err');
+      return;
+    }
+  }
+  renderRegistrosMerma();
+}
+
+function renderRegistrosMerma(){
+  const estadoFiltro = $('merma-reg-filtro-estado').value;
+  const fechaFiltro = $('merma-reg-filtro-fecha').value;
+  const sedeFiltro = $('merma-reg-filtro-sede').value.trim().toUpperCase();
+  const nroFiltro = $('merma-reg-filtro-nroguia').value.trim().toUpperCase();
+  const hayFiltrosExtra = !!(fechaFiltro || sedeFiltro || nroFiltro);
+  const filtrados = mermaRegAllCache.filter(r=>{
+    if((r.estado||'ACTIVO') !== estadoFiltro) return false;
+    if(fechaFiltro && r.fecha_traslado !== fechaFiltro) return false;
+    if(sedeFiltro && !(r.sede||'').toUpperCase().includes(sedeFiltro)) return false;
+    if(nroFiltro && !(r.nro_guia||'').toUpperCase().includes(nroFiltro)) return false;
+    return true;
+  });
+  if(filtrados.length === 0){
+    $('merma-reg-body').innerHTML = '';
+    $('merma-reg-empty').style.display = 'block';
+    $('merma-reg-empty').textContent = hayFiltrosExtra
+      ? 'No hay guías que coincidan con los filtros.'
+      : (estadoFiltro==='ACTIVO' ? 'Aún no hay guías de merma cargadas.' : 'No hay guías invalidadas.');
+    return;
+  }
+  $('merma-reg-empty').style.display = 'none';
+  const puedeEliminar = currentPermisos.admin || currentPermisos.eliminar;
+  $('merma-reg-body').innerHTML = filtrados.map(r=>{
+    const estado = r.estado || 'ACTIVO';
+    const accionHtml = estado === 'ACTIVO'
+      ? (puedeEliminar ? `<button class="btn btn-sm btn-ghost btn-invalidar-merma" data-correlativo="${r.correlativo}">Eliminar</button> <button class="btn btn-sm btn-ghost btn-editar-sede-merma" data-correlativo="${r.correlativo}" title="Corregir la sede de esta guía">✏️ Sede</button>` : '')
+      : `<span class="hint">Invalidado${r.invalidado_por ? ' por '+r.invalidado_por : ''}</span>`;
+    let formatoHtml = '—';
+    if(r.formato_correlativo){
+      const fmt = mermaFormatosAllCache.find(f=>f.correlativo===r.formato_correlativo);
+      const firmado = fmt && fmt.pdf_firmado_url;
+      formatoHtml = `<button class="btn btn-sm btn-ghost btn-ver-formato-merma" data-correlativo="${r.formato_correlativo}">${r.formato_correlativo} ${firmado?'✓ firmado':'⏳ sin firmar'}</button>`;
+    }
+    let auditoriaHtml = '—';
+    if(r.auditoria_correlativo){
+      const esConfiable = r.auditoria_dictamen === 'CONFIABLE';
+      const color = esConfiable ? '#245C46' : '#8A332A';
+      auditoriaHtml = `<button class="btn btn-sm btn-ghost btn-ver-auditoria-merma" data-correlativo="${r.auditoria_correlativo}" style="color:${color}; font-weight:700;">${esConfiable?'✓ CONFIABLE':'⚠ NO CONFIABLE'}</button>`;
+    }
+    return `<tr><td>${r.correlativo}</td><td>${r.nro_guia||''}</td><td>${r.sede||''}</td><td>${r.fecha_traslado||''}</td><td>${r.punto_partida||''} → ${r.punto_llegada||''}</td><td>${r.bultos??''}</td><td>${r.total_items??''}</td><td>${r.usuario||''}</td><td>${formatoHtml}</td><td>${auditoriaHtml}</td><td><button class="btn btn-sm btn-ver-detalle-merma" data-correlativo="${r.correlativo}" data-nro="${(r.nro_guia||'').replace(/"/g,'&quot;')}">Ver detalle</button></td><td>${accionHtml}</td></tr>`;
+  }).join('');
+}
+$('merma-reg-filtro-estado').addEventListener('change', ()=> renderRegistrosMerma());
+$('merma-reg-filtro-fecha').addEventListener('change', ()=> renderRegistrosMerma());
+$('merma-reg-filtro-sede').addEventListener('input', ()=> renderRegistrosMerma());
+$('merma-reg-filtro-nroguia').addEventListener('input', ()=> renderRegistrosMerma());
+$('btn-merma-reg-limpiar-filtros').addEventListener('click', ()=>{
+  $('merma-reg-filtro-fecha').value = '';
+  $('merma-reg-filtro-sede').value = '';
+  $('merma-reg-filtro-nroguia').value = '';
+  renderRegistrosMerma();
+});
+$('btn-ocultar-detalle-merma').addEventListener('click', ()=>{ $('merma-detalle-panel').style.display = 'none'; });
+
+$('merma-reg-body').addEventListener('click', async (ev)=>{
+  const btnVer = ev.target.closest('.btn-ver-detalle-merma');
+  const btnInv = ev.target.closest('.btn-invalidar-merma');
+  const btnEditSede = ev.target.closest('.btn-editar-sede-merma');
+  const btnVerFmt = ev.target.closest('.btn-ver-formato-merma');
+  const btnVerAud = ev.target.closest('.btn-ver-auditoria-merma');
+
+  if(btnVerFmt){
+    setMermaSubtab('formatos');
+    renderFormatosMerma();
+    abrirPanelPdfMerma(btnVerFmt.dataset.correlativo);
+    return;
+  }
+
+  if(btnVerAud){
+    setMermaSubtab('auditoria');
+    poblarSelectGuiasAuditoria();
+    renderAuditoriasMerma();
+    abrirDetalleAuditoriaMerma(btnVerAud.dataset.correlativo);
+    return;
+  }
+
+  if(btnEditSede){
+    const correlativo = btnEditSede.dataset.correlativo;
+    const g = mermaRegAllCache.find(r=>r.correlativo===correlativo);
+    if(!g) return;
+    const nueva = prompt('Sede correcta para esta guía:', g.sede || '');
+    if(nueva === null) return;
+    const nuevaSede = nueva.trim().toUpperCase();
+    if(!nuevaSede || nuevaSede === (g.sede||'')) return;
+    try{
+      await mermaGuiasRef.doc(correlativo).update({ sede: nuevaSede });
+      const snap = await mermaGuiaItemsRef.where('correlativo_guia','==',correlativo).limit(3000).get();
+      for(let i=0;i<snap.docs.length;i+=400){
+        const batch = db.batch();
+        snap.docs.slice(i,i+400).forEach(d=> batch.update(d.ref, { sede: nuevaSede }));
+        await batch.commit();
+      }
+      g.sede = nuevaSede;
+      delete mermaDetalleCache[correlativo];
+      await logAccion('merma_sede_corregida', {detalle:`Guía ${correlativo}: sede corregida a "${nuevaSede}"`});
+      renderRegistrosMerma();
+      showToast(`Sede corregida a ${nuevaSede}.`,'ok');
+    }catch(err){
+      console.error(err);
+      showToast('Error al corregir la sede: '+err.message,'err');
+    }
+    return;
+  }
+
+  if(btnVer){
+    const correlativo = btnVer.dataset.correlativo;
+    const nro = btnVer.dataset.nro;
+    btnVer.disabled = true;
+    btnVer.textContent = 'Cargando…';
+    try{
+      await abrirDetalleMerma(correlativo, nro);
+    }catch(err){
+      console.error(err);
+      showToast('Error al cargar el detalle: '+err.message,'err');
+    }finally{
+      btnVer.disabled = false;
+      btnVer.textContent = 'Ver detalle';
+    }
+    return;
+  }
+
+  if(btnInv){
+    const correlativo = btnInv.dataset.correlativo;
+    if(!(currentPermisos.admin || currentPermisos.eliminar)){ showToast('No tienes permiso para eliminar registros.','err'); return; }
+    const ok = confirm(`¿Eliminar el detalle de la guía de merma ${correlativo}? Se borrarán todas sus filas y la cabecera quedará marcada como INVALIDADA. Esta acción no se puede deshacer.`);
+    if(!ok) return;
+    btnInv.disabled = true;
+    btnInv.textContent = 'Eliminando…';
+    try{
+      const snap = await mermaGuiaItemsRef.where('correlativo_guia','==',correlativo).limit(3000).get();
+      const docs = snap.docs;
+      for(let i=0;i<docs.length;i+=400){
+        const batch = db.batch();
+        docs.slice(i,i+400).forEach(d=> batch.delete(d.ref));
+        await batch.commit();
+      }
+      await mermaGuiasRef.doc(correlativo).set({
+        estado: 'INVALIDADO',
+        invalidado_por: currentUserAlias,
+        invalidado_en: firebase.firestore.FieldValue.serverTimestamp()
+      }, {merge:true});
+      delete mermaDetalleCache[correlativo];
+      if(mermaDetalleCorrelativoActual === correlativo){ $('merma-detalle-panel').style.display = 'none'; mermaDetalleCorrelativoActual = null; }
+      await logAccion('merma_guia_eliminada', {detalle:`Se invalidó la guía de merma ${correlativo} (${docs.length} filas eliminadas)`});
+      showToast(`${correlativo} invalidado (${docs.length} filas eliminadas).`,'ok');
+      cargarRegistrosMerma(true);
+    }catch(err){
+      console.error(err);
+      showToast('Error al eliminar: '+err.message,'err');
+      btnInv.disabled = false;
+      btnInv.textContent = 'Eliminar';
+    }
+    return;
+  }
+});
+
+async function abrirDetalleMerma(correlativo, nro){
+  let filas = mermaDetalleCache[correlativo];
+  if(!filas){
+    const snap = await mermaGuiaItemsRef.where('correlativo_guia','==',correlativo).limit(3000).get();
+    filas = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
+    mermaDetalleCache[correlativo] = filas;
+  }
+  mermaDetalleCorrelativoActual = correlativo;
+  $('merma-detalle-titulo-text').textContent = `Detalle de ${correlativo}${nro?' — Guía N° '+nro:''}`;
+  renderDetalleMerma();
+  $('merma-detalle-panel').style.display = 'block';
+  $('merma-detalle-panel').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function renderDetalleMerma(){
+  const filas = mermaDetalleCache[mermaDetalleCorrelativoActual] || [];
+  $('merma-detalle-body').innerHTML = filas.slice().sort((a,b)=>(a.item||0)-(b.item||0)).map((r,idx)=>{
+    const diferencia = calcularDiferenciaMerma(r.cantidad, r.total_unidades);
+    return `<tr data-id="${r.id}">
+      <td>${r.item}</td><td>${r.codigo}</td><td>${r.descripcion}</td><td>${r.unidad}</td><td>${r.cantidad}</td>
+      <td><input type="number" class="merma-det-total" data-id="${r.id}" value="${r.total_unidades??''}" style="width:90px;" min="0"></td>
+      <td class="merma-det-dif" data-id="${r.id}" style="font-weight:700;">${diferencia}</td>
+      <td><input type="number" class="merma-det-noapta" data-id="${r.id}" value="${r.no_apta_venta??''}" style="width:90px;" min="0"></td>
+      <td><input type="text" class="upper merma-det-obs" data-id="${r.id}" value="${r.observacion||''}" style="min-width:140px;"></td>
+    </tr>`;
+  }).join('');
+  document.querySelectorAll('.merma-det-total').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      const fila = filas.find(f=>f.id===inp.dataset.id);
+      const celda = document.querySelector(`.merma-det-dif[data-id="${inp.dataset.id}"]`);
+      if(fila && celda) celda.textContent = calcularDiferenciaMerma(fila.cantidad, inp.value);
+    });
+  });
+}
+
+$('btn-guardar-detalle-merma').addEventListener('click', async ()=>{
+  const correlativo = mermaDetalleCorrelativoActual;
+  if(!correlativo) return;
+  const filas = mermaDetalleCache[correlativo] || [];
+  const btn = $('btn-guardar-detalle-merma');
+  btn.disabled = true; btn.textContent = 'Guardando…';
+  try{
+    const actualizaciones = filas.map(r=>{
+      const inpTotal = document.querySelector(`.merma-det-total[data-id="${r.id}"]`);
+      const inpNoApta = document.querySelector(`.merma-det-noapta[data-id="${r.id}"]`);
+      const inpObs = document.querySelector(`.merma-det-obs[data-id="${r.id}"]`);
+      const total_unidades = inpTotal && inpTotal.value !== '' ? Number(inpTotal.value) : null;
+      const no_apta_venta = inpNoApta && inpNoApta.value !== '' ? Number(inpNoApta.value) : null;
+      const observacion = inpObs ? inpObs.value.trim().toUpperCase() : (r.observacion||'');
+      r.total_unidades = total_unidades; r.no_apta_venta = no_apta_venta; r.observacion = observacion;
+      return { id: r.id, total_unidades, no_apta_venta, observacion };
+    });
+    for(let i=0;i<actualizaciones.length;i+=400){
+      const batch = db.batch();
+      actualizaciones.slice(i,i+400).forEach(u=>{
+        batch.update(mermaGuiaItemsRef.doc(u.id), { total_unidades: u.total_unidades, no_apta_venta: u.no_apta_venta, observacion: u.observacion });
+      });
+      await batch.commit();
+    }
+    showMsg('merma-detalle-msg','ok','Cambios guardados.');
+    showToast(`Detalle de ${correlativo} actualizado.`,'ok');
+    renderDetalleMerma();
+  }catch(err){
+    console.error(err);
+    showMsg('merma-detalle-msg','err','Error al guardar: '+err.message);
+  }finally{
+    btn.disabled = false; btn.textContent = '💾 Guardar cambios de esta guía';
+  }
+});
+
+/* -------- Generar Formato de Merma -------- */
+let mermaFmtFilas = []; // filas en memoria listas para imprimir/guardar
+
+function poblarSelectSedesMerma(){
+  const activos = mermaRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
+  const sedes = [...new Set(activos.map(r=>r.sede).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  const valorActual = $('merma-fmt-sede').value;
+  $('merma-fmt-sede').innerHTML = '<option value="">— Elige una sede —</option>' + sedes.map(s=>`<option value="${s}">${s}</option>`).join('');
+  if(valorActual && sedes.includes(valorActual)) $('merma-fmt-sede').value = valorActual;
+}
+$('merma-fmt-sede').addEventListener('change', ()=>{
+  $('merma-fmt-filas-wrap').style.display = 'none';
+  mermaFmtFilas = [];
+  const sede = $('merma-fmt-sede').value;
+  if(!sede){ $('merma-fmt-guias-wrap').style.display = 'none'; return; }
+  $('merma-fmt-guias-wrap').style.display = 'block';
+  $('merma-fmt-sede-label').textContent = sede;
+  const guias = mermaRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO' && r.sede===sede);
+  $('merma-fmt-guias-empty').style.display = guias.length ? 'none' : 'block';
+  $('merma-fmt-guias-body').innerHTML = guias.map(g=>`<tr>
+    <td><input type="checkbox" class="merma-fmt-guia-check" data-correlativo="${g.correlativo}"></td>
+    <td>${g.correlativo}</td><td>${g.nro_guia||''}</td><td>${g.fecha_traslado||''}</td><td>${g.total_items??''}</td>
+    <td>${g.formato_correlativo ? g.formato_correlativo : '—'}</td>
+  </tr>`).join('');
+});
+$('merma-fmt-check-all').addEventListener('change', ()=>{
+  document.querySelectorAll('.merma-fmt-guia-check').forEach(cb=> cb.checked = $('merma-fmt-check-all').checked);
+});
+
+$('btn-merma-fmt-cargar-filas').addEventListener('click', async ()=>{
+  const seleccionadas = [...document.querySelectorAll('.merma-fmt-guia-check:checked')].map(cb=>cb.dataset.correlativo);
+  if(seleccionadas.length === 0){ showMsg('merma-fmt-msg','err','Selecciona al menos una guía.'); return; }
+  const btn = $('btn-merma-fmt-cargar-filas');
+  btn.disabled = true; btn.textContent = 'Cargando…';
+  try{
+    mermaFmtFilas = [];
+    for(const correlativo of seleccionadas){
+      let filas = mermaDetalleCache[correlativo];
+      if(!filas){
+        const snap = await mermaGuiaItemsRef.where('correlativo_guia','==',correlativo).limit(3000).get();
+        filas = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
+        mermaDetalleCache[correlativo] = filas;
+      }
+      filas.slice().sort((a,b)=>(a.item||0)-(b.item||0)).forEach(r=> mermaFmtFilas.push(Object.assign({}, r)));
+    }
+    renderFilasFormatoMerma();
+    $('merma-fmt-filas-wrap').style.display = mermaFmtFilas.length ? 'block' : 'none';
+    if(mermaFmtFilas.length === 0) showMsg('merma-fmt-msg','err','Las guías seleccionadas no tienen ítems.');
+    else showMsg('merma-fmt-msg','ok', `${mermaFmtFilas.length} fila(s) cargada(s) de ${seleccionadas.length} guía(s). Ajusta lo necesario y genera el PDF.`);
+  }catch(err){
+    console.error(err);
+    showMsg('merma-fmt-msg','err','Error al cargar ítems: '+err.message);
+  }finally{
+    btn.disabled = false; btn.textContent = 'Cargar ítems de las guías seleccionadas';
+  }
+});
+
+function renderFilasFormatoMerma(){
+  $('merma-fmt-filas-body').innerHTML = mermaFmtFilas.map((r,idx)=>{
+    const diferencia = calcularDiferenciaMerma(r.cantidad, r.total_unidades);
+    return `<tr data-idx="${idx}">
+      <td>${idx+1}</td><td>${r.sede||''}</td><td>${r.nro_guia||''}</td><td>${r.codigo}</td><td>${r.descripcion}</td><td>${r.cantidad}</td>
+      <td><input type="number" class="merma-fmt-fila-total" data-idx="${idx}" value="${r.total_unidades??''}" style="width:90px;" min="0"></td>
+      <td class="merma-fmt-fila-dif" data-idx="${idx}" style="font-weight:700;">${diferencia}</td>
+      <td><input type="number" class="merma-fmt-fila-noapta" data-idx="${idx}" value="${r.no_apta_venta??''}" style="width:90px;" min="0"></td>
+      <td><input type="text" class="upper merma-fmt-fila-obs" data-idx="${idx}" value="${r.observacion||''}" style="min-width:140px;"></td>
+    </tr>`;
+  }).join('');
+  document.querySelectorAll('.merma-fmt-fila-total').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      const idx = inp.dataset.idx;
+      const celda = document.querySelector(`.merma-fmt-fila-dif[data-idx="${idx}"]`);
+      if(celda) celda.textContent = calcularDiferenciaMerma(mermaFmtFilas[idx].cantidad, inp.value);
+    });
+  });
+}
+
+function fechaLargaEs(d){
+  const dias = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  return `${dias[d.getDay()]}, ${d.getDate()} de ${meses[d.getMonth()]} de ${d.getFullYear()}`;
+}
+
+$('btn-merma-fmt-generar').addEventListener('click', async ()=>{
+  if(mermaFmtFilas.length === 0) return;
+  const sede = $('merma-fmt-sede').value;
+  const seleccionadas = [...document.querySelectorAll('.merma-fmt-guia-check:checked')].map(cb=>cb.dataset.correlativo);
+  const btn = $('btn-merma-fmt-generar');
+  btn.disabled = true; btn.textContent = 'Generando…';
+  try{
+    const filasFinales = mermaFmtFilas.map((r,idx)=>{
+      const inpTotal = document.querySelector(`.merma-fmt-fila-total[data-idx="${idx}"]`);
+      const inpNoApta = document.querySelector(`.merma-fmt-fila-noapta[data-idx="${idx}"]`);
+      const inpObs = document.querySelector(`.merma-fmt-fila-obs[data-idx="${idx}"]`);
+      const total_unidades = inpTotal && inpTotal.value !== '' ? Number(inpTotal.value) : null;
+      const no_apta_venta = inpNoApta && inpNoApta.value !== '' ? Number(inpNoApta.value) : null;
+      const observacion = inpObs ? inpObs.value.trim().toUpperCase() : (r.observacion||'');
+      return {
+        nro: idx+1, sede: r.sede||sede, nro_guia: r.nro_guia||'', codigo: r.codigo, descripcion: r.descripcion,
+        cantidad: r.cantidad, total_unidades, diferencia: calcularDiferenciaMerma(r.cantidad, total_unidades),
+        no_apta_venta, observacion
+      };
+    });
+    const correlativo = await generarCorrelativoFormatoMerma();
+    const hoy = new Date();
+    const fechaTexto = fechaLargaEs(hoy);
+    const formatoDoc = {
+      correlativo, sede, guias_incluidas: seleccionadas, total_guias: seleccionadas.length,
+      total_filas: filasFinales.length, filas: filasFinales, fecha_texto: fechaTexto,
+      estado: 'ACTIVO', generado_por: currentUserAlias, generado_en: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    await mermaFormatosRef.doc(correlativo).set(formatoDoc);
+    for(let i=0;i<seleccionadas.length;i+=400){
+      const batch = db.batch();
+      seleccionadas.slice(i,i+400).forEach(c=> batch.update(mermaGuiasRef.doc(c), { formato_correlativo: correlativo }));
+      await batch.commit();
+    }
+    seleccionadas.forEach(c=>{
+      const g = mermaRegAllCache.find(r=>r.correlativo===c);
+      if(g) g.formato_correlativo = correlativo;
+    });
+    await logAccion('merma_formato_generado', {detalle:`Formato ${correlativo} generado para sede ${sede}: ${filasFinales.length} fila(s) de ${seleccionadas.length} guía(s)`});
+    generarPDFMerma(Object.assign({}, formatoDoc, {fecha_texto: fechaTexto}));
+    mermaFormatosAllCache.unshift(Object.assign({}, formatoDoc, {fecha_texto: fechaTexto}));
+    showToast(`Formato ${correlativo} generado.`,'ok');
+    mermaFmtFilas = [];
+    $('merma-fmt-filas-wrap').style.display = 'none';
+    $('merma-fmt-sede').value = '';
+    $('merma-fmt-guias-wrap').style.display = 'none';
+    renderRegistrosMerma();
+    setMermaSubtab('formatos');
+    renderFormatosMerma();
+  }catch(err){
+    console.error(err);
+    showMsg('merma-fmt-msg','err','Error al generar el formato: '+err.message);
+  }finally{
+    btn.disabled = false; btn.textContent = '🖨 Generar PDF de Formato de Merma';
+  }
+});
+
+/* Genera el PDF "RECEPCION DE TIENDAS" con el mismo diseño del formato de referencia. */
+function generarPDFMerma(formato){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4', orientation:'portrait' });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 10;
+  const contentW = pageW - margin*2;
+
+  const logoRatio = 742/2084;
+  const logoColW = 34;
+  const headerH = 20;
+  const headerTop = margin;
+  const rowTitleH = 11, rowSubH = headerH - rowTitleH;
+
+  doc.setDrawColor(90,90,90); doc.setLineWidth(0.3);
+  doc.rect(margin, headerTop, contentW, headerH);
+  doc.line(margin+logoColW, headerTop, margin+logoColW, headerTop+headerH);
+  doc.line(margin+logoColW, headerTop+rowTitleH, pageW-margin, headerTop+rowTitleH);
+
+  const logoH = logoColW*logoRatio;
+  try{ doc.addImage(LOGO_JOANIS_ALTA_B64, 'PNG', margin+2, headerTop+(headerH-logoH)/2, logoColW-4, logoH); }catch(e){ console.error(e); }
+
+  const dateColW = 58;
+  doc.line(pageW-margin-dateColW, headerTop, pageW-margin-dateColW, headerTop+rowTitleH);
+  doc.setFillColor(235,235,235);
+  doc.rect(margin+logoColW, headerTop, contentW-logoColW-dateColW, rowTitleH, 'F');
+  doc.rect(pageW-margin-dateColW, headerTop, dateColW, rowTitleH, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(0);
+  doc.text('RECEPCION DE TIENDAS', margin+logoColW+(contentW-logoColW-dateColW)/2, headerTop+rowTitleH/2+3, {align:'center'});
+  doc.setFontSize(9);
+  doc.text(formato.fecha_texto || '', pageW-margin-dateColW/2, headerTop+rowTitleH/2+3, {align:'center'});
+
+  doc.setFillColor(30,58,95);
+  doc.rect(margin+logoColW, headerTop+rowTitleH, contentW-logoColW, rowSubH, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(255);
+  doc.text('DATOS DE LAS GUIAS', margin+logoColW+(contentW-logoColW)/2, headerTop+rowTitleH+rowSubH/2+2.5, {align:'center'});
+  doc.setTextColor(0);
+
+  const filas = (formato.filas||[]).map(f=>[
+    f.nro, f.sede||'', f.nro_guia||'', f.codigo||'', f.descripcion||'',
+    f.cantidad ?? '', f.total_unidades ?? '', f.diferencia || '', f.no_apta_venta ?? '', f.observacion || ''
+  ]);
+
+  doc.autoTable({
+    startY: headerTop+headerH+3,
+    head: [['Nº','SEDE','N° GUIA','CODIGO','DESCRIPCION','CNTD.GUIA','TOTAL DE\nUNIDADES','DIFERENCIAS','NO APTA PARA\nLA VENTA','OBSERVACION']],
+    body: filas,
+    styles: { fontSize: 7.5, cellPadding: 1.6, valign:'middle', halign:'center', lineColor:[120,120,120], lineWidth:0.15 },
+    headStyles: { fillColor: [30,58,95], textColor: 255, fontStyle:'bold', halign:'center', valign:'middle' },
+    columnStyles: {
+      0: {cellWidth:8}, 1: {cellWidth:24}, 2: {cellWidth:24}, 3: {cellWidth:20},
+      4: {cellWidth:'auto', halign:'left'}, 5: {cellWidth:16}, 6: {cellWidth:16},
+      7: {cellWidth:18}, 8: {cellWidth:18}, 9: {cellWidth:18}
+    },
+    margin: { left: margin, right: margin },
+    didDrawPage: (data)=>{
+      doc.setFontSize(8); doc.setTextColor(120);
+      doc.text(`Página ${data.pageNumber}`, pageW-margin, pageH-6, {align:'right'});
+      doc.setTextColor(0);
+    }
+  });
+
+  let firmaY = doc.lastAutoTable.finalY + 26;
+  if(firmaY > pageH - margin){ doc.addPage(); firmaY = margin + 26; }
+  doc.setDrawColor(0); doc.setLineWidth(0.2);
+  const lineaW = 70;
+  doc.line(margin+10, firmaY, margin+10+lineaW, firmaY);
+  doc.line(pageW-margin-10-lineaW, firmaY, pageW-margin-10, firmaY);
+  doc.setFont('helvetica','bold'); doc.setFontSize(8.5);
+  doc.text('FIRMA Y NOMBRE', margin+10+lineaW/2, firmaY+5, {align:'center'});
+  doc.text('CONTABILIDAD', pageW-margin-10-lineaW/2, firmaY+5, {align:'center'});
+
+  doc.save(`formato_merma_${formato.correlativo}.pdf`);
+}
+
+/* -------- Formatos generados (listado + previsualizador) -------- */
+let mermaFormatosRawLastDoc = null;
+let mermaFormatosAllCache = [];
+let mermaFormatosNoMore = false;
+let mermaFmtPdfCorrelativoActual = null;
+let mermaSubidaCorrelativoActual = null;
+
+async function cargarFormatosMerma(reset){
+  if(reset){ mermaFormatosRawLastDoc = null; mermaFormatosAllCache = []; mermaFormatosNoMore = false; }
+  if(!mermaFormatosNoMore){
+    try{
+      let q = mermaFormatosRef.orderBy('generado_en','desc').limit(500);
+      if(mermaFormatosRawLastDoc) q = q.startAfter(mermaFormatosRawLastDoc);
+      const snap = await q.get();
+      mermaFormatosAllCache = mermaFormatosAllCache.concat(snap.docs.map(d=>d.data()));
+      mermaFormatosRawLastDoc = snap.docs.length ? snap.docs[snap.docs.length-1] : mermaFormatosRawLastDoc;
+      if(snap.docs.length < 500) mermaFormatosNoMore = true;
+    }catch(err){
+      console.error(err);
+      showToast('Error al cargar formatos de merma: '+err.message,'err');
+      return;
+    }
+  }
+  renderFormatosMerma();
+  renderRegistrosMerma(); // refresca la columna "Formato" (¿firmado?) de Registros y Detalle
+}
+
+function renderFormatosMerma(){
+  const estadoFiltro = $('merma-fmt-list-filtro-estado').value;
+  const sedeFiltro = $('merma-fmt-list-filtro-sede').value.trim().toUpperCase();
+  const firmadoFiltro = $('merma-fmt-list-filtro-firmado').value;
+  const filtrados = mermaFormatosAllCache.filter(f=>{
+    if((f.estado||'ACTIVO') !== estadoFiltro) return false;
+    if(sedeFiltro && !(f.sede||'').toUpperCase().includes(sedeFiltro)) return false;
+    if(firmadoFiltro === 'si' && !f.pdf_firmado_url) return false;
+    if(firmadoFiltro === 'no' && f.pdf_firmado_url) return false;
+    return true;
+  });
+  if(filtrados.length === 0){
+    $('merma-formatos-body').innerHTML = '';
+    $('merma-formatos-empty').style.display = 'block';
+    $('merma-formatos-empty').textContent = (sedeFiltro||firmadoFiltro) ? 'No hay formatos que coincidan con los filtros.' : 'Aún no se han generado formatos de merma.';
+    return;
+  }
+  $('merma-formatos-empty').style.display = 'none';
+  const puedeEliminar = currentPermisos.admin || currentPermisos.eliminar;
+  $('merma-formatos-body').innerHTML = filtrados.map(f=>{
+    const firmado = !!f.pdf_firmado_url;
+    const fecha = f.generado_en && f.generado_en.toDate ? f.generado_en.toDate().toLocaleString('es-PE') : (f.fecha_texto||'');
+    const accion = `<button class="btn btn-sm btn-ghost btn-merma-reimprimir" data-correlativo="${f.correlativo}">🖨 PDF</button>
+      <button class="btn btn-sm btn-ghost btn-merma-ver-panel" data-correlativo="${f.correlativo}">${firmado?'👁 Ver firmado':'📤 Subir firmado'}</button>
+      ${puedeEliminar ? `<button class="btn btn-sm btn-ghost btn-merma-eliminar-formato" data-correlativo="${f.correlativo}">Eliminar</button>` : ''}`;
+    return `<tr><td>${f.correlativo}</td><td>${f.sede||''}</td><td>${fecha}</td><td>${f.total_guias??(f.guias_incluidas||[]).length}</td><td>${f.total_filas??(f.filas||[]).length}</td><td>${f.generado_por||''}</td><td>${firmado?'✓ Sí':'— No'}</td><td style="white-space:nowrap;">${accion}</td></tr>`;
+  }).join('');
+}
+$('merma-fmt-list-filtro-estado').addEventListener('change', ()=> renderFormatosMerma());
+$('merma-fmt-list-filtro-sede').addEventListener('input', ()=> renderFormatosMerma());
+$('merma-fmt-list-filtro-firmado').addEventListener('change', ()=> renderFormatosMerma());
+$('btn-merma-fmt-list-limpiar-filtros').addEventListener('click', ()=>{
+  $('merma-fmt-list-filtro-sede').value = '';
+  $('merma-fmt-list-filtro-firmado').value = '';
+  renderFormatosMerma();
+});
+$('btn-ocultar-merma-fmt-pdf').addEventListener('click', ()=>{ $('merma-fmt-pdf-panel').style.display = 'none'; });
+
+$('merma-formatos-body').addEventListener('click', (ev)=>{
+  const btnReimp = ev.target.closest('.btn-merma-reimprimir');
+  const btnPanel = ev.target.closest('.btn-merma-ver-panel');
+  const btnDel = ev.target.closest('.btn-merma-eliminar-formato');
+  if(btnReimp){
+    const f = mermaFormatosAllCache.find(x=>x.correlativo===btnReimp.dataset.correlativo);
+    if(f) generarPDFMerma(f);
+    return;
+  }
+  if(btnPanel){ abrirPanelPdfMerma(btnPanel.dataset.correlativo); return; }
+  if(btnDel){ eliminarFormatoMerma(btnDel.dataset.correlativo); return; }
+});
+
+function abrirPanelPdfMerma(correlativo){
+  const f = mermaFormatosAllCache.find(x=>x.correlativo===correlativo);
+  if(!f){ showToast('No se encontró el formato.','err'); return; }
+  mermaFmtPdfCorrelativoActual = correlativo;
+  $('merma-fmt-pdf-titulo-text').textContent = `PDF firmado — ${correlativo} (${f.sede||''})`;
+  if(f.pdf_firmado_url){
+    $('merma-fmt-pdf-sin-archivo').style.display = 'none';
+    $('merma-fmt-pdf-con-archivo').style.display = 'block';
+    $('merma-fmt-pdf-info').textContent = `Archivo: ${f.pdf_firmado_nombre||''} · Subido por ${f.pdf_firmado_subido_por||''}`;
+    $('merma-fmt-pdf-iframe').src = f.pdf_firmado_url;
+    $('merma-fmt-pdf-abrir-nueva').href = f.pdf_firmado_url;
+  }else{
+    $('merma-fmt-pdf-sin-archivo').style.display = 'block';
+    $('merma-fmt-pdf-con-archivo').style.display = 'none';
+    $('merma-fmt-pdf-iframe').src = '';
+  }
+  $('merma-fmt-pdf-panel').style.display = 'block';
+  $('merma-fmt-pdf-panel').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+async function subirPdfFirmadoMerma(correlativo, file){
+  const path = `merma_formatos/${correlativo}/${Date.now()}_${file.name}`;
+  const ref = storage.ref().child(path);
+  await ref.put(file);
+  const url = await ref.getDownloadURL();
+  await mermaFormatosRef.doc(correlativo).update({
+    pdf_firmado_url: url,
+    pdf_firmado_nombre: file.name,
+    pdf_firmado_subido_por: currentUserAlias,
+    pdf_firmado_subido_en: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  await logAccion('merma_formato_pdf_subido', {detalle:`Se subió el PDF firmado "${file.name}" al formato ${correlativo}`});
+  return url;
+}
+$('btn-merma-subir-pdf-panel').addEventListener('click', ()=>{
+  if(!mermaFmtPdfCorrelativoActual) return;
+  mermaSubidaCorrelativoActual = mermaFmtPdfCorrelativoActual;
+  $('merma-pdf-input-global').click();
+});
+$('btn-merma-reemplazar-pdf').addEventListener('click', ()=>{
+  if(!mermaFmtPdfCorrelativoActual) return;
+  mermaSubidaCorrelativoActual = mermaFmtPdfCorrelativoActual;
+  $('merma-pdf-input-global').click();
+});
+$('merma-pdf-input-global').addEventListener('change', async ()=>{
+  const file = $('merma-pdf-input-global').files[0];
+  if(!file || !mermaSubidaCorrelativoActual) return;
+  if(!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf'){
+    showToast('El archivo debe ser un PDF.','err');
+    $('merma-pdf-input-global').value = ''; mermaSubidaCorrelativoActual = null;
+    return;
+  }
+  const correlativo = mermaSubidaCorrelativoActual;
+  showToast('Subiendo PDF firmado…','ok');
+  try{
+    const url = await subirPdfFirmadoMerma(correlativo, file);
+    const f = mermaFormatosAllCache.find(x=>x.correlativo===correlativo);
+    if(f){ f.pdf_firmado_url = url; f.pdf_firmado_nombre = file.name; f.pdf_firmado_subido_por = currentUserAlias; }
+    renderFormatosMerma();
+    renderRegistrosMerma();
+    if(mermaFmtPdfCorrelativoActual===correlativo) abrirPanelPdfMerma(correlativo);
+    showToast('PDF firmado subido correctamente.','ok');
+  }catch(err){
+    console.error(err);
+    showToast('Error al subir el PDF: '+err.message,'err');
+  }finally{
+    $('merma-pdf-input-global').value = '';
+    mermaSubidaCorrelativoActual = null;
+  }
+});
+$('btn-merma-eliminar-pdf').addEventListener('click', async ()=>{
+  const correlativo = mermaFmtPdfCorrelativoActual;
+  if(!correlativo) return;
+  if(!(currentPermisos.admin || currentPermisos.eliminar)){ showToast('No tienes permiso para eliminar.','err'); return; }
+  const ok = confirm(`¿Eliminar el PDF firmado del formato ${correlativo}? El formato no se borra, solo el archivo.`);
+  if(!ok) return;
+  try{
+    const f = mermaFormatosAllCache.find(x=>x.correlativo===correlativo);
+    if(f && f.pdf_firmado_url){
+      try{ await storage.refFromURL(f.pdf_firmado_url).delete(); }catch(e){ console.error(e); }
+    }
+    await mermaFormatosRef.doc(correlativo).update({
+      pdf_firmado_url: firebase.firestore.FieldValue.delete(),
+      pdf_firmado_nombre: firebase.firestore.FieldValue.delete(),
+      pdf_firmado_subido_por: firebase.firestore.FieldValue.delete(),
+      pdf_firmado_subido_en: firebase.firestore.FieldValue.delete()
+    });
+    await logAccion('merma_formato_pdf_eliminado', {detalle:`Se eliminó el PDF firmado del formato ${correlativo}`});
+    if(f){ delete f.pdf_firmado_url; delete f.pdf_firmado_nombre; delete f.pdf_firmado_subido_por; }
+    renderFormatosMerma();
+    renderRegistrosMerma();
+    abrirPanelPdfMerma(correlativo);
+    showToast(`PDF de ${correlativo} eliminado.`,'ok');
+  }catch(err){
+    console.error(err);
+    showToast('Error al eliminar el PDF: '+err.message,'err');
+  }
+});
+
+async function eliminarFormatoMerma(correlativo){
+  if(!(currentPermisos.admin || currentPermisos.eliminar)){ showToast('No tienes permiso para eliminar.','err'); return; }
+  const ok = confirm(`¿Eliminar definitivamente el formato ${correlativo}? Esto no elimina las guías ni su detalle, solo el formato impreso y su PDF firmado (si tiene).`);
+  if(!ok) return;
+  try{
+    const f = mermaFormatosAllCache.find(x=>x.correlativo===correlativo);
+    if(f && f.pdf_firmado_url){
+      try{ await storage.refFromURL(f.pdf_firmado_url).delete(); }catch(e){ console.error('No se pudo borrar el PDF de Storage', e); }
+    }
+    await mermaFormatosRef.doc(correlativo).delete();
+    mermaFormatosAllCache = mermaFormatosAllCache.filter(x=>x.correlativo!==correlativo);
+    mermaRegAllCache.forEach(g=>{ if(g.formato_correlativo === correlativo) delete g.formato_correlativo; });
+    await logAccion('merma_formato_eliminado', {detalle:`Se eliminó el formato ${correlativo}`});
+    if(mermaFmtPdfCorrelativoActual === correlativo){ $('merma-fmt-pdf-panel').style.display = 'none'; mermaFmtPdfCorrelativoActual = null; }
+    renderFormatosMerma();
+    renderRegistrosMerma();
+    showToast(`Formato ${correlativo} eliminado.`,'ok');
+  }catch(err){
+    console.error(err);
+    showToast('Error al eliminar: '+err.message,'err');
+  }
+}
+/* -------- Auditoría Rápida de Recepción por Muestreo --------
+   Calcula cuántos bultos abrir y cuántos ítems inspeccionar por guía sin superar
+   un presupuesto fijo de minutos. No rechaza la guía: solo la clasifica como
+   CONFIABLE o NO CONFIABLE (si hay discrepancias, queda como alerta para que
+   supervisión concilie después, sin frenar el flujo de recepción). */
+const MERMA_AUD_TIEMPO_MAXIMO_GUIA = 60;       // minutos, presupuesto máximo por guía
+const MERMA_AUD_TIEMPO_APERTURA_BULTO = 2;     // minutos por bulto abierto
+const MERMA_AUD_MOTIVOS = { FALTANTE:'Faltante', SOBRANTE:'Sobrante', CODIGO_ERRONEO:'Código Erróneo', DANO_FISICO:'Daño Físico' };
+
+/* Función de cálculo pura (sin efectos secundarios) — recibe los 4 datos de entrada
+   y devuelve el plan de muestreo. Reutilizable desde cualquier pantalla o, si en el
+   futuro se separa a un backend, desde un endpoint que reciba el mismo payload. */
+function calcularMuestraAuditoria({ total_bultos, total_items_guia, tipo_embalaje, tiempo_por_item }){
+  const N = Math.max(0, Math.trunc(Number(total_bultos) || 0));
+  const totalItemsGuia = Math.max(0, Math.trunc(Number(total_items_guia) || 0));
+  const tPorItem = Number(tiempo_por_item) || 5;
+
+  // 1. Bultos base a abrir (b)
+  let b = N <= 3 ? N : Math.min(Math.ceil(Math.sqrt(N)) + 1, N);
+
+  // 2. Restricción de tiempo (presupuesto de 60 min)
+  const itemsMaximosPara = (bultos)=> Math.floor((MERMA_AUD_TIEMPO_MAXIMO_GUIA - bultos*MERMA_AUD_TIEMPO_APERTURA_BULTO) / tPorItem);
+  let itemsMaximos = itemsMaximosPara(b);
+  let seRedujoPorTiempo = false;
+  if(itemsMaximos < 4 && b > 2){
+    b = Math.ceil(b / 2);
+    itemsMaximos = itemsMaximosPara(b);
+    seRedujoPorTiempo = true;
+  }
+  itemsMaximos = Math.max(0, itemsMaximos);
+
+  // 3. Distribución de la muestra
+  let bultos_abrir, items_revisar, items_por_bulto;
+  if(tipo_embalaje === 'MIXTO'){
+    bultos_abrir = b;
+    items_revisar = itemsMaximos;
+    items_por_bulto = bultos_abrir > 0 ? Math.ceil(items_revisar / bultos_abrir) : 0;
+  }else{ // HOMOGENEO (1 ítem por bulto)
+    bultos_abrir = Math.min(b, itemsMaximos);
+    items_revisar = bultos_abrir;
+    items_por_bulto = bultos_abrir > 0 ? 1 : 0;
+  }
+  // No tiene sentido pedir revisar más ítems distintos de los que declara la guía.
+  items_revisar = Math.min(items_revisar, totalItemsGuia);
+
+  const tiempo_apertura = bultos_abrir * MERMA_AUD_TIEMPO_APERTURA_BULTO;
+  const tiempo_items = items_revisar * tPorItem;
+  const tiempo_estimado = tiempo_apertura + tiempo_items;
+  // Con volúmenes de bultos extremos, ni reduciendo a la mitad una vez (regla del
+  // paso 2) alcanza el presupuesto — se avisa en vez de fingir que sí se cumplió.
+  const excedeTiempo = tiempo_estimado > MERMA_AUD_TIEMPO_MAXIMO_GUIA || items_revisar <= 0;
+
+  return {
+    total_bultos: N, total_items_guia: totalItemsGuia, tipo_embalaje, tiempo_por_item: tPorItem,
+    bultos_abrir, items_revisar, items_por_bulto, tiempo_apertura, tiempo_items, tiempo_estimado,
+    seRedujoPorTiempo, excedeTiempo
+  };
+}
+
+let mermaAudGuiaSeleccionada = null;
+let mermaAudResultadoActual = null;
+let mermaAudDiscrepancias = [];
+
+function poblarSelectGuiasAuditoria(){
+  const activos = mermaRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
+  const valorActual = $('aud-guia-select').value;
+  $('aud-guia-select').innerHTML = '<option value="">— Ingresar datos manualmente —</option>' +
+    activos.map(r=>`<option value="${r.correlativo}">${r.correlativo} — N° ${r.nro_guia||'s/n'} — ${r.sede||''}</option>`).join('');
+  if(valorActual && activos.some(r=>r.correlativo===valorActual)) $('aud-guia-select').value = valorActual;
+}
+$('aud-guia-select').addEventListener('change', ()=>{
+  const correlativo = $('aud-guia-select').value;
+  mermaAudGuiaSeleccionada = correlativo || null;
+  if(!correlativo) return;
+  const g = mermaRegAllCache.find(r=>r.correlativo===correlativo);
+  if(!g) return;
+  if(g.bultos != null) $('aud-total-bultos').value = g.bultos;
+  if(g.total_items != null) $('aud-total-items').value = g.total_items;
+});
+
+function renderDiscrepanciasAuditoria(){
+  $('aud-discrepancias-empty').style.display = mermaAudDiscrepancias.length ? 'none' : 'block';
+  $('aud-discrepancias-body').innerHTML = mermaAudDiscrepancias.map((d,idx)=>`<tr data-idx="${idx}">
+    <td><input type="text" class="upper aud-disc-codigo" data-idx="${idx}" value="${d.codigo||''}" placeholder="EJ. 1454-COL175" style="min-width:140px;"></td>
+    <td><select class="aud-disc-motivo" data-idx="${idx}">${Object.entries(MERMA_AUD_MOTIVOS).map(([k,v])=>`<option value="${k}" ${k===d.motivo?'selected':''}>${v}</option>`).join('')}</select></td>
+    <td><input type="text" class="aud-disc-detalle" data-idx="${idx}" value="${(d.detalle||'').replace(/"/g,'&quot;')}" placeholder="Opcional" style="min-width:180px;"></td>
+    <td><button type="button" class="btn btn-sm btn-ghost btn-aud-quitar-discrepancia" data-idx="${idx}">🗑</button></td>
+  </tr>`).join('');
+}
+function leerDiscrepanciasDesdeFormulario(){
+  document.querySelectorAll('#aud-discrepancias-body tr[data-idx]').forEach(tr=>{
+    const idx = Number(tr.dataset.idx);
+    const d = mermaAudDiscrepancias[idx];
+    if(!d) return;
+    const inpCodigo = tr.querySelector('.aud-disc-codigo');
+    const selMotivo = tr.querySelector('.aud-disc-motivo');
+    const inpDetalle = tr.querySelector('.aud-disc-detalle');
+    d.codigo = inpCodigo ? inpCodigo.value.trim().toUpperCase() : d.codigo;
+    d.motivo = selMotivo ? selMotivo.value : d.motivo;
+    d.detalle = inpDetalle ? inpDetalle.value.trim() : d.detalle;
+  });
+}
+$('btn-aud-agregar-discrepancia').addEventListener('click', ()=>{
+  leerDiscrepanciasDesdeFormulario();
+  mermaAudDiscrepancias.push({ codigo:'', motivo:'FALTANTE', detalle:'' });
+  renderDiscrepanciasAuditoria();
+});
+$('aud-discrepancias-body').addEventListener('click', (ev)=>{
+  const btn = ev.target.closest('.btn-aud-quitar-discrepancia');
+  if(!btn) return;
+  leerDiscrepanciasDesdeFormulario();
+  mermaAudDiscrepancias.splice(Number(btn.dataset.idx), 1);
+  renderDiscrepanciasAuditoria();
+});
+
+function renderResultadoAuditoria(calc){
+  const cards = [];
+  cards.push(kpiCardHtml('Bultos a abrir', calc.bultos_abrir, {icono:'pallet'}));
+  cards.push(kpiCardHtml('Ítems a auditar', calc.items_revisar, {icono:'lupa'}));
+  if(calc.tipo_embalaje === 'MIXTO'){
+    cards.push(kpiCardHtml('Ítems por bulto (aprox.)', calc.items_por_bulto, {icono:'meta'}));
+  }
+  cards.push(kpiCardHtml('Tiempo estimado', calc.tiempo_estimado, {
+    icono:'reloj', sufijo:' min',
+    accent: calc.excedeTiempo ? '#8A332A' : '#245C46',
+    badgeBg: calc.excedeTiempo ? '#F7E1DE' : '#DCEEE6',
+    alerta: calc.excedeTiempo
+  }));
+  $('aud-resultado-kpis').innerHTML = cards.join('');
+  animarKpis('aud-resultado-kpis');
+}
+
+$('btn-aud-calcular').addEventListener('click', ()=>{
+  const total_bultos = Number($('aud-total-bultos').value);
+  const total_items_guia = Number($('aud-total-items').value);
+  const tipo_embalaje = $('aud-tipo-embalaje').value;
+  const tiempo_por_item = Number($('aud-tiempo-item').value);
+  if(!total_bultos || total_bultos <= 0){ showMsg('aud-calc-msg','err','Ingresa el total de bultos recibidos (mayor a 0).'); return; }
+  if(!total_items_guia || total_items_guia <= 0){ showMsg('aud-calc-msg','err','Ingresa el total de ítems según la guía (mayor a 0).'); return; }
+
+  const calc = calcularMuestraAuditoria({ total_bultos, total_items_guia, tipo_embalaje, tiempo_por_item });
+  mermaAudResultadoActual = calc;
+  mermaAudDiscrepancias = [];
+  renderResultadoAuditoria(calc);
+  renderDiscrepanciasAuditoria();
+  $('aud-resultado-wrap').style.display = 'block';
+  $('aud-guardar-msg').style.display = 'none';
+  if(calc.excedeTiempo){
+    showMsg('aud-calc-msg','err','⚠ Con este volumen de bultos, el plan de muestra igual podría superar el presupuesto de 60 min (o no deja ítems por revisar). Revisa los datos o continúa sabiendo que excede el tiempo objetivo.');
+  }else{
+    showMsg('aud-calc-msg','ok', calc.seRedujoPorTiempo ? 'Muestra calculada (se redujo la cantidad de bultos para respetar el presupuesto de 60 min).' : 'Muestra calculada.');
+  }
+  $('aud-resultado-wrap').scrollIntoView({behavior:'smooth', block:'nearest'});
+});
+
+async function generarCorrelativoAuditoriaMerma(){
+  const counterRef = contadoresRef.doc('merma_auditorias');
+  const siguiente = await db.runTransaction(async (tx)=>{
+    const snap = await tx.get(counterRef);
+    const actual = snap.exists ? (snap.data().ultimo || 0) : 0;
+    const nuevo = actual + 1;
+    tx.set(counterRef, {ultimo: nuevo}, {merge:true});
+    return nuevo;
+  });
+  return 'AUD-' + String(siguiente).padStart(5,'0');
+}
+
+$('btn-aud-guardar').addEventListener('click', async ()=>{
+  if(!mermaAudResultadoActual){ return; }
+  leerDiscrepanciasDesdeFormulario();
+  const btn = $('btn-aud-guardar');
+  btn.disabled = true; btn.textContent = 'Guardando…';
+  try{
+    const calc = mermaAudResultadoActual;
+    const discrepancias = mermaAudDiscrepancias.map(d=>({ codigo: d.codigo||'', motivo: d.motivo||'FALTANTE', detalle: d.detalle||'' }));
+    const dictamen = discrepancias.length === 0 ? 'CONFIABLE' : 'NO_CONFIABLE';
+    const estado_guia_texto = dictamen === 'CONFIABLE' ? 'Aprobada por Auditoría Rápida' : 'Marcada con Alerta de Discrepancia';
+    const correlativo = await generarCorrelativoAuditoriaMerma();
+    const g = mermaAudGuiaSeleccionada ? mermaRegAllCache.find(r=>r.correlativo===mermaAudGuiaSeleccionada) : null;
+
+    const doc = {
+      correlativo,
+      correlativo_guia: mermaAudGuiaSeleccionada || null,
+      nro_guia: g ? (g.nro_guia||'') : '',
+      sede: g ? (g.sede||'') : '',
+      total_bultos: calc.total_bultos, total_items_guia: calc.total_items_guia,
+      tipo_embalaje: calc.tipo_embalaje, tiempo_por_item: calc.tiempo_por_item,
+      bultos_abrir: calc.bultos_abrir, items_revisar: calc.items_revisar, items_por_bulto: calc.items_por_bulto,
+      tiempo_apertura: calc.tiempo_apertura, tiempo_items: calc.tiempo_items, tiempo_estimado: calc.tiempo_estimado,
+      discrepancias, discrepancias_encontradas: discrepancias.length,
+      dictamen, estado_guia_texto,
+      usuario: currentUserAlias, fecha: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    await mermaAuditoriasRef.doc(correlativo).set(doc);
+
+    if(mermaAudGuiaSeleccionada){
+      await mermaGuiasRef.doc(mermaAudGuiaSeleccionada).update({ auditoria_correlativo: correlativo, auditoria_dictamen: dictamen });
+      if(g){ g.auditoria_correlativo = correlativo; g.auditoria_dictamen = dictamen; }
+    }
+
+    if(dictamen === 'CONFIABLE'){
+      await logAccion('merma_auditoria_registrada', {detalle:`Auditoría ${correlativo}${g?` (guía ${g.correlativo} — ${g.sede||''})`:''}: ${calc.bultos_abrir} bulto(s) abiertos, ${calc.items_revisar} ítem(s) revisados, sin discrepancias — CONFIABLE.`});
+      showToast(`Auditoría ${correlativo} guardada: CONFIABLE.`,'ok');
+    }else{
+      const detalleItems = discrepancias.map(d=>`${d.codigo||'(sin código)'} — ${MERMA_AUD_MOTIVOS[d.motivo]||d.motivo}${d.detalle?': '+d.detalle:''}`).join(' | ');
+      await logAccion('merma_auditoria_alerta', {detalle:`Auditoría ${correlativo}${g?` (guía ${g.correlativo} — ${g.sede||''})`:''}: ${discrepancias.length} discrepancia(s) — NO CONFIABLE. Ítems observados: ${detalleItems}`});
+      showToast(`⚠ Auditoría ${correlativo} guardada: NO CONFIABLE (${discrepancias.length} discrepancia(s)). Se registró la alerta en Bitácora para supervisión.`,'err');
+    }
+
+    renderRegistrosMerma();
+    cargarAuditoriasMerma(true); // relee desde el servidor para traer la fecha real (serverTimestamp)
+
+    mermaAudResultadoActual = null;
+    mermaAudDiscrepancias = [];
+    $('aud-resultado-wrap').style.display = 'none';
+    $('aud-total-bultos').value = ''; $('aud-total-items').value = '';
+    $('aud-guia-select').value = ''; mermaAudGuiaSeleccionada = null;
+    $('aud-calc-msg').style.display = 'none';
+  }catch(err){
+    console.error(err);
+    showMsg('aud-guardar-msg','err','Error al guardar la auditoría: '+err.message);
+  }finally{
+    btn.disabled = false; btn.textContent = '💾 Guardar auditoría';
+  }
+});
+
+/* -------- Listado de auditorías -------- */
+let mermaAuditoriasRawLastDoc = null;
+let mermaAuditoriasAllCache = [];
+let mermaAuditoriasNoMore = false;
+
+async function cargarAuditoriasMerma(reset){
+  if(reset){ mermaAuditoriasRawLastDoc = null; mermaAuditoriasAllCache = []; mermaAuditoriasNoMore = false; }
+  if(!mermaAuditoriasNoMore){
+    try{
+      let q = mermaAuditoriasRef.orderBy('fecha','desc').limit(500);
+      if(mermaAuditoriasRawLastDoc) q = q.startAfter(mermaAuditoriasRawLastDoc);
+      const snap = await q.get();
+      mermaAuditoriasAllCache = mermaAuditoriasAllCache.concat(snap.docs.map(d=>d.data()));
+      mermaAuditoriasRawLastDoc = snap.docs.length ? snap.docs[snap.docs.length-1] : mermaAuditoriasRawLastDoc;
+      if(snap.docs.length < 500) mermaAuditoriasNoMore = true;
+    }catch(err){
+      console.error(err);
+      showToast('Error al cargar auditorías de merma: '+err.message,'err');
+      return;
+    }
+  }
+  renderAuditoriasMerma();
+}
+
+function renderAuditoriasMerma(){
+  const dictamenFiltro = $('aud-list-filtro-dictamen').value;
+  const sedeFiltro = $('aud-list-filtro-sede').value.trim().toUpperCase();
+  const filtrados = mermaAuditoriasAllCache.filter(a=>{
+    if(dictamenFiltro && a.dictamen !== dictamenFiltro) return false;
+    if(sedeFiltro && !(a.sede||'').toUpperCase().includes(sedeFiltro)) return false;
+    return true;
+  });
+  if(filtrados.length === 0){
+    $('aud-list-body').innerHTML = '';
+    $('aud-list-empty').style.display = 'block';
+    $('aud-list-empty').textContent = (dictamenFiltro||sedeFiltro) ? 'No hay auditorías que coincidan con los filtros.' : 'Aún no se han registrado auditorías rápidas.';
+    return;
+  }
+  $('aud-list-empty').style.display = 'none';
+  $('aud-list-body').innerHTML = filtrados.map(a=>{
+    const fecha = a.fecha && a.fecha.toDate ? a.fecha.toDate().toLocaleString('es-PE') : '';
+    const esConfiable = a.dictamen === 'CONFIABLE';
+    const color = esConfiable ? '#245C46' : '#8A332A';
+    return `<tr><td>${a.correlativo}</td><td>${a.correlativo_guia || '—'}${a.nro_guia?' (N° '+a.nro_guia+')':''}</td><td>${a.sede||''}</td><td>${a.bultos_abrir}</td><td>${a.items_revisar}</td><td>${a.tiempo_estimado} min</td><td>${a.discrepancias_encontradas}</td><td style="color:${color}; font-weight:700;">${esConfiable?'✓ CONFIABLE':'⚠ NO CONFIABLE'}</td><td>${fecha}</td><td>${a.usuario||''}</td><td><button class="btn btn-sm btn-ghost btn-ver-detalle-auditoria" data-correlativo="${a.correlativo}">Ver</button></td></tr>`;
+  }).join('');
+}
+$('aud-list-filtro-dictamen').addEventListener('change', ()=> renderAuditoriasMerma());
+$('aud-list-filtro-sede').addEventListener('input', ()=> renderAuditoriasMerma());
+$('btn-aud-list-limpiar-filtros').addEventListener('click', ()=>{
+  $('aud-list-filtro-dictamen').value = '';
+  $('aud-list-filtro-sede').value = '';
+  renderAuditoriasMerma();
+});
+$('aud-list-body').addEventListener('click', (ev)=>{
+  const btn = ev.target.closest('.btn-ver-detalle-auditoria');
+  if(btn) abrirDetalleAuditoriaMerma(btn.dataset.correlativo);
+});
+$('btn-ocultar-aud-detalle').addEventListener('click', ()=>{ $('aud-detalle-panel').style.display = 'none'; });
+
+function abrirDetalleAuditoriaMerma(correlativo){
+  const a = mermaAuditoriasAllCache.find(x=>x.correlativo===correlativo);
+  if(!a){ showToast('No se encontró la auditoría.','err'); return; }
+  $('aud-detalle-titulo-text').textContent = `Detalle de ${a.correlativo}${a.correlativo_guia?' — guía '+a.correlativo_guia:''} — ${a.dictamen==='CONFIABLE'?'CONFIABLE':'NO CONFIABLE'}`;
+  const discrepancias = a.discrepancias || [];
+  $('aud-detalle-empty').style.display = discrepancias.length ? 'none' : 'block';
+  $('aud-detalle-body').innerHTML = discrepancias.map(d=>`<tr><td>${d.codigo||'—'}</td><td>${MERMA_AUD_MOTIVOS[d.motivo]||d.motivo}</td><td>${d.detalle||''}</td></tr>`).join('');
+  $('aud-detalle-panel').style.display = 'block';
+  $('aud-detalle-panel').scrollIntoView({behavior:'smooth', block:'start'});
+}
+/* ==================== FIN MÓDULO DE MERMA ==================== */
 
 /* -------------------- Análisis: Repartido vs. Guías -------------------- */
 let anGuiaPorCampanaCache = {};
@@ -8968,7 +10487,10 @@ const TABLAS_MOVIL = [
   {id:'camp-reg-body', tarjetas:true},
   {id:'bit-body', tarjetas:true},
   {id:'ti-preview-body', tarjetas:true},
-  {id:'ti-conteo-body', tarjetas:true}
+  {id:'ti-conteo-body', tarjetas:true},
+  {id:'merma-reg-body', tarjetas:true},
+  {id:'merma-formatos-body', tarjetas:true},
+  {id:'aud-list-body', tarjetas:true}
 ];
 function etiquetarCeldas(tbody){
   const tabla = tbody.closest('table'); if(!tabla) return;
@@ -9055,7 +10577,7 @@ inactivityTimer = setInterval(async ()=>{
   document.addEventListener(evt, resetInactivityTimer, {passive:true});
 });
 
-const US_CHECK_IDS = ['us-diseno','us-movimientos','us-productos','us-inventario','us-pallets','us-retiros','us-campanas','us-toma-inventario','us-kardex','us-bitacora','us-eliminar','us-admin'];
+const US_CHECK_IDS = ['us-diseno','us-movimientos','us-productos','us-inventario','us-pallets','us-retiros','us-campanas','us-toma-inventario','us-kardex','us-merma','us-bitacora','us-eliminar','us-admin'];
 function limpiarFormularioUsuario(){
   $('us-email').value=''; $('us-alias').value='';
   US_CHECK_IDS.forEach(id=>{ $(id).checked=false; });
@@ -9080,6 +10602,7 @@ $('us-email').addEventListener('blur', async ()=>{
       $('us-campanas').checked = !!p.campanas;
       $('us-toma-inventario').checked = !!p.toma_inventario;
       $('us-kardex').checked = !!p.kardex;
+      $('us-merma').checked = !!p.merma;
       $('us-bitacora').checked = !!p.bitacora;
       $('us-eliminar').checked = !!p.eliminar;
       $('us-admin').checked = !!p.admin;
@@ -9104,7 +10627,7 @@ $('btn-guardar-usuario').addEventListener('click', async ()=>{
     pallets: $('us-pallets').checked, retiros: $('us-retiros').checked,
     campanas: $('us-campanas').checked,
     toma_inventario: $('us-toma-inventario').checked,
-    kardex: $('us-kardex').checked, bitacora: $('us-bitacora').checked,
+    kardex: $('us-kardex').checked, merma: $('us-merma').checked, bitacora: $('us-bitacora').checked,
     eliminar: $('us-eliminar').checked, admin: $('us-admin').checked
   };
   try{
