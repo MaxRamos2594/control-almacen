@@ -200,8 +200,8 @@
      junto con el scroll horizontal. En la vista de Diseño es arrastrable; en
      Movimientos se muestra solo como referencia visual, sin poder editarla. */
   .reja-linea{
-    position:absolute; top:0; width:7px; margin-left:-3px; z-index:5; border-radius:2px;
-    background:repeating-linear-gradient(45deg,#C0392B,#C0392B 4px,#7A1F17 4px,#7A1F17 8px);
+    position:absolute; top:0; width:14px; margin-left:-7px; z-index:5; border-radius:3px;
+    background:#fff; border:3px solid #000;
     box-shadow:0 0 0 1px rgba(0,0,0,.15);
   }
   .reja-linea.reja-editable{cursor:ew-resize; touch-action:none;}
@@ -223,7 +223,7 @@
     background:repeating-linear-gradient(135deg,#FFF6DA,#FFF6DA 10px,#FDEFC0 10px,#FDEFC0 20px);
   }
   .bloque-title{font-family:var(--mono); font-size:12px; font-weight:700; color:#fff; background:var(--ink); display:inline-block; padding:3px 10px; border-radius:3px; margin-bottom:8px;}
-  .nichos-line{display:flex; flex-direction:row-reverse; gap:12px; padding:4px 2px 10px;}
+  .nichos-line{display:flex; flex-direction:row-reverse; gap:16px; padding:4px 2px 10px;}
   .nicho{border:2px solid var(--frame-blue); border-radius:5px; background:#F5F6F8; padding:5px; width:68px; flex-shrink:0;}
   .nicho-section-label{font-size:8px; color:var(--ink-soft); text-align:center; text-transform:uppercase; margin:3px 0 2px;}
   .nicho-row{display:flex; gap:3px; margin-bottom:3px;}
@@ -234,6 +234,7 @@
   .btn-reorder:hover{background:var(--blue);}
   .btn-reorder:disabled{opacity:.3; cursor:not-allowed;}
   .nicho.solo-piso{border-color:var(--green);}
+  .nicho.solo-rack{border-color:var(--lacre);}
   .slot{
     width:26px; height:24px; border-radius:3px; border:1px solid var(--lacre-line); background:var(--lacre-bg);
     cursor:pointer; display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:8px;
@@ -1989,8 +1990,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v103';
-const APP_UPDATED = '09/09/2026 21:15';
+const APP_VERSION = 'v104';
+const APP_UPDATED = '09/09/2026 22:40';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -2496,20 +2497,30 @@ $('btn-crear-bloque').addEventListener('click', async ()=>{
 });
 
 // Los bloques "anexados" (anexado_a) usan un contador de letras SEPARADO
-// (reja_nicho_index), con prefijo "R" (RA, RB, RC…), para que sus códigos nunca
-// se mezclen con la numeración normal de los bloques independientes.
-async function agregarNicho(bloqueId, bloqueNombre, niveles){
+// por cada bloque base (reja_nicho_index_<idDelBloqueBase>), y sus códigos
+// llevan el prefijo "P<NombreDelBloqueBase>-" (ej. si están anexados al
+// bloque "A": PA-A, PA-B, PA-C…; si están anexados al bloque "B": PB-A,
+// PB-B…), para que de un vistazo se sepa a cuál fila pertenecen y nunca se
+// mezclen con la numeración normal de los bloques independientes.
+function sanitizarPrefijoBase(nombre){
+  const limpio = (nombre || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return limpio || 'X';
+}
+async function agregarNicho(bloqueId, bloqueNombre, niveles, sinPiso){
   niveles = (niveles===3) ? 3 : 2;
   const esAnexado = !!(bloques[bloqueId] && bloques[bloqueId].anexado_a);
-  const campoContador = esAnexado ? 'reja_nicho_index' : 'nicho_index';
+  const baseId = esAnexado ? bloques[bloqueId].anexado_a : null;
+  const campoContador = esAnexado ? ('reja_nicho_index_' + baseId) : 'nicho_index';
+  const prefijoBase = esAnexado ? sanitizarPrefijoBase(bloques[baseId] && bloques[baseId].nombre) : '';
   try{
     let letra;
     await db.runTransaction(async tx=>{
       const cSnap = await tx.get(contadorRef);
       const data = cSnap.exists ? cSnap.data() : {};
       const idx = data[campoContador] || 0;
-      letra = esAnexado ? ('R' + indexToLetter(idx)) : indexToLetter(idx);
-      tx.set(nichosRef.doc(letra), { bloque_id: bloqueId, orden: idx, pos_visual: idx, tipo:'rack_piso', niveles, creado_en: firebase.firestore.FieldValue.serverTimestamp() });
+      letra = esAnexado ? (`P${prefijoBase}-${indexToLetter(idx)}`) : indexToLetter(idx);
+      const tipo = sinPiso ? 'solo_rack' : 'rack_piso';
+      tx.set(nichosRef.doc(letra), { bloque_id: bloqueId, orden: idx, pos_visual: idx, tipo, niveles, creado_en: firebase.firestore.FieldValue.serverTimestamp() });
       const nombresNivel = niveles===3 ? ['arriba','medio','abajo'] : ['arriba','abajo'];
       let num = 1;
       nombresNivel.forEach(nombreNivel=>{
@@ -2519,31 +2530,35 @@ async function agregarNicho(bloqueId, bloqueNombre, niveles){
           num++;
         }
       });
-      const rackCount = niveles*2;
-      for(let i=0;i<5;i++){
-        const izq = rackCount+1+i, der = rackCount+6+i;
-        [[izq,'izq'],[der,'der']].forEach(([n,columna])=>{
-          const codigo = `${letra}${String(n).padStart(2,'0')}`;
-          tx.set(posicionesRef.doc(codigo), { tipo:'piso', nicho:letra, bloque_id:bloqueId, nivel:null, fila:i, columna, estado:'vacio', bloqueada:false, pallet_codigo:null, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
-        });
+      if(!sinPiso){
+        const rackCount = niveles*2;
+        for(let i=0;i<5;i++){
+          const izq = rackCount+1+i, der = rackCount+6+i;
+          [[izq,'izq'],[der,'der']].forEach(([n,columna])=>{
+            const codigo = `${letra}${String(n).padStart(2,'0')}`;
+            tx.set(posicionesRef.doc(codigo), { tipo:'piso', nicho:letra, bloque_id:bloqueId, nivel:null, fila:i, columna, estado:'vacio', bloqueada:false, pallet_codigo:null, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
+          });
+        }
       }
       tx.set(contadorRef, { [campoContador]: idx+1 }, {merge:true});
     });
-    await logAccion('nicho_creado', {detalle:`Nicho ${letra} (${niveles} niveles) creado en ${bloqueNombre} (${niveles*2} rack + 10 piso)`});
+    await logAccion('nicho_creado', {detalle:`Nicho ${letra} (${niveles} niveles${sinPiso?', sin piso':''}) creado en ${bloqueNombre} (${niveles*2} rack${sinPiso?'':' + 10 piso'})`});
     showToast(`Registro creado: nicho ${letra} en ${bloqueNombre}.`,'ok');
   }catch(err){ showToast('Error: '+err.message,'err'); }
 }
 
 async function agregarNichoSoloPiso(bloqueId, bloqueNombre){
   const esAnexado = !!(bloques[bloqueId] && bloques[bloqueId].anexado_a);
-  const campoContador = esAnexado ? 'reja_nicho_index' : 'nicho_index';
+  const baseId = esAnexado ? bloques[bloqueId].anexado_a : null;
+  const campoContador = esAnexado ? ('reja_nicho_index_' + baseId) : 'nicho_index';
+  const prefijoBase = esAnexado ? sanitizarPrefijoBase(bloques[baseId] && bloques[baseId].nombre) : '';
   try{
     let letra;
     await db.runTransaction(async tx=>{
       const cSnap = await tx.get(contadorRef);
       const data = cSnap.exists ? cSnap.data() : {};
       const idx = data[campoContador] || 0;
-      letra = esAnexado ? ('R' + indexToLetter(idx)) : indexToLetter(idx);
+      letra = esAnexado ? (`P${prefijoBase}-${indexToLetter(idx)}`) : indexToLetter(idx);
       tx.set(nichosRef.doc(letra), { bloque_id: bloqueId, orden: idx, pos_visual: idx, tipo:'solo_piso', creado_en: firebase.firestore.FieldValue.serverTimestamp() });
       for(let i=0;i<6;i++){
         const izq=1+i, der=7+i;
@@ -2654,14 +2669,16 @@ function renderBloqueForms(){
     let rackTotal = 0, pisoTotal = 0;
     nichosDelBloque.forEach(([l,n])=>{
       if(n.tipo==='solo_piso'){ pisoTotal += 12; }
+      else if(n.tipo==='solo_rack'){ rackTotal += (n.niveles||2)*2; }
       else { rackTotal += (n.niveles||2)*2; pisoTotal += 10; }
     });
     const posDelBloque = rackTotal + pisoTotal;
     const esAnexado = !!b.anexado_a;
     const nombreBase = esAnexado && bloques[b.anexado_a] ? bloques[b.anexado_a].nombre : null;
+    const prefijoBase = esAnexado ? sanitizarPrefijoBase(nombreBase) : '';
     const filasNicho = nichosDelBloque.map(([letra,n])=>{
       const ocupado = Object.entries(posiciones).some(([pid,p])=>p.nicho===letra && p.estado==='ocupado');
-      const tipoTxt = n.tipo==='solo_piso' ? 'Solo piso (12)' : `${(n.niveles||2)} niveles (${(n.niveles||2)*2} rack + 10 piso)`;
+      const tipoTxt = n.tipo==='solo_piso' ? 'Solo piso (12)' : n.tipo==='solo_rack' ? `${(n.niveles||2)} niveles, sin piso (${(n.niveles||2)*2} rack)` : `${(n.niveles||2)} niveles (${(n.niveles||2)*2} rack + 10 piso)`;
       return `<label style="display:flex; align-items:center; gap:8px; padding:4px 0; font-size:12px; ${ocupado?'color:#AAA;':''}">
         <input type="checkbox" class="nicho-check" data-bloque="${id}" data-letra="${letra}" ${ocupado?'disabled title="Tiene posiciones ocupadas"':''} style="width:auto;">
         <b style="font-family:var(--mono);">${letra}</b> — ${tipoTxt} ${ocupado?' · ocupado':''}
@@ -2676,13 +2693,15 @@ function renderBloqueForms(){
       <div class="bloque-actions-grupo">
         <button class="btn btn-ghost btn-sm" data-add-nicho="${id}" data-nombre="${b.nombre}" data-niveles="2">+ Nicho (2 niveles)</button>
         <button class="btn btn-ghost btn-sm" data-add-nicho="${id}" data-nombre="${b.nombre}" data-niveles="3">+ Nicho (3 niveles)</button>
+        <button class="btn btn-ghost btn-sm" data-add-nicho="${id}" data-nombre="${b.nombre}" data-niveles="2" data-sin-piso="true">+ Nicho (2 niv., sin piso)</button>
+        <button class="btn btn-ghost btn-sm" data-add-nicho="${id}" data-nombre="${b.nombre}" data-niveles="3" data-sin-piso="true">+ Nicho (3 niv., sin piso)</button>
         <button class="btn btn-ghost btn-sm" data-add-piso="${id}" data-nombre="${b.nombre}">+ Piso (sin rack)</button>
       </div>
       ${esAnexado ? '' : `<div class="bloque-actions-grupo">
         <button class="btn btn-ghost btn-sm" data-toggle-pasillo="${id}" data-valor="${b.pasillo ? 'false':'true'}">${b.pasillo ? '✕ Quitar pasillo' : '╱ Agregar pasillo debajo'}</button>
         <button class="btn btn-ghost btn-sm" data-toggle-volteo="${id}" data-valor="${b.volteado ? 'false':'true'}">${b.volteado ? '↩ Bloque normal' : '🔄 Voltear (piso arriba)'}</button>
       </div>`}
-      ${esAnexado ? `<div class="meta" style="color:var(--blue);">Después de la reja, en la fila de "${nombreBase||'?'}" — letras RA, RB, RC…</div>` : ''}
+      ${esAnexado ? `<div class="meta" style="color:var(--blue);">Después de la reja, en la fila de "${nombreBase||'?'}" — letras P${prefijoBase}-A, P${prefijoBase}-B, P${prefijoBase}-C…</div>` : ''}
       <div class="meta">${nichosDelBloque.length} nicho(s) · ${posDelBloque} posiciones (${rackTotal} rack + ${pisoTotal} piso)</div>
       ${vacio ? `<button class="btn btn-danger btn-sm" data-del-bloque="${id}" data-nombre="${b.nombre}" style="width:100%; margin-top:8px;">🗑 Eliminar bloque (está vacío)</button>` : ''}
       ${nichosDelBloque.length>0 ? `
@@ -2693,7 +2712,7 @@ function renderBloqueForms(){
       </details>` : ''}
     </div>`;
   }).join('');
-  list.querySelectorAll('[data-add-nicho]').forEach(btn=> btn.onclick = () => agregarNicho(btn.dataset.addNicho, btn.dataset.nombre, parseInt(btn.dataset.niveles)));
+  list.querySelectorAll('[data-add-nicho]').forEach(btn=> btn.onclick = () => agregarNicho(btn.dataset.addNicho, btn.dataset.nombre, parseInt(btn.dataset.niveles), btn.dataset.sinPiso==='true'));
   list.querySelectorAll('[data-add-piso]').forEach(btn=> btn.onclick = () => agregarNichoSoloPiso(btn.dataset.addPiso, btn.dataset.nombre));
   list.querySelectorAll('[data-toggle-pasillo]').forEach(btn=> btn.onclick = () => togglePasillo(btn.dataset.togglePasillo, btn.dataset.valor==='true'));
   list.querySelectorAll('[data-toggle-volteo]').forEach(btn=> btn.onclick = () => toggleVolteo(btn.dataset.toggleVolteo, btn.dataset.valor==='true'));
@@ -3070,7 +3089,8 @@ function nichosHTMLDeBloque(bid, volteadoFila, interactive, showReorder){
     // desincronice de la que de verdad queda guardada.
     const letraVisual = letra;
     const esSoloPiso = ndata.tipo === 'solo_piso';
-    const filaCount = esSoloPiso ? 6 : 5;
+    const esSoloRack = ndata.tipo === 'solo_rack';
+    const filaCount = esSoloPiso ? 6 : (esSoloRack ? 0 : 5);
     const pisoRows = [];
     for(let i=0;i<filaCount;i++){
       const izqEntry = Object.entries(posiciones).find(([id,p])=> p.nicho===letra && p.tipo==='piso' && p.fila===i && (p.columna ? p.columna==='izq' : Number(id.slice(-2))<10));
@@ -3096,9 +3116,9 @@ function nichosHTMLDeBloque(bid, volteadoFila, interactive, showReorder){
       <button type="button" class="btn-reorder" data-move-nicho="${letra}" data-bloque="${bid}" data-dir="-1" ${idxEnBloque===0?'disabled':''}>▶</button>
       <button type="button" class="btn-reorder" data-rename-nicho="${letra}" data-bloque="${bid}" title="Renombrar este nicho (no mueve nada)">✏️</button>
     </div>` : '';
-    const pisoHTML = `<div class="nicho-section-label">Piso</div>${pisoRows.join('')}`;
+    const pisoHTML = esSoloRack ? '' : `<div class="nicho-section-label">Piso</div>${pisoRows.join('')}`;
     const cuerpoHTML = (!esSoloPiso && volteadoFila) ? (pisoHTML + `<div class="nicho-label">${letraVisual}</div>` + rackHTML) : (rackHTML + `<div class="nicho-label">${letraVisual}</div>` + pisoHTML);
-    return `<div class="nicho${esSoloPiso?' solo-piso':''}">
+    return `<div class="nicho${esSoloPiso?' solo-piso':''}${esSoloRack?' solo-rack':''}">
       ${reorderHTML}
       ${cuerpoHTML}
     </div>`;
@@ -3177,7 +3197,7 @@ function renderMovGrid(){ $('mov-bloques').innerHTML = buildBloquesMarkup(true, 
    En la vista de Diseño es arrastrable con el mouse/touch (se engancha en
    vivo al hueco más cercano mientras se arrastra); en Movimientos se dibuja
    igual pero solo como referencia visual (sin controles). */
-const REJA_NICHO_GAP_PX = 12; // debe coincidir con .nichos-line{gap:12px}
+const REJA_NICHO_GAP_PX = 16; // debe coincidir con .nichos-line{gap:16px}
 function nichoAnchoActual(){
   // Debe coincidir con .nicho{width:68px} y su media query @max-width:640px{width:74px}.
   return (window.matchMedia && window.matchMedia('(max-width:640px)').matches) ? 74 : 68;
