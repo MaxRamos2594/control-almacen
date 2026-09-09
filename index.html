@@ -1989,8 +1989,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v101';
-const APP_UPDATED = '09/09/2026 15:00';
+const APP_VERSION = 'v102';
+const APP_UPDATED = '09/09/2026 16:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -2223,6 +2223,14 @@ function switchTab(name){
   $('view-'+name).classList.add('active');
   // La vista oculta no se repinta con cada snapshot: al abrirla se pinta lo pendiente.
   if(typeof flushRendersPendientes === 'function') flushRendersPendientes(name);
+  // Respaldo extra para la reja: si el usuario hizo zoom mientras esta pestaña
+  // estaba oculta y por algún motivo no llegó a dispararse 'resize' antes de
+  // cambiar de pestaña, se repinta igual al entrar aquí — así nunca se ve
+  // "distinta" entre Diseño y Movimientos.
+  if(typeof renderRejas === 'function'){
+    if(name==='diseno') renderRejas('preview-bloques', true);
+    if(name==='mov') renderRejas('mov-bloques', false);
+  }
   try{ history.replaceState(null, '', '#tab-'+name); }catch(e){}
 }
 document.querySelectorAll('nav.tabs button').forEach(btn=> btn.addEventListener('click', ()=> switchTab(btn.dataset.tab)));
@@ -3130,26 +3138,38 @@ function renderMovGrid(){ $('mov-bloques').innerHTML = buildBloquesMarkup(true, 
 /* -------------------- Rejas (divisores físicos del layout) --------------------
    Una reja es una línea vertical que representa un divisor físico real del
    almacén. Los bloques se empaquetan pegados al lado derecho del contenedor
-   (flex row-reverse), así que se guarda la posición de la reja como una
-   distancia fija en px respecto al borde DERECHO del contenido (xDerecha), no
-   desde la izquierda: así, si se agregan/quitan nichos en el extremo izquierdo
-   de una fila, la reja no se corre.
-   Ese borde derecho, en vez de medirse con getBoundingClientRect (que puede
-   quedar desincronizado del layout real si algo cambia el ancho de los nichos
-   sin que se vuelva a pintar la reja), se CALCULA con pura aritmética: cada
-   nicho mide siempre lo mismo (68px, o 74px bajo la media query móvil de
-   @max-width:640px — ver nichoAnchoActual) más 12px de separación entre ellos
-   (.nichos-line{gap:12px}), así que el ancho total de una fila es 100%
-   determinístico a partir de CUÁNTOS nichos tiene, sin medir nada del DOM.
-   Y para que un cambio de zoom (que puede cruzar ese breakpoint móvil y
-   cambiar el ancho real de los nichos) se refleje al instante, se vuelve a
-   pintar la reja también ante el evento 'resize' de la ventana — antes solo se
-   volvía a pintar cuando cambiaba algo en Firestore, así que un cambio de zoom
-   sin ningún cambio de datos dejaba a la reja con su posición vieja mientras
-   los nichos ya se habían redibujado con el ancho nuevo, y eso era lo que se
-   veía como "la reja se corre".
-   En la vista de Diseño es arrastrable con el mouse/touch; en Movimientos se
-   dibuja igual pero solo como referencia visual (sin controles). */
+   (flex row-reverse), así que la posición de la reja se guarda como un
+   CONTEO ENTERO de nichos (nichosDesdeDerecha): "después de cuántos nichos,
+   contando desde el borde derecho, va la reja". Es un entero, no un px, así
+   que la reja siempre queda enganchada exactamente en el hueco entre dos
+   nichos — no puede quedar "a medias" ni depender de ninguna medición en
+   punto flotante. Si se agregan/quitan nichos en el extremo izquierdo de una
+   fila, la reja no se corre (sigue después del mismo nicho N contando desde
+   la derecha).
+   El borde derecho y el ancho de cada nicho, en vez de medirse con
+   getBoundingClientRect (que puede quedar desincronizado del layout real si
+   algo cambia el ancho de los nichos sin que se vuelva a pintar la reja), se
+   CALCULAN con pura aritmética: cada nicho mide siempre lo mismo (68px, o
+   74px bajo la media query móvil de @max-width:640px — ver nichoAnchoActual)
+   más 12px de separación entre ellos (.nichos-line{gap:12px}), así que el
+   ancho total de una fila es 100% determinístico a partir de CUÁNTOS nichos
+   tiene, sin medir nada del DOM.
+   Para que un cambio de zoom (que puede cruzar ese breakpoint móvil y cambiar
+   el ancho real de los nichos) se refleje al instante, la reja se vuelve a
+   pintar en CADA uno de estos momentos:
+     1) al recibir un cambio de Firestore, en la vista visible (como antes);
+     2) ante el evento 'resize' de la ventana (zoom o cambio de tamaño), y
+        aquí es clave: se repintan SIEMPRE los dos contenedores (Diseño y
+        Movimientos), estén visibles o no — si solo se repintara el visible,
+        el otro se quedaría con la posición vieja (de antes del zoom) hasta
+        su próximo cambio en Firestore, y por eso se veía "distinta" la reja
+        entre Diseño y Movimientos al cambiar de pestaña después de hacer
+        zoom;
+     3) al cambiar de pestaña (switchTab), como respaldo adicional, por si el
+        navegador no llegó a disparar 'resize' antes del cambio de pestaña.
+   En la vista de Diseño es arrastrable con el mouse/touch (se engancha en
+   vivo al hueco más cercano mientras se arrastra); en Movimientos se dibuja
+   igual pero solo como referencia visual (sin controles). */
 const REJA_NICHO_GAP_PX = 12; // debe coincidir con .nichos-line{gap:12px}
 function nichoAnchoActual(){
   // Debe coincidir con .nicho{width:68px} y su media query @max-width:640px{width:74px}.
@@ -3182,6 +3202,43 @@ function anchoTotalContenidoRejas(){
   });
   return max;
 }
+// Cuántos nichos tiene la fila MÁS LARGA de todo el layout — es el tope del
+// conteo "nichosDesdeDerecha" (0 = pegada al borde derecho, este valor =
+// pegada al borde izquierdo del contenido).
+function totalNichosEnLayout(){
+  let max = 0;
+  Object.entries(bloques).forEach(([bid,b])=>{
+    if(b.anexado_a) return;
+    const cant = contarNichosDeFilaBase(bid);
+    if(cant > max) max = cant;
+  });
+  return max;
+}
+// Ancho de un "paso" (un nicho + su separación) — es el período de la rejilla
+// a la que se engancha la reja.
+function rejaPasoNicho(){
+  return nichoAnchoActual() + REJA_NICHO_GAP_PX;
+}
+// Convierte el conteo entero n (nichos desde la derecha) a un left en px,
+// centrado en el hueco entre el nicho n-1 y el nicho n contando desde la
+// derecha.
+function rejaLeftDesdeConteo(n){
+  const bordeDerecho = anchoTotalContenidoRejas();
+  const paso = rejaPasoNicho();
+  return bordeDerecho - n*paso + REJA_NICHO_GAP_PX/2;
+}
+// Convierte un left en px arbitrario (p.ej. mientras se arrastra) al conteo
+// entero más cercano, ya recortado a un rango válido [0, totalNichosEnLayout()].
+function rejaConteoDesdeLeft(left){
+  const bordeDerecho = anchoTotalContenidoRejas();
+  const paso = rejaPasoNicho() || 1;
+  const totalNichos = totalNichosEnLayout();
+  let n = Math.round((bordeDerecho - left + REJA_NICHO_GAP_PX/2) / paso);
+  if(!Number.isFinite(n)) n = 0;
+  if(n<0) n = 0;
+  if(n>totalNichos) n = totalNichos;
+  return n;
+}
 function renderRejas(containerId, editable){
   const cont = document.getElementById(containerId);
   if(!cont) return;
@@ -3189,13 +3246,18 @@ function renderRejas(containerId, editable){
   const entradas = Object.entries(rejas);
   if(entradas.length===0) return;
   const alto = Math.max(cont.scrollHeight, cont.clientHeight, 40);
-  const bordeDerecho = anchoTotalContenidoRejas();
   entradas.forEach(([id, r])=>{
-    // Si el documento es viejo (guardado con un esquema anterior), se interpreta
-    // igual como distancia al borde derecho — quedará realineado apenas se
-    // vuelva a arrastrar.
-    const xDerecha = Math.max(0, Number(r.xDerecha ?? r.x) || 0);
-    const left = Math.max(0, bordeDerecho - xDerecha);
+    let n;
+    if(r.nichosDesdeDerecha!=null){
+      n = Math.max(0, Math.round(Number(r.nichosDesdeDerecha)) || 0);
+    } else {
+      // Documento viejo (esquema anterior en px, distancia al borde derecho):
+      // se convierte al vuelo al conteo entero más cercano — queda perfecto
+      // apenas se vuelva a arrastrar la reja, y de una vez deja de "flotar".
+      const xDerechaVieja = Math.max(0, Number(r.xDerecha ?? r.x) || 0);
+      n = rejaConteoDesdeLeft(anchoTotalContenidoRejas() - xDerechaVieja);
+    }
+    const left = Math.max(0, rejaLeftDesdeConteo(n));
     const linea = document.createElement('div');
     linea.className = 'reja-linea' + (editable ? ' reja-editable' : '');
     linea.dataset.rejaId = id;
@@ -3219,24 +3281,28 @@ function habilitarArrastreRejas(containerId){
     const id = linea.dataset.rejaId;
     linea.classList.add('reja-arrastrando');
     try{ linea.setPointerCapture(ev.pointerId); }catch(e){}
-    let ultimoLeft = parseFloat(linea.style.left) || 0;
+    let ultimoConteo = rejaConteoDesdeLeft(parseFloat(linea.style.left) || 0);
     const mover = (ev2)=>{
       const rect = cont.getBoundingClientRect();
-      let left = ev2.clientX - rect.left + cont.scrollLeft;
-      left = Math.max(0, Math.min(left, cont.scrollWidth));
-      linea.style.left = left + 'px';
-      ultimoLeft = left;
+      const leftCrudo = ev2.clientX - rect.left + cont.scrollLeft;
+      const n = rejaConteoDesdeLeft(leftCrudo);
+      // Se engancha EN VIVO al hueco más cercano mientras se arrastra, así se
+      // ve de inmediato dónde va a quedar — nada de posiciones "a medias".
+      linea.style.left = Math.max(0, rejaLeftDesdeConteo(n)) + 'px';
+      ultimoConteo = n;
     };
     const soltar = async ()=>{
       linea.removeEventListener('pointermove', mover);
       linea.removeEventListener('pointerup', soltar);
       linea.removeEventListener('pointercancel', soltar);
       linea.classList.remove('reja-arrastrando');
-      const bordeDerecho = anchoTotalContenidoRejas();
-      const xDerecha = Math.max(0, Math.round(bordeDerecho - ultimoLeft));
       try{
-        await rejasRef.doc(id).update({ xDerecha, x: firebase.firestore.FieldValue.delete() });
-        await logAccion('reja_movida', {detalle:`Reja ${id} movida (${xDerecha}px del borde derecho del contenido)`});
+        await rejasRef.doc(id).update({
+          nichosDesdeDerecha: ultimoConteo,
+          xDerecha: firebase.firestore.FieldValue.delete(),
+          x: firebase.firestore.FieldValue.delete()
+        });
+        await logAccion('reja_movida', {detalle:`Reja ${id} movida (después de ${ultimoConteo} nicho(s) desde la derecha)`});
       }catch(err){ showToast('Error al mover la reja: '+err.message,'err'); renderAll(); }
     };
     linea.addEventListener('pointermove', mover);
@@ -3259,28 +3325,28 @@ async function eliminarReja(id){
 }
 $('btn-agregar-reja').addEventListener('click', async ()=>{
   const cont = $('preview-bloques');
-  let xDerecha = 100;
+  let nichosDesdeDerecha = Math.round(totalNichosEnLayout()/2);
   if(cont && cont.clientWidth){
-    const bordeDerecho = anchoTotalContenidoRejas();
     const leftVisibleMitad = cont.scrollLeft + cont.clientWidth/2;
-    xDerecha = Math.max(0, Math.round(bordeDerecho - leftVisibleMitad));
+    nichosDesdeDerecha = rejaConteoDesdeLeft(leftVisibleMitad);
   }
   try{
-    await rejasRef.add({ nombre:'', xDerecha, creado_en: firebase.firestore.FieldValue.serverTimestamp() });
-    await logAccion('reja_creada', {detalle:`Reja creada (${xDerecha}px del borde derecho del contenido)`});
+    await rejasRef.add({ nombre:'', nichosDesdeDerecha, creado_en: firebase.firestore.FieldValue.serverTimestamp() });
+    await logAccion('reja_creada', {detalle:`Reja creada (después de ${nichosDesdeDerecha} nicho(s) desde la derecha)`});
     showToast('Reja agregada — arrástrala con el mouse para ubicarla donde quieras.','ok');
   }catch(err){ showToast('Error al agregar la reja: '+err.message,'err'); }
 });
 // Un cambio de zoom del navegador (o de tamaño de ventana) dispara 'resize' aun
 // sin que cambie ningún dato en Firestore — hay que volver a pintar la reja en
 // ese momento, porque el ancho de los nichos puede haber cambiado (ver
-// nichoAnchoActual) y su posición en px depende de ese ancho.
+// nichoAnchoActual) y su posición en px depende de ese ancho. Se repintan los
+// DOS contenedores sin importar cuál esté visible (ver comentario arriba).
 let rejaResizeTimer = null;
 window.addEventListener('resize', ()=>{
   clearTimeout(rejaResizeTimer);
   rejaResizeTimer = setTimeout(()=>{
-    if(vistaVisible('diseno')) renderRejas('preview-bloques', true);
-    if(vistaVisible('mov')) renderRejas('mov-bloques', false);
+    renderRejas('preview-bloques', true);
+    renderRejas('mov-bloques', false);
   }, 150);
 });
 
