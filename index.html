@@ -719,6 +719,11 @@
       <div class="panel" style="margin-bottom:14px;">
         <h3>Nuevo bloque</h3>
         <div class="field"><label>Nombre del bloque</label><input type="text" id="bloque-nombre" class="upper" placeholder="EJ. BLOQUE B"></div>
+        <div class="field">
+          <label>Ubicación</label>
+          <select id="bloque-anexar-a"><option value="">Bloque independiente (fila nueva, letras normales)</option></select>
+        </div>
+        <p class="hint" id="bloque-anexar-hint" style="display:none; margin:-6px 0 10px;">Este bloque se pegará a la derecha del bloque elegido, en la misma fila, después de la reja — sus nichos se numerarán RA, RB, RC…</p>
         <button class="btn btn-primary" id="btn-crear-bloque" style="width:100%;">Crear bloque</button>
         <div class="msg" id="bloque-msg"></div>
       </div>
@@ -1981,8 +1986,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v97';
-const APP_UPDATED = '09/09/2026 12:20';
+const APP_VERSION = 'v100';
+const APP_UPDATED = '09/09/2026 14:05';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -2417,7 +2422,7 @@ function startListeners(){
    y las vistas que no están visibles quedan marcadas como pendientes para
    pintarse al abrir su pestaña. */
 const RENDERS_POR_VISTA = {
-  diseno: ()=>{ renderBloqueForms(); renderPreviewGrid(); renderRejas('preview-bloques', true); },
+  diseno: ()=>{ renderBloqueForms(); poblarSelectAnexarBloque(); renderPreviewGrid(); renderRejas('preview-bloques', true); },
   mov: ()=>{
     renderMovGrid(); renderMezanine(); applyFilters(); renderRejas('mov-bloques', false);
     if(selectedPosId && posiciones[selectedPosId]){ renderDetalle(selectedPosId, posiciones[selectedPosId]); }
@@ -2446,28 +2451,54 @@ function renderAllNow(){
 }
 
 /* -------------------- DISEÑO -------------------- */
+// Llena el selector "Ubicación" del formulario de nuevo bloque con los bloques
+// "base" existentes (los que NO están a su vez anexados a otro), para poder
+// anexar el bloque nuevo a la derecha de cualquiera de ellos, después de la reja.
+function poblarSelectAnexarBloque(){
+  const sel = $('bloque-anexar-a');
+  if(!sel) return;
+  const valorActual = sel.value;
+  const base = sortBloquesEntries().filter(([bid,b])=>!b.anexado_a);
+  sel.innerHTML = '<option value="">Bloque independiente (fila nueva, letras normales)</option>' +
+    base.map(([bid,b])=>`<option value="${bid}">A la derecha de "${b.nombre}", después de la reja (letras RA, RB, RC…)</option>`).join('');
+  if(valorActual && bloques[valorActual] && !bloques[valorActual].anexado_a) sel.value = valorActual;
+}
+$('bloque-anexar-a').addEventListener('change', ()=>{
+  $('bloque-anexar-hint').style.display = $('bloque-anexar-a').value ? 'block' : 'none';
+});
 $('btn-crear-bloque').addEventListener('click', async ()=>{
   const nombre = $('bloque-nombre').value.trim().toUpperCase();
   if(!nombre){ showMsg('bloque-msg','err','Ingresa un nombre de bloque.'); return; }
+  const anexarA = $('bloque-anexar-a').value;
   try{
-    await bloquesRef.add({ nombre, creado_en: firebase.firestore.FieldValue.serverTimestamp() });
-    await logAccion('bloque_creado', {detalle:`Bloque ${nombre} creado`});
+    const datos = { nombre, creado_en: firebase.firestore.FieldValue.serverTimestamp() };
+    if(anexarA) datos.anexado_a = anexarA;
+    await bloquesRef.add(datos);
+    const detalleAnexo = anexarA && bloques[anexarA] ? ` (anexado a la derecha de "${bloques[anexarA].nombre}", después de la reja)` : '';
+    await logAccion('bloque_creado', {detalle:`Bloque ${nombre} creado${detalleAnexo}`});
     $('bloque-nombre').value='';
+    $('bloque-anexar-a').value='';
+    $('bloque-anexar-hint').style.display='none';
     showMsg('bloque-msg','ok','Bloque creado.');
     showToast(`Registro creado: bloque ${nombre}.`,'ok');
   }catch(err){ showMsg('bloque-msg','err',err.message); }
 });
 
+// Los bloques "anexados" (anexado_a) usan un contador de letras SEPARADO
+// (reja_nicho_index), con prefijo "R" (RA, RB, RC…), para que sus códigos nunca
+// se mezclen con la numeración normal de los bloques independientes.
 async function agregarNicho(bloqueId, bloqueNombre, niveles){
   niveles = (niveles===3) ? 3 : 2;
+  const esAnexado = !!(bloques[bloqueId] && bloques[bloqueId].anexado_a);
+  const campoContador = esAnexado ? 'reja_nicho_index' : 'nicho_index';
   try{
     let letra;
     await db.runTransaction(async tx=>{
       const cSnap = await tx.get(contadorRef);
       const data = cSnap.exists ? cSnap.data() : {};
-      const nichoIndex = data.nicho_index || 0;
-      letra = indexToLetter(nichoIndex);
-      tx.set(nichosRef.doc(letra), { bloque_id: bloqueId, orden: nichoIndex, pos_visual: nichoIndex, tipo:'rack_piso', niveles, creado_en: firebase.firestore.FieldValue.serverTimestamp() });
+      const idx = data[campoContador] || 0;
+      letra = esAnexado ? ('R' + indexToLetter(idx)) : indexToLetter(idx);
+      tx.set(nichosRef.doc(letra), { bloque_id: bloqueId, orden: idx, pos_visual: idx, tipo:'rack_piso', niveles, creado_en: firebase.firestore.FieldValue.serverTimestamp() });
       const nombresNivel = niveles===3 ? ['arriba','medio','abajo'] : ['arriba','abajo'];
       let num = 1;
       nombresNivel.forEach(nombreNivel=>{
@@ -2485,7 +2516,7 @@ async function agregarNicho(bloqueId, bloqueNombre, niveles){
           tx.set(posicionesRef.doc(codigo), { tipo:'piso', nicho:letra, bloque_id:bloqueId, nivel:null, fila:i, columna, estado:'vacio', bloqueada:false, pallet_codigo:null, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
         });
       }
-      tx.set(contadorRef, { nicho_index: nichoIndex+1 }, {merge:true});
+      tx.set(contadorRef, { [campoContador]: idx+1 }, {merge:true});
     });
     await logAccion('nicho_creado', {detalle:`Nicho ${letra} (${niveles} niveles) creado en ${bloqueNombre} (${niveles*2} rack + 10 piso)`});
     showToast(`Registro creado: nicho ${letra} en ${bloqueNombre}.`,'ok');
@@ -2493,14 +2524,16 @@ async function agregarNicho(bloqueId, bloqueNombre, niveles){
 }
 
 async function agregarNichoSoloPiso(bloqueId, bloqueNombre){
+  const esAnexado = !!(bloques[bloqueId] && bloques[bloqueId].anexado_a);
+  const campoContador = esAnexado ? 'reja_nicho_index' : 'nicho_index';
   try{
     let letra;
     await db.runTransaction(async tx=>{
       const cSnap = await tx.get(contadorRef);
       const data = cSnap.exists ? cSnap.data() : {};
-      const nichoIndex = data.nicho_index || 0;
-      letra = indexToLetter(nichoIndex);
-      tx.set(nichosRef.doc(letra), { bloque_id: bloqueId, orden: nichoIndex, pos_visual: nichoIndex, tipo:'solo_piso', creado_en: firebase.firestore.FieldValue.serverTimestamp() });
+      const idx = data[campoContador] || 0;
+      letra = esAnexado ? ('R' + indexToLetter(idx)) : indexToLetter(idx);
+      tx.set(nichosRef.doc(letra), { bloque_id: bloqueId, orden: idx, pos_visual: idx, tipo:'solo_piso', creado_en: firebase.firestore.FieldValue.serverTimestamp() });
       for(let i=0;i<6;i++){
         const izq=1+i, der=7+i;
         [[izq,'izq'],[der,'der']].forEach(([num,columna])=>{
@@ -2508,7 +2541,7 @@ async function agregarNichoSoloPiso(bloqueId, bloqueNombre){
           tx.set(posicionesRef.doc(codigo), { tipo:'piso', nicho:letra, bloque_id:bloqueId, nivel:null, fila:i, columna, estado:'vacio', bloqueada:false, pallet_codigo:null, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
         });
       }
-      tx.set(contadorRef, { nicho_index: nichoIndex+1 }, {merge:true});
+      tx.set(contadorRef, { [campoContador]: idx+1 }, {merge:true});
     });
     await logAccion('nicho_creado', {detalle:`Nicho ${letra} (solo piso, 12 posiciones) creado en ${bloqueNombre}`});
     showToast(`Registro creado: nicho ${letra} (solo piso) en ${bloqueNombre}.`,'ok');
@@ -2613,6 +2646,8 @@ function renderBloqueForms(){
       else { rackTotal += (n.niveles||2)*2; pisoTotal += 10; }
     });
     const posDelBloque = rackTotal + pisoTotal;
+    const esAnexado = !!b.anexado_a;
+    const nombreBase = esAnexado && bloques[b.anexado_a] ? bloques[b.anexado_a].nombre : null;
     const filasNicho = nichosDelBloque.map(([letra,n])=>{
       const ocupado = Object.entries(posiciones).some(([pid,p])=>p.nicho===letra && p.estado==='ocupado');
       const tipoTxt = n.tipo==='solo_piso' ? 'Solo piso (12)' : `${(n.niveles||2)} niveles (${(n.niveles||2)*2} rack + 10 piso)`;
@@ -2628,10 +2663,11 @@ function renderBloqueForms(){
           <button class="btn btn-ghost btn-sm" data-add-nicho="${id}" data-nombre="${b.nombre}" data-niveles="2">+ Nicho (2 niveles)</button>
           <button class="btn btn-ghost btn-sm" data-add-nicho="${id}" data-nombre="${b.nombre}" data-niveles="3">+ Nicho (3 niveles)</button>
           <button class="btn btn-ghost btn-sm" data-add-piso="${id}" data-nombre="${b.nombre}">+ Piso (sin rack)</button>
-          <button class="btn btn-ghost btn-sm" data-toggle-pasillo="${id}" data-valor="${b.pasillo ? 'false':'true'}">${b.pasillo ? '✕ Quitar pasillo' : '╱ Agregar pasillo debajo'}</button>
-          <button class="btn btn-ghost btn-sm" data-toggle-volteo="${id}" data-valor="${b.volteado ? 'false':'true'}">${b.volteado ? '↩ Bloque normal' : '🔄 Voltear (piso arriba)'}</button>
+          ${esAnexado ? '' : `<button class="btn btn-ghost btn-sm" data-toggle-pasillo="${id}" data-valor="${b.pasillo ? 'false':'true'}">${b.pasillo ? '✕ Quitar pasillo' : '╱ Agregar pasillo debajo'}</button>
+          <button class="btn btn-ghost btn-sm" data-toggle-volteo="${id}" data-valor="${b.volteado ? 'false':'true'}">${b.volteado ? '↩ Bloque normal' : '🔄 Voltear (piso arriba)'}</button>`}
         </div>
       </div>
+      ${esAnexado ? `<div class="meta" style="color:var(--blue); font-weight:600;">↳ Anexado a la derecha de "${nombreBase||'?'}", después de la reja — letras RA, RB, RC…</div>` : ''}
       <div class="meta">${nichosDelBloque.length} nicho(s) · ${posDelBloque} posiciones (${rackTotal} rack + ${pisoTotal} piso)</div>
       ${nichosDelBloque.length>0 ? `
       <details style="margin-top:8px;">
@@ -2983,52 +3019,73 @@ function sortBloquesEntries(){
     return ta - tb;
   });
 }
+// Genera el HTML de los nichos propios de UN bloque (sin incluir los de ningún
+// bloque anexado a él) — se reutiliza tanto para el bloque "base" de una fila
+// como para cada bloque anexado a su derecha. `volteadoFila` siempre es el
+// volteado del bloque BASE de la fila (un bloque anexado no tiene su propio
+// interruptor de volteo: visualmente comparte la misma fila que su base, así
+// que su rack/piso se dibuja igual que el resto de esa fila).
+function nichosHTMLDeBloque(bid, volteadoFila, interactive, showReorder){
+  const nichosDelBloque = Object.entries(nichos).filter(([l,n])=>n.bloque_id===bid)
+    .sort((a,b2)=> (a[1].pos_visual ?? a[1].orden) - (b2[1].pos_visual ?? b2[1].orden));
+  const fn = interactive ? slotHTML : slotReadonlyHTML;
+  return nichosDelBloque.map(([letra, ndata], idxEnBloque)=>{
+    // La etiqueta mostrada es SIEMPRE el código real del nicho (el mismo que usan
+    // sus posiciones, los pallets y los movimientos) — nunca una relabel cosmética
+    // recalculada en cada render, para que la letra que se ve en pantalla jamás se
+    // desincronice de la que de verdad queda guardada.
+    const letraVisual = letra;
+    const esSoloPiso = ndata.tipo === 'solo_piso';
+    const filaCount = esSoloPiso ? 6 : 5;
+    const pisoRows = [];
+    for(let i=0;i<filaCount;i++){
+      const izqEntry = Object.entries(posiciones).find(([id,p])=> p.nicho===letra && p.tipo==='piso' && p.fila===i && (p.columna ? p.columna==='izq' : Number(id.slice(-2))<10));
+      const derEntry = Object.entries(posiciones).find(([id,p])=> p.nicho===letra && p.tipo==='piso' && p.fila===i && (p.columna ? p.columna==='der' : Number(id.slice(-2))>=10));
+      let rowHtml = '<div class="nicho-row">';
+      if(izqEntry) rowHtml += fn(izqEntry[0], izqEntry[1]);
+      if(derEntry) rowHtml += fn(derEntry[0], derEntry[1]);
+      rowHtml += '</div>';
+      pisoRows.push(rowHtml);
+    }
+    let rackHTML = '';
+    if(!esSoloPiso){
+      const nivelesNicho = ndata.niveles || 2;
+      const nombresNivel = nivelesNicho===3 ? ['arriba','medio','abajo'] : ['arriba','abajo'];
+      const filasRack = nombresNivel.map(nombreNivel=>{
+        const items = Object.entries(posiciones).filter(([id,p])=>p.nicho===letra && p.nivel===nombreNivel).sort((a,b2)=>a[0].localeCompare(b2[0]));
+        return `<div class="nicho-row">${items.map(([id,p])=>fn(id,p)).join('')}</div>`;
+      }).join('');
+      rackHTML = `<div class="nicho-section-label">Rack</div>${filasRack}`;
+    }
+    const reorderHTML = showReorder ? `<div class="nicho-reorder">
+      <button type="button" class="btn-reorder" data-move-nicho="${letra}" data-bloque="${bid}" data-dir="1" ${idxEnBloque===nichosDelBloque.length-1?'disabled':''}>◀</button>
+      <button type="button" class="btn-reorder" data-move-nicho="${letra}" data-bloque="${bid}" data-dir="-1" ${idxEnBloque===0?'disabled':''}>▶</button>
+      <button type="button" class="btn-reorder" data-rename-nicho="${letra}" data-bloque="${bid}" title="Renombrar este nicho (no mueve nada)">✏️</button>
+    </div>` : '';
+    const pisoHTML = `<div class="nicho-section-label">Piso</div>${pisoRows.join('')}`;
+    const cuerpoHTML = (!esSoloPiso && volteadoFila) ? (pisoHTML + `<div class="nicho-label">${letraVisual}</div>` + rackHTML) : (rackHTML + `<div class="nicho-label">${letraVisual}</div>` + pisoHTML);
+    return `<div class="nicho${esSoloPiso?' solo-piso':''}">
+      ${reorderHTML}
+      ${cuerpoHTML}
+    </div>`;
+  }).join('');
+}
+// Una fila (`.bloque-row`) es siempre la de un bloque "base" (uno que no está
+// anexado a otro). Si algún bloque está anexado a él (`anexado_a === bid`), sus
+// nichos se insertan en la MISMA fila, antes que los propios del bloque base:
+// como `.nichos-line` usa flex-direction:row-reverse (empaqueta todo contra el
+// borde derecho), lo que va PRIMERO en el HTML termina más a la derecha — así
+// el bloque anexado queda pegado al extremo derecho de la fila, después de
+// donde el usuario coloque la reja, como si fuera la continuación física de esa
+// misma fila/pasillo.
 function buildBloquesMarkup(interactive, showReorder){
-  const bloqueEntries = sortBloquesEntries();
+  const todasOrdenadas = sortBloquesEntries();
+  const bloqueEntries = todasOrdenadas.filter(([bid,b])=>!b.anexado_a);
   return bloqueEntries.map(([bid, b])=>{
-    const nichosDelBloque = Object.entries(nichos).filter(([l,n])=>n.bloque_id===bid)
-      .sort((a,b2)=> (a[1].pos_visual ?? a[1].orden) - (b2[1].pos_visual ?? b2[1].orden));
-    const fn = interactive ? slotHTML : slotReadonlyHTML;
-    const nichosHTML = nichosDelBloque.map(([letra, ndata], idxEnBloque)=>{
-      // La etiqueta mostrada es SIEMPRE el código real del nicho (el mismo que usan
-      // sus posiciones, los pallets y los movimientos) — nunca una relabel cosmética
-      // recalculada en cada render, para que la letra que se ve en pantalla jamás se
-      // desincronice de la que de verdad queda guardada.
-      const letraVisual = letra;
-      const esSoloPiso = ndata.tipo === 'solo_piso';
-      const filaCount = esSoloPiso ? 6 : 5;
-      const pisoRows = [];
-      for(let i=0;i<filaCount;i++){
-        const izqEntry = Object.entries(posiciones).find(([id,p])=> p.nicho===letra && p.tipo==='piso' && p.fila===i && (p.columna ? p.columna==='izq' : Number(id.slice(-2))<10));
-        const derEntry = Object.entries(posiciones).find(([id,p])=> p.nicho===letra && p.tipo==='piso' && p.fila===i && (p.columna ? p.columna==='der' : Number(id.slice(-2))>=10));
-        let rowHtml = '<div class="nicho-row">';
-        if(izqEntry) rowHtml += fn(izqEntry[0], izqEntry[1]);
-        if(derEntry) rowHtml += fn(derEntry[0], derEntry[1]);
-        rowHtml += '</div>';
-        pisoRows.push(rowHtml);
-      }
-      let rackHTML = '';
-      if(!esSoloPiso){
-        const nivelesNicho = ndata.niveles || 2;
-        const nombresNivel = nivelesNicho===3 ? ['arriba','medio','abajo'] : ['arriba','abajo'];
-        const filasRack = nombresNivel.map(nombreNivel=>{
-          const items = Object.entries(posiciones).filter(([id,p])=>p.nicho===letra && p.nivel===nombreNivel).sort((a,b2)=>a[0].localeCompare(b2[0]));
-          return `<div class="nicho-row">${items.map(([id,p])=>fn(id,p)).join('')}</div>`;
-        }).join('');
-        rackHTML = `<div class="nicho-section-label">Rack</div>${filasRack}`;
-      }
-      const reorderHTML = showReorder ? `<div class="nicho-reorder">
-        <button type="button" class="btn-reorder" data-move-nicho="${letra}" data-bloque="${bid}" data-dir="1" ${idxEnBloque===nichosDelBloque.length-1?'disabled':''}>◀</button>
-        <button type="button" class="btn-reorder" data-move-nicho="${letra}" data-bloque="${bid}" data-dir="-1" ${idxEnBloque===0?'disabled':''}>▶</button>
-        <button type="button" class="btn-reorder" data-rename-nicho="${letra}" data-bloque="${bid}" title="Renombrar este nicho (no mueve nada)">✏️</button>
-      </div>` : '';
-      const pisoHTML = `<div class="nicho-section-label">Piso</div>${pisoRows.join('')}`;
-      const cuerpoHTML = (!esSoloPiso && b.volteado) ? (pisoHTML + `<div class="nicho-label">${letraVisual}</div>` + rackHTML) : (rackHTML + `<div class="nicho-label">${letraVisual}</div>` + pisoHTML);
-      return `<div class="nicho${esSoloPiso?' solo-piso':''}">
-        ${reorderHTML}
-        ${cuerpoHTML}
-      </div>`;
-    }).join('');
+    const anexados = todasOrdenadas.filter(([cid,c])=>c.anexado_a===bid);
+    const anexadosHTML = anexados.map(([cid])=> nichosHTMLDeBloque(cid, b.volteado, interactive, showReorder)).join('');
+    const nichosPropiosHTML = nichosHTMLDeBloque(bid, b.volteado, interactive, showReorder);
+    const nichosHTML = anexadosHTML + nichosPropiosHTML;
     const pasilloHTML = b.pasillo ? `<div class="pasillo-divider">╱╱╱ PASILLO ╱╱╱</div>` : '';
     return `<div class="bloque-row"><div class="bloque-title">${b.nombre}</div><div class="nichos-line">${nichosHTML || '<span class="empty-state">Sin nichos aún</span>'}</div></div>${pasilloHTML}`;
   }).join('') || '<div class="empty-state">Aún no hay bloques configurados.</div>';
@@ -3046,13 +3103,37 @@ function renderMovGrid(){ $('mov-bloques').innerHTML = buildBloquesMarkup(true, 
 
 /* -------------------- Rejas (divisores físicos del layout) --------------------
    Una reja es una línea vertical que representa un divisor físico real del
-   almacén (ej. una reja de separación entre dos zonas). Se guarda como un
-   documento en Firestore con una posición `x` en píxeles, medida dentro del
-   contenido desplazable de `.bloques-scroll` (no de la ventana visible), así
-   que se mueve junto con el layout al hacer scroll horizontal y se ve igual
-   sin importar cuántos nichos tenga cada bloque. En la vista de Diseño es
-   arrastrable con el mouse/touch; en Movimientos se dibuja igual pero solo
-   como referencia visual (sin controles). */
+   almacén. Los bloques se empaquetan pegados al lado derecho del contenedor
+   (flex row-reverse), así que NO conviene guardar la posición de la reja como
+   píxeles absolutos desde la izquierda, ni como fracción del ancho total: en
+   ambos casos, si cambias el zoom del navegador (o el ancho de la ventana) el
+   contenedor puede medir un ancho distinto y el contenido empaquetado a la
+   derecha se corre respecto a ese punto de referencia, aunque los nichos en sí
+   no cambiaron de tamaño — la reja terminaba viéndose "correrse".
+   La solución robusta: en vez de calcular la posición a partir del ancho del
+   contenedor, se MIDE en vivo dónde está realmente dibujado el nicho más a la
+   derecha (con getBoundingClientRect, en cualquier zoom) y la reja se guarda
+   como una distancia fija en px respecto a ese borde real. Como la reja se
+   dibuja siempre relativa a esa misma medición en vivo, ambos números se
+   ajustan juntos ante cualquier cambio de zoom/ventana y la distancia entre la
+   reja y los nichos se mantiene exacta.
+   En la vista de Diseño es arrastrable con el mouse/touch; en Movimientos se
+   dibuja igual pero solo como referencia visual (sin controles). */
+// Borde derecho real del contenido ya dibujado (el nicho más a la derecha),
+// medido en vivo y expresado en el mismo sistema de coordenadas que usan
+// getBoundingClientRect()+scrollLeft — por eso es estable ante cualquier zoom.
+function bordeDerechoContenidoRejas(cont){
+  const nichosVisibles = cont.querySelectorAll('.nicho');
+  const rectCont = cont.getBoundingClientRect();
+  if(nichosVisibles.length === 0) return Math.max(cont.scrollWidth, cont.clientWidth, 1);
+  let maxRight = 0;
+  nichosVisibles.forEach(el=>{
+    const r = el.getBoundingClientRect();
+    const right = (r.right - rectCont.left) + cont.scrollLeft;
+    if(right > maxRight) maxRight = right;
+  });
+  return maxRight;
+}
 function renderRejas(containerId, editable){
   const cont = document.getElementById(containerId);
   if(!cont) return;
@@ -3060,13 +3141,17 @@ function renderRejas(containerId, editable){
   const entradas = Object.entries(rejas);
   if(entradas.length===0) return;
   const alto = Math.max(cont.scrollHeight, cont.clientHeight, 40);
-  const anchoContenido = Math.max(cont.scrollWidth, cont.clientWidth, 1);
+  const bordeDerecho = bordeDerechoContenidoRejas(cont);
   entradas.forEach(([id, r])=>{
-    const x = Math.max(0, Math.min(Number(r.x)||0, anchoContenido));
+    // Si el documento es viejo (guardado con el esquema anterior en fracción o
+    // en px absolutos desde la izquierda), se interpreta igual como distancia
+    // al borde derecho — quedará realineado apenas se vuelva a arrastrar.
+    const xDerecha = Math.max(0, Number(r.xDerecha ?? r.x) || 0);
+    const left = Math.max(0, bordeDerecho - xDerecha);
     const linea = document.createElement('div');
     linea.className = 'reja-linea' + (editable ? ' reja-editable' : '');
     linea.dataset.rejaId = id;
-    linea.style.left = x + 'px';
+    linea.style.left = left + 'px';
     linea.style.height = alto + 'px';
     linea.innerHTML = `<span class="reja-etiqueta">${r.nombre ? r.nombre : 'REJA'}</span>${editable ? `<button type="button" class="reja-quitar" data-reja-id="${id}" title="Quitar esta reja">✕</button>` : ''}`;
     cont.appendChild(linea);
@@ -3086,22 +3171,24 @@ function habilitarArrastreRejas(containerId){
     const id = linea.dataset.rejaId;
     linea.classList.add('reja-arrastrando');
     try{ linea.setPointerCapture(ev.pointerId); }catch(e){}
-    let ultimoX = parseFloat(linea.style.left) || 0;
+    let ultimoLeft = parseFloat(linea.style.left) || 0;
     const mover = (ev2)=>{
       const rect = cont.getBoundingClientRect();
-      let x = ev2.clientX - rect.left + cont.scrollLeft;
-      x = Math.max(0, Math.min(x, cont.scrollWidth));
-      linea.style.left = x + 'px';
-      ultimoX = x;
+      let left = ev2.clientX - rect.left + cont.scrollLeft;
+      left = Math.max(0, Math.min(left, cont.scrollWidth));
+      linea.style.left = left + 'px';
+      ultimoLeft = left;
     };
     const soltar = async ()=>{
       linea.removeEventListener('pointermove', mover);
       linea.removeEventListener('pointerup', soltar);
       linea.removeEventListener('pointercancel', soltar);
       linea.classList.remove('reja-arrastrando');
+      const bordeDerecho = bordeDerechoContenidoRejas(cont);
+      const xDerecha = Math.max(0, Math.round(bordeDerecho - ultimoLeft));
       try{
-        await rejasRef.doc(id).update({ x: Math.round(ultimoX) });
-        await logAccion('reja_movida', {detalle:`Reja ${id} movida a x=${Math.round(ultimoX)}`});
+        await rejasRef.doc(id).update({ xDerecha, x: firebase.firestore.FieldValue.delete() });
+        await logAccion('reja_movida', {detalle:`Reja ${id} movida (${xDerecha}px del borde derecho del contenido)`});
       }catch(err){ showToast('Error al mover la reja: '+err.message,'err'); renderAll(); }
     };
     linea.addEventListener('pointermove', mover);
@@ -3124,11 +3211,15 @@ async function eliminarReja(id){
 }
 $('btn-agregar-reja').addEventListener('click', async ()=>{
   const cont = $('preview-bloques');
-  let x = 100;
-  if(cont && cont.clientWidth){ x = Math.round(cont.scrollLeft + cont.clientWidth/2); }
+  let xDerecha = 100;
+  if(cont && cont.clientWidth){
+    const bordeDerecho = bordeDerechoContenidoRejas(cont);
+    const leftVisibleMitad = cont.scrollLeft + cont.clientWidth/2;
+    xDerecha = Math.max(0, Math.round(bordeDerecho - leftVisibleMitad));
+  }
   try{
-    await rejasRef.add({ nombre:'', x, creado_en: firebase.firestore.FieldValue.serverTimestamp() });
-    await logAccion('reja_creada', {detalle:`Reja creada en x=${x}`});
+    await rejasRef.add({ nombre:'', xDerecha, creado_en: firebase.firestore.FieldValue.serverTimestamp() });
+    await logAccion('reja_creada', {detalle:`Reja creada (${xDerecha}px del borde derecho del contenido)`});
     showToast('Reja agregada — arrástrala con el mouse para ubicarla donde quieras.','ok');
   }catch(err){ showToast('Error al agregar la reja: '+err.message,'err'); }
 });
@@ -3352,7 +3443,7 @@ async function retirarPallet(posId, codigo){
 /* -------------------- Filtros/selects -------------------- */
 function renderFiltroBloques(){
   const sel = $('f-bloque'); const current = sel.value;
-  sel.innerHTML = '<option value="">Todos</option>' + Object.entries(bloques).map(([id,b])=>`<option value="${id}">${b.nombre}</option>`).join('');
+  sel.innerHTML = '<option value="">Todos</option>' + Object.entries(bloques).map(([id,b])=>`<option value="${id}">${b.anexado_a ? '↳ ' : ''}${b.nombre}</option>`).join('');
   sel.value = current;
 }
 function renderSelects(){
