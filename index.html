@@ -1989,8 +1989,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v102';
-const APP_UPDATED = '09/09/2026 16:30';
+const APP_VERSION = 'v103';
+const APP_UPDATED = '09/09/2026 21:15';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3142,21 +3142,28 @@ function renderMovGrid(){ $('mov-bloques').innerHTML = buildBloquesMarkup(true, 
    CONTEO ENTERO de nichos (nichosDesdeDerecha): "después de cuántos nichos,
    contando desde el borde derecho, va la reja". Es un entero, no un px, así
    que la reja siempre queda enganchada exactamente en el hueco entre dos
-   nichos — no puede quedar "a medias" ni depender de ninguna medición en
-   punto flotante. Si se agregan/quitan nichos en el extremo izquierdo de una
-   fila, la reja no se corre (sigue después del mismo nicho N contando desde
-   la derecha).
-   El borde derecho y el ancho de cada nicho, en vez de medirse con
-   getBoundingClientRect (que puede quedar desincronizado del layout real si
-   algo cambia el ancho de los nichos sin que se vuelva a pintar la reja), se
-   CALCULAN con pura aritmética: cada nicho mide siempre lo mismo (68px, o
-   74px bajo la media query móvil de @max-width:640px — ver nichoAnchoActual)
-   más 12px de separación entre ellos (.nichos-line{gap:12px}), así que el
-   ancho total de una fila es 100% determinístico a partir de CUÁNTOS nichos
-   tiene, sin medir nada del DOM.
-   Para que un cambio de zoom (que puede cruzar ese breakpoint móvil y cambiar
-   el ancho real de los nichos) se refleje al instante, la reja se vuelve a
-   pintar en CADA uno de estos momentos:
+   nichos — no puede quedar "a medias". Si se agregan/quitan nichos en el
+   extremo izquierdo de una fila, la reja no se corre (sigue después del
+   mismo nicho N contando desde la derecha).
+   OJO — esto es lo que estaba mal en los 3 intentos anteriores: el "borde
+   derecho" NO es la suma de los anchos de los nichos. `.nichos-line` es un
+   contenedor flex de bloque normal (no shrink-to-fit), así que SIEMPRE ocupa
+   el 100% del ancho de `.bloques-scroll`, tenga los nichos que tenga — y como
+   están pegados con flex row-reverse, el nicho más a la derecha siempre
+   termina exactamente en `cont.clientWidth`, sea cual sea el ancho real del
+   contenido. Calcular el borde a partir de "cuántos nichos hay × su ancho"
+   (como hacían las versiones v99/v101/v102) solo coincidía con la realidad
+   cuando el contenido llenaba o desbordaba el contenedor; en cuanto la
+   ventana/zoom dejaba más espacio del que el contenido necesitaba, el borde
+   "calculado" y el borde real se separaban, y ahí es donde la reja se veía
+   saltar — literalmente más se notaba cuanto más se alejaba el zoom, porque
+   más espacio libre quedaba a la izquierda del contenido.
+   La solución: el borde derecho se lee en vivo como `cont.clientWidth` en
+   cada pintada — es una medición real y barata (una sola lectura de layout,
+   nada de recorrer nichos con getBoundingClientRect), así que es exacta en
+   cualquier zoom sin ninguna otra lógica extra.
+   Para que además la reja se repinte apenas cambia ese ancho (zoom, resize de
+   ventana), se repinta en CADA uno de estos momentos:
      1) al recibir un cambio de Firestore, en la vista visible (como antes);
      2) ante el evento 'resize' de la ventana (zoom o cambio de tamaño), y
         aquí es clave: se repintan SIEMPRE los dos contenedores (Diseño y
@@ -3175,11 +3182,6 @@ function nichoAnchoActual(){
   // Debe coincidir con .nicho{width:68px} y su media query @max-width:640px{width:74px}.
   return (window.matchMedia && window.matchMedia('(max-width:640px)').matches) ? 74 : 68;
 }
-function anchoFilaDeNichos(cantidad){
-  if(cantidad<=0) return 0;
-  const anchoNicho = nichoAnchoActual();
-  return cantidad*anchoNicho + (cantidad-1)*REJA_NICHO_GAP_PX;
-}
 // Cuántos nichos tiene, en total, la fila del bloque base `bidBase`: los suyos
 // propios más los de cualquier bloque anexado a su derecha (mismos que dibuja
 // buildBloquesMarkup en esa misma fila).
@@ -3190,17 +3192,6 @@ function contarNichosDeFilaBase(bidBase){
     if(c.anexado_a===bidBase) Object.values(nichos).forEach(n=>{ if(n.bloque_id===cid) total++; });
   });
   return total;
-}
-// Ancho total del contenido (la fila más ancha de todas) — equivalente al
-// borde derecho de todo el layout, calculado sin tocar el DOM.
-function anchoTotalContenidoRejas(){
-  let max = 0;
-  Object.entries(bloques).forEach(([bid,b])=>{
-    if(b.anexado_a) return; // solo las filas "base" cuentan; sus anexados ya se suman en contarNichosDeFilaBase
-    const ancho = anchoFilaDeNichos(contarNichosDeFilaBase(bid));
-    if(ancho > max) max = ancho;
-  });
-  return max;
 }
 // Cuántos nichos tiene la fila MÁS LARGA de todo el layout — es el tope del
 // conteo "nichosDesdeDerecha" (0 = pegada al borde derecho, este valor =
@@ -3221,16 +3212,15 @@ function rejaPasoNicho(){
 }
 // Convierte el conteo entero n (nichos desde la derecha) a un left en px,
 // centrado en el hueco entre el nicho n-1 y el nicho n contando desde la
-// derecha.
-function rejaLeftDesdeConteo(n){
-  const bordeDerecho = anchoTotalContenidoRejas();
+// derecha. `bordeDerecho` debe ser cont.clientWidth del contenedor real que
+// se está pintando/arrastrando — se pasa siempre explícito, nunca calculado.
+function rejaLeftDesdeConteo(n, bordeDerecho){
   const paso = rejaPasoNicho();
   return bordeDerecho - n*paso + REJA_NICHO_GAP_PX/2;
 }
 // Convierte un left en px arbitrario (p.ej. mientras se arrastra) al conteo
 // entero más cercano, ya recortado a un rango válido [0, totalNichosEnLayout()].
-function rejaConteoDesdeLeft(left){
-  const bordeDerecho = anchoTotalContenidoRejas();
+function rejaConteoDesdeLeft(left, bordeDerecho){
   const paso = rejaPasoNicho() || 1;
   const totalNichos = totalNichosEnLayout();
   let n = Math.round((bordeDerecho - left + REJA_NICHO_GAP_PX/2) / paso);
@@ -3246,6 +3236,9 @@ function renderRejas(containerId, editable){
   const entradas = Object.entries(rejas);
   if(entradas.length===0) return;
   const alto = Math.max(cont.scrollHeight, cont.clientHeight, 40);
+  // Borde derecho REAL: el ancho visible del contenedor, leído en vivo (ver
+  // comentario grande arriba de por qué NO se calcula a partir de los nichos).
+  const bordeDerecho = cont.clientWidth;
   entradas.forEach(([id, r])=>{
     let n;
     if(r.nichosDesdeDerecha!=null){
@@ -3255,9 +3248,9 @@ function renderRejas(containerId, editable){
       // se convierte al vuelo al conteo entero más cercano — queda perfecto
       // apenas se vuelva a arrastrar la reja, y de una vez deja de "flotar".
       const xDerechaVieja = Math.max(0, Number(r.xDerecha ?? r.x) || 0);
-      n = rejaConteoDesdeLeft(anchoTotalContenidoRejas() - xDerechaVieja);
+      n = rejaConteoDesdeLeft(bordeDerecho - xDerechaVieja, bordeDerecho);
     }
-    const left = Math.max(0, rejaLeftDesdeConteo(n));
+    const left = Math.max(0, rejaLeftDesdeConteo(n, bordeDerecho));
     const linea = document.createElement('div');
     linea.className = 'reja-linea' + (editable ? ' reja-editable' : '');
     linea.dataset.rejaId = id;
@@ -3281,14 +3274,15 @@ function habilitarArrastreRejas(containerId){
     const id = linea.dataset.rejaId;
     linea.classList.add('reja-arrastrando');
     try{ linea.setPointerCapture(ev.pointerId); }catch(e){}
-    let ultimoConteo = rejaConteoDesdeLeft(parseFloat(linea.style.left) || 0);
+    let ultimoConteo = rejaConteoDesdeLeft(parseFloat(linea.style.left) || 0, cont.clientWidth);
     const mover = (ev2)=>{
       const rect = cont.getBoundingClientRect();
+      const bordeDerecho = cont.clientWidth; // se relee en vivo: si hubo zoom a mitad del arrastre, también se respeta
       const leftCrudo = ev2.clientX - rect.left + cont.scrollLeft;
-      const n = rejaConteoDesdeLeft(leftCrudo);
+      const n = rejaConteoDesdeLeft(leftCrudo, bordeDerecho);
       // Se engancha EN VIVO al hueco más cercano mientras se arrastra, así se
       // ve de inmediato dónde va a quedar — nada de posiciones "a medias".
-      linea.style.left = Math.max(0, rejaLeftDesdeConteo(n)) + 'px';
+      linea.style.left = Math.max(0, rejaLeftDesdeConteo(n, bordeDerecho)) + 'px';
       ultimoConteo = n;
     };
     const soltar = async ()=>{
@@ -3327,8 +3321,9 @@ $('btn-agregar-reja').addEventListener('click', async ()=>{
   const cont = $('preview-bloques');
   let nichosDesdeDerecha = Math.round(totalNichosEnLayout()/2);
   if(cont && cont.clientWidth){
+    const bordeDerecho = cont.clientWidth;
     const leftVisibleMitad = cont.scrollLeft + cont.clientWidth/2;
-    nichosDesdeDerecha = rejaConteoDesdeLeft(leftVisibleMitad);
+    nichosDesdeDerecha = rejaConteoDesdeLeft(leftVisibleMitad, bordeDerecho);
   }
   try{
     await rejasRef.add({ nombre:'', nichosDesdeDerecha, creado_en: firebase.firestore.FieldValue.serverTimestamp() });
