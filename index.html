@@ -177,11 +177,14 @@
   .vch-pill{display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700;}
   .vch-pill.ok{background:var(--green-bg); color:var(--green);}
   .vch-pill.no{background:var(--red-bg); color:var(--red);}
-  .bloque-card{border:1px solid var(--line); border-radius:6px; padding:10px 12px; margin-bottom:10px; background:#FAFBFC;}
-  .bloque-card .bh{display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap;}
+  .bloque-card{border:1px solid var(--line); border-radius:6px; padding:10px 12px; margin-bottom:10px; background:#FAFBFC; overflow:hidden;}
+  .bloque-card .bh{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
   .bloque-card .bh b{font-family:var(--mono); font-size:13px;}
   .bloque-card .meta{font-size:11px; color:var(--ink-soft); margin-top:4px;}
-  .bloque-card .actions{display:flex; gap:6px;}
+  /* Cada grupo de botones de un bloque envuelve a la siguiente línea si no caben
+     en el ancho fijo del panel, en vez de desbordar la tarjeta hacia afuera. */
+  .bloque-actions-grupo{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;}
+  .bloque-actions-grupo .btn{flex:0 1 auto;}
 
   .bloques-scroll{
     position:relative;
@@ -1986,8 +1989,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v100';
-const APP_UPDATED = '09/09/2026 14:05';
+const APP_VERSION = 'v101';
+const APP_UPDATED = '09/09/2026 15:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -2300,7 +2303,7 @@ async function logAccion(tipo, extra){
   }, extra||{}));
 }
 function moduloOf(tipo){
-  if(['bloque_creado','nicho_creado','nicho_eliminado','nicho_reordenado','nicho_renombrado','pasillo_actualizado','reja_creada','reja_movida','reja_eliminada'].includes(tipo)) return 'diseno';
+  if(['bloque_creado','bloque_eliminado','nicho_creado','nicho_eliminado','nicho_reordenado','nicho_renombrado','pasillo_actualizado','reja_creada','reja_movida','reja_eliminada'].includes(tipo)) return 'diseno';
   if(['ingreso','movimiento','retiro','producto_agregado','transferencia','retiro_campana','retiro_campana_revertido'].includes(tipo)) return 'movimientos';
   if(['bloqueo','desbloqueo'].includes(tipo)) return 'bloqueo';
   if(['producto_registrado','producto_fusionado'].includes(tipo)) return 'productos';
@@ -2314,7 +2317,7 @@ function tipoLabel(tipo){
     ingreso:'Entrada de pallet', movimiento:'Movimiento', retiro:'Salida (pallet completo)',
     retiro_campana:'Salida (campaña)', retiro_campana_revertido:'↺ Retiro de campaña revertido', producto_agregado:'Adición de producto', transferencia:'Transferencia entre pallets',
     bloqueo:'Bloqueo de posición', desbloqueo:'Desbloqueo de posición',
-    bloque_creado:'Bloque creado', nicho_creado:'Nicho creado', nicho_eliminado:'Nicho eliminado', nicho_reordenado:'Nicho reordenado', nicho_renombrado:'Nicho renombrado', pasillo_actualizado:'Pasillo actualizado',
+    bloque_creado:'Bloque creado', bloque_eliminado:'Bloque eliminado', nicho_creado:'Nicho creado', nicho_eliminado:'Nicho eliminado', nicho_reordenado:'Nicho reordenado', nicho_renombrado:'Nicho renombrado', pasillo_actualizado:'Pasillo actualizado',
     producto_registrado:'Producto registrado', producto_fusionado:'Producto fusionado', permisos_actualizados:'Permisos actualizados',
     sesion_cerrada:'Cierre de sesión', sesion_cerrada_inactividad:'Cierre por inactividad', sesion_iniciada:'Inicio de sesión',
     toma_inventario_generada:'Toma de inventario: generada', toma_inventario_finalizada:'Toma de inventario: finalizada',
@@ -2656,19 +2659,24 @@ function renderBloqueForms(){
         <b style="font-family:var(--mono);">${letra}</b> — ${tipoTxt} ${ocupado?' · ocupado':''}
       </label>`;
     }).join('');
+    const vacio = nichosDelBloque.length===0;
     return `<div class="bloque-card">
       <div class="bh">
         <b>${b.nombre}</b>
-        <div class="actions">
-          <button class="btn btn-ghost btn-sm" data-add-nicho="${id}" data-nombre="${b.nombre}" data-niveles="2">+ Nicho (2 niveles)</button>
-          <button class="btn btn-ghost btn-sm" data-add-nicho="${id}" data-nombre="${b.nombre}" data-niveles="3">+ Nicho (3 niveles)</button>
-          <button class="btn btn-ghost btn-sm" data-add-piso="${id}" data-nombre="${b.nombre}">+ Piso (sin rack)</button>
-          ${esAnexado ? '' : `<button class="btn btn-ghost btn-sm" data-toggle-pasillo="${id}" data-valor="${b.pasillo ? 'false':'true'}">${b.pasillo ? '✕ Quitar pasillo' : '╱ Agregar pasillo debajo'}</button>
-          <button class="btn btn-ghost btn-sm" data-toggle-volteo="${id}" data-valor="${b.volteado ? 'false':'true'}">${b.volteado ? '↩ Bloque normal' : '🔄 Voltear (piso arriba)'}</button>`}
-        </div>
+        ${esAnexado ? `<span class="hint" style="color:var(--blue); font-weight:600; font-size:11px;">↳ anexado a "${nombreBase||'?'}"</span>` : ''}
       </div>
-      ${esAnexado ? `<div class="meta" style="color:var(--blue); font-weight:600;">↳ Anexado a la derecha de "${nombreBase||'?'}", después de la reja — letras RA, RB, RC…</div>` : ''}
+      <div class="bloque-actions-grupo">
+        <button class="btn btn-ghost btn-sm" data-add-nicho="${id}" data-nombre="${b.nombre}" data-niveles="2">+ Nicho (2 niveles)</button>
+        <button class="btn btn-ghost btn-sm" data-add-nicho="${id}" data-nombre="${b.nombre}" data-niveles="3">+ Nicho (3 niveles)</button>
+        <button class="btn btn-ghost btn-sm" data-add-piso="${id}" data-nombre="${b.nombre}">+ Piso (sin rack)</button>
+      </div>
+      ${esAnexado ? '' : `<div class="bloque-actions-grupo">
+        <button class="btn btn-ghost btn-sm" data-toggle-pasillo="${id}" data-valor="${b.pasillo ? 'false':'true'}">${b.pasillo ? '✕ Quitar pasillo' : '╱ Agregar pasillo debajo'}</button>
+        <button class="btn btn-ghost btn-sm" data-toggle-volteo="${id}" data-valor="${b.volteado ? 'false':'true'}">${b.volteado ? '↩ Bloque normal' : '🔄 Voltear (piso arriba)'}</button>
+      </div>`}
+      ${esAnexado ? `<div class="meta" style="color:var(--blue);">Después de la reja, en la fila de "${nombreBase||'?'}" — letras RA, RB, RC…</div>` : ''}
       <div class="meta">${nichosDelBloque.length} nicho(s) · ${posDelBloque} posiciones (${rackTotal} rack + ${pisoTotal} piso)</div>
+      ${vacio ? `<button class="btn btn-danger btn-sm" data-del-bloque="${id}" data-nombre="${b.nombre}" style="width:100%; margin-top:8px;">🗑 Eliminar bloque (está vacío)</button>` : ''}
       ${nichosDelBloque.length>0 ? `
       <details style="margin-top:8px;">
         <summary style="cursor:pointer; font-size:11px; color:var(--ink-soft);">Seleccionar nichos para eliminar</summary>
@@ -2682,6 +2690,24 @@ function renderBloqueForms(){
   list.querySelectorAll('[data-toggle-pasillo]').forEach(btn=> btn.onclick = () => togglePasillo(btn.dataset.togglePasillo, btn.dataset.valor==='true'));
   list.querySelectorAll('[data-toggle-volteo]').forEach(btn=> btn.onclick = () => toggleVolteo(btn.dataset.toggleVolteo, btn.dataset.valor==='true'));
   list.querySelectorAll('[data-del-selected]').forEach(btn=> btn.onclick = () => eliminarNichosSeleccionados(btn.dataset.delSelected));
+  list.querySelectorAll('[data-del-bloque]').forEach(btn=> btn.onclick = () => eliminarBloque(btn.dataset.delBloque, btn.dataset.nombre));
+}
+
+// Solo se puede eliminar un bloque si está vacío (sin nichos propios) y, si es un
+// bloque "base", sin ningún bloque anexado colgando de él a la derecha — así
+// nunca se borra un bloque que todavía tiene contenido o que otro bloque depende
+// de su fila para posicionarse.
+async function eliminarBloque(bloqueId, bloqueNombre){
+  const tieneNichos = Object.values(nichos).some(n=>n.bloque_id===bloqueId);
+  if(tieneNichos){ showToast('Este bloque todavía tiene nichos — elimínalos primero.','err'); return; }
+  const tieneAnexados = Object.values(bloques).some(b=>b.anexado_a===bloqueId);
+  if(tieneAnexados){ showToast('Este bloque tiene otro bloque anexado a su derecha — elimina ese primero.','err'); return; }
+  if(!confirm(`¿Eliminar el bloque "${bloqueNombre}"? Está vacío, así que no se pierde ningún nicho ni posición. Esta acción no se puede deshacer.`)) return;
+  try{
+    await bloquesRef.doc(bloqueId).delete();
+    await logAccion('bloque_eliminado', {detalle:`Bloque ${bloqueNombre} eliminado (estaba vacío)`});
+    showToast(`Bloque "${bloqueNombre}" eliminado.`,'ok');
+  }catch(err){ showToast('Error al eliminar el bloque: '+err.message,'err'); }
 }
 
 async function togglePasillo(bloqueId, valor){
@@ -3104,35 +3130,57 @@ function renderMovGrid(){ $('mov-bloques').innerHTML = buildBloquesMarkup(true, 
 /* -------------------- Rejas (divisores físicos del layout) --------------------
    Una reja es una línea vertical que representa un divisor físico real del
    almacén. Los bloques se empaquetan pegados al lado derecho del contenedor
-   (flex row-reverse), así que NO conviene guardar la posición de la reja como
-   píxeles absolutos desde la izquierda, ni como fracción del ancho total: en
-   ambos casos, si cambias el zoom del navegador (o el ancho de la ventana) el
-   contenedor puede medir un ancho distinto y el contenido empaquetado a la
-   derecha se corre respecto a ese punto de referencia, aunque los nichos en sí
-   no cambiaron de tamaño — la reja terminaba viéndose "correrse".
-   La solución robusta: en vez de calcular la posición a partir del ancho del
-   contenedor, se MIDE en vivo dónde está realmente dibujado el nicho más a la
-   derecha (con getBoundingClientRect, en cualquier zoom) y la reja se guarda
-   como una distancia fija en px respecto a ese borde real. Como la reja se
-   dibuja siempre relativa a esa misma medición en vivo, ambos números se
-   ajustan juntos ante cualquier cambio de zoom/ventana y la distancia entre la
-   reja y los nichos se mantiene exacta.
+   (flex row-reverse), así que se guarda la posición de la reja como una
+   distancia fija en px respecto al borde DERECHO del contenido (xDerecha), no
+   desde la izquierda: así, si se agregan/quitan nichos en el extremo izquierdo
+   de una fila, la reja no se corre.
+   Ese borde derecho, en vez de medirse con getBoundingClientRect (que puede
+   quedar desincronizado del layout real si algo cambia el ancho de los nichos
+   sin que se vuelva a pintar la reja), se CALCULA con pura aritmética: cada
+   nicho mide siempre lo mismo (68px, o 74px bajo la media query móvil de
+   @max-width:640px — ver nichoAnchoActual) más 12px de separación entre ellos
+   (.nichos-line{gap:12px}), así que el ancho total de una fila es 100%
+   determinístico a partir de CUÁNTOS nichos tiene, sin medir nada del DOM.
+   Y para que un cambio de zoom (que puede cruzar ese breakpoint móvil y
+   cambiar el ancho real de los nichos) se refleje al instante, se vuelve a
+   pintar la reja también ante el evento 'resize' de la ventana — antes solo se
+   volvía a pintar cuando cambiaba algo en Firestore, así que un cambio de zoom
+   sin ningún cambio de datos dejaba a la reja con su posición vieja mientras
+   los nichos ya se habían redibujado con el ancho nuevo, y eso era lo que se
+   veía como "la reja se corre".
    En la vista de Diseño es arrastrable con el mouse/touch; en Movimientos se
    dibuja igual pero solo como referencia visual (sin controles). */
-// Borde derecho real del contenido ya dibujado (el nicho más a la derecha),
-// medido en vivo y expresado en el mismo sistema de coordenadas que usan
-// getBoundingClientRect()+scrollLeft — por eso es estable ante cualquier zoom.
-function bordeDerechoContenidoRejas(cont){
-  const nichosVisibles = cont.querySelectorAll('.nicho');
-  const rectCont = cont.getBoundingClientRect();
-  if(nichosVisibles.length === 0) return Math.max(cont.scrollWidth, cont.clientWidth, 1);
-  let maxRight = 0;
-  nichosVisibles.forEach(el=>{
-    const r = el.getBoundingClientRect();
-    const right = (r.right - rectCont.left) + cont.scrollLeft;
-    if(right > maxRight) maxRight = right;
+const REJA_NICHO_GAP_PX = 12; // debe coincidir con .nichos-line{gap:12px}
+function nichoAnchoActual(){
+  // Debe coincidir con .nicho{width:68px} y su media query @max-width:640px{width:74px}.
+  return (window.matchMedia && window.matchMedia('(max-width:640px)').matches) ? 74 : 68;
+}
+function anchoFilaDeNichos(cantidad){
+  if(cantidad<=0) return 0;
+  const anchoNicho = nichoAnchoActual();
+  return cantidad*anchoNicho + (cantidad-1)*REJA_NICHO_GAP_PX;
+}
+// Cuántos nichos tiene, en total, la fila del bloque base `bidBase`: los suyos
+// propios más los de cualquier bloque anexado a su derecha (mismos que dibuja
+// buildBloquesMarkup en esa misma fila).
+function contarNichosDeFilaBase(bidBase){
+  let total = 0;
+  Object.values(nichos).forEach(n=>{ if(n.bloque_id===bidBase) total++; });
+  Object.entries(bloques).forEach(([cid,c])=>{
+    if(c.anexado_a===bidBase) Object.values(nichos).forEach(n=>{ if(n.bloque_id===cid) total++; });
   });
-  return maxRight;
+  return total;
+}
+// Ancho total del contenido (la fila más ancha de todas) — equivalente al
+// borde derecho de todo el layout, calculado sin tocar el DOM.
+function anchoTotalContenidoRejas(){
+  let max = 0;
+  Object.entries(bloques).forEach(([bid,b])=>{
+    if(b.anexado_a) return; // solo las filas "base" cuentan; sus anexados ya se suman en contarNichosDeFilaBase
+    const ancho = anchoFilaDeNichos(contarNichosDeFilaBase(bid));
+    if(ancho > max) max = ancho;
+  });
+  return max;
 }
 function renderRejas(containerId, editable){
   const cont = document.getElementById(containerId);
@@ -3141,11 +3189,11 @@ function renderRejas(containerId, editable){
   const entradas = Object.entries(rejas);
   if(entradas.length===0) return;
   const alto = Math.max(cont.scrollHeight, cont.clientHeight, 40);
-  const bordeDerecho = bordeDerechoContenidoRejas(cont);
+  const bordeDerecho = anchoTotalContenidoRejas();
   entradas.forEach(([id, r])=>{
-    // Si el documento es viejo (guardado con el esquema anterior en fracción o
-    // en px absolutos desde la izquierda), se interpreta igual como distancia
-    // al borde derecho — quedará realineado apenas se vuelva a arrastrar.
+    // Si el documento es viejo (guardado con un esquema anterior), se interpreta
+    // igual como distancia al borde derecho — quedará realineado apenas se
+    // vuelva a arrastrar.
     const xDerecha = Math.max(0, Number(r.xDerecha ?? r.x) || 0);
     const left = Math.max(0, bordeDerecho - xDerecha);
     const linea = document.createElement('div');
@@ -3184,7 +3232,7 @@ function habilitarArrastreRejas(containerId){
       linea.removeEventListener('pointerup', soltar);
       linea.removeEventListener('pointercancel', soltar);
       linea.classList.remove('reja-arrastrando');
-      const bordeDerecho = bordeDerechoContenidoRejas(cont);
+      const bordeDerecho = anchoTotalContenidoRejas();
       const xDerecha = Math.max(0, Math.round(bordeDerecho - ultimoLeft));
       try{
         await rejasRef.doc(id).update({ xDerecha, x: firebase.firestore.FieldValue.delete() });
@@ -3213,7 +3261,7 @@ $('btn-agregar-reja').addEventListener('click', async ()=>{
   const cont = $('preview-bloques');
   let xDerecha = 100;
   if(cont && cont.clientWidth){
-    const bordeDerecho = bordeDerechoContenidoRejas(cont);
+    const bordeDerecho = anchoTotalContenidoRejas();
     const leftVisibleMitad = cont.scrollLeft + cont.clientWidth/2;
     xDerecha = Math.max(0, Math.round(bordeDerecho - leftVisibleMitad));
   }
@@ -3222,6 +3270,18 @@ $('btn-agregar-reja').addEventListener('click', async ()=>{
     await logAccion('reja_creada', {detalle:`Reja creada (${xDerecha}px del borde derecho del contenido)`});
     showToast('Reja agregada — arrástrala con el mouse para ubicarla donde quieras.','ok');
   }catch(err){ showToast('Error al agregar la reja: '+err.message,'err'); }
+});
+// Un cambio de zoom del navegador (o de tamaño de ventana) dispara 'resize' aun
+// sin que cambie ningún dato en Firestore — hay que volver a pintar la reja en
+// ese momento, porque el ancho de los nichos puede haber cambiado (ver
+// nichoAnchoActual) y su posición en px depende de ese ancho.
+let rejaResizeTimer = null;
+window.addEventListener('resize', ()=>{
+  clearTimeout(rejaResizeTimer);
+  rejaResizeTimer = setTimeout(()=>{
+    if(vistaVisible('diseno')) renderRejas('preview-bloques', true);
+    if(vistaVisible('mov')) renderRejas('mov-bloques', false);
+  }, 150);
 });
 
 function attachSlotEvents(){
