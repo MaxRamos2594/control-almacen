@@ -1039,9 +1039,9 @@
 <div class="view" id="view-retiros">
   <div class="panel">
     <h3>Retiros para campaña</h3>
-    <p class="hint" style="margin-bottom:10px;">Historial de cada producto retirado de un pallet para campaña (últimos 300).</p>
+    <p class="hint" style="margin-bottom:10px;">Historial de cada producto retirado de un pallet para campaña (últimos 300). "Deshacer" repone la cantidad al inventario, deja constancia en el Kardex y registra la reversión en Bitácora — el retiro original no se borra, queda marcado como revertido.</p>
     <div class="hist-wrap" style="max-height:600px;">
-      <table><thead><tr><th>Pallet</th><th>Código</th><th>Descripción</th><th>Costo</th><th>Cantidad</th><th>Usuario</th><th>Fecha y hora</th></tr></thead><tbody id="retiros-body"></tbody></table>
+      <table><thead><tr><th>Pallet</th><th>Código</th><th>Descripción</th><th>Costo</th><th>Cantidad</th><th>Usuario</th><th>Fecha y hora</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="retiros-body"></tbody></table>
       <div class="empty-state" id="retiros-empty">Sin retiros registrados todavía.</div>
     </div>
   </div>
@@ -1840,7 +1840,7 @@
   <div class="panel">
     <h3>Kardex por producto</h3>
     <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
-      <div class="field" style="margin:0; max-width:220px;"><label>Código de producto</label><input type="text" id="kx-codigo" class="upper" placeholder="EJ. 17891"></div>
+      <div class="field" style="margin:0; max-width:220px;"><label>Código de producto</label><input type="text" id="kx-codigo" class="upper" placeholder="EJ. 17891" list="kx-codigo-datalist" autocomplete="off"><datalist id="kx-codigo-datalist"></datalist></div>
       <button class="btn btn-primary" id="btn-cargar-kardex">Cargar</button>
     </div>
     <div class="hist-wrap" style="max-height:600px;">
@@ -1950,8 +1950,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v93';
-const APP_UPDATED = '09/09/2026 09:00';
+const APP_VERSION = 'v94';
+const APP_UPDATED = '09/09/2026 10:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -2264,7 +2264,7 @@ async function logAccion(tipo, extra){
 }
 function moduloOf(tipo){
   if(['bloque_creado','nicho_creado','nicho_eliminado','nicho_reordenado','nicho_renombrado','pasillo_actualizado'].includes(tipo)) return 'diseno';
-  if(['ingreso','movimiento','retiro','producto_agregado','transferencia','retiro_campana'].includes(tipo)) return 'movimientos';
+  if(['ingreso','movimiento','retiro','producto_agregado','transferencia','retiro_campana','retiro_campana_revertido'].includes(tipo)) return 'movimientos';
   if(['bloqueo','desbloqueo'].includes(tipo)) return 'bloqueo';
   if(['producto_registrado','producto_fusionado'].includes(tipo)) return 'productos';
   if(['permisos_actualizados','sesion_cerrada','sesion_cerrada_inactividad','sesion_iniciada'].includes(tipo)) return 'usuarios';
@@ -2275,7 +2275,7 @@ function moduloOf(tipo){
 function tipoLabel(tipo){
   const map = {
     ingreso:'Entrada de pallet', movimiento:'Movimiento', retiro:'Salida (pallet completo)',
-    retiro_campana:'Salida (campaña)', producto_agregado:'Adición de producto', transferencia:'Transferencia entre pallets',
+    retiro_campana:'Salida (campaña)', retiro_campana_revertido:'↺ Retiro de campaña revertido', producto_agregado:'Adición de producto', transferencia:'Transferencia entre pallets',
     bloqueo:'Bloqueo de posición', desbloqueo:'Desbloqueo de posición',
     bloque_creado:'Bloque creado', nicho_creado:'Nicho creado', nicho_eliminado:'Nicho eliminado', nicho_reordenado:'Nicho reordenado', nicho_renombrado:'Nicho renombrado', pasillo_actualizado:'Pasillo actualizado',
     producto_registrado:'Producto registrado', producto_fusionado:'Producto fusionado', permisos_actualizados:'Permisos actualizados',
@@ -2356,10 +2356,18 @@ function startListeners(){
     const body = $('retiros-body');
     if(snap.empty){ body.innerHTML=''; $('retiros-empty').style.display='block'; return; }
     $('retiros-empty').style.display='none';
+    const puedeDeshacer = currentPermisos.admin || currentPermisos.eliminar;
     body.innerHTML = snap.docs.map(doc=>{
       const d = doc.data();
       const fecha = d.timestamp ? d.timestamp.toDate().toLocaleString('es-PE') : '…';
-      return `<tr><td>${d.pallet_codigo||''}</td><td>${d.producto||''}</td><td>${d.descripcion||''}</td><td>${fmtMoney(d.costo)}</td><td>${d.cantidad}</td><td>${d.usuario||''}</td><td>${fecha}</td></tr>`;
+      const estado = d.estado || 'ACTIVO';
+      const estadoHtml = estado === 'ACTIVO'
+        ? '<span style="color:#245C46; font-weight:700;">Activo</span>'
+        : `<span class="hint">Revertido${d.revertido_por?' por '+d.revertido_por:''}</span>`;
+      const accionHtml = estado === 'ACTIVO'
+        ? (puedeDeshacer ? `<button class="btn btn-sm btn-ghost btn-deshacer-retiro-campana" data-id="${doc.id}">↺ Deshacer</button>` : '')
+        : '—';
+      return `<tr><td>${d.pallet_codigo||''}</td><td>${d.producto||''}</td><td>${d.descripcion||''}</td><td>${fmtMoney(d.costo)}</td><td>${d.cantidad}</td><td>${d.usuario||''}</td><td>${fecha}</td><td>${estadoHtml}</td><td>${accionHtml}</td></tr>`;
     }).join('');
   }, onErr));
   cargarRegistrosCampana(true);
@@ -4104,9 +4112,12 @@ function resetImagenForm(){
 function poblarDatalistsProductos(){
   const dlCodigo = document.getElementById('pr-codigo-datalist');
   const dlProveedor = document.getElementById('pr-proveedor-datalist');
+  const dlKardex = document.getElementById('kx-codigo-datalist');
   if(!dlCodigo || !dlProveedor) return;
   const codigos = Object.keys(productos).sort((a,b)=>a.localeCompare(b));
-  dlCodigo.innerHTML = codigos.map(c=>`<option value="${c}"></option>`).join('');
+  const opcionesCodigos = codigos.map(c=>`<option value="${c}"></option>`).join('');
+  dlCodigo.innerHTML = opcionesCodigos;
+  if(dlKardex) dlKardex.innerHTML = opcionesCodigos;
   const proveedores = [...new Set(Object.values(productos).map(p=>(p.proveedor||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
   dlProveedor.innerHTML = proveedores.map(p=>`<option value="${p}"></option>`).join('');
 }
@@ -4400,6 +4411,7 @@ $('btn-retirar-campana').addEventListener('click', async ()=>{
       const palletRef = palletsRef.doc(codigo);
       const snap = await tx.get(palletRef);
       if(!snap.exists) throw new Error('Pallet no encontrado.');
+      const posId = snap.data().posicion_actual || null; // se guarda en el retiro para poder "deshacerlo" después, aunque el pallet se elimine abajo
       let items = (snap.data().items||[]).slice();
       retiros.forEach(rt=>{
         const idx = items.findIndex(it=>it.producto===rt.producto);
@@ -4409,7 +4421,6 @@ $('btn-retirar-campana').addEventListener('click', async ()=>{
         }
       });
       if(items.length===0){
-        const posId = snap.data().posicion_actual;
         if(posId){ tx.update(posicionesRef.doc(posId), { estado:'vacio', pallet_codigo:null, actualizado: firebase.firestore.FieldValue.serverTimestamp() }); }
         tx.delete(palletRef);
       }else{
@@ -4423,11 +4434,12 @@ $('btn-retirar-campana').addEventListener('click', async ()=>{
       retiros.forEach(rt=>{
         tx.set(retirosCampanaRef.doc(), {
           pallet_codigo: codigo, producto: rt.producto, descripcion: rt.descripcion, costo: rt.costo,
-          cantidad: rt.cantidad, usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          cantidad: rt.cantidad, posicion_actual: posId, estado:'ACTIVO',
+          usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
         tx.set(kardexRef.doc(), {
           producto: rt.producto, descripcion: rt.descripcion, costo: rt.costo, cantidad: rt.cantidad,
-          tipo:'salida', motivo:'Retiro campaña', pallet_codigo: codigo, posicion: null, usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          tipo:'salida', motivo:'Retiro campaña', pallet_codigo: codigo, posicion: posId, usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
       });
     });
@@ -4436,6 +4448,89 @@ $('btn-retirar-campana').addEventListener('click', async ()=>{
     $('rc-pallet').value=''; $('rc-table').style.display='none'; $('rc-items-body').innerHTML='';
   }catch(err){ showMsg('rc-msg','err', err.message); }
   finally{ $('btn-retirar-campana').disabled = false; }
+});
+
+/* Deshace un retiro de campaña ya registrado: repone la cantidad al pallet (o
+   recrea el pallet en su posición original si el retiro lo dejó vacío y esa
+   posición sigue libre), agrega una entrada de INGRESO al Kardex para corregir
+   el saldo (el registro original de "salida" nunca se borra, así se conserva
+   el historial), deja constancia en Bitácora, y marca el retiro como REVERTIDO
+   (nunca se elimina el documento, por trazabilidad). */
+async function deshacerRetiroCampana(retiroId){
+  if(!(currentPermisos.admin || currentPermisos.eliminar)){ showToast('No tienes permiso para deshacer retiros.','err'); return; }
+  const btn = document.querySelector(`.btn-deshacer-retiro-campana[data-id="${retiroId}"]`);
+  const retiroSnapPrevio = await retirosCampanaRef.doc(retiroId).get();
+  if(!retiroSnapPrevio.exists){ showToast('No se encontró ese retiro.','err'); return; }
+  const d = retiroSnapPrevio.data();
+  if((d.estado||'ACTIVO') !== 'ACTIVO'){ showToast('Ese retiro ya fue revertido antes.','err'); return; }
+  const ok = confirm(`¿Deshacer el retiro de ${d.cantidad} de ${d.producto} (pallet ${d.pallet_codigo}, registrado por ${d.usuario||''})?\n\nSe repondrá la cantidad al inventario y quedará constancia en Kardex y Bitácora. Esta acción no se puede deshacer.`);
+  if(!ok) return;
+  if(btn){ btn.disabled = true; btn.textContent = 'Deshaciendo…'; }
+  try{
+    await db.runTransaction(async tx=>{
+      const retiroRef = retirosCampanaRef.doc(retiroId);
+      const retiroSnap = await tx.get(retiroRef);
+      if(!retiroSnap.exists) throw new Error('El retiro ya no existe.');
+      const r = retiroSnap.data();
+      if((r.estado||'ACTIVO') !== 'ACTIVO') throw new Error('Ese retiro ya fue revertido antes.');
+
+      const palletRef = palletsRef.doc(r.pallet_codigo);
+      const palletSnap = await tx.get(palletRef);
+
+      if(palletSnap.exists){
+        // El pallet sigue existiendo (retiro parcial, o se volvió a usar después): se
+        // le suma la cantidad de vuelta al ítem correspondiente.
+        const items = (palletSnap.data().items||[]).slice();
+        const idx = items.findIndex(it=>it.producto===r.producto);
+        if(idx>=0){
+          items[idx] = Object.assign({}, items[idx], { cantidad: Number(items[idx].cantidad||0) + Number(r.cantidad) });
+        }else{
+          items.push({ producto: r.producto, descripcion: r.descripcion||'', costo: r.costo||0, cantidad: Number(r.cantidad) });
+        }
+        tx.update(palletRef, { items, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
+      }else{
+        // El retiro dejó el pallet vacío y se eliminó: solo se puede recrear
+        // automáticamente si sabemos en qué posición estaba Y esa posición
+        // sigue libre (nadie más la ocupó desde entonces).
+        if(!r.posicion_actual) throw new Error(`No se puede reponer automáticamente: el pallet ${r.pallet_codigo} ya no existe y este retiro es de antes de guardar su posición. Crea el pallet manualmente en "Diseño de Layout" o "Movimientos".`);
+        const posRef = posicionesRef.doc(r.posicion_actual);
+        const posSnap = await tx.get(posRef);
+        if(!posSnap.exists || posSnap.data().pallet_codigo){
+          throw new Error(`No se puede reponer automáticamente: la posición ${r.posicion_actual} ya está ocupada por otro pallet (o ya no existe). Crea el pallet ${r.pallet_codigo} manualmente en una posición libre.`);
+        }
+        tx.set(palletRef, {
+          items: [{ producto: r.producto, descripcion: r.descripcion||'', costo: r.costo||0, cantidad: Number(r.cantidad) }],
+          posicion_actual: r.posicion_actual,
+          creado_en: firebase.firestore.FieldValue.serverTimestamp(),
+          actualizado: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        tx.update(posRef, { estado:'ocupado', pallet_codigo: r.pallet_codigo, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
+      }
+
+      tx.set(kardexRef.doc(), {
+        producto: r.producto, descripcion: r.descripcion||'', costo: r.costo||0, cantidad: r.cantidad,
+        tipo:'ingreso', motivo:'Reversión de retiro campaña', pallet_codigo: r.pallet_codigo, posicion: r.posicion_actual||null,
+        usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      tx.set(movimientosRef.doc(), {
+        tipo:'retiro_campana_revertido', pallet_codigo: r.pallet_codigo, origen:null, destino:null,
+        detalle: `Se repuso ${r.cantidad} de ${r.producto} (retiro original de ${r.usuario||''} el ${r.timestamp?r.timestamp.toDate().toLocaleString('es-PE'):''})`,
+        usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      tx.update(retiroRef, {
+        estado: 'REVERTIDO', revertido_por: currentUserAlias, revertido_en: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    });
+    showToast(`Retiro revertido: ${d.cantidad} de ${d.producto} repuesto(s) en ${d.pallet_codigo}.`,'ok');
+  }catch(err){
+    console.error(err);
+    showToast('No se pudo deshacer: '+err.message,'err');
+    if(btn){ btn.disabled = false; btn.textContent = '↺ Deshacer'; }
+  }
+}
+$('retiros-body').addEventListener('click', (ev)=>{
+  const btn = ev.target.closest('.btn-deshacer-retiro-campana');
+  if(btn) deshacerRetiroCampana(btn.dataset.id);
 });
 
 /* -------------------- Kardex por producto -------------------- */
