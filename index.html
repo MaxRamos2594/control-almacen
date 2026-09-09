@@ -184,6 +184,7 @@
   .bloque-card .actions{display:flex; gap:6px;}
 
   .bloques-scroll{
+    position:relative;
     overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:10px;
     scrollbar-width:thin; scrollbar-color:var(--blue) #DDE2E8;
     overscroll-behavior-x:contain;
@@ -191,6 +192,27 @@
   .bloques-scroll::-webkit-scrollbar{height:9px;}
   .bloques-scroll::-webkit-scrollbar-track{background:#DDE2E8; border-radius:5px;}
   .bloques-scroll::-webkit-scrollbar-thumb{background:var(--blue); border-radius:5px;}
+  /* Reja (divisor físico del almacén): línea vertical que atraviesa todos los
+     bloques, posicionada en px dentro del contenido desplazable para que se mueva
+     junto con el scroll horizontal. En la vista de Diseño es arrastrable; en
+     Movimientos se muestra solo como referencia visual, sin poder editarla. */
+  .reja-linea{
+    position:absolute; top:0; width:7px; margin-left:-3px; z-index:5; border-radius:2px;
+    background:repeating-linear-gradient(45deg,#C0392B,#C0392B 4px,#7A1F17 4px,#7A1F17 8px);
+    box-shadow:0 0 0 1px rgba(0,0,0,.15);
+  }
+  .reja-linea.reja-editable{cursor:ew-resize; touch-action:none;}
+  .reja-linea.reja-arrastrando{box-shadow:0 0 0 2px var(--blue);}
+  .reja-etiqueta{
+    position:absolute; top:4px; left:50%; transform:translateX(-50%); white-space:nowrap;
+    background:#C0392B; color:#fff; font-size:9px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
+    padding:2px 6px; border-radius:3px; pointer-events:none;
+  }
+  .reja-quitar{
+    position:absolute; top:22px; left:50%; transform:translateX(-50%); width:16px; height:16px; border-radius:50%;
+    background:#7A1F17; color:#fff; border:none; font-size:10px; line-height:16px; padding:0; cursor:pointer;
+  }
+  .reja-quitar:hover{background:#5B160F;}
   .bloque-row{margin-bottom:20px;}
   .pasillo-divider{
     text-align:center; color:#8A6D3B; font-size:11px; font-weight:700; letter-spacing:.15em; text-transform:uppercase;
@@ -707,14 +729,16 @@
       </div>
     </div>
     <div class="panel">
-      <h3>Vista previa del layout</h3>
+      <h3><span style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:space-between;"><span>Vista previa del layout</span><button class="btn btn-ghost btn-sm" id="btn-agregar-reja" type="button">➕ Agregar reja</button></span></h3>
       <div class="legend">
         <span><i class="sw" style="background:var(--lacre-bg); border:1px solid var(--lacre-line);"></i>Rack vacío</span>
         <span><i class="sw" style="background:#EDEDED; border:1px solid #C4C4C4;"></i>Piso vacío</span>
         <span><i class="sw" style="background:#1E5F3E; border:1px solid #123D28;"></i>Ocupado</span>
         <span><i class="sw" style="background:#000;"></i>Bloqueado</span>
         <span><i class="sw" style="background:#4FC3E8; border:1px solid #1E90BE;"></i>Campaña del día</span>
+        <span><i class="sw" style="background:repeating-linear-gradient(45deg,#C0392B,#C0392B 3px,#7A1F17 3px,#7A1F17 6px);"></i>Reja (arrástrala para ubicarla)</span>
       </div>
+      <p class="hint" style="margin-bottom:10px;">Una reja es un divisor físico del almacén (por ejemplo, para separar dos zonas). Haz clic en "➕ Agregar reja" y luego arrástrala con el mouse hasta la posición que quieras; se guarda sola. La "✕" sobre la reja la elimina.</p>
       <div class="bloques-scroll" id="preview-bloques"></div>
     </div>
   </div>
@@ -766,6 +790,7 @@
         <span><i class="sw" style="background:#4FC3E8; border:1px solid #1E90BE;"></i>Campaña del día</span>
         <span><i class="sw" style="background:#fff; border:2px solid var(--blue);"></i>Seleccionado</span>
         <span><i class="sw" style="background:#fff; border:2px solid var(--neon); box-shadow:0 0 4px var(--neon);"></i>Coincide búsqueda</span>
+        <span><i class="sw" style="background:repeating-linear-gradient(45deg,#C0392B,#C0392B 3px,#7A1F17 3px,#7A1F17 6px);"></i>Reja</span>
       </div>
       <p class="hint">Clic en una posición para ver detalle y bloquear/desbloquear, o clic derecho para el mismo menú.</p>
       <div class="bloques-scroll" id="mov-bloques"></div>
@@ -1431,7 +1456,7 @@
           </div>
         </div>
         <div id="ti-modo-pallets-wrap" style="display:none;">
-          <p class="hint" style="margin-bottom:10px;">Incluye todo el stock (con cantidad &gt;0) de los pallets que agregues a la lista, sin importar su ubicación. Agrégalos a mano por código, o sortea una cantidad al azar entre los pallets con stock disponible — puedes combinar ambas formas antes de generar.</p>
+          <p class="hint" style="margin-bottom:10px;">Incluye todo el stock (con cantidad &gt;0) de los pallets que agregues a la lista, sin importar su ubicación. Agrégalos a mano por código, o sortea una cantidad al azar entre los pallets con stock disponible (20% Rack / 80% Piso, igual que el sorteo por cantidad) — puedes combinar ambas formas antes de generar. Cada pallet de la lista muestra si está en Rack o en Piso.</p>
           <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
             <div class="field" style="margin:0; max-width:200px;"><label>Código de pallet (manual)</label><input type="text" class="upper" id="ti-pallet-input" list="dl-pallets" placeholder="CD0000"></div>
             <button class="btn btn-ghost btn-sm" id="btn-ti-pallet-agregar">+ Agregar a la lista</button>
@@ -1956,8 +1981,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v95';
-const APP_UPDATED = '09/09/2026 11:15';
+const APP_VERSION = 'v97';
+const APP_UPDATED = '09/09/2026 12:20';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -2003,8 +2028,9 @@ const mermaGuiaItemsRef = db.collection('merma_guia_items');
 const mermaFormatosRef = db.collection('merma_formatos');
 const mermaAuditoriasRef = db.collection('merma_auditorias');
 const contadorRef = db.collection('contadores').doc('global');
+const rejasRef = db.collection('rejas'); // divisores físicos (rejas) del layout, posición dinámica en px
 
-let bloques = {}, nichos = {}, posiciones = {}, pallets = {}, productos = {};
+let bloques = {}, nichos = {}, posiciones = {}, pallets = {}, productos = {}, rejas = {};
 let mezanineConfig = { filas: 6, columnas: 10, niveles_max: 4 };
 let validadoresMaestroCache = {}; // maestro de validadores, keyed por DNI
 let currentPermisos = {};
@@ -2269,7 +2295,7 @@ async function logAccion(tipo, extra){
   }, extra||{}));
 }
 function moduloOf(tipo){
-  if(['bloque_creado','nicho_creado','nicho_eliminado','nicho_reordenado','nicho_renombrado','pasillo_actualizado'].includes(tipo)) return 'diseno';
+  if(['bloque_creado','nicho_creado','nicho_eliminado','nicho_reordenado','nicho_renombrado','pasillo_actualizado','reja_creada','reja_movida','reja_eliminada'].includes(tipo)) return 'diseno';
   if(['ingreso','movimiento','retiro','producto_agregado','transferencia','retiro_campana','retiro_campana_revertido'].includes(tipo)) return 'movimientos';
   if(['bloqueo','desbloqueo'].includes(tipo)) return 'bloqueo';
   if(['producto_registrado','producto_fusionado'].includes(tipo)) return 'productos';
@@ -2352,6 +2378,9 @@ function startListeners(){
     };
     renderMezanine();
   }, onErr));
+  // Rejas (divisores físicos del layout): no cuenta para checkReady() — es un
+  // detalle visual adicional del layout, no una de las 5 colecciones núcleo.
+  listenerUnsubs.push(rejasRef.onSnapshot(snap=>{ aplicarCambios(snap, rejas); renderAll(); }, onErr));
   listenerUnsubs.push(productosRef.onSnapshot(snap=>{ aplicarCambios(snap, productos, docIdACodigo); invalidarInventario(); checkReady(); renderProductosTabla(); renderInventario(); poblarProveedoresToma(); poblarDatalistsProductos(); }, onErr));
   listenerUnsubs.push(validadoresMaestroRef.onSnapshot(snap=>{
     validadoresMaestroCache = {};
@@ -2388,9 +2417,9 @@ function startListeners(){
    y las vistas que no están visibles quedan marcadas como pendientes para
    pintarse al abrir su pestaña. */
 const RENDERS_POR_VISTA = {
-  diseno: ()=>{ renderBloqueForms(); renderPreviewGrid(); },
+  diseno: ()=>{ renderBloqueForms(); renderPreviewGrid(); renderRejas('preview-bloques', true); },
   mov: ()=>{
-    renderMovGrid(); renderMezanine(); applyFilters();
+    renderMovGrid(); renderMezanine(); applyFilters(); renderRejas('mov-bloques', false);
     if(selectedPosId && posiciones[selectedPosId]){ renderDetalle(selectedPosId, posiciones[selectedPosId]); }
   },
   inventario: ()=>{ renderInventario(); },
@@ -3014,6 +3043,95 @@ function renderPreviewGrid(){
   });
 }
 function renderMovGrid(){ $('mov-bloques').innerHTML = buildBloquesMarkup(true, false); attachSlotEvents(); }
+
+/* -------------------- Rejas (divisores físicos del layout) --------------------
+   Una reja es una línea vertical que representa un divisor físico real del
+   almacén (ej. una reja de separación entre dos zonas). Se guarda como un
+   documento en Firestore con una posición `x` en píxeles, medida dentro del
+   contenido desplazable de `.bloques-scroll` (no de la ventana visible), así
+   que se mueve junto con el layout al hacer scroll horizontal y se ve igual
+   sin importar cuántos nichos tenga cada bloque. En la vista de Diseño es
+   arrastrable con el mouse/touch; en Movimientos se dibuja igual pero solo
+   como referencia visual (sin controles). */
+function renderRejas(containerId, editable){
+  const cont = document.getElementById(containerId);
+  if(!cont) return;
+  cont.querySelectorAll('.reja-linea').forEach(el=>el.remove());
+  const entradas = Object.entries(rejas);
+  if(entradas.length===0) return;
+  const alto = Math.max(cont.scrollHeight, cont.clientHeight, 40);
+  const anchoContenido = Math.max(cont.scrollWidth, cont.clientWidth, 1);
+  entradas.forEach(([id, r])=>{
+    const x = Math.max(0, Math.min(Number(r.x)||0, anchoContenido));
+    const linea = document.createElement('div');
+    linea.className = 'reja-linea' + (editable ? ' reja-editable' : '');
+    linea.dataset.rejaId = id;
+    linea.style.left = x + 'px';
+    linea.style.height = alto + 'px';
+    linea.innerHTML = `<span class="reja-etiqueta">${r.nombre ? r.nombre : 'REJA'}</span>${editable ? `<button type="button" class="reja-quitar" data-reja-id="${id}" title="Quitar esta reja">✕</button>` : ''}`;
+    cont.appendChild(linea);
+  });
+}
+// Delegación de eventos de arrastre (pointerdown/move/up) y de borrado, atada UNA
+// sola vez al contenedor persistente (su innerHTML se reemplaza en cada render,
+// pero el propio div nunca se destruye, así que el listener sigue funcionando).
+function habilitarArrastreRejas(containerId){
+  const cont = document.getElementById(containerId);
+  if(!cont) return;
+  cont.addEventListener('pointerdown', (ev)=>{
+    if(ev.target.closest('.reja-quitar')) return; // el borrado lo maneja el click de abajo
+    const linea = ev.target.closest('.reja-linea.reja-editable');
+    if(!linea) return;
+    ev.preventDefault();
+    const id = linea.dataset.rejaId;
+    linea.classList.add('reja-arrastrando');
+    try{ linea.setPointerCapture(ev.pointerId); }catch(e){}
+    let ultimoX = parseFloat(linea.style.left) || 0;
+    const mover = (ev2)=>{
+      const rect = cont.getBoundingClientRect();
+      let x = ev2.clientX - rect.left + cont.scrollLeft;
+      x = Math.max(0, Math.min(x, cont.scrollWidth));
+      linea.style.left = x + 'px';
+      ultimoX = x;
+    };
+    const soltar = async ()=>{
+      linea.removeEventListener('pointermove', mover);
+      linea.removeEventListener('pointerup', soltar);
+      linea.removeEventListener('pointercancel', soltar);
+      linea.classList.remove('reja-arrastrando');
+      try{
+        await rejasRef.doc(id).update({ x: Math.round(ultimoX) });
+        await logAccion('reja_movida', {detalle:`Reja ${id} movida a x=${Math.round(ultimoX)}`});
+      }catch(err){ showToast('Error al mover la reja: '+err.message,'err'); renderAll(); }
+    };
+    linea.addEventListener('pointermove', mover);
+    linea.addEventListener('pointerup', soltar);
+    linea.addEventListener('pointercancel', soltar);
+  });
+  cont.addEventListener('click', (ev)=>{
+    const btn = ev.target.closest('.reja-quitar');
+    if(!btn) return;
+    eliminarReja(btn.dataset.rejaId);
+  });
+}
+habilitarArrastreRejas('preview-bloques');
+async function eliminarReja(id){
+  try{
+    await rejasRef.doc(id).delete();
+    await logAccion('reja_eliminada', {detalle:`Reja ${id} eliminada`});
+    showToast('Reja eliminada.','ok');
+  }catch(err){ showToast('Error al eliminar la reja: '+err.message,'err'); }
+}
+$('btn-agregar-reja').addEventListener('click', async ()=>{
+  const cont = $('preview-bloques');
+  let x = 100;
+  if(cont && cont.clientWidth){ x = Math.round(cont.scrollLeft + cont.clientWidth/2); }
+  try{
+    await rejasRef.add({ nombre:'', x, creado_en: firebase.firestore.FieldValue.serverTimestamp() });
+    await logAccion('reja_creada', {detalle:`Reja creada en x=${x}`});
+    showToast('Reja agregada — arrástrala con el mouse para ubicarla donde quieras.','ok');
+  }catch(err){ showToast('Error al agregar la reja: '+err.message,'err'); }
+});
 
 function attachSlotEvents(){
   document.querySelectorAll('#view-mov .slot').forEach(el=>{
@@ -8397,22 +8515,39 @@ function generarSeleccionTomaPorPallets(codigosPallets, posicionesExcluidas){
 }
 
 let tiPalletsSeleccionados = [];
+// Guarda el tipo de posición (rack/piso/null) de cada código agregado, tanto a mano
+// como por sorteo, para poder mostrarlo junto a cada chip de la lista.
+let tiPalletsTipos = {};
+
+// Busca en qué tipo de posición (rack/piso) está actualmente un pallet ocupando
+// espacio en el almacén. Devuelve null si el pallet no está asignado a ninguna
+// posición ocupada (caso raro, pero posible si el dato quedó inconsistente).
+function obtenerTipoPosicionDePallet(codigo){
+  const entry = Object.values(posiciones).find(p=> p.pallet_codigo === codigo && p.estado==='ocupado');
+  if(!entry) return null;
+  return entry.tipo==='rack' ? 'rack' : 'piso';
+}
 
 function renderTiPalletsLista(){
   const cont = $('ti-pallets-lista');
   if(!cont) return;
   if(tiPalletsSeleccionados.length === 0){ cont.innerHTML = '<span class="hint">Sin pallets agregados todavía.</span>'; return; }
-  cont.innerHTML = tiPalletsSeleccionados.map(c=>
-    `<span style="display:inline-flex; align-items:center; gap:6px; background:var(--blue-bg); color:var(--blue); font-weight:700; padding:3px 8px; border-radius:5px; font-family:var(--mono); font-size:11px;">
-      ${c}<button type="button" class="ti-pallet-quitar" data-codigo="${c}" style="background:none; border:none; cursor:pointer; color:inherit; font-weight:700; padding:0;">✕</button>
-    </span>`
-  ).join('');
+  cont.innerHTML = tiPalletsSeleccionados.map(c=>{
+    const tipo = tiPalletsTipos[c];
+    const tipoLabel = tipo==='rack' ? 'Rack' : (tipo==='piso' ? 'Piso' : '—');
+    return `<span style="display:inline-flex; align-items:center; gap:6px; background:var(--blue-bg); color:var(--blue); font-weight:700; padding:3px 8px; border-radius:5px; font-family:var(--mono); font-size:11px;">
+      ${c} <span style="opacity:.7; font-weight:600;">(${tipoLabel})</span><button type="button" class="ti-pallet-quitar" data-codigo="${c}" style="background:none; border:none; cursor:pointer; color:inherit; font-weight:700; padding:0;">✕</button>
+    </span>`;
+  }).join('');
 }
 $('btn-ti-pallet-agregar').addEventListener('click', ()=>{
   const val = $('ti-pallet-input').value.trim().toUpperCase();
   if(!val) return;
   if(!pallets[val]){ showMsg('ti-msg','err', `El pallet "${val}" no existe en el almacén.`); return; }
-  if(!tiPalletsSeleccionados.includes(val)) tiPalletsSeleccionados.push(val);
+  if(!tiPalletsSeleccionados.includes(val)){
+    tiPalletsSeleccionados.push(val);
+    tiPalletsTipos[val] = obtenerTipoPosicionDePallet(val);
+  }
   $('ti-pallet-input').value = '';
   $('ti-msg').style.display = 'none';
   renderTiPalletsLista();
@@ -8422,44 +8557,68 @@ $('ti-pallets-lista').addEventListener('click', (ev)=>{
   const btn = ev.target.closest('.ti-pallet-quitar');
   if(!btn) return;
   tiPalletsSeleccionados = tiPalletsSeleccionados.filter(c=>c!==btn.dataset.codigo);
+  delete tiPalletsTipos[btn.dataset.codigo];
   renderTiPalletsLista();
 });
 
-// Códigos de pallet elegibles para sortear: en una posición ocupada, no bloqueada,
-// que no esté ya en una toma activa de hoy, y con al menos un ítem con cantidad > 0.
+// Pallets elegibles para sortear: en una posición ocupada, no bloqueada, que no
+// esté ya en una toma activa de hoy, y con al menos un ítem con cantidad > 0.
+// Devuelve {codigo, tipo} para poder aplicar la proporción 20% Rack / 80% Piso.
 function obtenerCodigosPalletsSorteables(posicionesExcluidas){
   posicionesExcluidas = posicionesExcluidas || new Set();
-  const codigos = new Set();
+  const vistos = new Map();
   Object.entries(posiciones).forEach(([id,p])=>{
     if(posicionesExcluidas.has(id)) return;
     if(p.estado !== 'ocupado' || !p.pallet_codigo || p.bloqueada) return;
     const pal = pallets[p.pallet_codigo];
     if(!pal || !pal.items || pal.items.length===0) return;
     if(!pal.items.some(it=> Number(it.cantidad) > 0)) return;
-    codigos.add(p.pallet_codigo);
+    if(!vistos.has(p.pallet_codigo)) vistos.set(p.pallet_codigo, p.tipo==='rack' ? 'rack' : 'piso');
   });
-  return [...codigos];
+  return [...vistos.entries()].map(([codigo,tipo])=>({codigo, tipo}));
+}
+
+// Sortea `cantidadSolicitada` pallets manteniendo la misma proporción 20% Rack /
+// 80% Piso que usa el sorteo "Por cantidad", excluyendo los que ya están en la
+// lista. Si falta stock de una categoría, rellena con la otra para llegar al total.
+function sortearPalletsPorCantidad(cantidadSolicitada, posicionesExcluidas, yaSeleccionados){
+  const yaSet = new Set(yaSeleccionados||[]);
+  const candidatos = obtenerCodigosPalletsSorteables(posicionesExcluidas).filter(c=>!yaSet.has(c.codigo));
+  const racks = candidatos.filter(c=>c.tipo==='rack');
+  const pisos = candidatos.filter(c=>c.tipo==='piso');
+
+  let nRack = Math.round(cantidadSolicitada * 0.20);
+  let nPiso = cantidadSolicitada - nRack;
+
+  let selRack = tomarAleatorio(racks, nRack);
+  let selPiso = tomarAleatorio(pisos, nPiso);
+
+  let faltantes = cantidadSolicitada - (selRack.length + selPiso.length);
+  if(faltantes > 0){
+    const usados = new Set([...selRack, ...selPiso].map(c=>c.codigo));
+    const restantes = candidatos.filter(c=>!usados.has(c.codigo));
+    selRack = selRack.concat(tomarAleatorio(restantes, faltantes));
+  }
+  return selRack.concat(selPiso);
 }
 $('btn-ti-pallet-sortear').addEventListener('click', ()=>{
   const cantidad = parseInt($('ti-pallet-sorteo-cant').value, 10);
   if(!cantidad || cantidad < 1){ showMsg('ti-msg','err','Ingresa una cantidad válida de pallets a sortear.'); return; }
   const excluidas = obtenerPosicionesActivasHoy();
-  const disponibles = obtenerCodigosPalletsSorteables(excluidas).filter(c=>!tiPalletsSeleccionados.includes(c));
-  if(disponibles.length === 0){ showMsg('ti-msg','err','No hay pallets disponibles para sortear (o ya están todos agregados / en una toma activa de hoy).'); return; }
-  // Fisher-Yates: baraja los disponibles y toma los primeros N.
-  for(let i = disponibles.length - 1; i > 0; i--){
-    const j = Math.floor(Math.random() * (i + 1));
-    [disponibles[i], disponibles[j]] = [disponibles[j], disponibles[i]];
-  }
-  const n = Math.min(cantidad, disponibles.length);
-  const sorteados = disponibles.slice(0, n);
-  sorteados.forEach(c=>{ if(!tiPalletsSeleccionados.includes(c)) tiPalletsSeleccionados.push(c); });
+  const sorteados = sortearPalletsPorCantidad(cantidad, excluidas, tiPalletsSeleccionados);
+  if(sorteados.length === 0){ showMsg('ti-msg','err','No hay pallets disponibles para sortear (o ya están todos agregados / en una toma activa de hoy).'); return; }
+  sorteados.forEach(c=>{
+    tiPalletsTipos[c.codigo] = c.tipo;
+    if(!tiPalletsSeleccionados.includes(c.codigo)) tiPalletsSeleccionados.push(c.codigo);
+  });
   $('ti-pallet-sorteo-cant').value = '';
   renderTiPalletsLista();
-  if(n < cantidad){
-    showMsg('ti-msg','ok', `Solo había ${n} pallet(s) disponible(s) para sortear; se agregaron todos a la lista.`);
+  const nRackObtenido = sorteados.filter(c=>c.tipo==='rack').length;
+  const nPisoObtenido = sorteados.filter(c=>c.tipo==='piso').length;
+  if(sorteados.length < cantidad){
+    showMsg('ti-msg','ok', `Solo había ${sorteados.length} pallet(s) disponible(s) para sortear (${nRackObtenido} Rack, ${nPisoObtenido} Piso); se agregaron todos a la lista.`);
   } else {
-    showMsg('ti-msg','ok', `Se sortearon ${n} pallet(s) y se agregaron a la lista.`);
+    showMsg('ti-msg','ok', `Se sortearon ${sorteados.length} pallet(s): ${nRackObtenido} de Rack y ${nPisoObtenido} de Piso.`);
   }
 });
 
@@ -8672,6 +8831,7 @@ $('btn-ti-confirmar').addEventListener('click', async ()=>{
     $('ti-cantidad').value = '';
     $('ti-proveedor-select').value = '';
     tiPalletsSeleccionados = [];
+    tiPalletsTipos = {};
     renderTiPalletsLista();
     $('ti-nicho-select').value = '';
     $('ti-filtro-estado').value = 'EN_PROCESO';
