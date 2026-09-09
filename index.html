@@ -896,11 +896,13 @@
     <h3><span style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;"><span>Inventario (acumulado por producto)</span><button class="btn btn-primary btn-sm" id="btn-exportar-inventario" type="button">⬇ Exportar a Excel</button><button class="btn btn-ghost btn-sm" id="btn-exportar-inventario-pdf" type="button">📄 Exportar a PDF</button></span></h3>
     <p class="hint" style="margin-bottom:10px;">Suma la cantidad de cada producto en todos los pallets activos del almacén. Haz clic en "Ver detalle" para ver en qué pallets y posiciones está.</p>
     <div style="display:flex; gap:14px; flex-wrap:wrap;">
-      <div class="field" style="max-width:320px;"><label>Buscar (código o descripción que contengan)</label><input type="text" id="inv-buscar" class="upper" placeholder="EJ. SANDALIA o 06TP"></div>
-      <div class="field" style="max-width:260px;"><label>Proveedor (nombre que contenga)</label><input type="text" id="inv-buscar-proveedor" class="upper" placeholder="EJ. DISTRIBUIDORA XYZ"></div>
+      <div class="field" style="max-width:320px;"><label>Buscar (código o descripción que contengan)</label><input type="text" id="inv-buscar" class="upper" list="inv-codigo-datalist" autocomplete="off" placeholder="EJ. SANDALIA o 06TP"><datalist id="inv-codigo-datalist"></datalist></div>
+      <div class="field" style="max-width:260px;"><label>Proveedor (nombre que contenga)</label><input type="text" id="inv-buscar-proveedor" class="upper" list="pr-proveedor-datalist" autocomplete="off" placeholder="EJ. DISTRIBUIDORA XYZ"></div>
     </div>
     <div class="hist-wrap" style="max-height:600px;">
       <table class="tabla-compacta"><thead><tr><th>Código</th><th>Descripción</th><th>Proveedor</th><th>Cantidad total</th><th>Costo unitario</th><th>Costo total</th><th></th></tr></thead><tbody id="inv-body"></tbody></table>
+      <!-- Cantidad total en formato de miles sin decimales (fmtEntero); Costo total en soles con 2 decimales (fmtMoneyComma). -->
+
       <div class="empty-state" id="inv-empty">Sin inventario todavía.</div>
     </div>
     <div class="total-line" style="font-size:15px; margin-top:12px;"><span><b>TOTAL VALORIZADO DEL ALMACÉN</b></span><span id="inv-total-valorizado"><b>0.00</b></span></div>
@@ -1429,10 +1431,14 @@
           </div>
         </div>
         <div id="ti-modo-pallets-wrap" style="display:none;">
-          <p class="hint" style="margin-bottom:10px;">Incluye todo el stock (con cantidad &gt;0) de los pallets que agregues a la lista, sin importar su ubicación.</p>
+          <p class="hint" style="margin-bottom:10px;">Incluye todo el stock (con cantidad &gt;0) de los pallets que agregues a la lista, sin importar su ubicación. Agrégalos a mano por código, o sortea una cantidad al azar entre los pallets con stock disponible — puedes combinar ambas formas antes de generar.</p>
           <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
-            <div class="field" style="margin:0; max-width:200px;"><label>Código de pallet</label><input type="text" class="upper" id="ti-pallet-input" list="dl-pallets" placeholder="CD0000"></div>
+            <div class="field" style="margin:0; max-width:200px;"><label>Código de pallet (manual)</label><input type="text" class="upper" id="ti-pallet-input" list="dl-pallets" placeholder="CD0000"></div>
             <button class="btn btn-ghost btn-sm" id="btn-ti-pallet-agregar">+ Agregar a la lista</button>
+          </div>
+          <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px; border-top:1px dashed var(--line); padding-top:10px;">
+            <div class="field" style="margin:0; max-width:200px;"><label>Cantidad de pallets a sortear</label><input type="number" id="ti-pallet-sorteo-cant" min="1" step="1" placeholder="EJ. 5"></div>
+            <button class="btn btn-ghost btn-sm" id="btn-ti-pallet-sortear">🎲 Sortear pallets</button>
           </div>
           <div id="ti-pallets-lista" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;"></div>
           <button class="btn btn-primary" id="btn-ti-generar-pallets">📦 Generar por pallets</button>
@@ -1950,8 +1956,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v94';
-const APP_UPDATED = '09/09/2026 10:30';
+const APP_VERSION = 'v95';
+const APP_UPDATED = '09/09/2026 11:15';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3128,13 +3134,13 @@ function renderDetalle(id, p){
     const descVivo = productos[it.producto] ? (productos[it.producto].descripcion || '') : (it.descripcion || '');
     totalCant += Number(it.cantidad)||0;
     totalCosto += (Number(it.cantidad)||0)*costoVivo;
-    return `<tr><td>${it.producto}</td><td>${descVivo}</td><td>${it.cantidad}</td><td>${fmtMoney(costoVivo)}</td></tr>`;
+    return `<tr><td>${it.producto}</td><td>${descVivo}</td><td>${fmtEntero(it.cantidad)}</td><td>${fmtMoney(costoVivo)}</td></tr>`;
   }).join('');
   content.innerHTML = `
     <div style="font-family:var(--mono); font-size:13px; margin-bottom:6px;"><b>${id}</b> · Pallet ${p.pallet_codigo}</div>
     <table><thead><tr><th>Producto</th><th>Desc.</th><th>Cant.</th><th>Costo u.</th></tr></thead><tbody>${rows}</tbody></table>
-    <div class="total-line"><span>Total cantidad</span><span>${totalCant}</span></div>
-    <div class="total-line"><span>Valor total</span><span>${fmtMoney(totalCosto)}</span></div>
+    <div class="total-line"><span>Total cantidad</span><span>${fmtEntero(totalCant)}</span></div>
+    <div class="total-line"><span>Valor total</span><span>S/ ${fmtMoneyComma(totalCosto)}</span></div>
     ${puedeMov ? `
     <div class="mini-form">
       <label>Agregar producto a este pallet</label>
@@ -3577,7 +3583,7 @@ function renderInventario(){
   body.innerHTML = entriesPagina.map(([codigo,data])=>{
     const detId = `inv-det-${codigo}`;
     invDetalleCache[detId] = data.detalle;
-    return `<tr><td>${codigo}</td><td>${data.descripcion||''}</td><td>${data.proveedor||''}</td><td>${data.total}</td><td>${fmtMoney(data.costo)}</td><td>${fmtMoney(data.costoTotal)}</td><td><button class="btn btn-ghost btn-sm" data-toggle-inv="${detId}">Ver detalle</button></td></tr>
+    return `<tr><td>${codigo}</td><td>${data.descripcion||''}</td><td>${data.proveedor||''}</td><td>${fmtEntero(data.total)}</td><td>${fmtMoney(data.costo)}</td><td>S/ ${fmtMoneyComma(data.costoTotal)}</td><td><button class="btn btn-ghost btn-sm" data-toggle-inv="${detId}">Ver detalle</button></td></tr>
     <tr id="${detId}" style="display:none;"><td colspan="7"></td></tr>`;
   }).join('');
   body.querySelectorAll('[data-toggle-inv]').forEach(btn=>{
@@ -4113,11 +4119,13 @@ function poblarDatalistsProductos(){
   const dlCodigo = document.getElementById('pr-codigo-datalist');
   const dlProveedor = document.getElementById('pr-proveedor-datalist');
   const dlKardex = document.getElementById('kx-codigo-datalist');
+  const dlInventario = document.getElementById('inv-codigo-datalist');
   if(!dlCodigo || !dlProveedor) return;
   const codigos = Object.keys(productos).sort((a,b)=>a.localeCompare(b));
   const opcionesCodigos = codigos.map(c=>`<option value="${c}"></option>`).join('');
   dlCodigo.innerHTML = opcionesCodigos;
   if(dlKardex) dlKardex.innerHTML = opcionesCodigos;
+  if(dlInventario) dlInventario.innerHTML = opcionesCodigos;
   const proveedores = [...new Set(Object.values(productos).map(p=>(p.proveedor||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
   dlProveedor.innerHTML = proveedores.map(p=>`<option value="${p}"></option>`).join('');
 }
@@ -8415,6 +8423,44 @@ $('ti-pallets-lista').addEventListener('click', (ev)=>{
   if(!btn) return;
   tiPalletsSeleccionados = tiPalletsSeleccionados.filter(c=>c!==btn.dataset.codigo);
   renderTiPalletsLista();
+});
+
+// Códigos de pallet elegibles para sortear: en una posición ocupada, no bloqueada,
+// que no esté ya en una toma activa de hoy, y con al menos un ítem con cantidad > 0.
+function obtenerCodigosPalletsSorteables(posicionesExcluidas){
+  posicionesExcluidas = posicionesExcluidas || new Set();
+  const codigos = new Set();
+  Object.entries(posiciones).forEach(([id,p])=>{
+    if(posicionesExcluidas.has(id)) return;
+    if(p.estado !== 'ocupado' || !p.pallet_codigo || p.bloqueada) return;
+    const pal = pallets[p.pallet_codigo];
+    if(!pal || !pal.items || pal.items.length===0) return;
+    if(!pal.items.some(it=> Number(it.cantidad) > 0)) return;
+    codigos.add(p.pallet_codigo);
+  });
+  return [...codigos];
+}
+$('btn-ti-pallet-sortear').addEventListener('click', ()=>{
+  const cantidad = parseInt($('ti-pallet-sorteo-cant').value, 10);
+  if(!cantidad || cantidad < 1){ showMsg('ti-msg','err','Ingresa una cantidad válida de pallets a sortear.'); return; }
+  const excluidas = obtenerPosicionesActivasHoy();
+  const disponibles = obtenerCodigosPalletsSorteables(excluidas).filter(c=>!tiPalletsSeleccionados.includes(c));
+  if(disponibles.length === 0){ showMsg('ti-msg','err','No hay pallets disponibles para sortear (o ya están todos agregados / en una toma activa de hoy).'); return; }
+  // Fisher-Yates: baraja los disponibles y toma los primeros N.
+  for(let i = disponibles.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [disponibles[i], disponibles[j]] = [disponibles[j], disponibles[i]];
+  }
+  const n = Math.min(cantidad, disponibles.length);
+  const sorteados = disponibles.slice(0, n);
+  sorteados.forEach(c=>{ if(!tiPalletsSeleccionados.includes(c)) tiPalletsSeleccionados.push(c); });
+  $('ti-pallet-sorteo-cant').value = '';
+  renderTiPalletsLista();
+  if(n < cantidad){
+    showMsg('ti-msg','ok', `Solo había ${n} pallet(s) disponible(s) para sortear; se agregaron todos a la lista.`);
+  } else {
+    showMsg('ti-msg','ok', `Se sortearon ${n} pallet(s) y se agregaron a la lista.`);
+  }
 });
 
 $('btn-ti-generar-pallets').addEventListener('click', ()=>{
