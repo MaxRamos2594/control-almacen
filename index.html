@@ -1086,8 +1086,11 @@
         <div class="msg" id="bloque-msg"></div>
       </div>
       <div class="panel">
-        <h3>Bloques y nichos</h3>
-        <p class="hint" style="margin-bottom:10px;">Nicho de 2 niveles: 4 posiciones de rack (2 arriba, 2 abajo) + 10 de piso. Nicho de 3 niveles: 6 de rack (2 arriba, 2 medio, 2 abajo) + 10 de piso. Puedes eliminar cualquier nicho vacío (abre "Seleccionar nichos para eliminar" en cada bloque) — las letras visibles se reacomodan automáticamente.</p>
+        <h3 style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+          <span>Bloques y nichos</span>
+          <button class="btn btn-ghost btn-sm" id="btn-recalcular-bloques-normales" type="button" title="Renumera TODOS los nichos de los bloques normales (no extensiones) de derecha a izquierda y continuo entre bloques: A, B, C… para los que tienen rack; X1, X2, X3… para los de solo piso.">🔁 Renumerar bloques normales</button>
+        </h3>
+        <p class="hint" style="margin-bottom:10px;">Nicho de 2 niveles: 4 posiciones de rack (2 arriba, 2 abajo) + 10 de piso. Nicho de 3 niveles: 6 de rack (2 arriba, 2 medio, 2 abajo) + 10 de piso. Puedes eliminar cualquier nicho vacío (abre "Seleccionar nichos para eliminar" en cada bloque) — las letras de los que ya existen NO cambian solas; usa "🔁 Renumerar bloques normales" arriba (o "🔁 Renumerar extensión" en un bloque anexado) cuando quieras cerrar los huecos que hayan quedado.</p>
         <div id="bloques-list"></div>
       </div>
     </div>
@@ -2448,8 +2451,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v112';
-const APP_UPDATED = '10/09/2026 19:00';
+const APP_VERSION = 'v113';
+const APP_UPDATED = '10/09/2026 19:45';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3065,54 +3068,74 @@ function sanitizarPrefijoBase(nombre){
   const limpio = (nombre || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   return limpio || 'X';
 }
-// Calcula qué letra/código le toca al PRÓXIMO nicho de `bloqueId`: en vez de
-// seguir siempre un contador que solo sube (y que ignoraba los nichos que se
-// iban eliminando, dejando huecos para siempre y saltando a letras cada vez
-// más largas), se recalcula desde cero cada vez, ocupando el primer hueco
-// libre entre las letras REALMENTE en uso ahora mismo. Los nichos normales
-// comparten una sola numeración entre todos los bloques base; los anexados
-// tienen la suya propia, independiente por cada bloque base al que estén
-// anexados. Esto NUNCA renombra un nicho existente — solo decide la letra
-// del nuevo, así que nada de lo ya guardado (posiciones, pallets, historial)
-// se desincroniza.
-function calcularSiguienteLetraNicho(bloqueId){
+// Calcula qué código le toca al PRÓXIMO nicho de `bloqueId` (de tipo
+// `tipoNicho`): en vez de seguir siempre un contador que solo sube (y que
+// ignoraba los nichos que se iban eliminando, dejando huecos para siempre y
+// saltando a letras cada vez más largas), se recalcula desde cero cada vez,
+// ocupando el primer hueco libre entre los códigos REALMENTE en uso ahora
+// mismo. Conviven varias numeraciones independientes:
+//  - Bloques normales, nichos CON rack (con piso o sin piso): A, B, C… Z,
+//    AA, AB…, compartida entre TODOS los bloques normales.
+//  - Bloques normales, nichos "solo piso" (sin rack): X1, X2, X3…, su propia
+//    numeración, también compartida entre todos los bloques normales — así
+//    nunca se mezcla con la de los que sí tienen rack aunque estén
+//    intercalados en la misma fila.
+//  - Anexados (extensiones): P<prefijo>-A, P<prefijo>-B…, independiente por
+//    cada bloque base al que estén anexados, para cualquier tipo de nicho.
+// Esto NUNCA renombra un nicho existente — solo decide el código del nuevo,
+// así que nada de lo ya guardado (posiciones, pallets, historial) se
+// desincroniza. Devuelve `idx` (el índice ya encontrado) y `generarCandidato`
+// (para poder seguir probando el siguiente si hiciera falta reintentar).
+function calcularSiguienteLetraNicho(bloqueId, tipoNicho){
   const esAnexado = !!(bloques[bloqueId] && bloques[bloqueId].anexado_a);
   const baseId = esAnexado ? bloques[bloqueId].anexado_a : null;
   const prefijoBase = esAnexado ? sanitizarPrefijoBase(bloques[baseId] && bloques[baseId].nombre) : '';
   const prefijoCodigo = esAnexado ? `P${prefijoBase}-` : '';
-  const letrasUsadas = new Set();
+  const esPisoTrack = !esAnexado && tipoNicho === 'solo_piso';
+  const generarCandidato = esPisoTrack ? (n)=> `X${n+1}` : (n)=> prefijoCodigo + indexToLetter(n);
+
+  const codigosUsados = new Set();
   Object.entries(nichos).forEach(([letra, n])=>{
     const b = bloques[n.bloque_id];
     const perteneceAAnexado = !!(b && b.anexado_a);
     if(esAnexado){
-      if(perteneceAAnexado && b.anexado_a === baseId){
-        letrasUsadas.add(letra.startsWith(prefijoCodigo) ? letra.slice(prefijoCodigo.length) : letra);
-      }
+      if(perteneceAAnexado && b.anexado_a === baseId) codigosUsados.add(letra);
     } else if(!perteneceAAnexado){
-      letrasUsadas.add(letra);
+      if((n.tipo === 'solo_piso') === esPisoTrack) codigosUsados.add(letra);
     }
   });
   let idx = 0;
-  while(letrasUsadas.has(indexToLetter(idx))) idx++;
-  return { idx, prefijoCodigo };
+  while(codigosUsados.has(generarCandidato(idx))) idx++;
+  return { idx, generarCandidato };
+}
+// Dónde le toca al próximo nicho en el orden VISUAL de su bloque — siempre al
+// final (más a la izquierda), sin importar el código/letra que le toque: el
+// código (arriba) y la posición visual (acá) son cosas independientes, para
+// que nunca puedan chocar dos nichos del mismo bloque con el mismo
+// pos_visual aunque vengan de numeraciones distintas (rack vs. "solo piso").
+function siguientePosVisualEnBloque(bloqueId){
+  let max = -1;
+  Object.values(nichos).forEach(n=>{ if(n.bloque_id===bloqueId) max = Math.max(max, n.pos_visual ?? n.orden ?? -1); });
+  return max + 1;
 }
 async function agregarNicho(bloqueId, bloqueNombre, niveles, sinPiso){
   niveles = (niveles===3) ? 3 : 2;
+  const tipo = sinPiso ? 'solo_rack' : 'rack_piso';
+  const posVisual = siguientePosVisualEnBloque(bloqueId);
   try{
     let letra;
     await db.runTransaction(async tx=>{
-      let { idx, prefijoCodigo } = calcularSiguienteLetraNicho(bloqueId);
+      let { idx, generarCandidato } = calcularSiguienteLetraNicho(bloqueId, tipo);
       // Se reconfirma DENTRO de la transacción (por si otro usuario creó un
       // nicho justo antes de que esto terminara de guardarse) probando el
       // siguiente hueco libre hasta dar con uno que de verdad no exista.
       while(true){
-        letra = prefijoCodigo + indexToLetter(idx);
+        letra = generarCandidato(idx);
         const snap = await tx.get(nichosRef.doc(letra));
         if(!snap.exists) break;
         idx++;
       }
-      const tipo = sinPiso ? 'solo_rack' : 'rack_piso';
-      tx.set(nichosRef.doc(letra), { bloque_id: bloqueId, orden: idx, pos_visual: idx, tipo, niveles, creado_en: firebase.firestore.FieldValue.serverTimestamp() });
+      tx.set(nichosRef.doc(letra), { bloque_id: bloqueId, orden: posVisual, pos_visual: posVisual, tipo, niveles, creado_en: firebase.firestore.FieldValue.serverTimestamp() });
       const nombresNivel = niveles===3 ? ['arriba','medio','abajo'] : ['arriba','abajo'];
       let num = 1;
       nombresNivel.forEach(nombreNivel=>{
@@ -3139,17 +3162,18 @@ async function agregarNicho(bloqueId, bloqueNombre, niveles, sinPiso){
 }
 
 async function agregarNichoSoloPiso(bloqueId, bloqueNombre){
+  const posVisual = siguientePosVisualEnBloque(bloqueId);
   try{
     let letra;
     await db.runTransaction(async tx=>{
-      let { idx, prefijoCodigo } = calcularSiguienteLetraNicho(bloqueId);
+      let { idx, generarCandidato } = calcularSiguienteLetraNicho(bloqueId, 'solo_piso');
       while(true){
-        letra = prefijoCodigo + indexToLetter(idx);
+        letra = generarCandidato(idx);
         const snap = await tx.get(nichosRef.doc(letra));
         if(!snap.exists) break;
         idx++;
       }
-      tx.set(nichosRef.doc(letra), { bloque_id: bloqueId, orden: idx, pos_visual: idx, tipo:'solo_piso', creado_en: firebase.firestore.FieldValue.serverTimestamp() });
+      tx.set(nichosRef.doc(letra), { bloque_id: bloqueId, orden: posVisual, pos_visual: posVisual, tipo:'solo_piso', creado_en: firebase.firestore.FieldValue.serverTimestamp() });
       for(let i=0;i<6;i++){
         const izq=1+i, der=7+i;
         [[izq,'izq'],[der,'der']].forEach(([num,columna])=>{
@@ -3193,11 +3217,11 @@ async function moverNicho(bloqueId, letra, direccion){
 async function renombrarNicho(bloqueId, letraVieja){
   const nichoData = nichos[letraVieja];
   if(!nichoData){ showToast('No se encontró ese nicho.','err'); return; }
-  const entrada = prompt(`Nuevo código para el nicho "${letraVieja}" (solo letras, ej. U). No se moverá nada: solo se renombra el código.`, '');
+  const entrada = prompt(`Nuevo código para el nicho "${letraVieja}" (letras, ej. U, o "X" + número para uno solo piso, ej. X5). No se moverá nada: solo se renombra el código.`, '');
   if(entrada === null) return;
   const nueva = entrada.trim().toUpperCase();
   if(!nueva){ showToast('Ingresa un código válido.','err'); return; }
-  if(!/^[A-Z]{1,3}$/.test(nueva)){ showToast('El código debe tener solo letras (A-Z, sin números ni símbolos), de 1 a 3 letras.','err'); return; }
+  if(!/^[A-Z]{1,3}$/.test(nueva) && !/^X\d{1,4}$/.test(nueva)){ showToast('El código debe ser solo letras (A-Z, de 1 a 3 letras) o "X" seguido de un número (ej. X5), sin otros símbolos.','err'); return; }
   if(nueva === letraVieja){ showToast('Ese ya es el código actual de este nicho.','err'); return; }
   if(nichos[nueva]){ showToast(`Ya existe un nicho "${nueva}". Elige un código que no esté en uso.`,'err'); return; }
 
@@ -3326,6 +3350,92 @@ async function recalcularNumeracionExtension(baseId, baseNombre){
     showToast('Error al renumerar la extensión: '+err.message,'err');
   }
 }
+
+// Renumera TODOS los nichos de los bloques NORMALES (no anexados/extensiones),
+// recalculando sus códigos de cero según el orden visual actual: de derecha a
+// izquierda, bloque por bloque, continuando de un bloque al siguiente sin
+// reiniciar (igual que siempre lo hizo el contador — solo que ahora se
+// recalcula bajo demanda en vez de solo sumar). Conviven DOS numeraciones
+// independientes: los nichos con rack (con piso o sin piso) usan la de
+// siempre A, B, C… Z, AA, AB…; los nichos "solo piso" (sin rack) usan la suya
+// propia X1, X2, X3… — así nunca se mezclan aunque estén intercalados en la
+// misma fila (ver el ejemplo AE/AD/AC junto a A-L en el layout). Igual que
+// recalcularNumeracionExtension: nada se mueve físicamente, solo cambian los
+// códigos, pasando por un código temporal de por medio para que nunca choque
+// un código nuevo con el viejo de otro nicho que se está renombrando al mismo
+// tiempo; el historial ya registrado conserva los códigos anteriores.
+async function recalcularNumeracionBloquesNormales(){
+  const bloquesBase = sortBloquesEntries().filter(([bid,b])=>!b.anexado_a);
+  if(bloquesBase.length===0){ showToast('No hay bloques normales para renumerar.','err'); return; }
+
+  let letraIdx = 0, xIdx = 1;
+  const plan = [];
+  bloquesBase.forEach(([bid])=>{
+    const nichosDelBloque = Object.entries(nichos).filter(([l,n])=>n.bloque_id===bid)
+      .sort((a,b2)=> (a[1].pos_visual ?? a[1].orden) - (b2[1].pos_visual ?? b2[1].orden));
+    nichosDelBloque.forEach(([letraVieja, ndata], idxEnBloque)=>{
+      const esPiso = ndata.tipo === 'solo_piso';
+      const letraNueva = esPiso ? `X${xIdx++}` : indexToLetter(letraIdx++);
+      plan.push({ letraVieja, ndata, letraNueva, posVisualNueva: idxEnBloque });
+    });
+  });
+  const cambios = plan.filter(p=> p.letraVieja !== p.letraNueva);
+  if(cambios.length===0){ showToast('La numeración de los bloques normales ya está en orden — nada que recalcular.','ok'); return; }
+
+  const resumen = cambios.slice(0,20).map(p=>`${p.letraVieja} → ${p.letraNueva}`).join('\n') + (cambios.length>20 ? `\n… y ${cambios.length-20} más` : '');
+  if(!confirm(`¿Renumerar ${cambios.length} nicho(s) de los bloques normales (rack: A, B, C…; solo piso: X1, X2, X3…), de derecha a izquierda y continuo entre bloques?\n\n${resumen}\n\nSe actualizan sus posiciones y los pallets que tengan ubicados ahí — nada se mueve físicamente, solo cambian los códigos. El historial ya registrado conserva los códigos anteriores. Esta acción no se puede deshacer.`)) return;
+
+  try{
+    const CHUNK = 400;
+    const temp = (letra) => `__tmp__${letra}`;
+    const posicionesPlan = [];
+    cambios.forEach(p=>{
+      Object.entries(posiciones).filter(([id,pos])=>pos.nicho===p.letraVieja).forEach(([idViejo, pos])=>{
+        const sufijo = idViejo.slice(p.letraVieja.length);
+        posicionesPlan.push({ idViejo, idTemp: temp(p.letraVieja)+sufijo, idFinal: p.letraNueva+sufijo, pos, letraTemp: temp(p.letraVieja), letraFinal: p.letraNueva });
+      });
+    });
+    const palletsPlan = Object.entries(pallets)
+      .filter(([cod,pal])=> pal.posicion_actual && posicionesPlan.some(pp=>pp.idViejo===pal.posicion_actual))
+      .map(([cod,pal])=>{
+        const pp = posicionesPlan.find(pp=>pp.idViejo===pal.posicion_actual);
+        return { cod, idTemp: pp.idTemp, idFinal: pp.idFinal };
+      });
+
+    // --- Fase 1: código viejo → código temporal ---
+    let escrituras = [];
+    cambios.forEach(p=> escrituras.push({ ref: nichosRef.doc(temp(p.letraVieja)), data: Object.assign({}, p.ndata) }));
+    posicionesPlan.forEach(pp=> escrituras.push({ ref: posicionesRef.doc(pp.idTemp), data: Object.assign({}, pp.pos, { nicho: pp.letraTemp }) }));
+    for(let i=0;i<escrituras.length;i+=CHUNK){ const batch=db.batch(); escrituras.slice(i,i+CHUNK).forEach(w=>batch.set(w.ref,w.data)); await batch.commit(); }
+
+    for(let i=0;i<palletsPlan.length;i+=CHUNK){ const batch=db.batch(); palletsPlan.slice(i,i+CHUNK).forEach(pp=>batch.update(palletsRef.doc(pp.cod), {posicion_actual: pp.idTemp})); await batch.commit(); }
+
+    let borrados = [];
+    cambios.forEach(p=> borrados.push(nichosRef.doc(p.letraVieja)));
+    posicionesPlan.forEach(pp=> borrados.push(posicionesRef.doc(pp.idViejo)));
+    for(let i=0;i<borrados.length;i+=CHUNK){ const batch=db.batch(); borrados.slice(i,i+CHUNK).forEach(ref=>batch.delete(ref)); await batch.commit(); }
+
+    // --- Fase 2: código temporal → código final definitivo ---
+    escrituras = [];
+    cambios.forEach(p=> escrituras.push({ ref: nichosRef.doc(p.letraNueva), data: Object.assign({}, p.ndata, { orden: p.posVisualNueva, pos_visual: p.posVisualNueva }) }));
+    posicionesPlan.forEach(pp=> escrituras.push({ ref: posicionesRef.doc(pp.idFinal), data: Object.assign({}, pp.pos, { nicho: pp.letraFinal }) }));
+    for(let i=0;i<escrituras.length;i+=CHUNK){ const batch=db.batch(); escrituras.slice(i,i+CHUNK).forEach(w=>batch.set(w.ref,w.data)); await batch.commit(); }
+
+    for(let i=0;i<palletsPlan.length;i+=CHUNK){ const batch=db.batch(); palletsPlan.slice(i,i+CHUNK).forEach(pp=>batch.update(palletsRef.doc(pp.cod), {posicion_actual: pp.idFinal})); await batch.commit(); }
+
+    borrados = [];
+    cambios.forEach(p=> borrados.push(nichosRef.doc(temp(p.letraVieja))));
+    posicionesPlan.forEach(pp=> borrados.push(posicionesRef.doc(pp.idTemp)));
+    for(let i=0;i<borrados.length;i+=CHUNK){ const batch=db.batch(); borrados.slice(i,i+CHUNK).forEach(ref=>batch.delete(ref)); await batch.commit(); }
+
+    await logAccion('nicho_renombrado', {detalle:`Bloques normales renumerados: ${cambios.length} nicho(s) (${cambios.slice(0,30).map(p=>`${p.letraVieja}→${p.letraNueva}`).join(', ')}${cambios.length>30?'…':''}). ${posicionesPlan.length} posición(es), ${palletsPlan.length} pallet(s).`});
+    showToast(`Bloques normales renumerados: ${cambios.length} nicho(s).`,'ok');
+  }catch(err){
+    console.error(err);
+    showToast('Error al renumerar: '+err.message,'err');
+  }
+}
+$('btn-recalcular-bloques-normales').addEventListener('click', recalcularNumeracionBloquesNormales);
 
 function renderBloqueForms(){
   const list = $('bloques-list');
