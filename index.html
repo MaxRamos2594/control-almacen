@@ -2448,8 +2448,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v111';
-const APP_UPDATED = '10/09/2026 18:15';
+const APP_VERSION = 'v112';
+const APP_UPDATED = '10/09/2026 19:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3248,6 +3248,85 @@ async function renombrarNicho(bloqueId, letraVieja){
   }
 }
 
+// Renumera TODOS los nichos de la extensión (los bloques anexados) de un
+// bloque base, cerrando cualquier hueco (p.ej. si quedó "PA-G...PA-C, PA-A"
+// porque en algún momento se borró "PA-B") — quedan siempre PA-A, PA-B, PA-C…
+// sin saltos, en el mismo orden visual que ya tenían. Como puede haber que
+// "intercambiar" códigos entre varios nichos a la vez (el que era PA-C ahora
+// debe ser PA-B, pero PA-B pudo no existir o pertenecer a otro nicho del
+// grupo), todo pasa primero por un código temporal único (fase 1) y recién
+// después llega a su código final (fase 2) — así nunca hay una colisión a
+// mitad de camino. Igual que renombrarNicho: nada se mueve físicamente, solo
+// cambian los códigos; el historial ya registrado conserva los anteriores.
+async function recalcularNumeracionExtension(baseId, baseNombre){
+  const prefijoBase = sanitizarPrefijoBase(baseNombre);
+  const prefijoCodigo = `P${prefijoBase}-`;
+  const idsAnexados = Object.entries(bloques).filter(([cid,c])=>c.anexado_a===baseId).map(([cid])=>cid);
+  const nichosGrupo = Object.entries(nichos).filter(([l,n])=> idsAnexados.includes(n.bloque_id))
+    .sort((a,b2)=> (a[1].pos_visual ?? a[1].orden) - (b2[1].pos_visual ?? b2[1].orden));
+  if(nichosGrupo.length===0){ showToast('Este bloque no tiene extensión (anexados) con nichos para renumerar.','err'); return; }
+
+  const plan = nichosGrupo.map(([letraVieja, ndata], idx)=> ({
+    letraVieja, ndata, idx, letraNueva: `${prefijoCodigo}${indexToLetter(idx)}`
+  })).filter(p => p.letraVieja !== p.letraNueva);
+  if(plan.length===0){ showToast('La numeración de esta extensión ya está en orden — nada que recalcular.','ok'); return; }
+
+  if(!confirm(`¿Renumerar ${plan.length} nicho(s) de la extensión de "${baseNombre}" para que queden sin huecos?\n\n${plan.map(p=>`${p.letraVieja} → ${p.letraNueva}`).join('\n')}\n\nSe actualizan sus posiciones y los pallets que tengan ubicados ahí — nada se mueve físicamente, solo cambian los códigos. El historial ya registrado conserva los códigos anteriores. Esta acción no se puede deshacer.`)) return;
+
+  try{
+    const CHUNK = 400;
+    const temp = (letra) => `__tmp__${letra}`;
+    const posicionesPlan = [];
+    plan.forEach(p=>{
+      Object.entries(posiciones).filter(([id,pos])=>pos.nicho===p.letraVieja).forEach(([idViejo, pos])=>{
+        const sufijo = idViejo.slice(p.letraVieja.length);
+        posicionesPlan.push({ idViejo, idTemp: temp(p.letraVieja)+sufijo, idFinal: p.letraNueva+sufijo, pos, letraTemp: temp(p.letraVieja), letraFinal: p.letraNueva });
+      });
+    });
+    // Se resuelve de antemano la cadena viejo→temp→final de cada pallet
+    // afectado (no se vuelve a leer del caché en vivo entre fases: puede no
+    // haberse actualizado todavía cuando arranca la fase 2).
+    const palletsPlan = Object.entries(pallets)
+      .filter(([cod,pal])=> pal.posicion_actual && posicionesPlan.some(pp=>pp.idViejo===pal.posicion_actual))
+      .map(([cod,pal])=>{
+        const pp = posicionesPlan.find(pp=>pp.idViejo===pal.posicion_actual);
+        return { cod, idTemp: pp.idTemp, idFinal: pp.idFinal };
+      });
+
+    // --- Fase 1: código viejo → código temporal ---
+    let escrituras = [];
+    plan.forEach(p=> escrituras.push({ ref: nichosRef.doc(temp(p.letraVieja)), data: Object.assign({}, p.ndata) }));
+    posicionesPlan.forEach(pp=> escrituras.push({ ref: posicionesRef.doc(pp.idTemp), data: Object.assign({}, pp.pos, { nicho: pp.letraTemp }) }));
+    for(let i=0;i<escrituras.length;i+=CHUNK){ const batch=db.batch(); escrituras.slice(i,i+CHUNK).forEach(w=>batch.set(w.ref,w.data)); await batch.commit(); }
+
+    for(let i=0;i<palletsPlan.length;i+=CHUNK){ const batch=db.batch(); palletsPlan.slice(i,i+CHUNK).forEach(pp=>batch.update(palletsRef.doc(pp.cod), {posicion_actual: pp.idTemp})); await batch.commit(); }
+
+    let borrados = [];
+    plan.forEach(p=> borrados.push(nichosRef.doc(p.letraVieja)));
+    posicionesPlan.forEach(pp=> borrados.push(posicionesRef.doc(pp.idViejo)));
+    for(let i=0;i<borrados.length;i+=CHUNK){ const batch=db.batch(); borrados.slice(i,i+CHUNK).forEach(ref=>batch.delete(ref)); await batch.commit(); }
+
+    // --- Fase 2: código temporal → código final definitivo ---
+    escrituras = [];
+    plan.forEach(p=> escrituras.push({ ref: nichosRef.doc(p.letraNueva), data: Object.assign({}, p.ndata, { orden: p.idx, pos_visual: p.idx }) }));
+    posicionesPlan.forEach(pp=> escrituras.push({ ref: posicionesRef.doc(pp.idFinal), data: Object.assign({}, pp.pos, { nicho: pp.letraFinal }) }));
+    for(let i=0;i<escrituras.length;i+=CHUNK){ const batch=db.batch(); escrituras.slice(i,i+CHUNK).forEach(w=>batch.set(w.ref,w.data)); await batch.commit(); }
+
+    for(let i=0;i<palletsPlan.length;i+=CHUNK){ const batch=db.batch(); palletsPlan.slice(i,i+CHUNK).forEach(pp=>batch.update(palletsRef.doc(pp.cod), {posicion_actual: pp.idFinal})); await batch.commit(); }
+
+    borrados = [];
+    plan.forEach(p=> borrados.push(nichosRef.doc(temp(p.letraVieja))));
+    posicionesPlan.forEach(pp=> borrados.push(posicionesRef.doc(pp.idTemp)));
+    for(let i=0;i<borrados.length;i+=CHUNK){ const batch=db.batch(); borrados.slice(i,i+CHUNK).forEach(ref=>batch.delete(ref)); await batch.commit(); }
+
+    await logAccion('nicho_renombrado', {detalle:`Extensión de "${baseNombre}" renumerada: ${plan.map(p=>`${p.letraVieja}→${p.letraNueva}`).join(', ')} (${posicionesPlan.length} posición(es), ${palletsPlan.length} pallet(s)).`});
+    showToast(`Extensión de "${baseNombre}" renumerada: ${plan.length} nicho(s).`,'ok');
+  }catch(err){
+    console.error(err);
+    showToast('Error al renumerar la extensión: '+err.message,'err');
+  }
+}
+
 function renderBloqueForms(){
   const list = $('bloques-list');
   const entries = sortBloquesEntries();
@@ -3274,6 +3353,8 @@ function renderBloqueForms(){
       </label>`;
     }).join('');
     const vacio = nichosDelBloque.length===0;
+    const anexadosDeEsteBloque = esAnexado ? [] : Object.entries(bloques).filter(([cid,c])=>c.anexado_a===id);
+    const anexadosConNichos = anexadosDeEsteBloque.some(([cid])=> Object.values(nichos).some(n=>n.bloque_id===cid));
     return `<div class="bloque-card">
       <div class="bh">
         <b>${b.nombre}</b>
@@ -3289,6 +3370,7 @@ function renderBloqueForms(){
       <div class="bloque-actions-grupo">
         ${esAnexado ? '' : `<button class="btn btn-ghost btn-sm" data-toggle-pasillo="${id}" data-valor="${b.pasillo ? 'false':'true'}">${b.pasillo ? '✕ Quitar pasillo' : '╱ Agregar pasillo debajo'}</button>`}
         <button class="btn btn-ghost btn-sm" data-toggle-volteo="${id}" data-valor="${b.volteado ? 'false':'true'}">${b.volteado ? '↩ Bloque normal' : '🔄 Voltear (piso arriba)'}</button>
+        ${anexadosConNichos ? `<button class="btn btn-ghost btn-sm" data-recalcular-extension="${id}" data-nombre="${b.nombre}" title="Renumera los nichos de la extensión anexada a este bloque, cerrando huecos (ej. si falta una letra en el medio)">🔁 Renumerar extensión</button>` : ''}
       </div>
       ${esAnexado ? `<div class="meta" style="font-size:10px;">El volteo de este anexado es independiente del bloque base — si no lo tocas, sigue la orientación de "${nombreBase||'?'}".</div>` : ''}
       ${esAnexado ? `<div class="meta" style="color:var(--blue);">Después de la reja, en la fila de "${nombreBase||'?'}" — letras P${prefijoBase}-A, P${prefijoBase}-B, P${prefijoBase}-C…</div>` : ''}
@@ -3306,6 +3388,7 @@ function renderBloqueForms(){
   list.querySelectorAll('[data-add-piso]').forEach(btn=> btn.onclick = () => agregarNichoSoloPiso(btn.dataset.addPiso, btn.dataset.nombre));
   list.querySelectorAll('[data-toggle-pasillo]').forEach(btn=> btn.onclick = () => togglePasillo(btn.dataset.togglePasillo, btn.dataset.valor==='true'));
   list.querySelectorAll('[data-toggle-volteo]').forEach(btn=> btn.onclick = () => toggleVolteo(btn.dataset.toggleVolteo, btn.dataset.valor==='true'));
+  list.querySelectorAll('[data-recalcular-extension]').forEach(btn=> btn.onclick = () => recalcularNumeracionExtension(btn.dataset.recalcularExtension, btn.dataset.nombre));
   list.querySelectorAll('[data-del-selected]').forEach(btn=> btn.onclick = () => eliminarNichosSeleccionados(btn.dataset.delSelected));
   list.querySelectorAll('[data-del-bloque]').forEach(btn=> btn.onclick = () => eliminarBloque(btn.dataset.delBloque, btn.dataset.nombre));
 }
@@ -3709,7 +3792,17 @@ function nichosHTMLDeBloque(bid, volteadoFila, interactive, showReorder){
     </div>` : '';
     const pisoHTML = esSoloRack ? '' : `<div class="nicho-section-label">Piso</div>${pisoRows.join('')}`;
     const cuerpoHTML = (!esSoloPiso && volteadoFila) ? (pisoHTML + `<div class="nicho-label">${letraVisual}</div>` + rackHTML) : (rackHTML + `<div class="nicho-label">${letraVisual}</div>` + pisoHTML);
-    return `<div class="nicho${esSoloPiso?' solo-piso':''}${esSoloRack?' solo-rack':''}">
+    // Alinea cada nicho contra el borde de la fila donde de verdad está su
+    // rack: si está volteado (piso arriba), el rack queda al FONDO de su
+    // propia caja, así que se ancla la caja contra el borde INFERIOR de la
+    // fila (align-self:flex-end); si no está volteado, el rack está ARRIBA,
+    // así que se ancla contra el borde SUPERIOR (flex-start, el default).
+    // Esto es lo que hace que un nicho más corto (p.ej. "sin piso", que no
+    // tiene la sección Piso y por eso mide menos) quede a la altura correcta
+    // en vez de flotar pegado siempre arriba — se nota sobre todo en una
+    // extensión anexada más corta que las de al lado, en una fila volteada.
+    const alineacion = volteadoFila ? 'flex-end' : 'flex-start';
+    return `<div class="nicho${esSoloPiso?' solo-piso':''}${esSoloRack?' solo-rack':''}" style="align-self:${alineacion};">
       ${reorderHTML}
       ${cuerpoHTML}
     </div>`;
