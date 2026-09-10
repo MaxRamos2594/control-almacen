@@ -241,11 +241,11 @@
   .btn-reorder:disabled{opacity:.3; cursor:not-allowed;}
   .nicho.solo-piso{border-color:var(--green);}
   .nicho.solo-rack{border-color:var(--lacre);}
-  /* Modo compacto ("Ocultar lado derecho"): cada nicho pasa a mostrar solo una
-     columna (en vez de dos), así que su ancho se reduce a la mitad — debe
-     coincidir con lo que devuelve nichoAnchoActual() cuando ocultarLadoDerecho
-     está activo, para que la reja siga alineada con los nichos reales. */
-  body.modo-compacto .nicho{width:40px;}
+  .anexados-oculto-chip{
+    display:flex; align-items:center; justify-content:center; text-align:center; cursor:pointer;
+    font-size:10px; font-weight:700; color:var(--ink-soft); background:#EEF0F3; padding:8px 4px; min-height:60px;
+  }
+  .anexados-oculto-chip:hover{background:#E2E5EA;}
   .slot{
     width:26px; height:24px; border-radius:3px; border:1px solid var(--lacre-line); background:var(--lacre-bg);
     cursor:pointer; display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:8px;
@@ -759,7 +759,7 @@
         <span><i class="sw" style="background:#fff; border:2px solid #000;"></i>Reja (arrástrala para ubicarla)</span>
       </div>
       <p class="hint" style="margin-bottom:10px;">Una reja es un divisor físico del almacén (por ejemplo, para separar dos zonas). Haz clic en "➕ Agregar reja" y luego arrástrala con el mouse hasta la posición que quieras; se guarda sola. La "✕" sobre la reja la elimina.</p>
-      <p class="hint" style="margin-bottom:10px;">"🙈 Ocultar lado derecho" reduce a la mitad el ancho de cada nicho, mostrando solo el lado izquierdo de cada fila (rack y piso), para ver todo el layout sin desplazarte tanto horizontalmente. No borra ni desocupa nada — las posiciones del lado derecho siguen existiendo tal cual y reaparecen al volver a mostrar todo.</p>
+      <p class="hint" style="margin-bottom:10px;">"🙈 Ocultar lado derecho" oculta los bloques anexados que quedan después de la reja (el lado derecho de la reja) y los reemplaza por una ficha con el conteo, para ver el layout sin que se alargue tanto horizontalmente. No borra ni desocupa nada — reaparecen tal cual al volver a mostrar todo (o haciendo clic en la ficha).</p>
       <div class="bloques-scroll" id="preview-bloques"></div>
     </div>
   </div>
@@ -813,7 +813,7 @@
         <span><i class="sw" style="background:#fff; border:2px solid var(--neon); box-shadow:0 0 4px var(--neon);"></i>Coincide búsqueda</span>
         <span><i class="sw" style="background:#fff; border:2px solid #000;"></i>Reja</span>
       </div>
-      <p class="hint">Clic en una posición para ver detalle y bloquear/desbloquear, o clic derecho para el mismo menú. "🙈 Ocultar lado derecho" reduce a la mitad el ancho de cada nicho (solo visual, no afecta las posiciones).</p>
+      <p class="hint">Clic en una posición para ver detalle y bloquear/desbloquear, o clic derecho para el mismo menú. "🙈 Ocultar lado derecho" oculta los bloques anexados que quedan después de la reja y los reemplaza por una ficha con el conteo (clic en ella para volver a mostrarlos).</p>
       <div class="bloques-scroll" id="mov-bloques"></div>
     </div>
 
@@ -2002,8 +2002,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v106';
-const APP_UPDATED = '10/09/2026 11:00';
+const APP_VERSION = 'v107';
+const APP_UPDATED = '10/09/2026 15:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3118,7 +3118,7 @@ function nichosHTMLDeBloque(bid, volteadoFila, interactive, showReorder){
       const derEntry = Object.entries(posiciones).find(([id,p])=> p.nicho===letra && p.tipo==='piso' && p.fila===i && (p.columna ? p.columna==='der' : Number(id.slice(-2))>=10));
       let rowHtml = '<div class="nicho-row">';
       if(izqEntry) rowHtml += fn(izqEntry[0], izqEntry[1]);
-      if(derEntry && !ocultarLadoDerecho) rowHtml += fn(derEntry[0], derEntry[1]);
+      if(derEntry) rowHtml += fn(derEntry[0], derEntry[1]);
       rowHtml += '</div>';
       pisoRows.push(rowHtml);
     }
@@ -3128,8 +3128,7 @@ function nichosHTMLDeBloque(bid, volteadoFila, interactive, showReorder){
       const nombresNivel = nivelesNicho===3 ? ['arriba','medio','abajo'] : ['arriba','abajo'];
       const filasRack = nombresNivel.map(nombreNivel=>{
         const items = Object.entries(posiciones).filter(([id,p])=>p.nicho===letra && p.nivel===nombreNivel).sort((a,b2)=>a[0].localeCompare(b2[0]));
-        const itemsVisibles = ocultarLadoDerecho ? items.slice(0,1) : items; // items[0]="izq", items[1]="der" (por orden de código)
-        return `<div class="nicho-row">${itemsVisibles.map(([id,p])=>fn(id,p)).join('')}</div>`;
+        return `<div class="nicho-row">${items.map(([id,p])=>fn(id,p)).join('')}</div>`;
       }).join('');
       rackHTML = `<div class="nicho-section-label">Rack</div>${filasRack}`;
     }
@@ -3154,12 +3153,25 @@ function nichosHTMLDeBloque(bid, volteadoFila, interactive, showReorder){
 // el bloque anexado queda pegado al extremo derecho de la fila, después de
 // donde el usuario coloque la reja, como si fuera la continuación física de esa
 // misma fila/pasillo.
+// "Ocultar lado derecho" (ocultarLadoDerecho) oculta justo esto: los bloques
+// anexados que quedan después de la reja — que es lo que suele alargar mucho
+// el layout horizontalmente — y los reemplaza por una ficha angosta con el
+// conteo, para que el usuario sepa que ahí hay algo y pueda volver a mostrarlo.
 function buildBloquesMarkup(interactive, showReorder){
   const todasOrdenadas = sortBloquesEntries();
   const bloqueEntries = todasOrdenadas.filter(([bid,b])=>!b.anexado_a);
   return bloqueEntries.map(([bid, b])=>{
     const anexados = todasOrdenadas.filter(([cid,c])=>c.anexado_a===bid);
-    const anexadosHTML = anexados.map(([cid])=> nichosHTMLDeBloque(cid, b.volteado, interactive, showReorder)).join('');
+    let anexadosHTML;
+    if(anexados.length===0){
+      anexadosHTML = '';
+    } else if(ocultarLadoDerecho){
+      const totalNichosOcultos = anexados.reduce((suma,[cid])=> suma + Object.values(nichos).filter(n=>n.bloque_id===cid).length, 0);
+      const nombresAnexados = anexados.map(([,c])=>c.nombre).join(', ');
+      anexadosHTML = `<div class="nicho anexados-oculto-chip" data-mostrar-anexados title="Después de la reja hay ${totalNichosOcultos} nicho(s) ocultos (${nombresAnexados}). Clic aquí (o en &quot;👁 Mostrar todo&quot;) para volver a mostrarlos.">🔒<br>${totalNichosOcultos} nicho(s)<br>ocultos</div>`;
+    } else {
+      anexadosHTML = anexados.map(([cid])=> nichosHTMLDeBloque(cid, b.volteado, interactive, showReorder)).join('');
+    }
     const nichosPropiosHTML = nichosHTMLDeBloque(bid, b.volteado, interactive, showReorder);
     const nichosHTML = anexadosHTML + nichosPropiosHTML;
     const pasilloHTML = b.pasillo ? `<div class="pasillo-divider">╱╱╱ PASILLO ╱╱╱</div>` : '';
@@ -3174,8 +3186,13 @@ function renderPreviewGrid(){
   $('preview-bloques').querySelectorAll('[data-rename-nicho]').forEach(btn=>{
     btn.onclick = () => renombrarNicho(btn.dataset.bloque, btn.dataset.renameNicho);
   });
+  $('preview-bloques').querySelectorAll('[data-mostrar-anexados]').forEach(chip=>{ chip.onclick = toggleModoCompacto; });
 }
-function renderMovGrid(){ $('mov-bloques').innerHTML = buildBloquesMarkup(true, false); attachSlotEvents(); }
+function renderMovGrid(){
+  $('mov-bloques').innerHTML = buildBloquesMarkup(true, false);
+  attachSlotEvents();
+  $('mov-bloques').querySelectorAll('[data-mostrar-anexados]').forEach(chip=>{ chip.onclick = toggleModoCompacto; });
+}
 
 /* -------------------- Rejas (divisores físicos del layout) --------------------
    Una reja es una línea vertical que representa un divisor físico real del
@@ -3221,9 +3238,7 @@ function renderMovGrid(){ $('mov-bloques').innerHTML = buildBloquesMarkup(true, 
    igual pero solo como referencia visual (sin controles). */
 const REJA_NICHO_GAP_PX = 16; // debe coincidir con .nichos-line{gap:16px}
 function nichoAnchoActual(){
-  // Debe coincidir con .nicho{width:68px}, su media query @max-width:640px{width:74px},
-  // y con body.modo-compacto .nicho{width:40px} (ver toggle "Ocultar lado derecho").
-  if(ocultarLadoDerecho) return 40;
+  // Debe coincidir con .nicho{width:68px} y su media query @max-width:640px{width:74px}.
   return (window.matchMedia && window.matchMedia('(max-width:640px)').matches) ? 74 : 68;
 }
 // Cuántos nichos tiene, en total, la fila del bloque base `bidBase`: los suyos
@@ -3232,9 +3247,17 @@ function nichoAnchoActual(){
 function contarNichosDeFilaBase(bidBase){
   let total = 0;
   Object.values(nichos).forEach(n=>{ if(n.bloque_id===bidBase) total++; });
-  Object.entries(bloques).forEach(([cid,c])=>{
-    if(c.anexado_a===bidBase) Object.values(nichos).forEach(n=>{ if(n.bloque_id===cid) total++; });
-  });
+  const idsAnexados = Object.entries(bloques).filter(([cid,c])=>c.anexado_a===bidBase).map(([cid])=>cid);
+  if(idsAnexados.length===0) return total;
+  if(ocultarLadoDerecho){
+    // Con "Ocultar lado derecho" activo, TODOS los anexados de esta fila se
+    // colapsan en una sola ficha (misma clase .nicho, mismo ancho que un nicho
+    // normal — ver buildBloquesMarkup) — cuenta como 1 solo "paso", no la suma
+    // real de sus nichos, para que la reja siga alineada con lo que se ve.
+    total += 1;
+  } else {
+    idsAnexados.forEach(cid=>{ Object.values(nichos).forEach(n=>{ if(n.bloque_id===cid) total++; }); });
+  }
   return total;
 }
 // Cuántos nichos tiene la fila MÁS LARGA de todo el layout — es el tope del
@@ -3391,10 +3414,12 @@ window.addEventListener('resize', ()=>{
 
 // "Ocultar lado derecho" / modo compacto: un solo interruptor compartido entre
 // Diseño y Movimientos (los dos botones lo prenden/apagan por igual), así el
-// layout se ve consistente sin importar en qué pestaña se activó. Como cambia
-// el ancho real de cada nicho (ver nichoAnchoActual), hay que reconstruir los
-// nichos Y la reja juntos — si solo se repintara uno de los dos, quedarían
-// desalineados entre sí.
+// layout se ve consistente sin importar en qué pestaña se activó. "Lado derecho"
+// se refiere a lo que queda después de la reja: los bloques anexados (PA-x, PB-x,
+// etc.), que son los que suelen alargar mucho el layout horizontalmente. Al
+// activarlo, esos nichos se reemplazan por una ficha compacta con el conteo
+// (ver buildBloquesMarkup); hay que reconstruir los nichos Y la reja juntos,
+// porque la reja se posiciona en base a la cantidad de nichos visibles.
 function aplicarModoCompacto(){
   document.body.classList.toggle('modo-compacto', ocultarLadoDerecho);
   const texto = ocultarLadoDerecho ? '👁 Mostrar todo' : '🙈 Ocultar lado derecho';
