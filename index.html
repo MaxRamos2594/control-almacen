@@ -235,6 +235,11 @@
   .btn-reorder:disabled{opacity:.3; cursor:not-allowed;}
   .nicho.solo-piso{border-color:var(--green);}
   .nicho.solo-rack{border-color:var(--lacre);}
+  /* Modo compacto ("Ocultar lado derecho"): cada nicho pasa a mostrar solo una
+     columna (en vez de dos), así que su ancho se reduce a la mitad — debe
+     coincidir con lo que devuelve nichoAnchoActual() cuando ocultarLadoDerecho
+     está activo, para que la reja siga alineada con los nichos reales. */
+  body.modo-compacto .nicho{width:40px;}
   .slot{
     width:26px; height:24px; border-radius:3px; border:1px solid var(--lacre-line); background:var(--lacre-bg);
     cursor:pointer; display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:8px;
@@ -738,16 +743,17 @@
       </div>
     </div>
     <div class="panel">
-      <h3><span style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:space-between;"><span>Vista previa del layout</span><button class="btn btn-ghost btn-sm" id="btn-agregar-reja" type="button">➕ Agregar reja</button></span></h3>
+      <h3><span style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:space-between;"><span>Vista previa del layout</span><span style="display:flex; gap:8px; flex-wrap:wrap;"><button class="btn btn-ghost btn-sm" id="btn-toggle-compacto-diseno" type="button">🙈 Ocultar lado derecho</button><button class="btn btn-ghost btn-sm" id="btn-agregar-reja" type="button">➕ Agregar reja</button></span></span></h3>
       <div class="legend">
         <span><i class="sw" style="background:var(--lacre-bg); border:1px solid var(--lacre-line);"></i>Rack vacío</span>
         <span><i class="sw" style="background:#EDEDED; border:1px solid #C4C4C4;"></i>Piso vacío</span>
         <span><i class="sw" style="background:#1E5F3E; border:1px solid #123D28;"></i>Ocupado</span>
         <span><i class="sw" style="background:#000;"></i>Bloqueado</span>
         <span><i class="sw" style="background:#4FC3E8; border:1px solid #1E90BE;"></i>Campaña del día</span>
-        <span><i class="sw" style="background:repeating-linear-gradient(45deg,#C0392B,#C0392B 3px,#7A1F17 3px,#7A1F17 6px);"></i>Reja (arrástrala para ubicarla)</span>
+        <span><i class="sw" style="background:#fff; border:2px solid #000;"></i>Reja (arrástrala para ubicarla)</span>
       </div>
       <p class="hint" style="margin-bottom:10px;">Una reja es un divisor físico del almacén (por ejemplo, para separar dos zonas). Haz clic en "➕ Agregar reja" y luego arrástrala con el mouse hasta la posición que quieras; se guarda sola. La "✕" sobre la reja la elimina.</p>
+      <p class="hint" style="margin-bottom:10px;">"🙈 Ocultar lado derecho" reduce a la mitad el ancho de cada nicho, mostrando solo el lado izquierdo de cada fila (rack y piso), para ver todo el layout sin desplazarte tanto horizontalmente. No borra ni desocupa nada — las posiciones del lado derecho siguen existiendo tal cual y reaparecen al volver a mostrar todo.</p>
       <div class="bloques-scroll" id="preview-bloques"></div>
     </div>
   </div>
@@ -790,7 +796,7 @@
     </div>
 
     <div class="panel">
-      <h3>Layout del almacén</h3>
+      <h3><span style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:space-between;"><span>Layout del almacén</span><button class="btn btn-ghost btn-sm" id="btn-toggle-compacto-mov" type="button">🙈 Ocultar lado derecho</button></span></h3>
       <div class="legend">
         <span><i class="sw" style="background:var(--lacre-bg); border:1px solid var(--lacre-line);"></i>Rack vacío</span>
         <span><i class="sw" style="background:#EDEDED; border:1px solid #C4C4C4;"></i>Piso vacío</span>
@@ -799,9 +805,9 @@
         <span><i class="sw" style="background:#4FC3E8; border:1px solid #1E90BE;"></i>Campaña del día</span>
         <span><i class="sw" style="background:#fff; border:2px solid var(--blue);"></i>Seleccionado</span>
         <span><i class="sw" style="background:#fff; border:2px solid var(--neon); box-shadow:0 0 4px var(--neon);"></i>Coincide búsqueda</span>
-        <span><i class="sw" style="background:repeating-linear-gradient(45deg,#C0392B,#C0392B 3px,#7A1F17 3px,#7A1F17 6px);"></i>Reja</span>
+        <span><i class="sw" style="background:#fff; border:2px solid #000;"></i>Reja</span>
       </div>
-      <p class="hint">Clic en una posición para ver detalle y bloquear/desbloquear, o clic derecho para el mismo menú.</p>
+      <p class="hint">Clic en una posición para ver detalle y bloquear/desbloquear, o clic derecho para el mismo menú. "🙈 Ocultar lado derecho" reduce a la mitad el ancho de cada nicho (solo visual, no afecta las posiciones).</p>
       <div class="bloques-scroll" id="mov-bloques"></div>
     </div>
 
@@ -1990,8 +1996,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v104';
-const APP_UPDATED = '09/09/2026 22:40';
+const APP_VERSION = 'v105';
+const APP_UPDATED = '10/09/2026 09:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -2041,6 +2047,15 @@ const rejasRef = db.collection('rejas'); // divisores físicos (rejas) del layou
 
 let bloques = {}, nichos = {}, posiciones = {}, pallets = {}, productos = {}, rejas = {};
 let mezanineConfig = { filas: 6, columnas: 10, niveles_max: 4 };
+// Modo compacto: oculta el lado "der" de cada fila (rack y piso) para que cada
+// nicho ocupe la mitad de ancho — así el layout completo se ve mucho menos
+// largo horizontalmente. Es solo una preferencia de VISUALIZACIÓN (nada se
+// borra ni se pierde: las posiciones "der" siguen existiendo tal cual, con
+// todos sus pallets/estado intactos — reaparecen solas al desactivar el modo).
+// Se guarda en este navegador (localStorage) para que quede como cada quien la
+// dejó, igual que ya se hace con los paneles colapsables.
+let ocultarLadoDerecho = false;
+try{ ocultarLadoDerecho = localStorage.getItem('almacen_ocultar_lado_derecho') === '1'; }catch(e){}
 let validadoresMaestroCache = {}; // maestro de validadores, keyed por DNI
 let currentPermisos = {};
 let currentUserEmail = '';
@@ -3097,7 +3112,7 @@ function nichosHTMLDeBloque(bid, volteadoFila, interactive, showReorder){
       const derEntry = Object.entries(posiciones).find(([id,p])=> p.nicho===letra && p.tipo==='piso' && p.fila===i && (p.columna ? p.columna==='der' : Number(id.slice(-2))>=10));
       let rowHtml = '<div class="nicho-row">';
       if(izqEntry) rowHtml += fn(izqEntry[0], izqEntry[1]);
-      if(derEntry) rowHtml += fn(derEntry[0], derEntry[1]);
+      if(derEntry && !ocultarLadoDerecho) rowHtml += fn(derEntry[0], derEntry[1]);
       rowHtml += '</div>';
       pisoRows.push(rowHtml);
     }
@@ -3107,7 +3122,8 @@ function nichosHTMLDeBloque(bid, volteadoFila, interactive, showReorder){
       const nombresNivel = nivelesNicho===3 ? ['arriba','medio','abajo'] : ['arriba','abajo'];
       const filasRack = nombresNivel.map(nombreNivel=>{
         const items = Object.entries(posiciones).filter(([id,p])=>p.nicho===letra && p.nivel===nombreNivel).sort((a,b2)=>a[0].localeCompare(b2[0]));
-        return `<div class="nicho-row">${items.map(([id,p])=>fn(id,p)).join('')}</div>`;
+        const itemsVisibles = ocultarLadoDerecho ? items.slice(0,1) : items; // items[0]="izq", items[1]="der" (por orden de código)
+        return `<div class="nicho-row">${itemsVisibles.map(([id,p])=>fn(id,p)).join('')}</div>`;
       }).join('');
       rackHTML = `<div class="nicho-section-label">Rack</div>${filasRack}`;
     }
@@ -3199,7 +3215,9 @@ function renderMovGrid(){ $('mov-bloques').innerHTML = buildBloquesMarkup(true, 
    igual pero solo como referencia visual (sin controles). */
 const REJA_NICHO_GAP_PX = 16; // debe coincidir con .nichos-line{gap:16px}
 function nichoAnchoActual(){
-  // Debe coincidir con .nicho{width:68px} y su media query @max-width:640px{width:74px}.
+  // Debe coincidir con .nicho{width:68px}, su media query @max-width:640px{width:74px},
+  // y con body.modo-compacto .nicho{width:40px} (ver toggle "Ocultar lado derecho").
+  if(ocultarLadoDerecho) return 40;
   return (window.matchMedia && window.matchMedia('(max-width:640px)').matches) ? 74 : 68;
 }
 // Cuántos nichos tiene, en total, la fila del bloque base `bidBase`: los suyos
@@ -3364,6 +3382,31 @@ window.addEventListener('resize', ()=>{
     renderRejas('mov-bloques', false);
   }, 150);
 });
+
+// "Ocultar lado derecho" / modo compacto: un solo interruptor compartido entre
+// Diseño y Movimientos (los dos botones lo prenden/apagan por igual), así el
+// layout se ve consistente sin importar en qué pestaña se activó. Como cambia
+// el ancho real de cada nicho (ver nichoAnchoActual), hay que reconstruir los
+// nichos Y la reja juntos — si solo se repintara uno de los dos, quedarían
+// desalineados entre sí.
+function aplicarModoCompacto(){
+  document.body.classList.toggle('modo-compacto', ocultarLadoDerecho);
+  const texto = ocultarLadoDerecho ? '👁 Mostrar todo' : '🙈 Ocultar lado derecho';
+  const bd = $('btn-toggle-compacto-diseno'); if(bd) bd.textContent = texto;
+  const bm = $('btn-toggle-compacto-mov'); if(bm) bm.textContent = texto;
+}
+function toggleModoCompacto(){
+  ocultarLadoDerecho = !ocultarLadoDerecho;
+  try{ localStorage.setItem('almacen_ocultar_lado_derecho', ocultarLadoDerecho ? '1' : '0'); }catch(e){}
+  aplicarModoCompacto();
+  renderPreviewGrid();
+  renderMovGrid();
+  renderRejas('preview-bloques', true);
+  renderRejas('mov-bloques', false);
+}
+aplicarModoCompacto();
+$('btn-toggle-compacto-diseno').addEventListener('click', toggleModoCompacto);
+$('btn-toggle-compacto-mov').addEventListener('click', toggleModoCompacto);
 
 function attachSlotEvents(){
   document.querySelectorAll('#view-mov .slot').forEach(el=>{
