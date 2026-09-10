@@ -2448,8 +2448,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v110';
-const APP_UPDATED = '10/09/2026 17:30';
+const APP_VERSION = 'v111';
+const APP_UPDATED = '10/09/2026 18:15';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3054,29 +3054,63 @@ $('btn-crear-bloque').addEventListener('click', async ()=>{
   }catch(err){ showMsg('bloque-msg','err',err.message); }
 });
 
-// Los bloques "anexados" (anexado_a) usan un contador de letras SEPARADO
-// por cada bloque base (reja_nicho_index_<idDelBloqueBase>), y sus códigos
-// llevan el prefijo "P<NombreDelBloqueBase>-" (ej. si están anexados al
-// bloque "A": PA-A, PA-B, PA-C…; si están anexados al bloque "B": PB-A,
-// PB-B…), para que de un vistazo se sepa a cuál fila pertenecen y nunca se
-// mezclen con la numeración normal de los bloques independientes.
+// Los bloques "anexados" (anexado_a) usan su PROPIA numeración de letras,
+// separada por cada bloque base al que estén anexados (ver
+// calcularSiguienteLetraNicho), y sus códigos llevan el prefijo
+// "P<NombreDelBloqueBase>-" (ej. si están anexados al bloque "A": PA-A,
+// PA-B, PA-C…; si están anexados al bloque "B": PB-A, PB-B…), para que de un
+// vistazo se sepa a cuál fila pertenecen y nunca se mezclen con la
+// numeración normal de los bloques independientes.
 function sanitizarPrefijoBase(nombre){
   const limpio = (nombre || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   return limpio || 'X';
 }
-async function agregarNicho(bloqueId, bloqueNombre, niveles, sinPiso){
-  niveles = (niveles===3) ? 3 : 2;
+// Calcula qué letra/código le toca al PRÓXIMO nicho de `bloqueId`: en vez de
+// seguir siempre un contador que solo sube (y que ignoraba los nichos que se
+// iban eliminando, dejando huecos para siempre y saltando a letras cada vez
+// más largas), se recalcula desde cero cada vez, ocupando el primer hueco
+// libre entre las letras REALMENTE en uso ahora mismo. Los nichos normales
+// comparten una sola numeración entre todos los bloques base; los anexados
+// tienen la suya propia, independiente por cada bloque base al que estén
+// anexados. Esto NUNCA renombra un nicho existente — solo decide la letra
+// del nuevo, así que nada de lo ya guardado (posiciones, pallets, historial)
+// se desincroniza.
+function calcularSiguienteLetraNicho(bloqueId){
   const esAnexado = !!(bloques[bloqueId] && bloques[bloqueId].anexado_a);
   const baseId = esAnexado ? bloques[bloqueId].anexado_a : null;
-  const campoContador = esAnexado ? ('reja_nicho_index_' + baseId) : 'nicho_index';
   const prefijoBase = esAnexado ? sanitizarPrefijoBase(bloques[baseId] && bloques[baseId].nombre) : '';
+  const prefijoCodigo = esAnexado ? `P${prefijoBase}-` : '';
+  const letrasUsadas = new Set();
+  Object.entries(nichos).forEach(([letra, n])=>{
+    const b = bloques[n.bloque_id];
+    const perteneceAAnexado = !!(b && b.anexado_a);
+    if(esAnexado){
+      if(perteneceAAnexado && b.anexado_a === baseId){
+        letrasUsadas.add(letra.startsWith(prefijoCodigo) ? letra.slice(prefijoCodigo.length) : letra);
+      }
+    } else if(!perteneceAAnexado){
+      letrasUsadas.add(letra);
+    }
+  });
+  let idx = 0;
+  while(letrasUsadas.has(indexToLetter(idx))) idx++;
+  return { idx, prefijoCodigo };
+}
+async function agregarNicho(bloqueId, bloqueNombre, niveles, sinPiso){
+  niveles = (niveles===3) ? 3 : 2;
   try{
     let letra;
     await db.runTransaction(async tx=>{
-      const cSnap = await tx.get(contadorRef);
-      const data = cSnap.exists ? cSnap.data() : {};
-      const idx = data[campoContador] || 0;
-      letra = esAnexado ? (`P${prefijoBase}-${indexToLetter(idx)}`) : indexToLetter(idx);
+      let { idx, prefijoCodigo } = calcularSiguienteLetraNicho(bloqueId);
+      // Se reconfirma DENTRO de la transacción (por si otro usuario creó un
+      // nicho justo antes de que esto terminara de guardarse) probando el
+      // siguiente hueco libre hasta dar con uno que de verdad no exista.
+      while(true){
+        letra = prefijoCodigo + indexToLetter(idx);
+        const snap = await tx.get(nichosRef.doc(letra));
+        if(!snap.exists) break;
+        idx++;
+      }
       const tipo = sinPiso ? 'solo_rack' : 'rack_piso';
       tx.set(nichosRef.doc(letra), { bloque_id: bloqueId, orden: idx, pos_visual: idx, tipo, niveles, creado_en: firebase.firestore.FieldValue.serverTimestamp() });
       const nombresNivel = niveles===3 ? ['arriba','medio','abajo'] : ['arriba','abajo'];
@@ -3098,7 +3132,6 @@ async function agregarNicho(bloqueId, bloqueNombre, niveles, sinPiso){
           });
         }
       }
-      tx.set(contadorRef, { [campoContador]: idx+1 }, {merge:true});
     });
     await logAccion('nicho_creado', {detalle:`Nicho ${letra} (${niveles} niveles${sinPiso?', sin piso':''}) creado en ${bloqueNombre} (${niveles*2} rack${sinPiso?'':' + 10 piso'})`});
     showToast(`Registro creado: nicho ${letra} en ${bloqueNombre}.`,'ok');
@@ -3106,17 +3139,16 @@ async function agregarNicho(bloqueId, bloqueNombre, niveles, sinPiso){
 }
 
 async function agregarNichoSoloPiso(bloqueId, bloqueNombre){
-  const esAnexado = !!(bloques[bloqueId] && bloques[bloqueId].anexado_a);
-  const baseId = esAnexado ? bloques[bloqueId].anexado_a : null;
-  const campoContador = esAnexado ? ('reja_nicho_index_' + baseId) : 'nicho_index';
-  const prefijoBase = esAnexado ? sanitizarPrefijoBase(bloques[baseId] && bloques[baseId].nombre) : '';
   try{
     let letra;
     await db.runTransaction(async tx=>{
-      const cSnap = await tx.get(contadorRef);
-      const data = cSnap.exists ? cSnap.data() : {};
-      const idx = data[campoContador] || 0;
-      letra = esAnexado ? (`P${prefijoBase}-${indexToLetter(idx)}`) : indexToLetter(idx);
+      let { idx, prefijoCodigo } = calcularSiguienteLetraNicho(bloqueId);
+      while(true){
+        letra = prefijoCodigo + indexToLetter(idx);
+        const snap = await tx.get(nichosRef.doc(letra));
+        if(!snap.exists) break;
+        idx++;
+      }
       tx.set(nichosRef.doc(letra), { bloque_id: bloqueId, orden: idx, pos_visual: idx, tipo:'solo_piso', creado_en: firebase.firestore.FieldValue.serverTimestamp() });
       for(let i=0;i<6;i++){
         const izq=1+i, der=7+i;
@@ -3125,7 +3157,6 @@ async function agregarNichoSoloPiso(bloqueId, bloqueNombre){
           tx.set(posicionesRef.doc(codigo), { tipo:'piso', nicho:letra, bloque_id:bloqueId, nivel:null, fila:i, columna, estado:'vacio', bloqueada:false, pallet_codigo:null, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
         });
       }
-      tx.set(contadorRef, { [campoContador]: idx+1 }, {merge:true});
     });
     await logAccion('nicho_creado', {detalle:`Nicho ${letra} (solo piso, 12 posiciones) creado en ${bloqueNombre}`});
     showToast(`Registro creado: nicho ${letra} (solo piso) en ${bloqueNombre}.`,'ok');
@@ -3255,10 +3286,11 @@ function renderBloqueForms(){
         <button class="btn btn-ghost btn-sm" data-add-nicho="${id}" data-nombre="${b.nombre}" data-niveles="3" data-sin-piso="true">+ Nicho (3 niv., sin piso)</button>
         <button class="btn btn-ghost btn-sm" data-add-piso="${id}" data-nombre="${b.nombre}">+ Piso (sin rack)</button>
       </div>
-      ${esAnexado ? '' : `<div class="bloque-actions-grupo">
-        <button class="btn btn-ghost btn-sm" data-toggle-pasillo="${id}" data-valor="${b.pasillo ? 'false':'true'}">${b.pasillo ? '✕ Quitar pasillo' : '╱ Agregar pasillo debajo'}</button>
+      <div class="bloque-actions-grupo">
+        ${esAnexado ? '' : `<button class="btn btn-ghost btn-sm" data-toggle-pasillo="${id}" data-valor="${b.pasillo ? 'false':'true'}">${b.pasillo ? '✕ Quitar pasillo' : '╱ Agregar pasillo debajo'}</button>`}
         <button class="btn btn-ghost btn-sm" data-toggle-volteo="${id}" data-valor="${b.volteado ? 'false':'true'}">${b.volteado ? '↩ Bloque normal' : '🔄 Voltear (piso arriba)'}</button>
-      </div>`}
+      </div>
+      ${esAnexado ? `<div class="meta" style="font-size:10px;">El volteo de este anexado es independiente del bloque base — si no lo tocas, sigue la orientación de "${nombreBase||'?'}".</div>` : ''}
       ${esAnexado ? `<div class="meta" style="color:var(--blue);">Después de la reja, en la fila de "${nombreBase||'?'}" — letras P${prefijoBase}-A, P${prefijoBase}-B, P${prefijoBase}-C…</div>` : ''}
       <div class="meta">${nichosDelBloque.length} nicho(s) · ${posDelBloque} posiciones (${rackTotal} rack + ${pisoTotal} piso)</div>
       ${vacio ? `<button class="btn btn-danger btn-sm" data-del-bloque="${id}" data-nombre="${b.nombre}" style="width:100%; margin-top:8px;">🗑 Eliminar bloque (está vacío)</button>` : ''}
@@ -3315,7 +3347,7 @@ async function eliminarNichosSeleccionados(bloqueId){
   const checks = document.querySelectorAll(`.nicho-check[data-bloque="${bloqueId}"]:checked`);
   const letras = [...checks].map(cb=>cb.dataset.letra);
   if(letras.length===0){ showToast('Selecciona al menos un nicho para eliminar.','err'); return; }
-  if(!confirm(`¿Eliminar ${letras.length} nicho(s) (${letras.join(', ')}) y todas sus posiciones? Esta acción no se puede deshacer. Las letras visibles de los demás nichos se reacomodarán automáticamente.`)) return;
+  if(!confirm(`¿Eliminar ${letras.length} nicho(s) (${letras.join(', ')}) y todas sus posiciones? Esta acción no se puede deshacer. Los nichos que ya existen NO cambian de letra — pero el próximo nicho que crees en este bloque volverá a usar la primera letra que haya quedado libre.`)) return;
   try{
     await db.runTransaction(async tx=>{
       letras.forEach(letra=>{
@@ -3632,10 +3664,11 @@ function sortBloquesEntries(){
 }
 // Genera el HTML de los nichos propios de UN bloque (sin incluir los de ningún
 // bloque anexado a él) — se reutiliza tanto para el bloque "base" de una fila
-// como para cada bloque anexado a su derecha. `volteadoFila` siempre es el
-// volteado del bloque BASE de la fila (un bloque anexado no tiene su propio
-// interruptor de volteo: visualmente comparte la misma fila que su base, así
-// que su rack/piso se dibuja igual que el resto de esa fila).
+// como para cada bloque anexado a su derecha. `volteadoFila` es el volteado
+// que le corresponde a ESTE bloque puntual: cada anexado tiene su propio
+// interruptor de volteo, independiente del bloque base (ver
+// buildBloquesMarkup) — el volteo del bloque base solo se usa como valor por
+// defecto mientras el anexado no tenga uno propio guardado.
 function nichosHTMLDeBloque(bid, volteadoFila, interactive, showReorder){
   const nichosDelBloque = Object.entries(nichos).filter(([l,n])=>n.bloque_id===bid)
     .sort((a,b2)=> (a[1].pos_visual ?? a[1].orden) - (b2[1].pos_visual ?? b2[1].orden));
@@ -3707,7 +3740,10 @@ function buildBloquesMarkup(interactive, showReorder){
       const nombresAnexados = anexados.map(([,c])=>c.nombre).join(', ');
       anexadosHTML = `<div class="nicho anexados-oculto-chip" data-mostrar-anexados title="Después de la reja hay ${totalNichosOcultos} nicho(s) ocultos (${nombresAnexados}). Clic aquí (o en &quot;👁 Mostrar todo&quot;) para volver a mostrarlos.">🔒<br>${totalNichosOcultos} nicho(s)<br>ocultos</div>`;
     } else {
-      anexadosHTML = anexados.map(([cid])=> nichosHTMLDeBloque(cid, b.volteado, interactive, showReorder)).join('');
+      // Cada anexado usa su PROPIO volteado si ya lo definió alguna vez; si
+      // todavía no lo tocó (campo sin guardar), se usa el del bloque base
+      // como valor por defecto, para no cambiarle la vista a nadie de golpe.
+      anexadosHTML = anexados.map(([cid,c])=> nichosHTMLDeBloque(cid, (c.volteado != null ? c.volteado : b.volteado), interactive, showReorder)).join('');
     }
     const nichosPropiosHTML = nichosHTMLDeBloque(bid, b.volteado, interactive, showReorder);
     const nichosHTML = anexadosHTML + nichosPropiosHTML;
