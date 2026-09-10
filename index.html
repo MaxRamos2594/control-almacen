@@ -223,7 +223,13 @@
     background:repeating-linear-gradient(135deg,#FFF6DA,#FFF6DA 10px,#FDEFC0 10px,#FDEFC0 20px);
   }
   .bloque-title{font-family:var(--mono); font-size:12px; font-weight:700; color:#fff; background:var(--ink); display:inline-block; padding:3px 10px; border-radius:3px; margin-bottom:8px;}
-  .nichos-line{display:flex; flex-direction:row-reverse; gap:16px; padding:4px 2px 10px;}
+  /* align-items:flex-start evita que flexbox estire todos los nichos de la fila
+     a la altura del más alto (su comportamiento por default es "stretch") — sin
+     esto, un nicho "sin piso" (más corto, sin la sección Piso) quedaba con un
+     bloque en blanco abajo, estirado para igualar la altura de sus vecinos con
+     piso completo. Con flex-start cada nicho ocupa solo lo que su propio
+     contenido necesita. */
+  .nichos-line{display:flex; flex-direction:row-reverse; align-items:flex-start; gap:16px; padding:4px 2px 10px;}
   .nicho{border:2px solid var(--frame-blue); border-radius:5px; background:#F5F6F8; padding:5px; width:68px; flex-shrink:0;}
   .nicho-section-label{font-size:8px; color:var(--ink-soft); text-align:center; text-transform:uppercase; margin:3px 0 2px;}
   .nicho-row{display:flex; gap:3px; margin-bottom:3px;}
@@ -1996,8 +2002,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v105';
-const APP_UPDATED = '10/09/2026 09:30';
+const APP_VERSION = 'v106';
+const APP_UPDATED = '10/09/2026 11:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
