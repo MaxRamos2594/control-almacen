@@ -253,11 +253,11 @@
   }
   .slot:hover{transform:scale(1.12); z-index:2;}
   .slot.piso-slot{background:#EDEDED; border-color:#C4C4C4; color:#6B6B6B;}
-  .slot.ocupado{background:#1E5F3E; border-color:#123D28; color:#fff;}
-  .slot.piso-slot.ocupado{background:#1E5F3E; border-color:#123D28; color:#fff;}
+  .slot.ocupado{background:#4E8168; border-color:#3E6E57; color:#fff;}
+  .slot.piso-slot.ocupado{background:#4E8168; border-color:#3E6E57; color:#fff;}
   .slot.selected{outline:2px solid var(--blue); outline-offset:1px;}
   .slot.match{outline:2px solid var(--neon); outline-offset:1px; box-shadow:0 0 8px var(--neon); background:var(--neon) !important; color:#0A3D00 !important; font-weight:700;}
-  .slot.dim{opacity:.25;}
+  .slot.dim{opacity:.14; filter:grayscale(1);}
   .slot.readonly{cursor:default;}
   .slot.bloqueada{ background:#000; border-color:#000; color:#fff; cursor:not-allowed; }
   .slot.campana-dia{ background:#4FC3E8; border-color:#1E90BE; color:#06323F; cursor:not-allowed; }
@@ -268,12 +268,18 @@
   #ctx-menu button{display:block; width:100%; text-align:left; background:none; border:none; padding:9px 14px; font-size:12px; cursor:pointer;}
   #ctx-menu button:hover{background:var(--blue-bg);}
 
-  #mov-grid{display:grid; grid-template-columns:230px minmax(0,1fr) 340px; gap:14px; align-items:start;}
-  #view-mov.izq-oculta #mov-grid{grid-template-columns:minmax(0,1fr) 340px;}
-  #view-mov.der-oculta #mov-grid{grid-template-columns:230px minmax(0,1fr);}
-  #view-mov.izq-oculta.der-oculta #mov-grid{grid-template-columns:minmax(0,1fr);}
+  /* Un solo lateral: Filtros arriba, Operaciones debajo, layout a todo lo alto */
+  #mov-grid{display:grid; grid-template-columns:302px minmax(0,1fr); gap:14px; align-items:start;}
+  #mov-filtros{grid-column:1; grid-row:1;}
+  #mov-ops{grid-column:1; grid-row:2;}
+  #mov-layout{grid-column:2; grid-row:1 / span 2;}
   #view-mov.izq-oculta #mov-filtros, #view-mov.der-oculta #mov-ops{display:none;}
-  @media (max-width:1150px){ #mov-grid, #view-mov.izq-oculta #mov-grid, #view-mov.der-oculta #mov-grid{grid-template-columns:minmax(0,1fr);} }
+  #view-mov.izq-oculta.der-oculta #mov-grid{grid-template-columns:minmax(0,1fr);}
+  #view-mov.izq-oculta.der-oculta #mov-layout{grid-column:1;}
+  @media (max-width:1150px){
+    #mov-grid, #view-mov.izq-oculta.der-oculta #mov-grid{grid-template-columns:minmax(0,1fr);}
+    #mov-filtros, #mov-ops, #mov-layout{grid-column:1 !important; grid-row:auto !important;}
+  }
 
   /* Botones para esconder las columnas laterales */
   .col-toggles{display:flex; gap:6px; flex-shrink:0;}
@@ -287,7 +293,7 @@
 
   /* ---- Detalle de posición: ficha flotante junto a la posición ---- */
   #detalle-panel{
-    position:fixed; z-index:60; width:328px; max-height:78vh; overflow:auto;
+    position:fixed; z-index:60; width:430px; max-height:78vh; overflow:auto;
     box-shadow:0 14px 38px rgba(11,16,22,.30); border-color:var(--line-strong);
   }
   #detalle-panel h3{position:sticky; top:-16px; background:var(--panel); padding-top:2px; margin-top:-2px; z-index:2;}
@@ -296,6 +302,100 @@
     line-height:1; cursor:pointer; color:var(--ink-soft); font-size:14px; flex-shrink:0;
   }
   #btn-detalle-cerrar:hover{background:var(--lacre); border-color:var(--lacre); color:#fff;}
+  /* Tabla del pallet: código y descripción con el ancho que necesitan */
+  #detalle-panel table{table-layout:fixed; font-size:12.5px;}
+  #detalle-panel th, #detalle-panel td{padding:5px 6px; vertical-align:top;}
+  #detalle-panel td.c-cod{font-family:var(--mono); font-size:12px; word-break:break-all;}
+  #detalle-panel td.c-desc{font-size:12.5px; line-height:1.35;}
+  #detalle-panel td.c-num, #detalle-panel th.c-num{text-align:right; font-family:var(--mono); white-space:nowrap;}
+  #detalle-panel col.w-cod{width:96px;} #detalle-panel col.w-cant{width:62px;} #detalle-panel col.w-costo{width:70px;}
+  #det-pager{
+    display:flex; align-items:center; justify-content:space-between; gap:8px; padding:7px 0 2px;
+    font-family:var(--mono); font-size:11px; color:var(--ink-soft);
+  }
+  #det-pager button[disabled]{opacity:.35;}
+
+  /* ---- Lateral: filtros y resumen en un solo panel ---- */
+  #resumen{display:grid; grid-template-columns:1fr 1fr; gap:4px 10px;}
+  #resumen .r-item{display:flex; justify-content:space-between; gap:6px; border-bottom:1px dotted var(--line); padding:2px 0;}
+  #resumen .r-item b{color:var(--ink); font-weight:700;}
+  .rail-sep{border:none; border-top:1px solid var(--line); margin:12px 0 10px;}
+  .rail-sep-label{font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-soft); margin-bottom:6px;}
+
+  /* ---- Buscador sobre el layout ---- */
+  #buscador-layout{display:flex; align-items:center; gap:7px; flex:1; min-width:190px; max-width:340px;}
+  #buscador-layout input{
+    width:100%; padding:5px 9px; min-height:32px; border:1px solid var(--line-strong);
+    border-radius:5px; font-family:var(--sans); font-size:12.5px; background:#fff;
+  }
+  #buscador-layout input:focus{outline:2px solid var(--blue); outline-offset:-1px;}
+  #buscador-layout kbd{
+    font-family:var(--mono); font-size:9px; color:var(--ink-soft); border:1px solid var(--line-strong);
+    border-radius:3px; padding:1px 4px; background:#F2F1EC; flex-shrink:0;
+  }
+
+  /* ---- Ayuda como icono, leyenda plegable ---- */
+  .ayuda-icono{
+    width:22px; height:22px; border-radius:50%; border:1px solid var(--line-strong); background:#fff;
+    color:var(--ink-soft); font-size:11px; font-weight:700; cursor:help; flex-shrink:0;
+  }
+  .ayuda-icono:hover{background:var(--blue); border-color:var(--blue); color:#fff;}
+  details.leyenda > summary{
+    list-style:none; cursor:pointer; font-size:10px; text-transform:uppercase; letter-spacing:.07em;
+    color:var(--ink-soft); padding:3px 0; user-select:none;
+  }
+  details.leyenda > summary::-webkit-details-marker{display:none;}
+  details.leyenda > summary::before{content:'▸ '; }
+  details.leyenda[open] > summary::before{content:'▾ '; }
+  details.leyenda .legend{margin:6px 0 4px;}
+
+  /* ---- Modo de color del layout ---- */
+  #modo-color{
+    padding:4px 7px; min-height:30px; border:1px solid var(--line-strong); border-radius:5px;
+    font-family:var(--sans); font-size:11px; background:#fff; color:var(--ink-soft);
+  }
+  .slot.heat{color:#20303F !important;}
+  .slot.heat-0{background:#EDF1F4 !important; border-color:#D4DBE1 !important;}
+  .slot.heat-1{background:#CFE3D8 !important; border-color:#AFCDBE !important;}
+  .slot.heat-2{background:#9FD0B4 !important; border-color:#79B896 !important;}
+  .slot.heat-3{background:#E9C97C !important; border-color:#D3AC53 !important;}
+  .slot.heat-4{background:#DE9A5E !important; border-color:#C47B3C !important;}
+  .slot.heat-5{background:#C4483A !important; border-color:#9E3427 !important; color:#fff !important;}
+
+  /* ---- Filtrado: se apaga lo que no coincide, en vez de encender lo que sí ---- */
+  .bloques-scroll.filtrando .slot:not(.match){opacity:.14; filter:grayscale(1);}
+  .bloques-scroll.filtrando .nicho{opacity:.85;}
+  .slot.match{
+    outline:2px solid var(--ink) !important; outline-offset:1px; box-shadow:none !important;
+    background:var(--neon) !important; color:#0A3D00 !important; font-weight:700; z-index:3;
+  }
+
+  /* ---- Etiqueta de bloque fija al desplazar ---- */
+  .bloque-title{position:sticky; left:4px; z-index:6;}
+
+  /* ---- Minimapa ---- */
+  #minimapa{
+    position:relative; height:34px; margin:8px 0 2px; border:1px solid var(--line-strong);
+    border-radius:5px; background:#F7F8FA; overflow:hidden; cursor:pointer; display:none;
+  }
+  #minimapa.visible{display:block;}
+  #minimapa .mm-fila{position:absolute; left:0; right:0; height:6px;}
+  #minimapa .mm-tick{position:absolute; top:0; bottom:0; border-radius:1px; background:#C9D2DC;}
+  #minimapa .mm-tick.lleno{background:#3E6E57;}
+  #minimapa .mm-tick.parcial{background:#8FC0A6;}
+  #minimapa .mm-tick.bloq{background:#20303F;}
+  #minimapa .mm-vista{
+    position:absolute; top:0; bottom:0; border:2px solid var(--blue);
+    background:rgba(46,95,138,.12); border-radius:3px; pointer-events:none;
+  }
+
+  /* ---- Reja como separador con etiqueta vertical ---- */
+  .reja-linea{width:8px !important; margin-left:-4px !important; background:repeating-linear-gradient(180deg,#20303F 0 7px,#fff 7px 12px) !important; border:1px solid #20303F !important;}
+  .reja-etiqueta{
+    top:50% !important; left:50% !important;
+    transform:translate(-50%,-50%) rotate(180deg) !important; writing-mode:vertical-rl;
+    background:#20303F !important; letter-spacing:.16em !important; padding:8px 3px !important;
+  }
   @media (max-width:900px){
     #detalle-panel{
       left:0 !important; right:0 !important; top:auto !important; bottom:0 !important;
@@ -841,20 +941,21 @@
 <div class="view" id="view-mov">
   <div id="mov-grid">
     <div class="panel" id="mov-filtros">
-      <h3>Filtros</h3>
-      <div class="field"><label>Buscar (pallet o producto)</label><input type="text" id="f-buscar" class="upper" placeholder="CD0005 O PRODUCTO"></div>
+      <h3>Filtros y resumen</h3>
       <div class="field"><label>Bloque</label><select id="f-bloque"><option value="">Todos</option></select></div>
       <div class="field"><label>Estado</label>
         <select id="f-estado"><option value="">Todos</option><option value="ocupado">Ocupado</option><option value="vacio">Vacío</option><option value="bloqueado">Bloqueado</option><option value="campana_dia">Campaña del día</option></select>
       </div>
       <button class="btn btn-ghost" id="btn-clear-filters" style="width:100%;">Limpiar filtros</button>
-      <h3 style="margin-top:20px;">Resumen</h3>
-      <div id="resumen" style="font-family:var(--mono); font-size:12px; color:var(--ink-soft);"></div>
+      <hr class="rail-sep">
+      <div class="rail-sep-label">Resumen</div>
+      <div id="resumen" style="font-family:var(--mono); font-size:11.5px; color:var(--ink-soft);"></div>
     </div>
 
-    <div class="panel">
-      <h3><span style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:space-between;"><span>Layout del almacén</span><span class="col-toggles"><button class="col-toggle" id="btn-col-izq" type="button" aria-pressed="false" title="Mostrar u ocultar Filtros y Resumen">◧ Filtros</button><button class="col-toggle" id="btn-col-der" type="button" aria-pressed="false" title="Mostrar u ocultar el panel de operaciones">Operaciones ◨</button><button class="btn btn-ghost btn-sm" id="btn-toggle-compacto-mov" type="button">🙈 Ocultar lado derecho</button></span></span></h3>
-      <div class="legend">
+    <div class="panel" id="mov-layout">
+      <h3><span style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:space-between;"><span>Layout del almacén</span><span id="buscador-layout"><input type="text" id="f-buscar" class="upper" placeholder="Buscar pallet o producto"><kbd>/</kbd></span><span class="col-toggles"><select id="modo-color" title="Cómo se colorea el layout"><option value="estado">Color: estado</option><option value="ocupacion">Color: ocupación del nicho</option><option value="valor">Color: valor del pallet</option></select><button class="col-toggle" id="btn-col-izq" type="button" aria-pressed="false" title="Mostrar u ocultar Filtros y Resumen">◧ Filtros</button><button class="col-toggle" id="btn-col-der" type="button" aria-pressed="false" title="Mostrar u ocultar el panel de operaciones">Operaciones ◨</button><button class="btn btn-ghost btn-sm" id="btn-toggle-compacto-mov" type="button">🙈 Ocultar lado derecho</button><button class="ayuda-icono" type="button" title="Clic en una posición para ver su detalle y bloquear o desbloquear; clic derecho abre el mismo menú. «Ocultar lado derecho» esconde los bloques anexados que quedan después de la reja y los reemplaza por una ficha con el conteo: clic en ella para volver a mostrarlos.">?</button></span></span></h3>
+      <details class="leyenda"><summary>Leyenda de colores</summary>
+<div class="legend">
         <span><i class="sw" style="background:var(--lacre-bg); border:1px solid var(--lacre-line);"></i>Rack vacío</span>
         <span><i class="sw" style="background:#EDEDED; border:1px solid #C4C4C4;"></i>Piso vacío</span>
         <span><i class="sw" style="background:#1E5F3E; border:1px solid #123D28;"></i>Ocupado</span>
@@ -864,7 +965,8 @@
         <span><i class="sw" style="background:#fff; border:2px solid var(--neon); box-shadow:0 0 4px var(--neon);"></i>Coincide búsqueda</span>
         <span><i class="sw" style="background:#fff; border:2px solid #000;"></i>Reja</span>
       </div>
-      <p class="hint">Clic en una posición para ver detalle y bloquear/desbloquear, o clic derecho para el mismo menú. "🙈 Ocultar lado derecho" oculta los bloques anexados que quedan después de la reja y los reemplaza por una ficha con el conteo (clic en ella para volver a mostrarlos).</p>
+      </details>
+      <div id="minimapa" title="Vista general del almacén — clic para desplazarte"></div>
       <div class="bloques-scroll" id="mov-bloques"></div>
     </div>
 
@@ -2311,6 +2413,69 @@ function switchTab(name){
 }
 document.querySelectorAll('nav.tabs button').forEach(btn=> btn.addEventListener('click', ()=> switchTab(btn.dataset.tab)));
 
+/* -------------------- Layout: minimapa, color y atajos -------------------- */
+(function(){
+  const cont = ()=> document.getElementById('mov-bloques');
+  const mm = document.getElementById('minimapa');
+  const modo = document.getElementById('modo-color');
+  if(modo){
+    try{ modo.value = localStorage.getItem('mov:modo-color') || 'estado'; }catch(e){}
+    modo.addEventListener('change', ()=>{
+      try{ localStorage.setItem('mov:modo-color', modo.value); }catch(e){}
+      aplicarModoColor();
+    });
+  }
+  if(mm){
+    const irA = (e)=>{
+      const c = cont(); if(!c) return;
+      const r = mm.getBoundingClientRect();
+      const frac = Math.min(1, Math.max(0, (e.clientX - r.left)/r.width));
+      c.scrollLeft = frac*c.scrollWidth - c.clientWidth/2;
+    };
+    mm.addEventListener('click', irA);
+    mm.addEventListener('pointerdown', e=>{
+      irA(e);
+      const mover = ev=> irA(ev);
+      const soltar = ()=>{ window.removeEventListener('pointermove', mover); window.removeEventListener('pointerup', soltar); };
+      window.addEventListener('pointermove', mover); window.addEventListener('pointerup', soltar);
+    });
+  }
+  document.addEventListener('scroll', e=>{
+    if(e.target && e.target.id === 'mov-bloques') actualizarVistaMinimapa();
+  }, true);
+  window.addEventListener('resize', ()=>{ dibujarMinimapa(); });
+})();
+
+/* Atajos: "/" enfoca el buscador; las flechas recorren las posiciones. */
+document.addEventListener('keydown', e=>{
+  const enCampo = /^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName||'')) || e.target.isContentEditable;
+  if(e.key === '/' && !enCampo && $('view-mov').classList.contains('active')){
+    e.preventDefault(); const b = $('f-buscar'); if(b){ b.focus(); b.select(); }
+    return;
+  }
+  if(enCampo || !e.key.startsWith('Arrow')) return;
+  if(!$('view-mov').classList.contains('active') || !selectedPosId) return;
+  const slots = [...document.querySelectorAll('#mov-bloques .slot')].filter(s=> s.offsetParent !== null);
+  const i = slots.findIndex(s=> s.dataset.id === selectedPosId);
+  if(i < 0) return;
+  const actual = slots[i].getBoundingClientRect();
+  let mejor = null, mejorDist = Infinity;
+  slots.forEach((s, j)=>{
+    if(j === i) return;
+    const r = s.getBoundingClientRect();
+    const dx = r.left - actual.left, dy = r.top - actual.top;
+    const enDireccion =
+      (e.key === 'ArrowRight' && dx > 2 && Math.abs(dy) < 14) ||
+      (e.key === 'ArrowLeft'  && dx < -2 && Math.abs(dy) < 14) ||
+      (e.key === 'ArrowDown'  && dy > 2 && Math.abs(dx) < 14) ||
+      (e.key === 'ArrowUp'    && dy < -2 && Math.abs(dx) < 14);
+    if(!enDireccion) return;
+    const dist = Math.abs(dx) + Math.abs(dy);
+    if(dist < mejorDist){ mejorDist = dist; mejor = s; }
+  });
+  if(mejor){ e.preventDefault(); selectSlot(mejor.dataset.id); }
+});
+
 /* -------------------- Columnas plegables de Movimientos -------------------- */
 function aplicarColumna(clase, btn, oculta){
   $('view-mov').classList.toggle(clase, oculta);
@@ -3273,6 +3438,7 @@ function renderPreviewGrid(){
 function renderMovGrid(){
   $('mov-bloques').innerHTML = buildBloquesMarkup(true, false);
   attachSlotEvents();
+  requestAnimationFrame(()=>{ if(typeof aplicarModoColor==='function'){ aplicarModoColor(); dibujarMinimapa(); } });
   $('mov-bloques').querySelectorAll('[data-mostrar-anexados]').forEach(chip=>{ chip.onclick = toggleModoCompacto; });
 }
 
@@ -3632,6 +3798,7 @@ function selectSlot(id){
   document.querySelectorAll('#view-mov .slot').forEach(el=>el.classList.remove('selected'));
   const el = $('slot-'+id); if(el) el.classList.add('selected');
   renderDetalle(id, p);
+  marcarSubtabsRelevantes(p);
   if(p.bloqueada) return;
   if(p.estado==='ocupado'){
     setSubtab('mover');
@@ -3655,7 +3822,7 @@ function posicionarDetalle(id){
   const slot = document.getElementById('slot-'+id);
   if(!slot){ panel.style.left='auto'; panel.style.right='18px'; panel.style.top='96px'; return; }
   const r = slot.getBoundingClientRect();
-  const ancho = panel.offsetWidth || 328;
+  const ancho = panel.offsetWidth || 430;
   const alto = panel.offsetHeight || 320;
   const margen = 12;
   let left = r.right + margen;
@@ -3673,6 +3840,25 @@ function cerrarDetalle(){
   document.querySelectorAll('#view-mov .slot.selected').forEach(el=>el.classList.remove('selected'));
   selectedPosId = null;
 }
+/* Atenúa las operaciones que no aplican a la posición seleccionada, sin
+   deshabilitarlas: siguen siendo clicables. */
+function marcarSubtabsRelevantes(p){
+  const ocupada = p && p.estado === 'ocupado' && !p.bloqueada;
+  const vacia = p && p.estado !== 'ocupado' && !p.bloqueada;
+  const reglas = {
+    'subtab-crear': !ocupada,
+    'subtab-mover': !vacia,
+    'subtab-transferir': !vacia,
+    'subtab-retirar-campana': !vacia
+  };
+  Object.entries(reglas).forEach(([id, relevante])=>{
+    const b = document.getElementById(id); if(!b) return;
+    b.style.opacity = (p && !relevante) ? '.42' : '';
+    b.title = (p && !relevante) ? 'No aplica a la posición seleccionada' : '';
+  });
+}
+
+const detPagina = {pallet:null, n:1};
 function renderDetalle(id, p){
   const panel = $('detalle-panel'); const content = $('detalle-content');
   panel.style.display = 'block';
@@ -3706,23 +3892,35 @@ function renderDetalle(id, p){
   const pal = pallets[p.pallet_codigo];
   if(!pal){ content.innerHTML = `<div class="empty-state">Cargando datos del pallet…</div>`; return; }
   let totalCant=0, totalCosto=0;
-  const rows = (pal.items||[]).map(it=>{
+  const filas = (pal.items||[]).map(it=>{
     // Costo y descripción en vivo desde el catálogo de productos si existe; si el
     // producto ya no está en el catálogo, se usa lo guardado en el pallet como respaldo.
     const costoVivo = productos[it.producto] ? (Number(productos[it.producto].costo)||0) : (Number(it.costo)||0);
     const descVivo = productos[it.producto] ? (productos[it.producto].descripcion || '') : (it.descripcion || '');
     totalCant += Number(it.cantidad)||0;
     totalCosto += (Number(it.cantidad)||0)*costoVivo;
-    return `<tr><td>${it.producto}</td><td>${descVivo}</td><td>${fmtEntero(it.cantidad)}</td><td>${fmtMoney(costoVivo)}</td></tr>`;
-  }).join('');
+    return `<tr><td class="c-cod">${it.producto}</td><td class="c-desc">${descVivo}</td><td class="c-num">${fmtEntero(it.cantidad)}</td><td class="c-num">${fmtMoney(costoVivo)}</td></tr>`;
+  });
+  // Los totales de arriba son del pallet completo; la tabla se pagina de 10 en 10.
+  const POR_PAGINA = 10;
+  const paginas = Math.max(1, Math.ceil(filas.length/POR_PAGINA));
+  if(detPagina.pallet !== p.pallet_codigo){ detPagina.pallet = p.pallet_codigo; detPagina.n = 1; }
+  if(detPagina.n > paginas) detPagina.n = paginas;
+  const desde = (detPagina.n-1)*POR_PAGINA;
+  const rows = filas.slice(desde, desde+POR_PAGINA).join('');
+  const pager = paginas > 1 ? `<div id="det-pager">
+      <button class="btn btn-ghost btn-sm" data-det="prev"${detPagina.n===1?' disabled':''}>&lsaquo;</button>
+      <span>${desde+1}–${Math.min(desde+POR_PAGINA, filas.length)} de ${filas.length} productos</span>
+      <button class="btn btn-ghost btn-sm" data-det="next"${detPagina.n===paginas?' disabled':''}>&rsaquo;</button>
+    </div>` : '';
   content.innerHTML = `
     <div style="font-family:var(--mono); font-size:13px; margin-bottom:6px;"><b>${id}</b> · Pallet ${p.pallet_codigo}</div>
-    <table><thead><tr><th>Producto</th><th>Desc.</th><th>Cant.</th><th>Costo u.</th></tr></thead><tbody>${rows}</tbody></table>
+    <table><colgroup><col class="w-cod"><col><col class="w-cant"><col class="w-costo"></colgroup><thead><tr><th>Producto</th><th>Desc.</th><th class="c-num">Cant.</th><th class="c-num">Costo u.</th></tr></thead><tbody>${rows}</tbody></table>
+    ${pager}
     <div class="total-line"><span>Total cantidad</span><span>${fmtEntero(totalCant)}</span></div>
     <div class="total-line"><span>Valor total</span><span>S/ ${fmtMoneyComma(totalCosto)}</span></div>
     ${puedeMov ? `
-    <div class="mini-form">
-      <label>Agregar producto a este pallet</label>
+    <details class="mini-form"><summary style="cursor:pointer; font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.05em; padding:6px 0;">+ Agregar producto a este pallet</summary>
       <div class="field" style="margin-bottom:6px;"><input type="text" id="dap-producto" class="upper" placeholder="CÓDIGO DE PRODUCTO"></div>
       <div class="field" style="margin-bottom:6px;"><input type="text" id="dap-desc" placeholder="DESCRIPCIÓN" style="width:100%;"></div>
       <div style="display:flex; gap:6px; margin-bottom:6px;">
@@ -3730,7 +3928,7 @@ function renderDetalle(id, p){
         <div class="field" style="margin:0; flex:1; min-width:0;"><input type="number" id="dap-costo" placeholder="COSTO" step="0.01"></div>
       </div>
       <button class="btn btn-ghost btn-sm" id="dap-btn" style="width:100%;">+ Agregar al pallet</button>
-    </div>` : ''}
+    </details>` : ''}
     ${puedeEliminar ? `<button class="btn btn-danger btn-sm" style="width:100%; margin-top:10px;" id="btn-retirar-pallet">Retirar pallet (liberar posición)</button>` : ''}
   `;
   if(puedeMov){
@@ -3750,6 +3948,10 @@ function renderDetalle(id, p){
     content.querySelector('#dap-btn').onclick = () => agregarProductoAPallet(p.pallet_codigo, dapProducto, dapDesc, dapCosto, content.querySelector('#dap-cantidad'));
   }
   if(puedeEliminar){ content.querySelector('#btn-retirar-pallet').onclick = () => retirarPallet(id, p.pallet_codigo); }
+  content.querySelectorAll('[data-det]').forEach(b=> b.onclick = ()=>{
+    detPagina.n += (b.dataset.det === 'next' ? 1 : -1);
+    renderDetalle(id, p);
+  });
 }
 
 async function agregarProductoAPallet(codigoPallet, prodEl, descEl, costoEl, cantEl){
@@ -3832,7 +4034,11 @@ function renderResumen(){
   const totalBloques = Object.keys(bloques).length;
   const totalNichos = Object.keys(nichos).length;
   const pct = total ? Math.round((ocupadas/total)*100) : 0;
-  $('resumen').innerHTML = `Bloques: ${totalBloques}<br>Nichos: ${totalNichos}<br>Posiciones: ${total}<br>Ocupadas: ${ocupadas} (${pct}%)<br>Bloqueadas: ${bloqueadas}<br>Campaña del día: ${campanaDia}`;
+  const cifra = (etiqueta, valor)=> `<span class="r-item"><span>${etiqueta}</span><b>${valor}</b></span>`;
+  $('resumen').innerHTML =
+    cifra('Bloques', totalBloques) + cifra('Nichos', totalNichos) +
+    cifra('Posic.', total) + cifra('Ocupadas', ocupadas+' ('+pct+'%)') +
+    cifra('Bloq.', bloqueadas) + cifra('Campaña', campanaDia);
 }
 ['f-buscar','f-bloque','f-estado'].forEach(id=>{ $(id).addEventListener('input', applyFilters); $(id).addEventListener('change', applyFilters); });
 $('btn-clear-filters').addEventListener('click', ()=>{ $('f-buscar').value=''; $('f-bloque').value=''; $('f-estado').value=''; applyFilters(); });
@@ -3863,6 +4069,92 @@ function applyFilters(){
     if(!visible) el.classList.add('dim');
     if(isMatch) el.classList.add('match');
   });
+  // Con filtro activo se apaga el resto del layout en vez de encender la coincidencia.
+  const cont = $('mov-bloques');
+  if(cont) cont.classList.toggle('filtrando', !!buscar);
+  aplicarModoColor();
+  dibujarMinimapa();
+}
+
+/* -------------------- Modos de color del layout --------------------
+   estado: los colores de siempre. ocupacion: cada posición toma el color del
+   llenado de su nicho. valor: intensidad según el valor del pallet. */
+function nivelHeat(fraccion){ return Math.min(5, Math.max(0, Math.round(fraccion*5))); }
+function valorPallet(codigo){
+  const pal = pallets[codigo]; if(!pal || !pal.items) return 0;
+  return pal.items.reduce((s,it)=>{
+    const c = productos[it.producto] ? (Number(productos[it.producto].costo)||0) : (Number(it.costo)||0);
+    return s + (Number(it.cantidad)||0)*c;
+  }, 0);
+}
+function aplicarModoColor(){
+  const sel = document.getElementById('modo-color');
+  const modo = sel ? sel.value : 'estado';
+  const slots = document.querySelectorAll('#mov-bloques .slot');
+  slots.forEach(el=> el.classList.remove('heat','heat-0','heat-1','heat-2','heat-3','heat-4','heat-5'));
+  if(modo === 'estado') return;
+  let llenadoNicho = {};
+  if(modo === 'ocupacion'){
+    Object.values(posiciones).forEach(p=>{
+      const n = llenadoNicho[p.nicho] || (llenadoNicho[p.nicho] = {total:0, ocup:0});
+      n.total++; if(p.estado === 'ocupado') n.ocup++;
+    });
+  }
+  let maxValor = 1;
+  if(modo === 'valor'){
+    Object.keys(pallets).forEach(c=>{ maxValor = Math.max(maxValor, valorPallet(c)); });
+  }
+  slots.forEach(el=>{
+    const p = posiciones[el.dataset.id]; if(!p || p.bloqueada) return;
+    let nivel;
+    if(modo === 'ocupacion'){
+      const n = llenadoNicho[p.nicho];
+      nivel = n && n.total ? nivelHeat(n.ocup/n.total) : 0;
+    } else {
+      nivel = p.estado === 'ocupado' ? nivelHeat(valorPallet(p.pallet_codigo)/maxValor) : 0;
+    }
+    el.classList.add('heat','heat-'+nivel);
+  });
+}
+
+/* -------------------- Minimapa -------------------- */
+function dibujarMinimapa(){
+  const cont = document.getElementById('mov-bloques');
+  const mm = document.getElementById('minimapa');
+  if(!cont || !mm) return;
+  const total = cont.scrollWidth;
+  const filas = [...cont.querySelectorAll('.bloque-row')];
+  if(!total || filas.length === 0){ mm.classList.remove('visible'); return; }
+  if(cont.scrollWidth <= cont.clientWidth + 4){ mm.classList.remove('visible'); return; }
+  mm.classList.add('visible');
+  const altoFila = Math.max(4, Math.floor(30/filas.length) - 2);
+  let html = '';
+  filas.forEach((fila, i)=>{
+    let ticks = '';
+    fila.querySelectorAll('.nicho').forEach(n=>{
+      const izq = (n.offsetLeft/total)*100;
+      const ancho = Math.max(0.25, (n.offsetWidth/total)*100);
+      const ids = [...n.querySelectorAll('.slot')].map(s=>s.dataset.id).filter(Boolean);
+      const ocup = ids.filter(id=> posiciones[id] && posiciones[id].estado === 'ocupado').length;
+      const bloq = ids.filter(id=> posiciones[id] && posiciones[id].bloqueada).length;
+      let clase = '';
+      if(ids.length && bloq === ids.length) clase = 'bloq';
+      else if(ids.length && ocup === ids.length) clase = 'lleno';
+      else if(ocup > 0) clase = 'parcial';
+      ticks += '<i class="mm-tick '+clase+'" style="left:'+izq.toFixed(2)+'%; width:'+ancho.toFixed(2)+'%"></i>';
+    });
+    html += '<div class="mm-fila" style="top:'+(2 + i*(altoFila+2))+'px; height:'+altoFila+'px">'+ticks+'</div>';
+  });
+  html += '<div class="mm-vista" id="mm-vista"></div>';
+  mm.innerHTML = html;
+  actualizarVistaMinimapa();
+}
+function actualizarVistaMinimapa(){
+  const cont = document.getElementById('mov-bloques');
+  const v = document.getElementById('mm-vista');
+  if(!cont || !v || !cont.scrollWidth) return;
+  v.style.left = ((cont.scrollLeft/cont.scrollWidth)*100) + '%';
+  v.style.width = ((cont.clientWidth/cont.scrollWidth)*100) + '%';
 }
 
 /* -------------------- Crear pallet (con catálogo de productos) -------------------- */
