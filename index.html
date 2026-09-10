@@ -2365,8 +2365,10 @@
         <select id="bit-modulo"><option value="">Todos</option><option value="diseno">Diseño</option><option value="movimientos">Movimientos</option><option value="bloqueo">Bloqueo</option><option value="productos">Productos</option><option value="usuarios">Usuarios</option><option value="toma_inventario">Toma de Inventario</option></select>
       </div>
       <button class="btn btn-primary" id="btn-cargar-bitacora">Cargar</button>
+      <button class="btn btn-ghost" id="btn-pdf-bitacora" type="button">🖨 Reporte PDF por usuario</button>
     </div>
     <p class="hint" style="margin:10px 0;">Si usas más de un filtro, se muestran los registros que cumplan con cualquiera de ellos (OR). Sin filtros, se cargan los últimos 500.</p>
+    <p class="hint" style="margin:0 0 10px;">"🖨 Reporte PDF por usuario" es distinto: requiere al menos la fecha "Desde" (si dejas "Hasta" vacío, es un reporte de un solo día), y combina los filtros de Usuario/Módulo con Y (no con O) — junta TODAS las actividades del rango, ya sea de todos los usuarios (una sección por cada uno) o solo del usuario que indiques.</p>
     <div class="hist-wrap">
       <table><thead><tr><th>Acción</th><th>Pallet</th><th>De</th><th>A</th><th>Detalle</th><th>Usuario</th><th>Cuándo</th></tr></thead><tbody id="bit-body"></tbody></table>
       <div class="empty-state" id="bit-empty">Presiona "Cargar" para ver la bitácora.</div>
@@ -2451,8 +2453,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v113';
-const APP_UPDATED = '10/09/2026 19:45';
+const APP_VERSION = 'v114';
+const APP_UPDATED = '10/09/2026 20:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -6287,6 +6289,123 @@ $('btn-cargar-bitacora').addEventListener('click', async ()=>{
   }catch(err){ showToast('Error al cargar bitácora: '+err.message,'err'); }
   finally{ $('btn-cargar-bitacora').disabled = false; }
 });
+
+function endOfDayLocal(str){
+  const d = parseLocalDate(str);
+  d.setHours(23,59,59,999);
+  return d;
+}
+
+async function generarPDFBitacora(){
+  const btn = $('btn-pdf-bitacora');
+  const desdeF = $('bit-desde').value;
+  let hastaF = $('bit-hasta').value;
+  if(!desdeF){ showToast('Selecciona al menos la fecha "Desde" para generar el reporte PDF.','err'); return; }
+  if(!hastaF) hastaF = desdeF;
+  if(parseLocalDate(hastaF) < parseLocalDate(desdeF)){ showToast('La fecha "Hasta" no puede ser anterior a "Desde".','err'); return; }
+
+  const usuarioF = $('bit-usuario').value.trim().toLowerCase();
+  const moduloF = $('bit-modulo').value;
+
+  btn.disabled = true;
+  try{
+    const desde = parseLocalDate(desdeF);
+    const hasta = endOfDayLocal(hastaF);
+    const snap = await movimientosRef
+      .where('timestamp','>=', desde)
+      .where('timestamp','<=', hasta)
+      .orderBy('timestamp','asc')
+      .get();
+
+    if(snap.empty){ showToast('No hay registros de bitácora en ese rango de fechas.','err'); return; }
+
+    const porUsuario = {};
+    snap.forEach(doc=>{
+      const d = doc.data();
+      if(usuarioF && !(d.usuario && d.usuario.toLowerCase().includes(usuarioF))) return;
+      if(moduloF && moduloOf(d.tipo) !== moduloF) return;
+      const u = d.usuario || 'desconocido';
+      if(!porUsuario[u]) porUsuario[u] = [];
+      porUsuario[u].push(d);
+    });
+
+    const usuarios = Object.keys(porUsuario).sort((a,b)=> a.localeCompare(b));
+    if(usuarios.length===0){ showToast('No hay registros que cumplan esos filtros en el rango indicado.','err'); return; }
+
+    let totalRegistros = 0;
+    usuarios.forEach(u=> totalRegistros += porUsuario[u].length);
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'mm', format:'a4', orientation:'portrait' });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const margin = 10;
+    const logoRatio = 93/236;
+    const logoW = 26, logoH = logoW*logoRatio;
+
+    doc.addImage(LOGO_ROTULO_B64, 'PNG', margin, 8, logoW, logoH);
+    doc.setFont('helvetica','bold'); doc.setFontSize(15);
+    doc.text('REPORTE DE ACTIVIDAD POR USUARIO', pageW/2, 16, {align:'center'});
+    doc.setFont('helvetica','normal'); doc.setFontSize(10);
+
+    let y = 26;
+    const rangoTxt = desdeF===hastaF ? `Fecha: ${desdeF}` : `Rango: ${desdeF} a ${hastaF}`;
+    doc.text(rangoTxt, margin, y);
+    doc.text(`Generado: ${new Date().toLocaleString('es-PE')}`, pageW-margin, y, {align:'right'});
+    y += 6;
+    const filtrosTxt = [];
+    if(usuarioF) filtrosTxt.push(`Usuario contiene "${usuarioF}"`);
+    if(moduloF) filtrosTxt.push(`Módulo: ${$('bit-modulo').selectedOptions[0].textContent}`);
+    doc.text(filtrosTxt.length ? `Filtros: ${filtrosTxt.join(' · ')}` : 'Filtros: ninguno (todos los usuarios y módulos)', margin, y);
+    doc.text(`Usuarios: ${usuarios.length}   Actividades: ${totalRegistros}`, pageW-margin, y, {align:'right'});
+    y += 8;
+
+    usuarios.forEach((u)=>{
+      const filas = porUsuario[u];
+      const boxH = 9;
+      if(y + boxH + 14 > pageH - margin){ doc.addPage(); y = margin; }
+      doc.setFillColor(30,58,95);
+      doc.rect(margin, y, pageW-2*margin, boxH, 'F');
+      doc.setTextColor(255); doc.setFont('helvetica','bold'); doc.setFontSize(10.5);
+      doc.text(u, margin+3, y+6.2);
+      doc.text(`${filas.length} actividad${filas.length===1?'':'es'}`, pageW-margin-3, y+6.2, {align:'right'});
+      doc.setTextColor(0);
+      y += boxH + 2;
+
+      const body = filas.map(d=>{
+        const fecha = d.timestamp ? d.timestamp.toDate().toLocaleString('es-PE') : '…';
+        return [fecha, tipoLabel(d.tipo), d.pallet_codigo||'—', d.origen||'—', d.destino||'—', d.detalle||''];
+      });
+
+      doc.autoTable({
+        startY: y,
+        head: [['Fecha/Hora','Acción','Pallet','De','A','Detalle']],
+        body,
+        styles: { fontSize: 7.5, cellPadding: 1.4, valign:'middle', overflow:'linebreak' },
+        headStyles: { fillColor: [90,90,90], textColor: 255, fontStyle:'bold' },
+        columnStyles: {
+          0: {cellWidth:28}, 1: {cellWidth:32}, 2: {cellWidth:20}, 3: {cellWidth:18}, 4: {cellWidth:18}
+        },
+        margin: { left: margin, right: margin },
+        didDrawPage: (data)=>{
+          doc.setFontSize(8); doc.setTextColor(120);
+          doc.text(`Página ${data.pageNumber}`, pageW-margin, pageH-6, {align:'right'});
+          doc.setTextColor(0);
+        }
+      });
+      y = doc.lastAutoTable.finalY + 8;
+    });
+
+    const nombreArchivo = desdeF===hastaF ? `bitacora_${desdeF}.pdf` : `bitacora_${desdeF}_a_${hastaF}.pdf`;
+    doc.save(nombreArchivo);
+    await logAccion('bitacora_reporte_generado', {detalle:`Reporte PDF de bitácora (${rangoTxt}${filtrosTxt.length? ' · '+filtrosTxt.join(' · '):''}) — ${usuarios.length} usuario(s), ${totalRegistros} actividad(es)`});
+  }catch(err){
+    showToast('Error al generar el PDF de bitácora: '+err.message,'err');
+  } finally {
+    btn.disabled = false;
+  }
+}
+$('btn-pdf-bitacora').addEventListener('click', generarPDFBitacora);
 
 /* -------------------- Campañas (PDF) -------------------- */
 let campParsedRows = [];
