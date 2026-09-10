@@ -268,8 +268,56 @@
   #ctx-menu button{display:block; width:100%; text-align:left; background:none; border:none; padding:9px 14px; font-size:12px; cursor:pointer;}
   #ctx-menu button:hover{background:var(--blue-bg);}
 
-  #mov-grid{display:grid; grid-template-columns:230px 1fr 340px; gap:14px; align-items:start;}
-  @media (max-width:1150px){ #mov-grid{grid-template-columns:1fr;} }
+  #mov-grid{display:grid; grid-template-columns:230px minmax(0,1fr) 340px; gap:14px; align-items:start;}
+  #view-mov.izq-oculta #mov-grid{grid-template-columns:minmax(0,1fr) 340px;}
+  #view-mov.der-oculta #mov-grid{grid-template-columns:230px minmax(0,1fr);}
+  #view-mov.izq-oculta.der-oculta #mov-grid{grid-template-columns:minmax(0,1fr);}
+  #view-mov.izq-oculta #mov-filtros, #view-mov.der-oculta #mov-ops{display:none;}
+  @media (max-width:1150px){ #mov-grid, #view-mov.izq-oculta #mov-grid, #view-mov.der-oculta #mov-grid{grid-template-columns:minmax(0,1fr);} }
+
+  /* Botones para esconder las columnas laterales */
+  .col-toggles{display:flex; gap:6px; flex-shrink:0;}
+  .col-toggle{
+    display:inline-flex; align-items:center; gap:5px; background:#fff; cursor:pointer;
+    border:1px solid var(--line-strong); border-radius:5px; padding:4px 9px; min-height:30px;
+    font-family:var(--sans); font-size:11px; font-weight:600; color:var(--ink-soft);
+  }
+  .col-toggle:hover{background:var(--blue-bg); color:var(--blue);}
+  .col-toggle[aria-pressed="true"]{background:var(--blue); border-color:var(--blue); color:#fff;}
+
+  /* ---- Detalle de posición: ficha flotante junto a la posición ---- */
+  #detalle-panel{
+    position:fixed; z-index:60; width:328px; max-height:78vh; overflow:auto;
+    box-shadow:0 14px 38px rgba(11,16,22,.30); border-color:var(--line-strong);
+  }
+  #detalle-panel h3{position:sticky; top:-16px; background:var(--panel); padding-top:2px; margin-top:-2px; z-index:2;}
+  #btn-detalle-cerrar{
+    background:none; border:1px solid var(--line-strong); border-radius:3px; width:22px; height:22px;
+    line-height:1; cursor:pointer; color:var(--ink-soft); font-size:14px; flex-shrink:0;
+  }
+  #btn-detalle-cerrar:hover{background:var(--lacre); border-color:var(--lacre); color:#fff;}
+  @media (max-width:900px){
+    #detalle-panel{
+      left:0 !important; right:0 !important; top:auto !important; bottom:0 !important;
+      width:auto; max-height:74vh; border-radius:12px 12px 0 0; border-bottom:none;
+    }
+  }
+
+  /* ---- Formularios compactos (sólo Movimientos) ---- */
+  #view-mov .field{display:grid; grid-template-columns:100px minmax(0,1fr); gap:4px 9px; align-items:center; margin-bottom:8px;}
+  #view-mov .field > label{margin-bottom:0; text-align:right; font-size:10.5px; line-height:1.25;}
+  #view-mov .field select, #view-mov .field input{padding:5px 8px; font-size:12.5px; min-height:32px;}
+  /* La ayuda del campo sólo aparece mientras se escribe en él */
+  #view-mov .field .hint{grid-column:2; margin-top:0; display:none;}
+  #view-mov .field:focus-within .hint{display:block;}
+  #view-mov .subtabs{display:grid; grid-template-columns:1fr 1fr; gap:6px;}
+  #view-mov .subtabs button{flex:none; min-width:0; padding:7px 6px; min-height:34px; white-space:normal; line-height:1.2;}
+  #view-mov .btn{padding:7px 13px; font-size:12.5px; min-height:32px;}
+  #view-mov .btn-sm{min-height:28px; padding:4px 9px;}
+  @media (max-width:640px){
+    #view-mov .field{grid-template-columns:88px minmax(0,1fr);}
+    #view-mov .subtabs{overflow:visible;}
+  }
   .legend{display:flex; gap:14px; font-size:11px; margin-bottom:10px; flex-wrap:wrap;}
   .legend span{display:inline-flex; align-items:center; gap:5px;}
   .sw{width:11px; height:11px; border-radius:2px; display:inline-block;}
@@ -792,7 +840,7 @@
 <!-- MOVIMIENTOS -->
 <div class="view" id="view-mov">
   <div id="mov-grid">
-    <div class="panel">
+    <div class="panel" id="mov-filtros">
       <h3>Filtros</h3>
       <div class="field"><label>Buscar (pallet o producto)</label><input type="text" id="f-buscar" class="upper" placeholder="CD0005 O PRODUCTO"></div>
       <div class="field"><label>Bloque</label><select id="f-bloque"><option value="">Todos</option></select></div>
@@ -805,7 +853,7 @@
     </div>
 
     <div class="panel">
-      <h3><span style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:space-between;"><span>Layout del almacén</span><button class="btn btn-ghost btn-sm" id="btn-toggle-compacto-mov" type="button">🙈 Ocultar lado derecho</button></span></h3>
+      <h3><span style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:space-between;"><span>Layout del almacén</span><span class="col-toggles"><button class="col-toggle" id="btn-col-izq" type="button" aria-pressed="false" title="Mostrar u ocultar Filtros y Resumen">◧ Filtros</button><button class="col-toggle" id="btn-col-der" type="button" aria-pressed="false" title="Mostrar u ocultar el panel de operaciones">Operaciones ◨</button><button class="btn btn-ghost btn-sm" id="btn-toggle-compacto-mov" type="button">🙈 Ocultar lado derecho</button></span></span></h3>
       <div class="legend">
         <span><i class="sw" style="background:var(--lacre-bg); border:1px solid var(--lacre-line);"></i>Rack vacío</span>
         <span><i class="sw" style="background:#EDEDED; border:1px solid #C4C4C4;"></i>Piso vacío</span>
@@ -820,7 +868,7 @@
       <div class="bloques-scroll" id="mov-bloques"></div>
     </div>
 
-    <div style="display:flex; flex-direction:column; gap:14px;">
+    <div style="display:flex; flex-direction:column; gap:14px;" id="mov-ops">
       <div class="panel hidden-perm" id="op-panel">
         <div class="subtabs">
           <button class="active" id="subtab-crear">Nuevo pallet</button>
@@ -876,11 +924,12 @@
         <datalist id="dl-pallets"></datalist>
       </div>
 
-      <div class="panel" id="detalle-panel" style="display:none;">
-        <h3>Detalle de posición</h3>
-        <div id="detalle-content"></div>
-      </div>
     </div>
+  </div>
+
+  <div class="panel" id="detalle-panel" style="display:none;">
+    <h3><span>Detalle de posición</span><button id="btn-detalle-cerrar" type="button" aria-label="Cerrar detalle">×</button></h3>
+    <div id="detalle-content"></div>
   </div>
 </div>
 
@@ -2262,6 +2311,30 @@ function switchTab(name){
 }
 document.querySelectorAll('nav.tabs button').forEach(btn=> btn.addEventListener('click', ()=> switchTab(btn.dataset.tab)));
 
+/* -------------------- Columnas plegables de Movimientos -------------------- */
+function aplicarColumna(clase, btn, oculta){
+  $('view-mov').classList.toggle(clase, oculta);
+  btn.setAttribute('aria-pressed', oculta ? 'false' : 'true');
+  try{ localStorage.setItem('mov:'+clase, oculta ? '1' : '0'); }catch(e){}
+}
+['izq-oculta','der-oculta'].forEach((clase, i)=>{
+  const btn = $(i===0 ? 'btn-col-izq' : 'btn-col-der');
+  if(!btn) return;
+  let guardado = '0';
+  try{ guardado = localStorage.getItem('mov:'+clase) || '0'; }catch(e){}
+  aplicarColumna(clase, btn, guardado === '1');
+  btn.addEventListener('click', ()=> aplicarColumna(clase, btn, !$('view-mov').classList.contains(clase)));
+});
+$('btn-detalle-cerrar').addEventListener('click', cerrarDetalle);
+document.addEventListener('keydown', e=>{
+  if(e.key === 'Escape' && $('detalle-panel').style.display === 'block') cerrarDetalle();
+});
+window.addEventListener('resize', ()=>{ if(selectedPosId && $('detalle-panel').style.display==='block') posicionarDetalle(selectedPosId); });
+// La ficha sigue a su posición cuando se desplaza la grilla de racks.
+document.addEventListener('scroll', ()=>{
+  if(selectedPosId && $('detalle-panel').style.display==='block') posicionarDetalle(selectedPosId);
+}, true);
+
 /* -------------------- IP pública -------------------- */
 (async function mostrarIP(){
   const el = document.getElementById('ip-label'); if(!el) return;
@@ -3574,9 +3647,36 @@ function selectSlot(id){
   }
 }
 
+/* La ficha de detalle se ancla junto a la posición en la que se hizo clic:
+   a su derecha si hay sitio, si no a la izquierda, y siempre dentro de pantalla. */
+function posicionarDetalle(id){
+  const panel = $('detalle-panel');
+  if(window.matchMedia('(max-width:900px)').matches) return;
+  const slot = document.getElementById('slot-'+id);
+  if(!slot){ panel.style.left='auto'; panel.style.right='18px'; panel.style.top='96px'; return; }
+  const r = slot.getBoundingClientRect();
+  const ancho = panel.offsetWidth || 328;
+  const alto = panel.offsetHeight || 320;
+  const margen = 12;
+  let left = r.right + margen;
+  if(left + ancho > window.innerWidth - margen) left = r.left - ancho - margen;
+  if(left < margen) left = Math.max(margen, (window.innerWidth - ancho)/2);
+  let top = r.top - 40;
+  if(top + alto > window.innerHeight - margen) top = window.innerHeight - alto - margen;
+  if(top < 72) top = 72;
+  panel.style.right = 'auto';
+  panel.style.left = Math.round(left)+'px';
+  panel.style.top = Math.round(top)+'px';
+}
+function cerrarDetalle(){
+  $('detalle-panel').style.display = 'none';
+  document.querySelectorAll('#view-mov .slot.selected').forEach(el=>el.classList.remove('selected'));
+  selectedPosId = null;
+}
 function renderDetalle(id, p){
   const panel = $('detalle-panel'); const content = $('detalle-content');
   panel.style.display = 'block';
+  requestAnimationFrame(()=> posicionarDetalle(id));
   const puedeMov = currentPermisos.admin || currentPermisos.movimientos;
   const puedeEliminar = currentPermisos.admin || currentPermisos.eliminar;
   const puedeBloquear = currentPermisos.admin || currentPermisos.eliminar || currentPermisos.movimientos;
