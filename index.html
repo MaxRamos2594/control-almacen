@@ -293,9 +293,14 @@
 
   /* ---- Detalle de posición: ficha flotante junto a la posición ---- */
   #detalle-panel{
-    position:fixed; z-index:60; width:430px; max-height:78vh; overflow:auto;
+    position:fixed; z-index:60; width:430px; max-height:78vh;
+    overflow-y:scroll; overflow-x:hidden; scrollbar-gutter:stable;
+    scrollbar-width:thin; scrollbar-color:var(--blue) #E3E7EB;
     box-shadow:0 14px 38px rgba(11,16,22,.30); border-color:var(--line-strong);
   }
+  #detalle-panel::-webkit-scrollbar{width:11px;}
+  #detalle-panel::-webkit-scrollbar-track{background:#E3E7EB; border-radius:6px;}
+  #detalle-panel::-webkit-scrollbar-thumb{background:var(--blue); border-radius:6px; border:2px solid #E3E7EB;}
   #detalle-panel h3{position:sticky; top:-16px; background:var(--panel); padding-top:2px; margin-top:-2px; z-index:2;}
   #btn-detalle-cerrar{
     background:none; border:1px solid var(--line-strong); border-radius:3px; width:22px; height:22px;
@@ -314,6 +319,73 @@
     font-family:var(--mono); font-size:11px; color:var(--ink-soft);
   }
   #det-pager button[disabled]{opacity:.35;}
+
+  /* ---------- Toma de inventario ---------- */
+  .ti-pasos{display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap;}
+  .ti-paso{
+    flex:1; min-width:130px; display:flex; align-items:center; gap:8px; cursor:pointer;
+    border:1px solid var(--line-strong); background:#fff; border-radius:6px; padding:8px 12px;
+    font-family:var(--sans); font-size:12.5px; font-weight:600; color:var(--ink-soft); text-align:left;
+  }
+  .ti-paso .n{
+    width:20px; height:20px; border-radius:50%; background:#E3E7EB; color:var(--ink-soft);
+    font-family:var(--mono); font-size:11px; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .ti-paso.active{background:var(--blue); border-color:var(--blue); color:#fff;}
+  .ti-paso.active .n{background:#fff; color:var(--blue);}
+  .ti-paso.hecho .n{background:var(--green); color:#fff;}
+  .ti-paso:disabled{opacity:.45; cursor:not-allowed;}
+
+  #ti-contexto{
+    display:none; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:12px;
+    border:1px solid var(--line-strong); border-left:4px solid var(--blue); border-radius:6px;
+    background:#fff; padding:9px 14px; font-size:12.5px;
+  }
+  #ti-contexto.visible{display:flex;}
+  #ti-contexto b{font-family:var(--mono);}
+  #ti-contexto .barra{flex:1; min-width:120px; height:7px; border-radius:4px; background:#E3E7EB; overflow:hidden;}
+  #ti-contexto .barra i{display:block; height:100%; background:var(--green); border-radius:4px; transition:width .2s;}
+
+  /* Al contar, el lateral de generación se pliega y la tabla toma la pantalla */
+  #view-toma_inventario.contando .grid-doble{grid-template-columns:minmax(0,1fr);}
+  #view-toma_inventario.contando #ti-col-generar{display:none;}
+
+  /* Conteo a ciegas: la cantidad de sistema y la diferencia se ven al guardar */
+  .ti-ciego #ti-conteo-tabla th:nth-child(6), .ti-ciego #ti-conteo-tabla td.c6,
+  .ti-ciego #ti-conteo-tabla th:nth-child(9), .ti-ciego #ti-conteo-tabla td.c9{display:none;}
+  tr.ti-grupo td{
+    background:#EEF2F5 !important; font-family:var(--mono); font-size:11px; font-weight:700;
+    color:#20303F; letter-spacing:.04em; border-top:2px solid #C9D2DC;
+  }
+  tr.ti-fila-contada td{background:#F4F8F5;}
+  .ti-barra-progreso{height:8px; border-radius:4px; background:#E3E7EB; overflow:hidden; margin:6px 0 10px;}
+  .ti-barra-progreso i{display:block; height:100%; background:var(--green); border-radius:4px; transition:width .2s;}
+  .ti-ayuda{display:none;}
+  .ti-ayuda-visible .ti-ayuda{display:block;}
+  .ti-motivo{font-size:11px; padding:3px 4px; max-width:130px;}
+
+  /* Modo conteo a pantalla completa */
+  #ti-conteo-full{
+    position:fixed; inset:0; z-index:120; background:var(--bg); display:none;
+    flex-direction:column; padding:16px; gap:12px; overflow:auto;
+  }
+  #ti-conteo-full.visible{display:flex;}
+  #ti-conteo-full .cf-top{display:flex; justify-content:space-between; align-items:center; gap:10px;}
+  #ti-conteo-full .cf-pos{font-family:var(--mono); font-size:26px; font-weight:700; color:var(--ink);}
+  #ti-conteo-full .cf-sub{font-family:var(--mono); font-size:12px; color:var(--ink-soft);}
+  #ti-conteo-full .cf-desc{font-size:19px; font-weight:600; line-height:1.3; text-wrap:pretty;}
+  #ti-conteo-full .cf-num{display:flex; align-items:center; gap:10px; justify-content:center; margin:6px 0;}
+  #ti-conteo-full .cf-num input{
+    width:150px; text-align:center; font-family:var(--mono); font-size:38px; font-weight:700;
+    padding:10px; border:2px solid var(--line-strong); border-radius:8px; background:#fff;
+  }
+  #ti-conteo-full .cf-num button{
+    width:58px; height:58px; border-radius:10px; border:1px solid var(--line-strong);
+    background:#fff; font-size:26px; cursor:pointer; color:var(--ink);
+  }
+  #ti-conteo-full .cf-acciones{display:flex; flex-direction:column; gap:8px; margin-top:auto;}
+  #ti-conteo-full .cf-acciones .btn{min-height:52px; font-size:15px;}
+  #ti-conteo-full .cf-prog{font-family:var(--mono); font-size:12px; color:var(--ink-soft); text-align:center;}
 
   /* ---- Lateral: filtros y resumen en un solo panel ---- */
   #resumen{display:grid; grid-template-columns:1fr 1fr; gap:4px 10px;}
@@ -1601,7 +1673,20 @@
 
 <!-- TOMA DE INVENTARIO -->
 <div class="view" id="view-toma_inventario">
-  <div class="subtabs" style="margin-bottom:14px;">
+  <div class="ti-pasos">
+    <button type="button" class="ti-paso active" id="ti-paso-1"><span class="n">1</span>Generar</button>
+    <button type="button" class="ti-paso" id="ti-paso-2"><span class="n">2</span>Contar</button>
+    <button type="button" class="ti-paso" id="ti-paso-3"><span class="n">3</span>Cerrar</button>
+    <button type="button" class="ti-paso" id="ti-paso-4"><span class="n">4</span>Resultados</button>
+  </div>
+  <div id="ti-contexto">
+    <span>Toma <b id="ti-ctx-cor">—</b></span>
+    <span id="ti-ctx-fecha" style="color:var(--ink-soft);"></span>
+    <span class="barra"><i id="ti-ctx-barra" style="width:0%"></i></span>
+    <span id="ti-ctx-prog" style="font-family:var(--mono); font-size:11.5px; color:var(--ink-soft);"></span>
+    <button type="button" class="btn btn-ghost btn-sm" id="ti-ctx-cerrar">Cambiar de toma</button>
+  </div>
+  <div class="subtabs" style="display:none;">
     <button class="active" id="timain-ejecucion">Ejecución</button>
     <button id="timain-resultados">Resultados</button>
   </div>
@@ -1609,7 +1694,7 @@
   <div id="timain-panel-ejecucion">
   <div class="grid-doble">
 
-    <div>
+    <div id="ti-col-generar">
       <div class="panel" style="margin-bottom:14px;">
         <h3>Generar toma de inventario</h3>
         <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
@@ -1617,23 +1702,24 @@
           <button type="button" class="btn btn-sm btn-ghost" id="ti-modo-proveedor-btn">🏭 Por proveedor</button>
           <button type="button" class="btn btn-sm btn-ghost" id="ti-modo-pallets-btn">📦 Por pallets</button>
           <button type="button" class="btn btn-sm btn-ghost" id="ti-modo-nicho-btn">🗂 Por nicho</button>
+          <button type="button" class="ayuda-icono" id="ti-btn-ayuda" title="Mostrar u ocultar la explicación de cada modo">?</button>
         </div>
         <div id="ti-modo-cantidad-wrap">
-          <p class="hint" style="margin-bottom:10px;">20% Rack / 80% Piso, solo posiciones ocupadas, sin bloquear, con stock &gt;0. Si ya sorteaste posiciones hoy en una toma activa, no se vuelven a repetir en un sorteo nuevo del mismo día.</p>
+          <p class="hint ti-ayuda" style="margin-bottom:10px;">20% Rack / 80% Piso, solo posiciones ocupadas, sin bloquear, con stock &gt;0. Si ya sorteaste posiciones hoy en una toma activa, no se vuelven a repetir en un sorteo nuevo del mismo día.</p>
           <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
             <div class="field" style="margin:0; max-width:200px;"><label>Cantidad a inventariar</label><input type="number" id="ti-cantidad" min="1" step="1" placeholder="EJ. 20"></div>
             <button class="btn btn-primary" id="btn-ti-generar">🎲 Sortear</button>
           </div>
         </div>
         <div id="ti-modo-proveedor-wrap" style="display:none;">
-          <p class="hint" style="margin-bottom:10px;">No importa el pallet ni la ubicación: se incluyen TODOS los productos de este proveedor, en cualquier pallet y posición ocupada del almacén, con stock &gt;0.</p>
+          <p class="hint ti-ayuda" style="margin-bottom:10px;">No importa el pallet ni la ubicación: se incluyen TODOS los productos de este proveedor, en cualquier pallet y posición ocupada del almacén, con stock &gt;0.</p>
           <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
             <div class="field" style="margin:0; max-width:280px;"><label>Proveedor</label><select id="ti-proveedor-select"><option value="">— Selecciona un proveedor —</option></select></div>
             <button class="btn btn-primary" id="btn-ti-generar-proveedor">🏭 Generar por proveedor</button>
           </div>
         </div>
         <div id="ti-modo-pallets-wrap" style="display:none;">
-          <p class="hint" style="margin-bottom:10px;">Incluye todo el stock (con cantidad &gt;0) de los pallets que agregues a la lista, sin importar su ubicación. Agrégalos a mano por código, o sortea una cantidad al azar entre los pallets con stock disponible (20% Rack / 80% Piso, igual que el sorteo por cantidad) — puedes combinar ambas formas antes de generar. Cada pallet de la lista muestra si está en Rack o en Piso.</p>
+          <p class="hint ti-ayuda" style="margin-bottom:10px;">Incluye todo el stock (con cantidad &gt;0) de los pallets que agregues a la lista, sin importar su ubicación. Agrégalos a mano por código, o sortea una cantidad al azar entre los pallets con stock disponible (20% Rack / 80% Piso, igual que el sorteo por cantidad) — puedes combinar ambas formas antes de generar. Cada pallet de la lista muestra si está en Rack o en Piso.</p>
           <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
             <div class="field" style="margin:0; max-width:200px;"><label>Código de pallet (manual)</label><input type="text" class="upper" id="ti-pallet-input" list="dl-pallets" placeholder="CD0000"></div>
             <button class="btn btn-ghost btn-sm" id="btn-ti-pallet-agregar">+ Agregar a la lista</button>
@@ -1646,7 +1732,7 @@
           <button class="btn btn-primary" id="btn-ti-generar-pallets">📦 Generar por pallets</button>
         </div>
         <div id="ti-modo-nicho-wrap" style="display:none;">
-          <p class="hint" style="margin-bottom:10px;">Incluye todas las posiciones ocupadas con stock &gt;0 del nicho elegido, o solo las ubicaciones que selecciones dentro de él.</p>
+          <p class="hint ti-ayuda" style="margin-bottom:10px;">Incluye todas las posiciones ocupadas con stock &gt;0 del nicho elegido, o solo las ubicaciones que selecciones dentro de él.</p>
           <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
             <div class="field" style="margin:0; max-width:280px;"><label>Nicho</label><select id="ti-nicho-select"><option value="">— Selecciona un nicho —</option></select></div>
           </div>
@@ -1664,8 +1750,9 @@
         <div class="msg" id="ti-msg"></div>
         <div id="ti-preview-wrap" style="display:none; margin-top:14px;">
           <p class="hint" id="ti-preview-resumen" style="margin-bottom:8px;"></p>
+          <div id="ti-preview-cifras" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;"></div>
           <div class="hist-wrap" style="max-height:260px;">
-            <table><thead><tr><th>Posición</th><th>Tipo</th><th>Pallet</th><th>Código</th><th>Descripción</th><th>Sistema</th></tr></thead><tbody id="ti-preview-body"></tbody></table>
+            <table><thead><tr><th>Posición</th><th>Tipo</th><th>Pallet</th><th>Código</th><th>Descripción</th><th>Sistema</th><th></th></tr></thead><tbody id="ti-preview-body"></tbody></table>
           </div>
           <div style="display:flex; gap:10px; margin-top:12px;">
             <button class="btn btn-primary" id="btn-ti-confirmar">Confirmar y guardar</button>
@@ -1694,9 +1781,9 @@
             <th class="th-ordenable" data-key="fecha">Fecha</th>
             <th class="th-ordenable" data-key="cantidad_generada">Pos.</th>
             <th class="th-ordenable" data-key="total_lineas">Líneas</th>
-            <th class="th-ordenable" data-key="eri">ERI</th>
-            <th class="th-ordenable" data-key="eru">ERU</th>
-            <th class="th-ordenable" data-key="psm">PSM</th>
+            <th class="th-ordenable" data-key="eri" title="ERI — Exactitud de Registro de Inventario: 100% menos la desviación total de unidades contra el sistema.">ERI</th>
+            <th class="th-ordenable" data-key="eru" title="ERU — Exactitud de ubicación: % de líneas contadas donde el producto sí estaba en la posición que decía el sistema.">ERU</th>
+            <th class="th-ordenable" data-key="psm" title="PSM — Perfect SKU Match: ERI × ERU. Una línea solo es perfecta si acierta en cantidad y en ubicación a la vez.">PSM</th>
             <th>PDF</th><th></th>
           </tr></thead><tbody id="ti-reg-body"></tbody></table>
           <div class="empty-state" id="ti-reg-empty">Aún no hay tomas de inventario.</div>
@@ -1708,8 +1795,9 @@
     <div>
       <div class="subtabs" style="margin-bottom:14px;">
         <button class="active" id="tisub-conteo">Resultado del conteo</button>
-        <button id="tisub-pdf">PDF firmado</button>
-        <button id="tisub-img">Imágenes</button>
+        <button id="tisub-evidencia">Evidencia (PDF y fotos)</button>
+        <button id="tisub-pdf" style="display:none;"></button>
+        <button id="tisub-img" style="display:none;"></button>
       </div>
 
       <div id="tisub-panel-conteo">
@@ -1717,9 +1805,20 @@
         <h3 id="ti-resultado-titulo">Resultado del conteo</h3>
         <div class="empty-state" id="ti-resultado-vacio">Selecciona una toma de la lista de la izquierda para ver o registrar su conteo.</div>
         <div id="ti-resultado-contenido" style="display:none;">
-          <div id="ti-conteo-resumen" style="margin-bottom:10px;"></div>
+          <div id="ti-conteo-resumen" style="margin-bottom:6px;"></div>
+          <div class="ti-barra-progreso"><i id="ti-progreso-barra" style="width:0%"></i></div>
+          <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
+            <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;" title="Oculta la cantidad del sistema hasta que guardes la línea, para que el conteo no quede sesgado">
+              <input type="checkbox" id="ti-chk-ciego"> Conteo a ciegas
+            </label>
+            <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;">
+              <input type="checkbox" id="ti-chk-pendientes"> Solo pendientes
+            </label>
+            <button class="btn btn-ghost btn-sm" id="btn-ti-modo-conteo" type="button">▶ Modo conteo</button>
+            <button class="btn btn-primary btn-sm" id="btn-ti-guardar-todo" type="button">Guardar todo lo pendiente</button>
+          </div>
           <div class="hist-wrap" style="max-height:560px;">
-            <table><thead><tr><th>Posición</th><th>Tipo</th><th>Pallet</th><th>Código</th><th>Descripción</th><th>Sistema</th><th>¿Encontrado?</th><th>Contada</th><th>Diferencia</th><th></th></tr></thead><tbody id="ti-conteo-body"></tbody></table>
+            <table id="ti-conteo-tabla"><thead><tr><th>Posición</th><th>Tipo</th><th>Pallet</th><th>Código</th><th>Descripción</th><th title="Cantidad que el sistema dice que hay">Sistema</th><th title="Por qué la cantidad contada no coincide">Motivo</th><th>Contada</th><th>Diferencia</th><th></th></tr></thead><tbody id="ti-conteo-body"></tbody></table>
           </div>
           <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
             <button class="btn btn-primary" id="btn-ti-finalizar">Finalizar toma</button>
@@ -1805,7 +1904,7 @@
       </div>
       <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:14px;" id="res-kpis"></div>
       <div class="hist-wrap" style="max-height:460px;">
-        <table><thead><tr><th>Correlativo</th><th>Fecha</th><th>ERI</th><th>ERU</th><th>PSM</th><th>Observ.</th><th>Pendientes</th></tr></thead><tbody id="res-tomas-body"></tbody></table>
+        <table><thead><tr><th>Correlativo</th><th>Fecha</th><th title="ERI — Exactitud de Registro de Inventario: 100% menos la desviación total de unidades contra el sistema.">ERI</th><th title="ERU — Exactitud de ubicación: % de líneas contadas donde el producto sí estaba donde decía el sistema.">ERU</th><th title="PSM — Perfect SKU Match: ERI × ERU.">PSM</th><th>Observ.</th><th>Pendientes</th></tr></thead><tbody id="res-tomas-body"></tbody></table>
         <div class="empty-state" id="res-tomas-empty">No hay tomas finalizadas para este filtro.</div>
       </div>
       <div id="res-tomas-paginacion" style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:8px; font-size:11px; color:var(--ink-soft);"></div>
@@ -1821,6 +1920,32 @@
       </div>
     </div>
   </div>
+  </div>
+
+  <div id="ti-conteo-full">
+    <div class="cf-top">
+      <div>
+        <div class="cf-pos" id="cf-pos">—</div>
+        <div class="cf-sub" id="cf-sub"></div>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="cf-cerrar" type="button">✕ Salir</button>
+    </div>
+    <div class="cf-desc" id="cf-desc"></div>
+    <div class="cf-sub" id="cf-sistema"></div>
+    <div class="cf-num">
+      <button type="button" id="cf-menos">−</button>
+      <input type="number" id="cf-cantidad" min="0" inputmode="numeric">
+      <button type="button" id="cf-mas">+</button>
+    </div>
+    <div class="cf-prog" id="cf-prog"></div>
+    <div class="cf-acciones">
+      <button class="btn btn-primary" id="cf-guardar" type="button">Guardar y siguiente</button>
+      <button class="btn btn-ghost" id="cf-no-encontrado" type="button">No encontrado (0)</button>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-ghost" id="cf-anterior" type="button" style="flex:1;">‹ Anterior</button>
+        <button class="btn btn-ghost" id="cf-siguiente" type="button" style="flex:1;">Saltar ›</button>
+      </div>
+    </div>
   </div>
 
   <input type="file" id="ti-pdf-input-global" accept="application/pdf" style="display:none;">
@@ -3822,15 +3947,17 @@ function posicionarDetalle(id){
   const slot = document.getElementById('slot-'+id);
   if(!slot){ panel.style.left='auto'; panel.style.right='18px'; panel.style.top='96px'; return; }
   const r = slot.getBoundingClientRect();
-  const ancho = panel.offsetWidth || 430;
-  const alto = panel.offsetHeight || 320;
   const margen = 12;
+  const topeArriba = 72;
+  panel.style.maxHeight = (window.innerHeight - topeArriba - margen) + 'px';
+  const ancho = panel.offsetWidth || 430;
+  const alto = Math.min(panel.offsetHeight || 320, window.innerHeight - topeArriba - margen);
   let left = r.right + margen;
   if(left + ancho > window.innerWidth - margen) left = r.left - ancho - margen;
   if(left < margen) left = Math.max(margen, (window.innerWidth - ancho)/2);
   let top = r.top - 40;
   if(top + alto > window.innerHeight - margen) top = window.innerHeight - alto - margen;
-  if(top < 72) top = 72;
+  if(top < topeArriba) top = topeArriba;
   panel.style.right = 'auto';
   panel.style.left = Math.round(left)+'px';
   panel.style.top = Math.round(top)+'px';
@@ -9297,11 +9424,41 @@ $('btn-ti-generar-proveedor').addEventListener('click', ()=>{
   const nRack = resultado.seleccionPosiciones.filter(s=>s.tipo==='rack').length;
   const nPiso = resultado.seleccionPosiciones.filter(s=>s.tipo==='piso').length;
   $('ti-preview-resumen').textContent = `Proveedor "${proveedor}": ${resultado.seleccionPosiciones.length} posición(es) con stock de este proveedor (${nRack} de Rack, ${nPiso} de Piso) — ${resultado.filas.length} línea(s) de producto a contar, sin importar pallet ni ubicación. Puedes volver a generar si quieres actualizar la selección antes de confirmar.`;
-  $('ti-preview-body').innerHTML = resultado.filas.map(f=>
-    `<tr><td>${f.posicion_id}</td><td>${f.tipo_posicion==='piso'?'Piso':'Rack'}</td><td>${f.pallet_codigo}</td><td>${f.producto_codigo}</td><td>${f.producto_descripcion}</td><td>${f.cantidad_sistema}</td></tr>`
-  ).join('');
+  renderPreviewToma();
   $('ti-preview-wrap').style.display = 'block';
   showMsg('ti-msg','ok', `Selección generada: ${resultado.seleccionPosiciones.length} posiciones del proveedor "${proveedor}".`);
+});
+
+/* Vista previa del sorteo: cifras de impacto arriba y una ✕ por fila para
+   descartar posiciones antes de confirmar, sin tener que volver a sortear. */
+function renderPreviewToma(){
+  const filas = (tiSeleccionActual && tiSeleccionActual.filas) || [];
+  $('ti-preview-body').innerHTML = filas.map((f,i)=>
+    `<tr><td>${f.posicion_id}</td><td>${f.tipo_posicion==='piso'?'Piso':'Rack'}</td><td>${f.pallet_codigo}</td><td>${f.producto_codigo}</td><td>${f.producto_descripcion}</td><td>${f.cantidad_sistema}</td>
+      <td><button type="button" class="btn btn-sm btn-ghost ti-quitar-preview" data-i="${i}" title="Quitar esta línea de la toma">✕</button></td></tr>`
+  ).join('');
+  const pallets_ = new Set(filas.map(f=>f.pallet_codigo));
+  const posiciones_ = new Set(filas.map(f=>f.posicion_id));
+  const enRack = new Set(filas.filter(f=>f.tipo_posicion!=='piso').map(f=>f.posicion_id)).size;
+  const valor = filas.reduce((s,f)=>{
+    const p = productos[f.producto_codigo];
+    return s + (Number(f.cantidad_sistema)||0) * (p ? (Number(p.costo)||0) : 0);
+  }, 0);
+  const cifra = (t,v)=> `<span style="border:1px solid var(--line-strong); border-radius:5px; padding:5px 10px; background:#fff; font-size:11.5px;"><span style="color:var(--ink-soft);">${t}</span> <b style="font-family:var(--mono);">${v}</b></span>`;
+  $('ti-preview-cifras').innerHTML =
+    cifra('Pallets', pallets_.size) + cifra('Posiciones', posiciones_.size) +
+    cifra('En rack', enRack + ' de ' + posiciones_.size) + cifra('Líneas', filas.length) +
+    cifra('Valor', 'S/ ' + fmtMoneyComma(valor));
+}
+$('ti-preview-body').addEventListener('click', ev=>{
+  const btn = ev.target.closest('.ti-quitar-preview'); if(!btn) return;
+  const i = Number(btn.dataset.i);
+  const fila = tiSeleccionActual.filas[i];
+  tiSeleccionActual.filas.splice(i,1);
+  // Si esa posición se queda sin líneas, también sale de la lista de posiciones.
+  const quedan = tiSeleccionActual.filas.some(f=>f.posicion_id===fila.posicion_id);
+  if(!quedan) tiSeleccionActual.seleccionPosiciones = tiSeleccionActual.seleccionPosiciones.filter(s=>s.id!==fila.posicion_id);
+  renderPreviewToma();
 });
 
 // Selecciona TODO el stock disponible de una lista puntual de pallets, sin
@@ -9460,9 +9617,7 @@ $('btn-ti-generar-pallets').addEventListener('click', ()=>{
   const nRack = resultado.seleccionPosiciones.filter(s=>s.tipo==='rack').length;
   const nPiso = resultado.seleccionPosiciones.filter(s=>s.tipo==='piso').length;
   $('ti-preview-resumen').textContent = `Pallets seleccionados (${tiPalletsSeleccionados.join(', ')}): ${resultado.seleccionPosiciones.length} posición(es) (${nRack} de Rack, ${nPiso} de Piso) — ${resultado.filas.length} línea(s) de producto a contar. Puedes volver a generar si quieres actualizar la selección antes de confirmar.`;
-  $('ti-preview-body').innerHTML = resultado.filas.map(f=>
-    `<tr><td>${f.posicion_id}</td><td>${f.tipo_posicion==='piso'?'Piso':'Rack'}</td><td>${f.pallet_codigo}</td><td>${f.producto_codigo}</td><td>${f.producto_descripcion}</td><td>${f.cantidad_sistema}</td></tr>`
-  ).join('');
+  renderPreviewToma();
   $('ti-preview-wrap').style.display = 'block';
   showMsg('ti-msg','ok', `Selección generada: ${resultado.seleccionPosiciones.length} posiciones de ${tiPalletsSeleccionados.length} pallet(s).`);
 });
@@ -9565,9 +9720,7 @@ $('btn-ti-generar-nicho').addEventListener('click', ()=>{
   const nRack = resultado.seleccionPosiciones.filter(s=>s.tipo==='rack').length;
   const nPiso = resultado.seleccionPosiciones.filter(s=>s.tipo==='piso').length;
   $('ti-preview-resumen').textContent = `Nicho ${letra}: ${resultado.seleccionPosiciones.length} posición(es) (${nRack} de Rack, ${nPiso} de Piso) — ${resultado.filas.length} línea(s) de producto a contar. Puedes volver a generar si quieres actualizar la selección antes de confirmar.`;
-  $('ti-preview-body').innerHTML = resultado.filas.map(f=>
-    `<tr><td>${f.posicion_id}</td><td>${f.tipo_posicion==='piso'?'Piso':'Rack'}</td><td>${f.pallet_codigo}</td><td>${f.producto_codigo}</td><td>${f.producto_descripcion}</td><td>${f.cantidad_sistema}</td></tr>`
-  ).join('');
+  renderPreviewToma();
   $('ti-preview-wrap').style.display = 'block';
   showMsg('ti-msg','ok', `Selección generada: ${resultado.seleccionPosiciones.length} posiciones del nicho ${letra}.`);
 });
@@ -9588,9 +9741,7 @@ $('btn-ti-generar').addEventListener('click', ()=>{
   const avisoCantidad = resultado.seleccionPosiciones.length < cantidad
     ? ` (se pidieron ${cantidad}, pero solo hay ${resultado.seleccionPosiciones.length} posiciones disponibles${excluidas.size?', descontando las ya sorteadas hoy':''})` : '';
   $('ti-preview-resumen').textContent = `${resultado.seleccionPosiciones.length} posición(es) seleccionada(s)${avisoCantidad}: ${nRack} de Rack, ${nPiso} de Piso (${resultado.filas.length} línea(s) de producto a contar). Puedes volver a sortear si quieres otra selección antes de confirmar.`;
-  $('ti-preview-body').innerHTML = resultado.filas.map(f=>
-    `<tr><td>${f.posicion_id}</td><td>${f.tipo_posicion==='piso'?'Piso':'Rack'}</td><td>${f.pallet_codigo}</td><td>${f.producto_codigo}</td><td>${f.producto_descripcion}</td><td>${f.cantidad_sistema}</td></tr>`
-  ).join('');
+  renderPreviewToma();
   $('ti-preview-wrap').style.display = 'block';
   showMsg('ti-msg','ok', `Selección generada: ${resultado.seleccionPosiciones.length} posiciones.`);
 });
@@ -9669,15 +9820,167 @@ $('btn-ti-confirmar').addEventListener('click', async ()=>{
   }
 });
 
+// El PDF firmado y las fotos son la evidencia de la misma toma: van juntos.
 function setTiSubtab(name){
-  ['conteo','pdf','img'].forEach(n=>{
-    $('tisub-'+n).classList.toggle('active', n===name);
-    $('tisub-panel-'+n).style.display = (n===name) ? 'block' : 'none';
-  });
+  const esEvidencia = (name === 'evidencia' || name === 'pdf' || name === 'img');
+  $('tisub-conteo').classList.toggle('active', !esEvidencia);
+  $('tisub-evidencia').classList.toggle('active', esEvidencia);
+  $('tisub-panel-conteo').style.display = esEvidencia ? 'none' : 'block';
+  $('tisub-panel-pdf').style.display = esEvidencia ? 'block' : 'none';
+  $('tisub-panel-img').style.display = esEvidencia ? 'block' : 'none';
 }
 $('tisub-conteo').addEventListener('click', ()=> setTiSubtab('conteo'));
-$('tisub-pdf').addEventListener('click', ()=> setTiSubtab('pdf'));
-$('tisub-img').addEventListener('click', ()=> setTiSubtab('img'));
+$('tisub-evidencia').addEventListener('click', ()=> setTiSubtab('evidencia'));
+
+/* -------------------- Flujo por pasos -------------------- */
+let tiPasoActual = 1;
+function setTiPaso(n){
+  tiPasoActual = n;
+  [1,2,3,4].forEach(i=> $('ti-paso-'+i).classList.toggle('active', i===n));
+  const vista = $('view-toma_inventario');
+  if(n === 4){
+    setTiMainSubtab('resultados');
+    renderDashboardResultados();
+    vista.classList.remove('contando');
+    return;
+  }
+  setTiMainSubtab('ejecucion');
+  // Contar y cerrar necesitan la pantalla completa: el lateral de generación se pliega.
+  vista.classList.toggle('contando', n !== 1 && !!tiConteoActual);
+  if(n !== 1) setTiSubtab('conteo');
+  if(n === 3 && $('btn-ti-finalizar')) $('btn-ti-finalizar').focus({preventScroll:true});
+}
+[1,2,3,4].forEach(i=> $('ti-paso-'+i).addEventListener('click', ()=> setTiPaso(i)));
+$('ti-ctx-cerrar').addEventListener('click', ()=>{
+  tiConteoActual = null; tiSeleccionCorrelativo = null;
+  $('ti-contexto').classList.remove('visible');
+  renderResultadoConteo(); renderTomasInventario();
+  setTiPaso(1);
+});
+
+/* -------------------- Ayuda de los modos de generación -------------------- */
+$('ti-btn-ayuda').addEventListener('click', ()=>{
+  const p = $('ti-btn-ayuda').closest('.panel');
+  p.classList.toggle('ti-ayuda-visible');
+  $('ti-btn-ayuda').setAttribute('aria-pressed', p.classList.contains('ti-ayuda-visible'));
+});
+
+/* -------------------- Conteo: ciego, filtro y guardado masivo -------------------- */
+$('ti-chk-ciego').addEventListener('change', ()=>{
+  $('view-toma_inventario').classList.toggle('ti-ciego', $('ti-chk-ciego').checked);
+  try{ localStorage.setItem('ti:ciego', $('ti-chk-ciego').checked ? '1':'0'); }catch(e){}
+});
+try{
+  if(localStorage.getItem('ti:ciego') === '1'){
+    $('ti-chk-ciego').checked = true;
+    $('view-toma_inventario').classList.add('ti-ciego');
+  }
+}catch(e){}
+$('ti-chk-pendientes').addEventListener('change', ()=>{ if(tiConteoActual) renderConteoTomaEditable(); });
+
+$('btn-ti-guardar-todo').addEventListener('click', async ()=>{
+  if(!tiConteoActual) return;
+  const pendientes = [...document.querySelectorAll('.ti-input-contada')]
+    .map(inp=>({inp, idx:Number(inp.dataset.idx), valor:inp.value.trim()}))
+    .filter(x=> x.valor !== '' && tiConteoActual.items[x.idx].estado !== 'CONTADO');
+  if(pendientes.length === 0){ showToast('No hay cantidades escritas sin guardar.','err'); return; }
+  if(!confirm('Se guardarán ' + pendientes.length + ' línea(s). ¿Continuar?')) return;
+  const btn = $('btn-ti-guardar-todo'); btn.disabled = true;
+  try{
+    const CHUNK = 400;
+    for(let i=0;i<pendientes.length;i+=CHUNK){
+      const batch = db.batch();
+      pendientes.slice(i,i+CHUNK).forEach(({idx, valor})=>{
+        const item = tiConteoActual.items[idx];
+        const cantidad = Number(valor);
+        if(isNaN(cantidad) || cantidad < 0) return;
+        const selMotivo = document.querySelector('.ti-select-motivo[data-idx="'+idx+'"]');
+        const motivo = selMotivo ? (selMotivo.value || null) : null;
+        const diferencia = cantidad - item.cantidad_sistema;
+        batch.update(inventarioTomasItemsRef.doc(item.id), {
+          cantidad_contada: cantidad, diferencia, encontrado: cantidad > 0, motivo, estado:'CONTADO',
+          contado_por: currentUserAlias, contado_en: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        item.cantidad_contada = cantidad; item.diferencia = diferencia;
+        item.encontrado = cantidad > 0; item.motivo = motivo; item.estado = 'CONTADO';
+      });
+      await batch.commit();
+    }
+    renderConteoTomaEditable();
+    actualizarResumenConteo();
+    showToast(pendientes.length + ' línea(s) guardadas.','ok');
+  }catch(err){
+    console.error(err);
+    showToast('Error al guardar: '+err.message,'err');
+  }finally{ btn.disabled = false; }
+});
+
+/* -------------------- Modo conteo a pantalla completa --------------------
+   Una línea a la vez, número grande y "guardar y siguiente": es como se cuenta
+   de pie delante del rack, con el teléfono en una mano. */
+let cfIdx = 0;
+function cfPendientes(){
+  return itemsConteoOrdenados().filter(({it})=> it.estado !== 'CONTADO');
+}
+function cfPintar(){
+  const lista = cfPendientes();
+  if(lista.length === 0){
+    $('cf-pos').textContent = 'Todo contado';
+    $('cf-desc').textContent = 'No quedan líneas pendientes en esta toma.';
+    $('cf-sub').textContent = ''; $('cf-sistema').textContent = '';
+    $('cf-cantidad').value = ''; $('cf-prog').textContent = '';
+    return;
+  }
+  if(cfIdx >= lista.length) cfIdx = 0;
+  if(cfIdx < 0) cfIdx = lista.length - 1;
+  const {it} = lista[cfIdx];
+  $('cf-pos').textContent = it.posicion_id;
+  $('cf-sub').textContent = 'Pallet ' + it.pallet_codigo + ' · ' + (it.tipo_posicion==='piso'?'Piso':'Rack') + ' · ' + it.producto_codigo;
+  $('cf-desc').textContent = it.producto_descripcion || '';
+  const ciego = $('ti-chk-ciego').checked;
+  $('cf-sistema').textContent = ciego ? 'Conteo a ciegas' : ('Sistema: ' + it.cantidad_sistema);
+  $('cf-cantidad').value = '';
+  const total = tiConteoActual.items.length;
+  $('cf-prog').textContent = (total - lista.length) + ' de ' + total + ' contadas · quedan ' + lista.length;
+}
+async function cfGuardar(cantidad){
+  const lista = cfPendientes();
+  if(lista.length === 0) return;
+  const {it} = lista[cfIdx];
+  if(isNaN(cantidad) || cantidad < 0){ showToast('Cantidad inválida.','err'); return; }
+  const diferencia = cantidad - it.cantidad_sistema;
+  try{
+    await inventarioTomasItemsRef.doc(it.id).update({
+      cantidad_contada: cantidad, diferencia, encontrado: cantidad > 0, estado:'CONTADO',
+      contado_por: currentUserAlias, contado_en: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    it.cantidad_contada = cantidad; it.diferencia = diferencia;
+    it.encontrado = cantidad > 0; it.estado = 'CONTADO';
+    showToast(diferencia===0 ? 'OK · sin diferencia' : ('Diferencia ' + (diferencia>0?'+':'') + diferencia), diferencia===0?'ok':'err');
+    actualizarResumenConteo();
+    cfPintar();
+  }catch(err){ console.error(err); showToast('Error al guardar: '+err.message,'err'); }
+}
+$('btn-ti-modo-conteo').addEventListener('click', ()=>{
+  if(!tiConteoActual){ showToast('Selecciona una toma primero.','err'); return; }
+  cfIdx = 0; cfPintar();
+  $('ti-conteo-full').classList.add('visible');
+});
+$('cf-cerrar').addEventListener('click', ()=>{
+  $('ti-conteo-full').classList.remove('visible');
+  renderConteoTomaEditable();
+});
+$('cf-menos').addEventListener('click', ()=>{ const i=$('cf-cantidad'); i.value = Math.max(0,(Number(i.value)||0)-1); });
+$('cf-mas').addEventListener('click', ()=>{ const i=$('cf-cantidad'); i.value = (Number(i.value)||0)+1; });
+$('cf-guardar').addEventListener('click', ()=>{
+  const v = $('cf-cantidad').value.trim();
+  if(v === ''){ showToast('Ingresa la cantidad contada.','err'); return; }
+  cfGuardar(Number(v));
+});
+$('cf-no-encontrado').addEventListener('click', ()=> cfGuardar(0));
+$('cf-siguiente').addEventListener('click', ()=>{ cfIdx++; cfPintar(); });
+$('cf-anterior').addEventListener('click', ()=>{ cfIdx--; cfPintar(); });
+$('cf-cantidad').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); $('cf-guardar').click(); } });
 
 let tiRegRawLastDoc = null;
 let tiRegAllCache = [];
@@ -9825,6 +10128,7 @@ async function seleccionarToma(correlativo){
     renderPanelPdf();
     renderPanelImg();
     cargarSobrantesToma(correlativo);
+    if(typeof setTiPaso === 'function') setTiPaso(2);
   }catch(err){
     console.error(err);
     showToast('Error al cargar la toma: '+err.message,'err');
@@ -9874,7 +10178,25 @@ function actualizarResumenConteo(){
   const { eri, eru } = calcularEriEru(items);
   const psm = calcularPsm(eri, eru);
   $('ti-conteo-resumen').innerHTML = `<span class="hint">${contadas.length}/${items.length} líneas contadas · <b style="color:${conDiferencia>0?'#8A332A':'#245C46'};">${conDiferencia} con diferencia</b>` +
-    (contadas.length ? ` · ERI (exactitud de unidades): <b>${fmtPct2(eri)}</b> · ERU (exactitud de posición): <b>${fmtPct2(eru)}</b> · PSM (Perfect SKU Match): <b>${fmtPct2(psm)}</b>` : '') + `</span>`;
+    (contadas.length ? ` · <span title="Exactitud de Registro de Inventario: 100% menos la desviación total de unidades.">ERI</span>: <b>${fmtPct2(eri)}</b> · <span title="Exactitud de ubicación: % de líneas contadas donde el producto sí estaba donde decía el sistema.">ERU</span>: <b>${fmtPct2(eru)}</b> · <span title="Perfect SKU Match: ERI × ERU.">PSM</span>: <b>${fmtPct2(psm)}</b>` : '') + `</span>`;
+  const pct = items.length ? Math.round((contadas.length/items.length)*100) : 0;
+  const barra = $('ti-progreso-barra'); if(barra) barra.style.width = pct+'%';
+  actualizarContextoToma(pct, contadas.length, items.length);
+}
+
+// Barra de contexto: qué toma está abierta y cuánto lleva contado.
+function actualizarContextoToma(pct, hechas, total){
+  const ctx = $('ti-contexto'); if(!ctx) return;
+  if(!tiConteoActual){ ctx.classList.remove('visible'); return; }
+  ctx.classList.add('visible');
+  const header = tiRegAllCache.find(r=>r.correlativo===tiConteoActual.correlativo);
+  $('ti-ctx-cor').textContent = tiConteoActual.correlativo;
+  $('ti-ctx-fecha').textContent = header ? (header.fecha || '') + (header.estado==='FINALIZADO' ? ' · finalizada' : '') : '';
+  $('ti-ctx-barra').style.width = pct+'%';
+  $('ti-ctx-prog').textContent = hechas+'/'+total+' líneas';
+  const p2 = $('ti-paso-2'), p3 = $('ti-paso-3');
+  if(p2) p2.classList.toggle('hecho', hechas>0);
+  if(p3) p3.classList.toggle('hecho', !!(header && header.estado==='FINALIZADO'));
 }
 
 // Panel derecho superior: si la toma NO está finalizada, se muestra editable
@@ -9915,42 +10237,66 @@ function sincronizarEncontradoDesdeCantidad(input, select){
   }
 }
 
+// Motivos frecuentes de una diferencia. Se guardan en la línea para que el
+// dashboard de resultados tenga la causa, no solo el número.
+const TI_MOTIVOS = ['Producto en otra posición','Caja abierta / faltante','Etiqueta ilegible','Error de registro previo','Otro'];
+
+// Las líneas se muestran en el orden del recorrido físico (por posición) y
+// agrupadas por pallet: es como se cuenta en el almacén.
+function itemsConteoOrdenados(){
+  return tiConteoActual.items
+    .map((it,idx)=>({it, idx}))
+    .sort((a,b)=>
+      String(a.it.posicion_id).localeCompare(String(b.it.posicion_id), 'es', {numeric:true}) ||
+      String(a.it.producto_codigo).localeCompare(String(b.it.producto_codigo), 'es', {numeric:true})
+    );
+}
+
 function renderConteoTomaEditable(){
-  $('ti-conteo-body').innerHTML = tiConteoActual.items.map((it,idx)=>{
+  const soloPendientes = $('ti-chk-pendientes') && $('ti-chk-pendientes').checked;
+  let palletActual = null;
+  const partes = [];
+  itemsConteoOrdenados().forEach(({it, idx})=>{
     const contado = it.estado==='CONTADO';
+    if(soloPendientes && contado) return;
+    if(it.pallet_codigo !== palletActual){
+      palletActual = it.pallet_codigo;
+      const delPallet = tiConteoActual.items.filter(x=>x.pallet_codigo===palletActual);
+      const hechas = delPallet.filter(x=>x.estado==='CONTADO').length;
+      partes.push(`<tr class="ti-grupo"><td colspan="10">Pallet ${palletActual} · ${it.posicion_id} · ${it.tipo_posicion==='piso'?'Piso':'Rack'} · ${hechas}/${delPallet.length} contadas</td></tr>`);
+    }
     const dif = contado ? Number(it.diferencia) : null;
     const colorDif = dif==null ? '' : (dif===0 ? '#245C46' : (dif>0 ? '#8A6D1D' : '#8A332A'));
-    const textoDif = dif==null ? '—' : (dif===0?'OK':(dif>0?'+'+dif:dif));
+    const textoDif = dif==null ? '—' : (it.encontrado===false ? 'NO ENCONTRADO' : (dif===0?'OK':(dif>0?'+'+dif:dif)));
     const cantidadVal = contado ? it.cantidad_contada : '';
-    const activo = Number(cantidadVal) > 0;
-    const encontradoVal = activo ? (it.encontrado===false ? 'no' : 'si') : 'no';
-    return `<tr data-idx="${idx}">
+    const opciones = TI_MOTIVOS.map(m=>`<option value="${m}" ${it.motivo===m?'selected':''}>${m}</option>`).join('');
+    partes.push(`<tr data-idx="${idx}" class="${contado?'ti-fila-contada':''}">
       <td>${it.posicion_id}</td><td>${it.tipo_posicion==='piso'?'Piso':'Rack'}</td><td>${it.pallet_codigo}</td>
-      <td>${it.producto_codigo}</td><td>${it.producto_descripcion}</td><td>${it.cantidad_sistema}</td>
-      <td>
-        <select class="ti-select-encontrado" data-idx="${idx}" ${activo?'':'disabled'}>
-          <option value="si" ${encontradoVal==='si'?'selected':''}>Sí</option>
-          <option value="no" ${encontradoVal==='no'?'selected':''}>No</option>
-        </select>
+      <td>${it.producto_codigo}</td><td>${it.producto_descripcion}</td><td class="c6">${it.cantidad_sistema}</td>
+      <td><select class="ti-motivo ti-select-motivo" data-idx="${idx}"><option value="">—</option>${opciones}</select></td>
+      <td><input type="number" class="ti-input-contada" data-idx="${idx}" value="${cantidadVal}" style="width:80px;" min="0"></td>
+      <td class="ti-celda-dif c9" data-idx="${idx}" style="color:${colorDif}; font-weight:700;">${textoDif}</td>
+      <td style="white-space:nowrap;">
+        <button type="button" class="btn btn-sm btn-primary btn-ti-guardar-linea" data-idx="${idx}">Guardar</button>
+        <button type="button" class="btn btn-sm btn-ghost btn-ti-no-encontrado" data-idx="${idx}" title="Marcar como no encontrado (cantidad 0)">∅</button>
       </td>
-      <td><input type="number" class="ti-input-contada" data-idx="${idx}" value="${cantidadVal}" style="width:80px;" min="0" ${(encontradoVal==='no' && activo)?'disabled':''}></td>
-      <td class="ti-celda-dif" data-idx="${idx}" style="color:${colorDif}; font-weight:700;">${textoDif}</td>
-      <td><button type="button" class="btn btn-sm btn-primary btn-ti-guardar-linea" data-idx="${idx}">Guardar</button></td>
-    </tr>`;
-  }).join('');
-
-  document.querySelectorAll('.ti-select-encontrado').forEach(sel=>{
-    sel.addEventListener('change', ()=>{
-      const idx = sel.dataset.idx;
-      const input = document.querySelector(`.ti-input-contada[data-idx="${idx}"]`);
-      if(sel.value === 'no'){ input.value = '0'; input.disabled = true; }
-      else{ input.disabled = false; }
-    });
+    </tr>`);
   });
+  $('ti-conteo-body').innerHTML = partes.join('') ||
+    '<tr><td colspan="10" style="text-align:center; color:var(--ink-soft); padding:14px;">No quedan líneas pendientes.</td></tr>';
 
+  // Enter guarda la línea y salta a la siguiente cantidad pendiente.
   document.querySelectorAll('.ti-input-contada').forEach(inp=>{
-    const sel = document.querySelector(`.ti-select-encontrado[data-idx="${inp.dataset.idx}"]`);
-    inp.addEventListener('input', ()=> sincronizarEncontradoDesdeCantidad(inp, sel));
+    inp.addEventListener('keydown', e=>{
+      if(e.key !== 'Enter') return;
+      e.preventDefault();
+      const fila = inp.closest('tr');
+      const btn = fila && fila.querySelector('.btn-ti-guardar-linea');
+      const inputs = [...document.querySelectorAll('.ti-input-contada')];
+      const siguiente = inputs[inputs.indexOf(inp)+1];
+      if(btn) btn.click();
+      if(siguiente){ siguiente.focus(); siguiente.select(); }
+    });
   });
 }
 
@@ -9965,7 +10311,7 @@ function renderConteoTomaBloqueado(){
       const encontradoVal = activoFix ? (it.encontrado===false ? 'no' : 'si') : 'no';
       return `<tr data-id="${it.id}" style="background:#FFF8E1;">
         <td>${it.posicion_id}</td><td>${it.tipo_posicion==='piso'?'Piso':'Rack'}</td><td>${it.pallet_codigo}</td>
-        <td>${it.producto_codigo}</td><td>${it.producto_descripcion}</td><td>${it.cantidad_sistema}</td>
+        <td>${it.producto_codigo}</td><td>${it.producto_descripcion}</td><td class="c6">${it.cantidad_sistema}</td>
         <td>
           <select class="ti-select-encontrado-fix" data-id="${it.id}" ${activoFix?'':'disabled'}>
             <option value="si" ${encontradoVal==='si'?'selected':''}>Sí</option>
@@ -9973,7 +10319,7 @@ function renderConteoTomaBloqueado(){
           </select>
         </td>
         <td><input type="number" class="ti-input-contada-fix" data-id="${it.id}" value="${cantidadVal}" style="width:80px;" min="0" ${(encontradoVal==='no' && activoFix)?'disabled':''}></td>
-        <td>—</td>
+        <td class="c9">—</td>
         <td style="white-space:nowrap;">
           <button type="button" class="btn btn-sm btn-primary btn-ti-guardar-correccion" data-id="${it.id}">Guardar</button>
           <button type="button" class="btn btn-sm btn-ghost btn-ti-cancelar-correccion">Cancelar</button>
@@ -9987,9 +10333,9 @@ function renderConteoTomaBloqueado(){
     const encontradoTxt = contado ? (it.encontrado===false ? 'No' : 'Sí') : '—';
     return `<tr style="background:#FAFAFA; color:#555;">
       <td>${it.posicion_id}</td><td>${it.tipo_posicion==='piso'?'Piso':'Rack'}</td><td>${it.pallet_codigo}</td>
-      <td>${it.producto_codigo}</td><td>${it.producto_descripcion}</td><td>${it.cantidad_sistema}</td>
-      <td>${encontradoTxt}</td><td>${contado ? it.cantidad_contada : '—'}</td>
-      <td style="color:${colorDif}; font-weight:700;">${textoDif}</td>
+      <td>${it.producto_codigo}</td><td>${it.producto_descripcion}</td><td class="c6">${it.cantidad_sistema}</td>
+      <td>${it.motivo || (encontradoTxt==='No' ? 'No encontrado' : '—')}</td><td>${contado ? it.cantidad_contada : '—'}</td>
+      <td class="c9" style="color:${colorDif}; font-weight:700;">${textoDif}</td>
       <td>${puedeCorregir ? `<button type="button" class="btn btn-sm btn-ghost btn-ti-editar-linea" data-id="${it.id}">✏️ Corregir</button>` : ''}</td>
     </tr>`;
   }).join('');
@@ -10154,28 +10500,43 @@ $('ti-conteo-body').addEventListener('click', async (ev)=>{
     return;
   }
 
+  const btnNo = ev.target.closest('.btn-ti-no-encontrado');
+  if(btnNo){
+    const input = document.querySelector('.ti-input-contada[data-idx="'+btnNo.dataset.idx+'"]');
+    if(input){ input.value = '0'; }
+    const guardar = btnNo.closest('tr').querySelector('.btn-ti-guardar-linea');
+    if(guardar) guardar.click();
+    return;
+  }
+
   const btn = ev.target.closest('.btn-ti-guardar-linea');
   if(!btn) return;
   const idx = Number(btn.dataset.idx);
   const item = tiConteoActual.items[idx];
-  const selEncontrado = document.querySelector(`.ti-select-encontrado[data-idx="${idx}"]`);
-  const encontrado = selEncontrado.value === 'si';
   const input = document.querySelector(`.ti-input-contada[data-idx="${idx}"]`);
-  const valor = encontrado ? input.value.trim() : '0';
+  const selMotivo = document.querySelector(`.ti-select-motivo[data-idx="${idx}"]`);
+  const valor = input.value.trim();
   if(valor === ''){ showToast('Ingresa la cantidad contada.','err'); return; }
   const cantidadContada = Number(valor);
   if(isNaN(cantidadContada) || cantidadContada<0){ showToast('Cantidad inválida.','err'); return; }
+  // "Encontrado" ya no se pregunta aparte: se deduce de la cantidad.
+  const encontrado = cantidadContada > 0;
   const diferencia = cantidadContada - item.cantidad_sistema;
+  const motivo = selMotivo ? (selMotivo.value || null) : null;
   btn.disabled = true;
   try{
     await inventarioTomasItemsRef.doc(item.id).update({
-      cantidad_contada: cantidadContada, diferencia, encontrado, estado: 'CONTADO',
+      cantidad_contada: cantidadContada, diferencia, encontrado, motivo, estado: 'CONTADO',
       contado_por: currentUserAlias, contado_en: firebase.firestore.FieldValue.serverTimestamp()
     });
     item.cantidad_contada = cantidadContada;
     item.diferencia = diferencia;
     item.encontrado = encontrado;
+    item.motivo = motivo;
     item.estado = 'CONTADO';
+    if($('ti-chk-ciego') && $('ti-chk-ciego').checked){
+      showToast(`Guardado ${cantidadContada} · sistema ${item.cantidad_sistema} · ${diferencia===0?'sin diferencia':(diferencia>0?'+'+diferencia:diferencia)}`, diferencia===0?'ok':'err');
+    }
     const celda = document.querySelector(`.ti-celda-dif[data-idx="${idx}"]`);
     const color = diferencia===0 ? '#245C46' : (diferencia>0 ? '#8A6D1D' : '#8A332A');
     celda.style.color = color;
@@ -10198,10 +10559,37 @@ function clasificarObservacion(it){
 
 $('btn-ti-finalizar').addEventListener('click', async ()=>{
   if(!tiConteoActual) return;
-  const pendientes = tiConteoActual.items.filter(it=>it.estado!=='CONTADO').length;
-  if(pendientes > 0){
-    const ok = confirm(`Todavía hay ${pendientes} línea(s) sin contar. ¿Finalizar de todas formas? Las que falten quedarán marcadas como no contadas.`);
+  const sinContar = tiConteoActual.items.filter(it=>it.estado!=='CONTADO');
+  if(sinContar.length > 0){
+    const total = tiConteoActual.items.length;
+    const ok = confirm(
+      'Quedan ' + sinContar.length + ' de ' + total + ' líneas sin contar.\n\n' +
+      'Si finalizas ahora, esas líneas NO entran en el cálculo: el ERI y el ERU se calculan solo sobre las ' +
+      (total - sinContar.length) + ' contadas, así que los indicadores pueden salir mejor de lo real.\n\n' +
+      'Aceptar = finalizar igualmente. Cancelar = seguir contando.'
+    );
     if(!ok) return;
+    const marcar = confirm(
+      '¿Marcar esas ' + sinContar.length + ' líneas como NO ENCONTRADAS (cantidad 0)?\n\n' +
+      'Aceptar = sí, entran al cálculo y bajan el ERU (lo más fiel a la realidad).\n' +
+      'Cancelar = dejarlas sin contar y fuera del cálculo.'
+    );
+    if(marcar){
+      const CHUNK = 400;
+      for(let i=0;i<sinContar.length;i+=CHUNK){
+        const b = db.batch();
+        sinContar.slice(i,i+CHUNK).forEach(it=>{
+          b.update(inventarioTomasItemsRef.doc(it.id), {
+            cantidad_contada: 0, diferencia: -(Number(it.cantidad_sistema)||0), encontrado: false,
+            motivo: 'No contada al cierre', estado:'CONTADO',
+            contado_por: currentUserAlias, contado_en: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          it.cantidad_contada = 0; it.diferencia = -(Number(it.cantidad_sistema)||0);
+          it.encontrado = false; it.motivo = 'No contada al cierre'; it.estado = 'CONTADO';
+        });
+        await b.commit();
+      }
+    }
   }
   $('btn-ti-finalizar').disabled = true;
   try{
