@@ -2002,8 +2002,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v107';
-const APP_UPDATED = '10/09/2026 15:30';
+const APP_VERSION = 'v108';
+const APP_UPDATED = '10/09/2026 16:15';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3272,6 +3272,35 @@ function totalNichosEnLayout(){
   });
   return max;
 }
+// Cuántos nichos REALES (sin colapsar) tiene el grupo de anexados de la fila
+// base `bidBase` — a diferencia de contarNichosDeFilaBase, esta SIEMPRE cuenta
+// uno por uno, sin importar el modo compacto.
+function anexCountDeFilaBase(bidBase){
+  let total = 0;
+  Object.entries(bloques).forEach(([cid,c])=>{
+    if(c.anexado_a===bidBase) Object.values(nichos).forEach(n=>{ if(n.bloque_id===cid) total++; });
+  });
+  return total;
+}
+// La reja se guarda SIEMPRE en conteo "canónico" (contando cada nicho anexado
+// uno por uno, como si nunca se ocultara nada) — así su posición física no
+// depende de si "Ocultar lado derecho" está prendido o apagado en el momento
+// de guardarla. Pero para DIBUJARLA hay que traducir ese conteo canónico al
+// conteo "visible" del modo actual: en modo compacto, cada grupo de anexados
+// pasa de contar como N nichos a contar como 1 sola ficha, así que hay que
+// restar (N-1) al conteo canónico para que la reja no "salte" al activar o
+// desactivar el modo compacto. Se usa el mayor (N-1) entre todas las filas con
+// anexados, igual que totalNichosEnLayout() usa la fila más larga como
+// referencia — una reja es una sola línea compartida por todas las filas.
+function deltaCompactacionReja(){
+  let max = 0;
+  Object.entries(bloques).forEach(([bid,b])=>{
+    if(b.anexado_a) return;
+    const anexCount = anexCountDeFilaBase(bid);
+    if(anexCount>1 && (anexCount-1)>max) max = anexCount-1;
+  });
+  return max;
+}
 // Ancho de un "paso" (un nicho + su separación) — es el período de la rejilla
 // a la que se engancha la reja.
 function rejaPasoNicho(){
@@ -3306,18 +3335,24 @@ function renderRejas(containerId, editable){
   // Borde derecho REAL: el ancho visible del contenedor, leído en vivo (ver
   // comentario grande arriba de por qué NO se calcula a partir de los nichos).
   const bordeDerecho = cont.clientWidth;
+  const deltaCompacto = ocultarLadoDerecho ? deltaCompactacionReja() : 0;
   entradas.forEach(([id, r])=>{
-    let n;
+    let nEfectivo;
     if(r.nichosDesdeDerecha!=null){
-      n = Math.max(0, Math.round(Number(r.nichosDesdeDerecha)) || 0);
+      // Valor guardado = conteo CANÓNICO (todo mostrado). Se traduce al conteo
+      // visible del modo actual restando lo que el modo compacto colapsa.
+      const nCanonico = Math.max(0, Math.round(Number(r.nichosDesdeDerecha)) || 0);
+      nEfectivo = Math.max(0, nCanonico - deltaCompacto);
     } else {
       // Documento viejo (esquema anterior en px, distancia al borde derecho):
-      // se convierte al vuelo al conteo entero más cercano — queda perfecto
-      // apenas se vuelva a arrastrar la reja, y de una vez deja de "flotar".
+      // se convierte al vuelo al conteo entero más cercano, ya en el dominio
+      // visible actual (no necesita restar delta, esta conversión ya usa el
+      // borde/paso del render actual) — queda perfecto apenas se vuelva a
+      // arrastrar la reja, y de una vez deja de "flotar".
       const xDerechaVieja = Math.max(0, Number(r.xDerecha ?? r.x) || 0);
-      n = rejaConteoDesdeLeft(bordeDerecho - xDerechaVieja, bordeDerecho);
+      nEfectivo = rejaConteoDesdeLeft(bordeDerecho - xDerechaVieja, bordeDerecho);
     }
-    const left = Math.max(0, rejaLeftDesdeConteo(n, bordeDerecho));
+    const left = Math.max(0, rejaLeftDesdeConteo(nEfectivo, bordeDerecho));
     const linea = document.createElement('div');
     linea.className = 'reja-linea' + (editable ? ' reja-editable' : '');
     linea.dataset.rejaId = id;
@@ -3341,7 +3376,11 @@ function habilitarArrastreRejas(containerId){
     const id = linea.dataset.rejaId;
     linea.classList.add('reja-arrastrando');
     try{ linea.setPointerCapture(ev.pointerId); }catch(e){}
-    let ultimoConteo = rejaConteoDesdeLeft(parseFloat(linea.style.left) || 0, cont.clientWidth);
+    // Mientras se arrastra, el conteo trabaja en el dominio VISIBLE actual
+    // (compacto o no); al soltar se convierte a conteo CANÓNICO antes de
+    // guardar (ver deltaCompactacionReja), para que la reja no salte al
+    // activar/desactivar "Ocultar lado derecho" después.
+    let ultimoConteoVisible = rejaConteoDesdeLeft(parseFloat(linea.style.left) || 0, cont.clientWidth);
     const mover = (ev2)=>{
       const rect = cont.getBoundingClientRect();
       const bordeDerecho = cont.clientWidth; // se relee en vivo: si hubo zoom a mitad del arrastre, también se respeta
@@ -3350,20 +3389,22 @@ function habilitarArrastreRejas(containerId){
       // Se engancha EN VIVO al hueco más cercano mientras se arrastra, así se
       // ve de inmediato dónde va a quedar — nada de posiciones "a medias".
       linea.style.left = Math.max(0, rejaLeftDesdeConteo(n, bordeDerecho)) + 'px';
-      ultimoConteo = n;
+      ultimoConteoVisible = n;
     };
     const soltar = async ()=>{
       linea.removeEventListener('pointermove', mover);
       linea.removeEventListener('pointerup', soltar);
       linea.removeEventListener('pointercancel', soltar);
       linea.classList.remove('reja-arrastrando');
+      const deltaCompacto = ocultarLadoDerecho ? deltaCompactacionReja() : 0;
+      const nichosDesdeDerecha = ultimoConteoVisible + deltaCompacto;
       try{
         await rejasRef.doc(id).update({
-          nichosDesdeDerecha: ultimoConteo,
+          nichosDesdeDerecha,
           xDerecha: firebase.firestore.FieldValue.delete(),
           x: firebase.firestore.FieldValue.delete()
         });
-        await logAccion('reja_movida', {detalle:`Reja ${id} movida (después de ${ultimoConteo} nicho(s) desde la derecha)`});
+        await logAccion('reja_movida', {detalle:`Reja ${id} movida (después de ${nichosDesdeDerecha} nicho(s) desde la derecha)`});
       }catch(err){ showToast('Error al mover la reja: '+err.message,'err'); renderAll(); }
     };
     linea.addEventListener('pointermove', mover);
@@ -3386,12 +3427,17 @@ async function eliminarReja(id){
 }
 $('btn-agregar-reja').addEventListener('click', async ()=>{
   const cont = $('preview-bloques');
-  let nichosDesdeDerecha = Math.round(totalNichosEnLayout()/2);
+  let nichosDesdeDerechaVisible = Math.round(totalNichosEnLayout()/2);
   if(cont && cont.clientWidth){
     const bordeDerecho = cont.clientWidth;
     const leftVisibleMitad = cont.scrollLeft + cont.clientWidth/2;
-    nichosDesdeDerecha = rejaConteoDesdeLeft(leftVisibleMitad, bordeDerecho);
+    nichosDesdeDerechaVisible = rejaConteoDesdeLeft(leftVisibleMitad, bordeDerecho);
   }
+  // Se calcula en el dominio visible actual, pero se guarda en conteo
+  // canónico (ver deltaCompactacionReja) para que quede estable sin importar
+  // el estado de "Ocultar lado derecho" al momento de crearla.
+  const deltaCompacto = ocultarLadoDerecho ? deltaCompactacionReja() : 0;
+  const nichosDesdeDerecha = nichosDesdeDerechaVisible + deltaCompacto;
   try{
     await rejasRef.add({ nombre:'', nichosDesdeDerecha, creado_en: firebase.firestore.FieldValue.serverTimestamp() });
     await logAccion('reja_creada', {detalle:`Reja creada (después de ${nichosDesdeDerecha} nicho(s) desde la derecha)`});
