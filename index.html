@@ -292,6 +292,9 @@
   .items-table input{width:100%; padding:4px 6px; font-size:11px; border:1px solid var(--line-strong); border-radius:3px; font-family:var(--mono);}
   .items-table input[readonly]{background:#EFEFEF;}
   .items-table td{padding:3px;}
+  .items-table tr.row-error td{background:var(--red-bg);}
+  .items-table tr.row-error input{border-color:var(--red); color:var(--red);}
+  .rc-paginacion{display:none; align-items:center; gap:10px; margin-top:8px;}
   .item-card{border:1px solid var(--line-strong); border-radius:6px; padding:8px; margin-bottom:8px; background:#FAFBFC;}
   .item-card .row1{display:flex; gap:6px; align-items:center; margin-bottom:6px;}
   .item-card .row1 input{flex:1;}
@@ -865,6 +868,7 @@
             <thead><tr><th>Producto</th><th>Desc.</th><th>Disp.</th><th>Retirar</th></tr></thead>
             <tbody id="rc-items-body"></tbody>
           </table>
+          <div class="rc-paginacion" id="rc-paginacion"></div>
           <button class="btn btn-danger" id="btn-retirar-campana" style="width:100%; margin-top:10px;">Retirar seleccionados</button>
           <div class="msg" id="rc-msg"></div>
         </div>
@@ -2002,8 +2006,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v108';
-const APP_UPDATED = '10/09/2026 16:15';
+const APP_VERSION = 'v109';
+const APP_UPDATED = '10/09/2026 17:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -2290,6 +2294,10 @@ function setSubtab(name){
     $('subtab-'+n).classList.toggle('active', n===name);
     $('panel-'+n).style.display = (n===name) ? 'block' : 'none';
   });
+  // Al entrar a "Retirar (campaña)" el detalle de una posición puntual ya no
+  // aplica (el retiro es por pallet/producto, no por posición) — se oculta esa
+  // sección para no ocupar espacio de más.
+  if(name==='retirar-campana'){ $('detalle-panel').style.display = 'none'; }
 }
 $('subtab-crear').addEventListener('click', ()=>setSubtab('crear'));
 $('subtab-mover').addEventListener('click', ()=>setSubtab('mover'));
@@ -4852,17 +4860,70 @@ $('btn-guardar-producto').addEventListener('click', async ()=>{
 });
 
 /* -------------------- Retirar productos de un pallet (campaña) -------------------- */
+// La tabla se pagina de 10 en 10 (un pallet con muchos productos no debe
+// obligar a hacer scroll interminable). Los valores escritos por el usuario se
+// guardan en rcValores (por producto), no solo en el DOM, para que no se
+// pierdan al cambiar de página.
+const RC_POR_PAGINA = 10;
+let rcItemsActuales = [];
+let rcValores = {};
+let rcPagina = 0;
 function cargarPalletEnRetiroCampana(code){
   $('rc-pallet').value = code;
   const pal = pallets[code];
+  rcItemsActuales = (pal && pal.items) ? pal.items.slice() : [];
+  rcValores = {};
+  rcPagina = 0;
+  renderRcTabla();
+}
+function validarRcInput(inp){
+  const cant = parseFloat(inp.value);
+  const max = parseFloat(inp.dataset.max);
+  const producto = inp.dataset.producto;
+  rcValores[producto] = (isNaN(cant) || cant<0) ? 0 : cant;
+  const tr = inp.closest('tr');
+  const excede = !isNaN(cant) && cant > max;
+  if(tr) tr.classList.toggle('row-error', excede);
+  return excede;
+}
+function renderRcTabla(){
   const table = $('rc-table'); const body = $('rc-items-body');
-  if(pal && pal.items && pal.items.length){
-    table.style.display = 'table';
-    body.innerHTML = pal.items.map(it=>`<tr>
+  if(rcItemsActuales.length===0){ table.style.display='none'; body.innerHTML=''; renderRcPaginacion(); return; }
+  table.style.display = 'table';
+  const totalPaginas = Math.max(1, Math.ceil(rcItemsActuales.length / RC_POR_PAGINA));
+  if(rcPagina >= totalPaginas) rcPagina = totalPaginas - 1;
+  if(rcPagina < 0) rcPagina = 0;
+  const inicio = rcPagina * RC_POR_PAGINA;
+  const pagina = rcItemsActuales.slice(inicio, inicio + RC_POR_PAGINA);
+  body.innerHTML = pagina.map(it=>{
+    const valorGuardado = rcValores[it.producto] != null ? rcValores[it.producto] : 0;
+    return `<tr>
       <td>${it.producto}</td><td>${it.descripcion||''}</td><td>${it.cantidad}</td>
-      <td><input type="number" class="rc-cant" data-producto="${it.producto}" data-max="${it.cantidad}" min="0" max="${it.cantidad}" step="1" value="0" style="width:60px;"></td>
-    </tr>`).join('');
-  }else{ table.style.display='none'; body.innerHTML=''; }
+      <td><input type="number" class="rc-cant" data-producto="${it.producto}" data-max="${it.cantidad}" min="0" max="${it.cantidad}" step="1" value="${valorGuardado}" style="width:60px;"></td>
+    </tr>`;
+  }).join('');
+  body.querySelectorAll('.rc-cant').forEach(inp=>{
+    validarRcInput(inp); // por si el valor guardado (de otra página) ya excedía, se ve rojo desde ya
+    inp.addEventListener('input', ()=>{
+      const excede = validarRcInput(inp);
+      if(excede) showToast(`La cantidad de ${inp.dataset.producto} excede lo disponible (${inp.dataset.max}).`,'err');
+    });
+  });
+  renderRcPaginacion(totalPaginas);
+}
+function renderRcPaginacion(totalPaginasParam){
+  const cont = $('rc-paginacion');
+  if(!cont) return;
+  const totalPaginas = totalPaginasParam != null ? totalPaginasParam : Math.max(1, Math.ceil(rcItemsActuales.length / RC_POR_PAGINA));
+  if(rcItemsActuales.length <= RC_POR_PAGINA){ cont.style.display='none'; cont.innerHTML=''; return; }
+  cont.style.display = 'flex';
+  cont.innerHTML = `
+    <button type="button" class="btn btn-ghost btn-sm" id="rc-pag-prev" ${rcPagina===0?'disabled':''}>◀ Anterior</button>
+    <span style="font-size:12px; color:var(--ink-soft);">Página ${rcPagina+1} de ${totalPaginas}</span>
+    <button type="button" class="btn btn-ghost btn-sm" id="rc-pag-next" ${rcPagina>=totalPaginas-1?'disabled':''}>Siguiente ▶</button>
+  `;
+  const prevBtn = $('rc-pag-prev'); if(prevBtn) prevBtn.onclick = () => { rcPagina--; renderRcTabla(); };
+  const nextBtn = $('rc-pag-next'); if(nextBtn) nextBtn.onclick = () => { rcPagina++; renderRcTabla(); };
 }
 $('rc-pallet').addEventListener('change', ()=>{
   const code = $('rc-pallet').value.trim().toUpperCase();
@@ -4870,19 +4931,26 @@ $('rc-pallet').addEventListener('change', ()=>{
 });
 $('btn-retirar-campana').addEventListener('click', async ()=>{
   const codigo = $('rc-pallet').value.trim().toUpperCase();
-  if(!pallets[codigo]){ showMsg('rc-msg','err','Pallet no encontrado.'); return; }
-  const inputs = [...document.querySelectorAll('.rc-cant')];
+  if(!pallets[codigo]){ showMsg('rc-msg','err','Pallet no encontrado.'); showToast('Pallet no encontrado.','err'); return; }
+  // Se valida contra rcValores (cubre TODAS las páginas, no solo la visible) —
+  // si algo excede lo disponible, se bloquea el retiro por completo, se avisa
+  // con un mensaje flotante y, si esa fila está en la página actual, se pinta
+  // de rojo (las de otras páginas se pintan solas al volver a esa página).
   const retiros = [];
-  for(const inp of inputs){
-    const cant = parseFloat(inp.value);
-    const max = parseFloat(inp.dataset.max);
-    if(cant > 0){
-      if(cant > max){ showMsg('rc-msg','err',`La cantidad de ${inp.dataset.producto} excede lo disponible.`); return; }
-      const itemActual = (pallets[codigo].items||[]).find(it=>it.producto===inp.dataset.producto) || {};
-      retiros.push({producto: inp.dataset.producto, cantidad: cant, descripcion: itemActual.descripcion||'', costo: itemActual.costo||0});
+  let huboExceso = false;
+  for(const it of rcItemsActuales){
+    const cant = Number(rcValores[it.producto]) || 0;
+    if(cant <= 0) continue;
+    if(cant > it.cantidad){
+      huboExceso = true;
+      showToast(`La cantidad de ${it.producto} excede lo disponible (${it.cantidad}).`,'err');
+      continue;
     }
+    retiros.push({producto: it.producto, cantidad: cant, descripcion: it.descripcion||'', costo: it.costo||0});
   }
-  if(retiros.length===0){ showMsg('rc-msg','err','Indica al menos una cantidad a retirar.'); return; }
+  document.querySelectorAll('.rc-cant').forEach(inp=> validarRcInput(inp)); // refresca el rojo de la página visible
+  if(huboExceso){ showMsg('rc-msg','err','Corrige las cantidades marcadas en rojo: superan lo disponible.'); return; }
+  if(retiros.length===0){ showMsg('rc-msg','err','Indica al menos una cantidad a retirar.'); showToast('Indica al menos una cantidad a retirar.','err'); return; }
   $('btn-retirar-campana').disabled = true;
   try{
     await db.runTransaction(async tx=>{
@@ -4924,6 +4992,7 @@ $('btn-retirar-campana').addEventListener('click', async ()=>{
     showMsg('rc-msg','ok','Retiro registrado.');
     showToast(`Productos retirados de ${codigo}.`,'ok');
     $('rc-pallet').value=''; $('rc-table').style.display='none'; $('rc-items-body').innerHTML='';
+    rcItemsActuales = []; rcValores = {}; rcPagina = 0; renderRcPaginacion();
   }catch(err){ showMsg('rc-msg','err', err.message); }
   finally{ $('btn-retirar-campana').disabled = false; }
 });
