@@ -2368,7 +2368,7 @@
       <button class="btn btn-ghost" id="btn-pdf-bitacora" type="button">🖨 Reporte PDF por usuario</button>
     </div>
     <p class="hint" style="margin:10px 0;">Si usas más de un filtro, se muestran los registros que cumplan con cualquiera de ellos (OR). Sin filtros, se cargan los últimos 500.</p>
-    <p class="hint" style="margin:0 0 10px;">"🖨 Reporte PDF por usuario" es distinto: requiere al menos la fecha "Desde" (si dejas "Hasta" vacío, es un reporte de un solo día), y combina los filtros de Usuario/Módulo con Y (no con O) — junta TODAS las actividades del rango, ya sea de todos los usuarios (una sección por cada uno) o solo del usuario que indiques.</p>
+    <p class="hint" style="margin:0 0 10px;">Primero elige tus filtros y presiona "Cargar" para ver los registros en pantalla. Luego "🖨 Reporte PDF por usuario" exporta exactamente lo que quedó mostrado en la tabla, agrupado en secciones por usuario.</p>
     <div class="hist-wrap">
       <table><thead><tr><th>Acción</th><th>Pallet</th><th>De</th><th>A</th><th>Detalle</th><th>Usuario</th><th>Cuándo</th></tr></thead><tbody id="bit-body"></tbody></table>
       <div class="empty-state" id="bit-empty">Presiona "Cargar" para ver la bitácora.</div>
@@ -2453,8 +2453,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v114';
-const APP_UPDATED = '10/09/2026 20:30';
+const APP_VERSION = 'v115';
+const APP_UPDATED = '10/09/2026 21:10';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -6247,6 +6247,8 @@ function parseLocalDate(str){ // "YYYY-MM-DD" -> medianoche LOCAL (evita el corr
   const [y,m,d] = str.split('-').map(Number);
   return new Date(y, m-1, d);
 }
+let ultimaBitacoraCargada = null; // snapshot de lo último mostrado en pantalla con "Cargar" (rows + filtros usados)
+
 $('btn-cargar-bitacora').addEventListener('click', async ()=>{
   $('btn-cargar-bitacora').disabled = true;
   try{
@@ -6257,6 +6259,7 @@ $('btn-cargar-bitacora').addEventListener('click', async ()=>{
     const desdeF = $('bit-desde').value;
     const hastaF = $('bit-hasta').value;
     const moduloF = $('bit-modulo').value;
+    const moduloLabel = $('bit-modulo').selectedOptions[0].textContent;
     const activeFilters = !!(usuarioF || codigoF || productoF || desdeF || hastaF || moduloF);
     const rows = [];
     snap.forEach(doc=>{
@@ -6279,6 +6282,7 @@ $('btn-cargar-bitacora').addEventListener('click', async ()=>{
       }
       if(matched) rows.push(d);
     });
+    ultimaBitacoraCargada = { rows, usuarioF, codigoF, productoF, desdeF, hastaF, moduloF, moduloLabel, activeFilters };
     const body = $('bit-body');
     if(rows.length===0){ body.innerHTML=''; $('bit-empty').style.display='block'; $('bit-empty').textContent='Sin resultados para esos filtros.'; return; }
     $('bit-empty').style.display='none';
@@ -6290,47 +6294,29 @@ $('btn-cargar-bitacora').addEventListener('click', async ()=>{
   finally{ $('btn-cargar-bitacora').disabled = false; }
 });
 
-function endOfDayLocal(str){
-  const d = parseLocalDate(str);
-  d.setHours(23,59,59,999);
-  return d;
-}
-
-async function generarPDFBitacora(){
+function generarPDFBitacora(){
   const btn = $('btn-pdf-bitacora');
-  const desdeF = $('bit-desde').value;
-  let hastaF = $('bit-hasta').value;
-  if(!desdeF){ showToast('Selecciona al menos la fecha "Desde" para generar el reporte PDF.','err'); return; }
-  if(!hastaF) hastaF = desdeF;
-  if(parseLocalDate(hastaF) < parseLocalDate(desdeF)){ showToast('La fecha "Hasta" no puede ser anterior a "Desde".','err'); return; }
-
-  const usuarioF = $('bit-usuario').value.trim().toLowerCase();
-  const moduloF = $('bit-modulo').value;
-
+  if(!ultimaBitacoraCargada || ultimaBitacoraCargada.rows.length===0){
+    showToast('Primero presiona "Cargar" para filtrar los registros que quieres exportar a PDF.','err');
+    return;
+  }
   btn.disabled = true;
   try{
-    const desde = parseLocalDate(desdeF);
-    const hasta = endOfDayLocal(hastaF);
-    const snap = await movimientosRef
-      .where('timestamp','>=', desde)
-      .where('timestamp','<=', hasta)
-      .orderBy('timestamp','asc')
-      .get();
-
-    if(snap.empty){ showToast('No hay registros de bitácora en ese rango de fechas.','err'); return; }
+    const { rows, usuarioF, codigoF, productoF, desdeF, hastaF, moduloF, moduloLabel, activeFilters } = ultimaBitacoraCargada;
 
     const porUsuario = {};
-    snap.forEach(doc=>{
-      const d = doc.data();
-      if(usuarioF && !(d.usuario && d.usuario.toLowerCase().includes(usuarioF))) return;
-      if(moduloF && moduloOf(d.tipo) !== moduloF) return;
+    rows.forEach(d=>{
       const u = d.usuario || 'desconocido';
       if(!porUsuario[u]) porUsuario[u] = [];
       porUsuario[u].push(d);
     });
-
+    // dentro de cada usuario, ordenar cronológicamente (más antiguo primero)
     const usuarios = Object.keys(porUsuario).sort((a,b)=> a.localeCompare(b));
-    if(usuarios.length===0){ showToast('No hay registros que cumplan esos filtros en el rango indicado.','err'); return; }
+    usuarios.forEach(u=> porUsuario[u].sort((a,b)=>{
+      const ta = a.timestamp ? a.timestamp.toMillis() : 0;
+      const tb = b.timestamp ? b.timestamp.toMillis() : 0;
+      return ta - tb;
+    }));
 
     let totalRegistros = 0;
     usuarios.forEach(u=> totalRegistros += porUsuario[u].length);
@@ -6349,14 +6335,20 @@ async function generarPDFBitacora(){
     doc.setFont('helvetica','normal'); doc.setFontSize(10);
 
     let y = 26;
-    const rangoTxt = desdeF===hastaF ? `Fecha: ${desdeF}` : `Rango: ${desdeF} a ${hastaF}`;
+    let rangoTxt;
+    if(desdeF && hastaF) rangoTxt = desdeF===hastaF ? `Fecha: ${desdeF}` : `Rango: ${desdeF} a ${hastaF}`;
+    else if(desdeF) rangoTxt = `Desde: ${desdeF}`;
+    else if(hastaF) rangoTxt = `Hasta: ${hastaF}`;
+    else rangoTxt = 'Sin filtro de fecha (últimos 500 registros cargados)';
     doc.text(rangoTxt, margin, y);
     doc.text(`Generado: ${new Date().toLocaleString('es-PE')}`, pageW-margin, y, {align:'right'});
     y += 6;
     const filtrosTxt = [];
     if(usuarioF) filtrosTxt.push(`Usuario contiene "${usuarioF}"`);
-    if(moduloF) filtrosTxt.push(`Módulo: ${$('bit-modulo').selectedOptions[0].textContent}`);
-    doc.text(filtrosTxt.length ? `Filtros: ${filtrosTxt.join(' · ')}` : 'Filtros: ninguno (todos los usuarios y módulos)', margin, y);
+    if(codigoF) filtrosTxt.push(`Código contiene "${codigoF}"`);
+    if(productoF) filtrosTxt.push(`Producto contiene "${productoF}"`);
+    if(moduloF) filtrosTxt.push(`Módulo: ${moduloLabel}`);
+    doc.text(activeFilters ? `Filtros usados (OR): ${filtrosTxt.join(' · ')}` : 'Filtros: ninguno', margin, y);
     doc.text(`Usuarios: ${usuarios.length}   Actividades: ${totalRegistros}`, pageW-margin, y, {align:'right'});
     y += 8;
 
@@ -6396,9 +6388,9 @@ async function generarPDFBitacora(){
       y = doc.lastAutoTable.finalY + 8;
     });
 
-    const nombreArchivo = desdeF===hastaF ? `bitacora_${desdeF}.pdf` : `bitacora_${desdeF}_a_${hastaF}.pdf`;
+    const nombreArchivo = (desdeF && hastaF) ? (desdeF===hastaF ? `bitacora_${desdeF}.pdf` : `bitacora_${desdeF}_a_${hastaF}.pdf`) : `bitacora_reporte.pdf`;
     doc.save(nombreArchivo);
-    await logAccion('bitacora_reporte_generado', {detalle:`Reporte PDF de bitácora (${rangoTxt}${filtrosTxt.length? ' · '+filtrosTxt.join(' · '):''}) — ${usuarios.length} usuario(s), ${totalRegistros} actividad(es)`});
+    logAccion('bitacora_reporte_generado', {detalle:`Reporte PDF de bitácora (${rangoTxt}${filtrosTxt.length? ' · '+filtrosTxt.join(' · '):''}) — ${usuarios.length} usuario(s), ${totalRegistros} actividad(es)`});
   }catch(err){
     showToast('Error al generar el PDF de bitácora: '+err.message,'err');
   } finally {
