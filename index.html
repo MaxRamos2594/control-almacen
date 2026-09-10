@@ -864,6 +864,7 @@
         <div id="panel-retirar-campana" style="display:none;">
           <div class="field"><label>Pallet</label><input list="dl-pallets" id="rc-pallet" class="upper" placeholder="CD0000"></div>
           <p class="hint" style="margin-bottom:8px;">Indica la cantidad a retirar en cada producto que quieras sacar. Deja en 0 los que no quieras tocar.</p>
+          <button class="btn btn-ghost btn-sm" id="btn-retirar-todo-pallet" type="button" style="display:none; width:100%; margin-bottom:8px;">📦 Marcar todo el pallet para retirar</button>
           <table class="items-table" id="rc-table" style="display:none;">
             <thead><tr><th>Producto</th><th>Desc.</th><th>Disp.</th><th>Retirar</th></tr></thead>
             <tbody id="rc-items-body"></tbody>
@@ -2006,8 +2007,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v109';
-const APP_UPDATED = '10/09/2026 17:00';
+const APP_VERSION = 'v110';
+const APP_UPDATED = '10/09/2026 17:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4888,6 +4889,7 @@ function validarRcInput(inp){
 }
 function renderRcTabla(){
   const table = $('rc-table'); const body = $('rc-items-body');
+  $('btn-retirar-todo-pallet').style.display = rcItemsActuales.length ? 'block' : 'none';
   if(rcItemsActuales.length===0){ table.style.display='none'; body.innerHTML=''; renderRcPaginacion(); return; }
   table.style.display = 'table';
   const totalPaginas = Math.max(1, Math.ceil(rcItemsActuales.length / RC_POR_PAGINA));
@@ -4928,6 +4930,15 @@ function renderRcPaginacion(totalPaginasParam){
 $('rc-pallet').addEventListener('change', ()=>{
   const code = $('rc-pallet').value.trim().toUpperCase();
   cargarPalletEnRetiroCampana(code);
+});
+$('btn-retirar-todo-pallet').addEventListener('click', ()=>{
+  if(rcItemsActuales.length===0) return;
+  // Marca la cantidad completa (= disponible) de cada producto del pallet —
+  // no retira nada todavía, solo llena los campos; el usuario confirma con
+  // "Retirar seleccionados" (así puede revisar o ajustar antes de confirmar).
+  rcItemsActuales.forEach(it=>{ rcValores[it.producto] = it.cantidad; });
+  renderRcTabla();
+  showToast('Se marcó la cantidad completa de cada producto del pallet. Revisa y confirma con "Retirar seleccionados".','ok');
 });
 $('btn-retirar-campana').addEventListener('click', async ()=>{
   const codigo = $('rc-pallet').value.trim().toUpperCase();
