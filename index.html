@@ -847,6 +847,158 @@
     table.tabla-compacta .btn-sm{min-height:28px; padding:3px 6px; font-size:10px;}
   }
 
+  /* ---- Hoja de conteo (escritorio) — diseño 3A ----
+     Misma tabla y mismas columnas; jerarquía por tamaño y aire en vez de
+     bordes por celda. Posición y código mandan, sistema y contada quedan
+     juntas a la derecha y la diferencia es lo único en color. */
+  @media (min-width:641px){
+    #ti-conteo-tabla{border-collapse:collapse; width:100%;}
+    #ti-conteo-tabla thead th{
+      background:transparent; border-bottom:2px solid var(--ink);
+      font-family:var(--sans); font-size:10.5px; letter-spacing:.09em; text-transform:uppercase;
+      color:var(--ink-soft); font-weight:600; padding:8px 10px; white-space:nowrap;
+    }
+    #ti-conteo-tabla tbody td{
+      border-bottom:1px solid var(--line); border-left:none; border-right:none;
+      padding:9px 10px; vertical-align:middle; background:transparent;
+    }
+    #ti-conteo-tabla tbody tr:hover td{background:#F7F9FB;}
+    /* Posición y código: lo que se busca con la vista */
+    #ti-conteo-tabla tbody td:nth-child(1){font-family:var(--mono); font-size:16px; font-weight:700; color:var(--ink);}
+    #ti-conteo-tabla tbody td:nth-child(2){font-size:11px; color:var(--ink-soft);}
+    #ti-conteo-tabla tbody td:nth-child(3){font-family:var(--mono); font-size:11.5px; color:var(--ink-soft);}
+    #ti-conteo-tabla tbody td:nth-child(4){font-family:var(--mono); font-size:13.5px; font-weight:700;}
+    #ti-conteo-tabla tbody td:nth-child(5){font-size:12.5px; line-height:1.35; text-wrap:pretty; min-width:180px;}
+    /* Sistema · contada · diferencia, alineadas a la derecha y juntas */
+    #ti-conteo-tabla thead th:nth-child(6), #ti-conteo-tabla tbody td:nth-child(6){
+      text-align:right; font-family:var(--mono); font-size:15px; color:var(--ink);
+    }
+    #ti-conteo-tabla thead th:nth-child(8){text-align:center;}
+    #ti-conteo-tabla tbody td:nth-child(8){text-align:center;}
+    #ti-conteo-tabla tbody .ti-input-contada{
+      width:88px !important; height:38px; text-align:center;
+      font-family:var(--mono); font-size:16px; font-weight:700;
+      border:2px solid var(--line-strong); border-radius:4px; background:#fff;
+    }
+    #ti-conteo-tabla tbody .ti-input-contada:focus{border-color:var(--blue); outline:none;}
+    #ti-conteo-tabla thead th:nth-child(9), #ti-conteo-tabla tbody td.ti-celda-dif{
+      text-align:right; font-family:var(--mono); font-size:15px;
+    }
+    #ti-conteo-tabla tbody .ti-motivo{font-size:11.5px; height:34px; max-width:150px; width:100%;}
+    #ti-conteo-tabla tbody tr.ti-grupo td{
+      background:transparent !important; border-bottom:1px solid var(--line-strong);
+      border-top:none; padding:16px 10px 5px; font-size:10.5px; letter-spacing:.09em;
+      text-transform:uppercase; color:var(--ink-soft); font-weight:600;
+    }
+    #ti-conteo-tabla tbody tr.ti-fila-contada td{background:transparent;}
+    #ti-conteo-tabla tbody tr.ti-fila-contada td:nth-child(1),
+    #ti-conteo-tabla tbody tr.ti-fila-contada td:nth-child(4){color:var(--ink-soft);}
+  }
+
+  /* ---- Toma de inventario en móvil / tablet ----
+     Mismo flujo y mismos controles; sólo cambia cómo se tocan. La tabla de
+     conteo ya se convierte en tarjetas (.tabla-tarjetas): aquí esas tarjetas
+     se reordenan para que la posición, la cantidad contada y el botón de
+     guardar sean lo primero y lo más grande. */
+  @media (max-width:1024px){
+    #view-toma_inventario .btn{min-height:44px;}
+    #view-toma_inventario .btn-sm{min-height:40px;}
+    #view-toma_inventario .field input, #view-toma_inventario .field select{min-height:44px; font-size:14px;}
+  }
+  @media (max-width:640px){
+    /* Pasos y contexto siempre a la vista */
+    #view-toma_inventario .ti-pasos{
+      flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch;
+      position:sticky; top:0; z-index:6; background:var(--bg); padding:8px 0; margin-bottom:8px;
+    }
+    #view-toma_inventario .ti-paso{flex:0 0 auto; min-width:0; min-height:44px; white-space:nowrap;}
+    #view-toma_inventario #ti-contexto.visible{
+      position:sticky; top:60px; z-index:5; gap:8px 12px; padding:10px 12px;
+    }
+    #view-toma_inventario #ti-contexto .barra{flex:1 0 100%; order:3;}
+    #view-toma_inventario #ti-contexto #ti-ctx-cerrar{margin-left:auto; min-height:40px;}
+
+    /* Barra de interruptores del conteo: una fila deslizable */
+    #ti-resultado-contenido > div:nth-of-type(2){
+      flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch;
+      gap:8px; padding-bottom:4px;
+    }
+    #ti-resultado-contenido > div:nth-of-type(2) > *{flex:0 0 auto;}
+    #ti-resultado-contenido > div:nth-of-type(2) label{min-height:44px; padding:0 10px; border:1px solid var(--line-strong); border-radius:6px; background:#fff;}
+    #btn-ti-modo-conteo{border-color:var(--blue); color:var(--blue); font-weight:700;}
+
+    /* La tarjeta de una línea de conteo */
+    #ti-conteo-tabla tbody tr:not(.ti-grupo){
+      display:grid !important; grid-template-columns:minmax(0,1fr) auto;
+      gap:2px 10px; align-items:center; padding:10px 12px;
+    }
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) td{border-bottom:none; padding:2px 0; font-size:13px;}
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) td:nth-child(1),
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) td:nth-child(2),
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) td:nth-child(4),
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) td:nth-child(5),
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) td:nth-child(7),
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) td:nth-child(8),
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) td:nth-child(10){display:block;}
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) td:nth-child(1)::before,
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) td:nth-child(2)::before,
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) td:nth-child(4)::before,
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) td:nth-child(5)::before,
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) td:nth-child(7)::before,
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) td:nth-child(8)::before,
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) td:nth-child(10)::before{display:none;}
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) td:nth-child(1){
+      grid-column:1; font-family:var(--mono); font-size:20px; font-weight:700; color:var(--ink);
+    }
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) td:nth-child(2){
+      grid-column:2; justify-self:end; font-family:var(--mono); font-size:10px;
+      letter-spacing:.06em; text-transform:uppercase; color:var(--blue);
+      background:var(--blue-bg); border-radius:3px; padding:3px 6px;
+    }
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) td:nth-child(3){
+      grid-column:1 / -1; font-family:var(--mono); font-size:11px; color:var(--ink-soft);
+    }
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) td:nth-child(3)::before{flex:0 0 auto; font-size:9px;}
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) td:nth-child(4){
+      grid-column:1 / -1; font-family:var(--mono); font-size:14px; font-weight:700; margin-top:4px;
+    }
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) td:nth-child(5){
+      grid-column:1 / -1; font-size:12.5px; color:var(--ink-soft); line-height:1.35; text-wrap:pretty;
+    }
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) td:nth-child(6){grid-column:1; margin-top:8px;}
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) td:nth-child(6)::before{flex:0 0 auto; font-size:9px;}
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) td.ti-celda-dif{
+      grid-column:2; justify-self:end; margin-top:8px; font-family:var(--mono); font-size:15px;
+    }
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) td.ti-celda-dif::before{display:none;}
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) td:nth-child(7){grid-column:1 / -1; margin-top:6px;}
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) .ti-motivo{max-width:none; width:100%; min-height:44px; font-size:13px;}
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) td:nth-child(8){grid-column:1 / -1; margin-top:6px;}
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) .ti-input-contada{
+      width:100% !important; min-height:56px; text-align:center;
+      font-family:var(--mono); font-size:24px; font-weight:700; border-width:2px; border-color:var(--ink);
+    }
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) td:nth-child(10){
+      grid-column:1 / -1; margin-top:8px; display:grid !important;
+      grid-template-columns:minmax(0,1fr) 60px; gap:8px;
+    }
+    #ti-conteo-tabla tbody tr:not(.ti-grupo) td:nth-child(10) .btn{min-height:48px; font-size:14px; width:100%;}
+    #ti-conteo-tabla tbody tr.ti-fila-contada{opacity:.72;}
+    #ti-conteo-tabla tbody tr.ti-grupo td{position:sticky; top:118px; z-index:4;}
+
+    /* Lista de tomas: la fila se lee como ficha, con el correlativo al frente */
+    #ti-reg-body tr td:nth-child(1){font-family:var(--mono); font-size:17px; font-weight:700;}
+    #ti-reg-body tr td:nth-child(1)::before{display:none;}
+
+    /* Sobrantes: un campo por línea */
+    #ti-sob-form-wrap .field{max-width:none !important; flex:1 1 100%;}
+    #ti-sob-form-wrap .btn{width:100%;}
+
+    /* Acciones de cierre a lo ancho */
+    #ti-resultado-contenido > div:last-of-type .btn,
+    #btn-ti-finalizar, #btn-ti-guardar-todo{flex:1 1 100%;}
+  }
+
   /* ---- MÓVIL ---- */
   @media (max-width:640px){
     header{padding:8px 12px; gap:8px; flex-wrap:nowrap;}
@@ -12900,6 +13052,7 @@ const TABLAS_MOVIL = [
   {id:'bit-body', tarjetas:true},
   {id:'ti-preview-body', tarjetas:true},
   {id:'ti-conteo-body', tarjetas:true},
+  {id:'ti-reg-body', tarjetas:true},
   {id:'merma-reg-body', tarjetas:true},
   {id:'merma-formatos-body', tarjetas:true},
   {id:'aud-list-body', tarjetas:true}
