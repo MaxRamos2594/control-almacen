@@ -261,6 +261,23 @@
   .slot.readonly{cursor:default;}
   .slot.bloqueada{ background:#000; border-color:#000; color:#fff; cursor:not-allowed; }
   .slot.campana-dia{ background:#4FC3E8; border-color:#1E90BE; color:#06323F; cursor:not-allowed; }
+  .slot.union-hl{outline:3px dashed var(--lacre); outline-offset:2px; box-shadow:0 0 0 3px var(--lacre-bg); z-index:4;}
+
+  /* ---- Unir pallets (Movimientos) ---- */
+  .un-item{border:1px solid var(--line); border-radius:6px; margin-bottom:8px; overflow:hidden;}
+  .un-item-head{display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:8px 10px; background:#fff; cursor:pointer;}
+  .un-item-head:hover{background:#F5F6F8;}
+  .un-item-head .un-cod{font-family:var(--mono); font-weight:700; font-size:12.5px;}
+  .un-item-head .un-desc{font-size:11.5px; color:var(--ink-soft); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .un-item-head .un-meta{font-family:var(--mono); font-size:10.5px; color:var(--lacre); white-space:nowrap;}
+  .un-item-body{display:none; padding:2px 10px 10px; border-top:1px solid var(--line); background:#FAFAFA;}
+  .un-item.abierto .un-item-body{display:block;}
+  .un-pallet-row{display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:6px 0; border-bottom:1px dashed var(--line);}
+  .un-pallet-row:last-child{border-bottom:none;}
+  .un-pallet-row .un-p-cod{font-family:var(--mono); font-weight:600; font-size:11.5px;}
+  .un-pallet-row .un-p-pos{font-family:var(--mono); font-size:10.5px; color:var(--ink-soft);}
+  .un-pallet-row .un-p-cant{font-family:var(--mono); font-size:11px; margin-left:auto;}
+  .un-tag-destino{font-size:9.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--green); background:var(--green-bg); border-radius:3px; padding:2px 6px;}
 
   .tooltip{position:fixed; background:var(--ink); color:#fff; padding:8px 10px; border-radius:5px; font-family:var(--mono); font-size:11px; pointer-events:none; z-index:60; display:none; max-width:240px; line-height:1.5;}
   .tooltip b{color:var(--lacre-bg);}
@@ -1324,6 +1341,7 @@
           <button id="subtab-mover">Mover pallet</button>
           <button id="subtab-transferir">Transferir producto</button>
           <button id="subtab-retirar-campana">Retirar (campaña)</button>
+          <button id="subtab-unir">🔗 Unir pallets</button>
         </div>
 
         <div id="panel-crear">
@@ -1369,6 +1387,13 @@
           <div class="rc-paginacion" id="rc-paginacion"></div>
           <button class="btn btn-danger" id="btn-retirar-campana" style="width:100%; margin-top:10px;">Retirar seleccionados</button>
           <div class="msg" id="rc-msg"></div>
+        </div>
+
+        <div id="panel-unir" style="display:none;">
+          <p class="hint" style="margin-bottom:8px;">Códigos de producto repartidos en más de un pallet activo: son candidatos a unirse en uno solo para liberar posiciones. Elige uno para ver en qué pallets está — se resaltan en naranja en el layout — y usa "Unir aquí" para pasar todo a un solo pallet.</p>
+          <div class="field" style="margin-bottom:10px;"><label>Buscar código</label><input type="text" id="un-buscar" class="upper" placeholder="EJ. 17891"></div>
+          <div id="un-lista" class="hist-wrap" style="max-height:420px;"></div>
+          <div class="empty-state" id="un-empty" style="display:none;">Ningún código está repartido en más de un pallet ahora mismo.</div>
         </div>
         <datalist id="dl-pallets"></datalist>
       </div>
@@ -2605,8 +2630,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v115';
-const APP_UPDATED = '10/09/2026 21:10';
+const APP_VERSION = 'v116';
+const APP_UPDATED = '24/09/2026 10:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -2976,7 +3001,7 @@ document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') cerrarMenu(); }
 document.querySelectorAll('nav.tabs button[data-tab]').forEach(btn=> btn.addEventListener('click', cerrarMenu));
 
 function setSubtab(name){
-  ['crear','mover','transferir','retirar-campana'].forEach(n=>{
+  ['crear','mover','transferir','retirar-campana','unir'].forEach(n=>{
     $('subtab-'+n).classList.toggle('active', n===name);
     $('panel-'+n).style.display = (n===name) ? 'block' : 'none';
   });
@@ -2984,11 +3009,17 @@ function setSubtab(name){
   // aplica (el retiro es por pallet/producto, no por posición) — se oculta esa
   // sección para no ocupar espacio de más.
   if(name==='retirar-campana'){ $('detalle-panel').style.display = 'none'; }
+  // El resaltado naranja de "Unir pallets" solo tiene sentido mientras esa
+  // pestaña está abierta; al salir de ella se limpia para no confundir con
+  // otras operaciones.
+  if(name!=='unir') limpiarResaltadoUnion();
+  else renderUnirPallets();
 }
 $('subtab-crear').addEventListener('click', ()=>setSubtab('crear'));
 $('subtab-mover').addEventListener('click', ()=>setSubtab('mover'));
 $('subtab-transferir').addEventListener('click', ()=>setSubtab('transferir'));
 $('subtab-retirar-campana').addEventListener('click', ()=>setSubtab('retirar-campana'));
+$('subtab-unir').addEventListener('click', ()=>setSubtab('unir'));
 
 function setCampanasSubtab(name){
   ['cargar-campana','cargar-guia','registros','buscar','analisis','validadores','vouchers'].forEach(n=>{
@@ -3153,6 +3184,8 @@ const RENDERS_POR_VISTA = {
   mov: ()=>{
     renderMovGrid(); renderMezanine(); applyFilters(); renderRejas('mov-bloques', false);
     if(selectedPosId && posiciones[selectedPosId]){ renderDetalle(selectedPosId, posiciones[selectedPosId]); }
+    actualizarBadgeUnir();
+    if($('panel-unir') && $('panel-unir').style.display !== 'none') renderUnirPallets();
   },
   inventario: ()=>{ renderInventario(); },
   pallets: ()=>{ renderPalletsTabla(); renderPalletDetalleTabla(); }
@@ -5081,6 +5114,112 @@ $('btn-transferir').addEventListener('click', async ()=>{
   }catch(err){ showMsg('tr-msg','err', err.message); }
   finally{ $('btn-transferir').disabled = false; }
 });
+
+/* -------------------- Unir pallets (mismo código repartido en varios pallets) --------------------
+   Reutiliza computeInventario() (definido más abajo, en "Inventario acumulado"): agrupa por
+   código de producto y se queda con los que tienen 2 o más pallets con cantidad>0. Sugiere como
+   destino el pallet con más cantidad de ese código, y deja "Unir aquí" para los demás, que solo
+   precarga el formulario de "Transferir producto" — la transferencia en sí la hace ese formulario,
+   con su propia transacción y validaciones, para no duplicar esa lógica. */
+function productosRepartidosEnVariosPallets(){
+  const inv = computeInventario();
+  return Object.entries(inv)
+    .map(([codigo,data])=>({
+      codigo,
+      descripcion: data.descripcion || '',
+      total: data.total,
+      detalle: (data.detalle||[]).filter(d=>Number(d.cantidad)>0).slice().sort((a,b)=> Number(b.cantidad)-Number(a.cantidad))
+    }))
+    .filter(x=> x.detalle.length >= 2)
+    .sort((a,b)=> b.detalle.length - a.detalle.length || b.total - a.total || a.codigo.localeCompare(b.codigo));
+}
+function actualizarBadgeUnir(){
+  const btn = $('subtab-unir'); if(!btn) return;
+  const n = productosRepartidosEnVariosPallets().length;
+  btn.textContent = n>0 ? `🔗 Unir pallets (${n})` : '🔗 Unir pallets';
+}
+function limpiarResaltadoUnion(){
+  document.querySelectorAll('#mov-bloques .slot.union-hl').forEach(el=>el.classList.remove('union-hl'));
+}
+function resaltarPosicionesUnion(posIds){
+  limpiarResaltadoUnion();
+  let primero = null;
+  posIds.forEach(id=>{
+    if(!id) return;
+    const el = document.getElementById('slot-'+id);
+    if(!el) return; // puede estar oculto por "Ocultar lado derecho" u otro filtro
+    el.classList.add('union-hl');
+    if(!primero) primero = el;
+  });
+  if(primero && primero.scrollIntoView) primero.scrollIntoView({behavior:'smooth', block:'center', inline:'center'});
+}
+function iniciarUnionPallets(codigo, origenPallet, cantidad, destinoPallet){
+  setSubtab('transferir');
+  fijarOrigenTransferir(origenPallet);
+  $('tr-producto').value = codigo;
+  $('tr-cantidad').value = cantidad;
+  $('tr-destino').value = destinoPallet;
+  showToast(`Revisa y confirma: unir ${codigo} de ${origenPallet} en ${destinoPallet}.`,'ok');
+}
+function renderUnirPallets(){
+  const cont = $('un-lista'); if(!cont) return;
+  const buscar = $('un-buscar').value.trim().toLowerCase();
+  let lista = productosRepartidosEnVariosPallets();
+  actualizarBadgeUnir();
+  if(buscar) lista = lista.filter(x=> x.codigo.toLowerCase().includes(buscar) || x.descripcion.toLowerCase().includes(buscar));
+  if(lista.length===0){
+    cont.innerHTML=''; $('un-empty').style.display='block';
+    $('un-empty').textContent = buscar ? 'Sin resultados para esa búsqueda.' : 'Ningún código está repartido en más de un pallet ahora mismo.';
+    return;
+  }
+  $('un-empty').style.display='none';
+  cont.innerHTML = lista.map(x=>{
+    const destino = x.detalle[0]; // el de mayor cantidad = destino sugerido
+    const filas = x.detalle.map(d=>{
+      const esDestino = d.pallet === destino.pallet && d.posicion === destino.posicion;
+      const pos = posiciones[d.posicion];
+      const bloqueadaTag = pos && pos.bloqueada ? ' <span style="color:var(--red);">(bloqueada)</span>' : '';
+      const accion = esDestino
+        ? `<span class="un-tag-destino">Destino sugerido</span>`
+        : `<button type="button" class="btn btn-ghost btn-sm" data-un-unir="${x.codigo}" data-un-origen="${d.pallet}" data-un-cant="${d.cantidad}" data-un-destino="${destino.pallet}">🔗 Unir aquí</button>`;
+      return `<div class="un-pallet-row">
+        <span class="un-p-cod">${d.pallet}</span>
+        <span class="un-p-pos">${d.posicion || '—'}${bloqueadaTag}</span>
+        <span class="un-p-cant">${fmtEntero(d.cantidad)} uds</span>
+        ${accion}
+      </div>`;
+    }).join('');
+    return `<div class="un-item" data-un-item="${x.codigo}">
+      <div class="un-item-head" data-un-toggle="${x.codigo}">
+        <span class="un-cod">${x.codigo}</span>
+        <span class="un-desc">${x.descripcion}</span>
+        <span class="un-meta">${x.detalle.length} pallets · ${fmtEntero(x.total)} uds</span>
+      </div>
+      <div class="un-item-body">${filas}</div>
+    </div>`;
+  }).join('');
+  cont.querySelectorAll('[data-un-toggle]').forEach(head=>{
+    head.addEventListener('click', ()=>{
+      const item = head.closest('.un-item');
+      const yaAbierto = item.classList.contains('abierto');
+      cont.querySelectorAll('.un-item.abierto').forEach(el=> el.classList.remove('abierto'));
+      limpiarResaltadoUnion();
+      if(!yaAbierto){
+        item.classList.add('abierto');
+        const codigo = head.dataset.unToggle;
+        const entrada = lista.find(x=>x.codigo===codigo);
+        if(entrada) resaltarPosicionesUnion(entrada.detalle.map(d=>d.posicion));
+      }
+    });
+  });
+  cont.querySelectorAll('[data-un-unir]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      iniciarUnionPallets(btn.dataset.unUnir, btn.dataset.unOrigen, btn.dataset.unCant, btn.dataset.unDestino);
+    });
+  });
+}
+$('un-buscar').addEventListener('input', renderUnirPallets);
 
 /* -------------------- Inventario acumulado -------------------- */
 // El acumulado se recalcula sólo cuando cambian pallets o productos; antes se
