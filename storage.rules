@@ -1,0 +1,24 @@
+rules_version = '2';
+
+// Reglas de seguridad de Firebase Storage para Control de Almacén.
+// Copiar en: Firebase Console → Storage → Reglas → Publicar.
+// Solo usuarios con sesión y registrados en Firestore (usuarios/{correo})
+// pueden ver o subir archivos (fotos, PDFs firmados, vouchers).
+service firebase.storage {
+  match /b/{bucket}/o {
+    function registered() {
+      return request.auth != null
+        && request.auth.token.email != null
+        && firestore.exists(/databases/(default)/documents/usuarios/$(request.auth.token.email));
+    }
+
+    match /{allPaths=**} {
+      allow read, delete: if registered();
+      // Máximo 25 MB por archivo, solo imágenes y PDF.
+      allow create, update: if registered()
+        && request.resource.size < 25 * 1024 * 1024
+        && (request.resource.contentType.matches('image/.*')
+            || request.resource.contentType == 'application/pdf');
+    }
+  }
+}
