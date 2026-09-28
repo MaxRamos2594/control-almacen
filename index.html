@@ -2650,8 +2650,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v120';
-const APP_UPDATED = '28/09/2026 19:00';
+const APP_VERSION = 'v121';
+const APP_UPDATED = '28/09/2026 20:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3734,6 +3734,7 @@ function renderBloqueForms(){
       </div>
       <div class="bloque-actions-grupo">
         ${esAnexado ? '' : `<button class="btn btn-ghost btn-sm" data-toggle-pasillo="${esc(id)}" data-valor="${esc(b.pasillo ? 'false':'true')}">${esc(b.pasillo ? '✕ Quitar pasillo' : '╱ Agregar pasillo debajo')}</button>`}
+        ${esAnexado ? '' : `<button class="btn btn-ghost btn-sm" data-toggle-alinear="${esc(id)}" data-valor="${esc(b.alinear_izquierda ? 'false':'true')}" title="${esc(b.alinear_izquierda ? 'Los nichos de esta fila vuelven a empezar junto a la reja (lado derecho)' : 'Los nichos de esta fila empiezan en el borde izquierdo, alineados con la fila más larga')}">${esc(b.alinear_izquierda ? '⇥ Pegar a la derecha' : '⇤ Pegar a la izquierda')}</button>`}
         <button class="btn btn-ghost btn-sm" data-toggle-volteo="${esc(id)}" data-valor="${esc(b.volteado ? 'false':'true')}">${esc(b.volteado ? '↩ Bloque normal' : '🔄 Voltear (piso arriba)')}</button>
         ${anexadosConNichos ? `<button class="btn btn-ghost btn-sm" data-recalcular-extension="${esc(id)}" data-nombre="${esc(b.nombre)}" title="Renumera los nichos de la extensión anexada a este bloque, cerrando huecos (ej. si falta una letra en el medio)">🔁 Renumerar extensión</button>` : ''}
       </div>
@@ -3751,6 +3752,7 @@ function renderBloqueForms(){
   }).join('');
   list.querySelectorAll('[data-add-nicho]').forEach(btn=> btn.onclick = () => agregarNicho(btn.dataset.addNicho, btn.dataset.nombre, parseInt(btn.dataset.niveles), btn.dataset.sinPiso==='true'));
   list.querySelectorAll('[data-add-piso]').forEach(btn=> btn.onclick = () => agregarNichoSoloPiso(btn.dataset.addPiso, btn.dataset.nombre));
+  list.querySelectorAll('[data-toggle-alinear]').forEach(btn=> btn.onclick = () => toggleAlinearIzquierda(btn.dataset.toggleAlinear, btn.dataset.valor==='true'));
   list.querySelectorAll('[data-toggle-pasillo]').forEach(btn=> btn.onclick = () => togglePasillo(btn.dataset.togglePasillo, btn.dataset.valor==='true'));
   list.querySelectorAll('[data-toggle-volteo]').forEach(btn=> btn.onclick = () => toggleVolteo(btn.dataset.toggleVolteo, btn.dataset.valor==='true'));
   list.querySelectorAll('[data-recalcular-extension]').forEach(btn=> btn.onclick = () => recalcularNumeracionExtension(btn.dataset.recalcularExtension, btn.dataset.nombre));
@@ -3780,6 +3782,17 @@ async function togglePasillo(bloqueId, valor){
     await bloquesRef.doc(bloqueId).update({ pasillo: valor });
     await logAccion('pasillo_actualizado', {detalle:`Pasillo ${valor?'agregado':'quitado'} en bloque`});
     showToast(`Pasillo ${valor?'agregado':'quitado'}.`,'ok');
+  }catch(err){ showToast('Error: '+err.message,'err'); }
+}
+
+// Solo cambia cómo se dibuja la fila (nichos pegados a la izquierda o a la
+// derecha); no toca nichos, posiciones ni pallets.
+async function toggleAlinearIzquierda(bloqueId, valor){
+  try{
+    await bloquesRef.doc(bloqueId).update({ alinear_izquierda: valor });
+    const nombre = bloques[bloqueId] ? bloques[bloqueId].nombre : '';
+    await logAccion('pasillo_actualizado', {detalle:`Bloque ${nombre} pegado a la ${valor?'izquierda':'derecha'}`});
+    showToast(`Bloque ${nombre} pegado a la ${valor?'izquierda':'derecha'}.`,'ok');
   }catch(err){ showToast('Error: '+err.message,'err'); }
 }
 
@@ -4209,8 +4222,12 @@ function buildBloquesMarkup(interactive, showReorder){
     const nichosPropiosHTML = nichosHTMLDeBloque(bid, b.volteado, interactive, showReorder);
     // Primero en el HTML = más a la derecha (row-reverse): los huecos ocupan
     // la zona de la reja cuando la fila no tiene extensión suficiente.
-    const huecosHTML = '<div class="nicho nicho-hueco" aria-hidden="true"></div>'.repeat(huecosRejaDeFilaBase(bid));
-    const nichosHTML = nichosPropiosHTML ? huecosHTML + anexadosHTML + nichosPropiosHTML : anexadosHTML;
+    // Si la fila está "pegada a la izquierda", el relleno va entre la
+    // extensión y los nichos propios, empujándolos hasta el borde izquierdo.
+    const hueco = '<div class="nicho nicho-hueco" aria-hidden="true"></div>';
+    const huecosHTML = hueco.repeat(huecosRejaDeFilaBase(bid));
+    const rellenoHTML = hueco.repeat(rellenoIzquierdaDeFilaBase(bid));
+    const nichosHTML = nichosPropiosHTML ? huecosHTML + anexadosHTML + rellenoHTML + nichosPropiosHTML : anexadosHTML;
     const pasilloHTML = b.pasillo ? `<div class="pasillo-divider">╱╱╱ PASILLO ╱╱╱</div>` : '';
     return `<div class="bloque-row"><div class="bloque-title">${esc(b.nombre)}</div><div class="nichos-line">${nichosHTML || '<span class="empty-state">Sin nichos aún</span>'}</div></div>${pasilloHTML}`;
   }).join('') || '<div class="empty-state">Aún no hay bloques configurados.</div>';
@@ -4282,7 +4299,21 @@ function nichoAnchoActual(){
 // Cuántos nichos tiene, en total, la fila del bloque base `bidBase`: los suyos
 // propios más los de cualquier bloque anexado a su derecha (mismos que dibuja
 // buildBloquesMarkup en esa misma fila).
+// Huecos de relleno de una fila "pegada a la izquierda": completan hasta el
+// largo de la fila más larga, así su primer nicho queda alineado con el
+// borde izquierdo del layout (las filas se empaquetan desde la derecha).
+function rellenoIzquierdaDeFilaBase(bidBase){
+  const b = bloques[bidBase];
+  if(!b || !b.alinear_izquierda) return 0;
+  if(!Object.values(nichos).some(n=> n.bloque_id === bidBase)) return 0;
+  let max = 0;
+  Object.entries(bloques).forEach(([bid,c])=>{ if(!c.anexado_a) max = Math.max(max, contarNichosDeFilaBaseSinRelleno(bid)); });
+  return Math.max(0, max - contarNichosDeFilaBaseSinRelleno(bidBase));
+}
 function contarNichosDeFilaBase(bidBase){
+  return contarNichosDeFilaBaseSinRelleno(bidBase) + rellenoIzquierdaDeFilaBase(bidBase);
+}
+function contarNichosDeFilaBaseSinRelleno(bidBase){
   let total = huecosRejaDeFilaBase(bidBase);
   Object.values(nichos).forEach(n=>{ if(n.bloque_id===bidBase) total++; });
   const idsAnexados = Object.entries(bloques).filter(([cid,c])=>c.anexado_a===bidBase).map(([cid])=>cid);
