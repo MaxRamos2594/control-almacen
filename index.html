@@ -2650,8 +2650,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v123';
-const APP_UPDATED = '28/09/2026 22:30';
+const APP_VERSION = 'v124';
+const APP_UPDATED = '28/09/2026 23:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3392,6 +3392,7 @@ async function agregarNicho(bloqueId, bloqueNombre, niveles, sinPiso){
   niveles = (niveles===3) ? 3 : 2;
   const tipo = sinPiso ? 'solo_rack' : 'rack_piso';
   const pisoFilas = pisoFilasDeBloque(bloqueId);
+  const pisoCompacto = pisoCompactoEnBloque(bloqueId);
   const posVisual = siguientePosVisualEnBloque(bloqueId);
   try{
     let letra;
@@ -3419,7 +3420,7 @@ async function agregarNicho(bloqueId, bloqueNombre, niveles, sinPiso){
         }
       });
       if(!sinPiso){
-        planPisoNicho(letra, niveles*2, pisoFilas).forEach(({codigo, fila, columna})=>{
+        planPisoNicho(letra, niveles*2, pisoFilas, pisoCompacto).forEach(({codigo, fila, columna})=>{
           tx.set(posicionesRef.doc(codigo), { tipo:'piso', nicho:letra, bloque_id:bloqueId, nivel:null, fila, columna, estado:'vacio', bloqueada:false, pallet_codigo:null, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
         });
       }
@@ -3816,16 +3817,31 @@ function pisoFilasDeBloque(bid){
 function pisoFilasDeNicho(ndata){
   return (ndata.piso_filas >= 1 && ndata.piso_filas <= 5) ? ndata.piso_filas : PISO_FILAS_DEFECTO;
 }
-// Códigos de las posiciones de piso de un nicho: columna izquierda primero y
-// luego la derecha, a continuación del rack (ej. rack 01-04, piso de 1 fila:
-// 05 izq y 06 der; de 5 filas: 05-09 izq y 10-14 der).
-function planPisoNicho(letra, rackCount, filas){
+// Códigos de las posiciones de piso de un nicho, a continuación del rack.
+// Dos numeraciones:
+//  - de 5 filas (la de siempre): izq 05-09, der 10-14 en un nicho de 2
+//    niveles; con menos filas se usan solo las primeras (1 fila: 05 y 10).
+//  - compacta: izq y der seguidas (1 fila: 05 y 06).
+// Un nicho nuevo usa la que ya tenga su bloque (ver pisoCompactoEnBloque).
+function planPisoNicho(letra, rackCount, filas, compacto){
   const plan = [];
+  const saltoDer = compacto ? filas : PISO_FILAS_DEFECTO;
   for(let i=0;i<filas;i++){
     plan.push({ codigo: `${letra}${String(rackCount+1+i).padStart(2,'0')}`, fila:i, columna:'izq' });
-    plan.push({ codigo: `${letra}${String(rackCount+1+filas+i).padStart(2,'0')}`, fila:i, columna:'der' });
+    plan.push({ codigo: `${letra}${String(rackCount+1+saltoDer+i).padStart(2,'0')}`, fila:i, columna:'der' });
   }
   return plan;
+}
+// ¿El bloque ya tiene nichos con piso en numeración compacta (reducidos
+// antes con la v122)? Se detecta porque el piso derecho de la fila 0 va
+// justo después del izquierdo (ej. 05 y 06 en vez de 05 y 10).
+function pisoCompactoEnBloque(bloqueId){
+  return Object.entries(nichos).some(([letra, n])=>{
+    if(n.bloque_id!==bloqueId || n.tipo!=='rack_piso' || pisoFilasDeNicho(n)>=PISO_FILAS_DEFECTO) return false;
+    const rack = (n.niveles||2)*2;
+    const der = Object.entries(posiciones).find(([id,p])=> p.nicho===letra && p.tipo==='piso' && p.fila===0 && p.columna==='der');
+    return !!der && Number(der[0].slice(-2)) === rack+2;
+  });
 }
 async function cambiarPisoFilasBloque(bloqueId, filas){
   if(!(filas>=1 && filas<=5)) return;
@@ -3836,22 +3852,37 @@ async function cambiarPisoFilasBloque(bloqueId, filas){
   }catch(err){ showToast('Error: '+err.message,'err'); return; }
   const aCambiar = Object.entries(nichos).filter(([l,n])=> n.bloque_id===bloqueId && n.tipo!=='solo_rack' && n.tipo!=='solo_piso' && pisoFilasDeNicho(n)!==filas);
   if(aCambiar.length===0){ showToast(`Bloque ${b.nombre}: los nichos nuevos tendrán piso de ${filas} fila(s) × 2.`,'ok'); return; }
-  const ok = confirm(`Los nichos NUEVOS del bloque ${b.nombre} tendrán piso de ${filas} fila(s) × 2 (${filas*2} posiciones).\n\n¿Aplicar también a los ${aCambiar.length} nicho(s) que ya existen (${aCambiar.map(([l])=>l).join(', ')})?\n\nSolo se cambian los nichos cuyo piso está completamente vacío y sin bloquear; sus posiciones de piso se vuelven a numerar después del rack (ej. ${aCambiar[0][0]}${String((aCambiar[0][1].niveles||2)*2+1).padStart(2,'0')}, ${aCambiar[0][0]}${String((aCambiar[0][1].niveles||2)*2+1+filas).padStart(2,'0')}…). El rack no cambia.`);
+  const ok = confirm(`Los nichos NUEVOS del bloque ${b.nombre} tendrán piso de ${filas} fila(s) × 2 (${filas*2} posiciones).\n\n¿Aplicar también a los ${aCambiar.length} nicho(s) que ya existen (${aCambiar.map(([l])=>l).join(', ')})?\n\nSe conservan las filas de arriba (las más cercanas al rack) con sus mismos códigos y pallets. Si se quitan filas, solo se eliminan las de abajo y solo si están vacías; si alguna tiene un pallet o está bloqueada, ese nicho no se cambia. El rack no cambia.`);
   if(!ok){ showToast(`Bloque ${b.nombre}: los nichos nuevos tendrán piso de ${filas} fila(s) × 2.`,'ok'); return; }
   const cambiados = [], omitidos = [];
   for(const [letra, ndata] of aCambiar){
     try{
       await db.runTransaction(async tx=>{
-        const actuales = Object.entries(posiciones).filter(([id,p])=> p.nicho===letra && p.tipo==='piso').map(([id])=>id);
-        const snaps = await Promise.all(actuales.map(id=> tx.get(posicionesRef.doc(id))));
-        const ocupada = snaps.find(sn=> sn.exists && (sn.data().estado!=='vacio' || sn.data().pallet_codigo || sn.data().bloqueada));
+        const actuales = Object.entries(posiciones).filter(([id,p])=> p.nicho===letra && p.tipo==='piso');
+        const snaps = await Promise.all(actuales.map(([id])=> tx.get(posicionesRef.doc(id))));
+        const enUso = sn=> sn.exists && (sn.data().estado!=='vacio' || sn.data().pallet_codigo || sn.data().bloqueada);
+        // Filas que se quitan: las de abajo (fila >= filas); deben estar vacías.
+        const quitar = snaps.filter(sn=> sn.exists && sn.data().fila >= filas);
+        const ocupada = quitar.find(enUso);
         if(ocupada) throw new Error(`${ocupada.id} está ocupada o bloqueada`);
-        const plan = planPisoNicho(letra, (ndata.niveles||2)*2, filas);
-        const nuevos = new Set(plan.map(x=>x.codigo));
-        actuales.forEach(id=>{ if(!nuevos.has(id)) tx.delete(posicionesRef.doc(id)); });
-        plan.forEach(({codigo, fila, columna})=>{
-          tx.set(posicionesRef.doc(codigo), { tipo:'piso', nicho:letra, bloque_id:ndata.bloque_id, nivel:null, fila, columna, estado:'vacio', bloqueada:false, pallet_codigo:null, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
-        });
+        quitar.forEach(sn=> tx.delete(sn.ref));
+        // Filas que faltan (al aumentar): se agregan sin tocar las que ya existen.
+        const columnaDe = sn=> sn.data().columna || (Number(sn.id.slice(-2))<10 ? 'izq' : 'der');
+        const existe = new Set(snaps.filter(sn=> sn.exists).map(sn=> sn.data().fila+'_'+columnaDe(sn)));
+        const usados = new Set(snaps.filter(sn=> sn.exists).map(sn=> sn.id));
+        const rackCount = (ndata.niveles||2)*2;
+        for(let i=0;i<filas;i++){
+          for(const columna of ['izq','der']){
+            if(existe.has(i+'_'+columna)) continue;
+            // Código según la numeración de 5 filas (izq 05-09, der 10-14 en
+            // un nicho de 2 niveles), así nunca choca con los ya existentes.
+            let n = columna==='izq' ? rackCount+1+i : rackCount+1+PISO_FILAS_DEFECTO+i;
+            let codigo = `${letra}${String(n).padStart(2,'0')}`;
+            while(usados.has(codigo)){ n++; codigo = `${letra}${String(n).padStart(2,'0')}`; }
+            usados.add(codigo);
+            tx.set(posicionesRef.doc(codigo), { tipo:'piso', nicho:letra, bloque_id:ndata.bloque_id, nivel:null, fila:i, columna, estado:'vacio', bloqueada:false, pallet_codigo:null, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
+          }
+        }
         tx.update(nichosRef.doc(letra), { piso_filas: filas });
       });
       cambiados.push(letra);
