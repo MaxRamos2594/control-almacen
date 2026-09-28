@@ -1,0 +1,65 @@
+rules_version = '2';
+
+// Reglas de seguridad de Firestore para Control de Almacén.
+// Copiar en: Firebase Console → Firestore Database → Reglas → Publicar.
+//
+// Modelo (igual que en index.html):
+//   - Solo entra quien tiene sesión Y un documento en usuarios/{correo}.
+//   - Solo un admin puede crear/editar permisos (colección usuarios).
+//   - La bitácora (movimientos) no se puede editar ni borrar.
+//   - El kardex no se puede borrar; solo admin/eliminar lo corrige (fusión).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null && request.auth.token.email != null;
+    }
+    function userPath() {
+      return /databases/$(database)/documents/usuarios/$(request.auth.token.email);
+    }
+    function registered() {
+      return signedIn() && exists(userPath());
+    }
+    function perms() {
+      return get(userPath()).data.get('permisos', {});
+    }
+    function isAdmin() {
+      return registered() && perms().get('admin', false) == true;
+    }
+    function canDelete() {
+      return registered()
+        && (perms().get('admin', false) == true || perms().get('eliminar', false) == true);
+    }
+
+    // Permisos de usuarios: cada quien lee el suyo; solo admin escribe.
+    match /usuarios/{email} {
+      allow read: if signedIn() && (request.auth.token.email == email || isAdmin());
+      allow create, update, delete: if isAdmin();
+      // Arranque: el administrador principal puede crear su propio documento
+      // la primera vez (loadPermisos en index.html).
+      allow create: if signedIn()
+        && request.auth.token.email == email
+        && email == 'mramos@corporaciongrit.com';
+    }
+
+    // Bitácora: solo se agregan registros, nunca se modifican ni borran.
+    match /movimientos/{id} {
+      allow read, create: if registered();
+      allow update, delete: if false;
+    }
+
+    // Kardex: se agregan registros; solo admin/eliminar corrige (fusión de
+    // productos); nadie borra.
+    match /kardex/{id} {
+      allow read, create: if registered();
+      allow update: if canDelete();
+      allow delete: if false;
+    }
+
+    // Resto de colecciones de la app: cualquier usuario registrado.
+    match /{coleccion}/{id} {
+      allow read, write: if registered()
+        && !(coleccion in ['usuarios', 'movimientos', 'kardex']);
+    }
+  }
+}
