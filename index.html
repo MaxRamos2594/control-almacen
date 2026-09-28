@@ -1230,6 +1230,7 @@
   </div>
   <div class="drawer-group">
     <div class="drawer-group-title">Administración</div>
+    <button data-tab="reportes" id="tab-reportes">Reportes</button>
     <button data-tab="bitacora" id="tab-bitacora">Bitácora</button>
     <button data-tab="usuarios" id="tab-usuarios">Usuarios</button>
   </div>
@@ -2528,6 +2529,18 @@
   </div>
 </div>
 
+<!-- REPORTES -->
+<div class="view" id="view-reportes">
+  <div class="panel">
+    <h3><span style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:space-between;"><span>Productos duplicados en varios pallets</span><button class="btn btn-primary btn-sm" id="btn-exportar-duplicados" type="button">⬇ Exportar a Excel</button></span></h3>
+    <p class="hint" style="margin-bottom:10px;">Una fila por cada pallet donde aparece un código de producto que está repartido en 2 o más pallets activos a la vez. Para unir esos pallets en uno solo, ve a Movimientos → "🔗 Unir pallets".</p>
+    <div class="hist-wrap" style="max-height:600px;">
+      <table><thead><tr><th>Pallet</th><th>Código</th><th>Descripción</th><th>Proveedor</th><th>Costo</th><th>Cantidad</th><th>Fecha de movimiento</th></tr></thead><tbody id="rep-dup-body"></tbody></table>
+      <div class="empty-state" id="rep-dup-empty">Ningún código está repartido en más de un pallet ahora mismo.</div>
+    </div>
+  </div>
+</div>
+
 <!-- BITÁCORA -->
 <div class="view" id="view-bitacora">
   <div class="panel">
@@ -2571,6 +2584,7 @@
     <div class="field"><label><input type="checkbox" id="us-toma-inventario" style="width:auto; margin-right:6px;">Toma de Inventario</label></div>
     <div class="field"><label><input type="checkbox" id="us-kardex" style="width:auto; margin-right:6px;">Kardex</label></div>
     <div class="field"><label><input type="checkbox" id="us-merma" style="width:auto; margin-right:6px;">Merma</label></div>
+    <div class="field"><label><input type="checkbox" id="us-reportes" style="width:auto; margin-right:6px;">Reportes</label></div>
     <div class="field"><label><input type="checkbox" id="us-bitacora" style="width:auto; margin-right:6px;">Bitácora</label></div>
     <p class="hint" style="margin:10px 0 4px;">Permiso adicional (aplica dentro de los módulos ya marcados):</p>
     <div class="field"><label><input type="checkbox" id="us-eliminar" style="width:auto; margin-right:6px;">Puede editar/eliminar/bloquear registros</label></div>
@@ -2630,8 +2644,8 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v116';
-const APP_UPDATED = '24/09/2026 10:00';
+const APP_VERSION = 'v117';
+const APP_UPDATED = '28/09/2026 09:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -2806,7 +2820,7 @@ async function loadPermisos(user){
   let snap = await usuariosRef.doc(email).get();
   if(!snap.exists){
     if(email === ADMIN_EMAIL){
-      await usuariosRef.doc(email).set({ email, alias:'Administrador', permisos:{diseno:true, movimientos:true, productos:true, inventario:true, pallets:true, retiros:true, campanas:true, toma_inventario:true, kardex:true, merma:true, bitacora:true, eliminar:true, admin:true}, creado_en: firebase.firestore.FieldValue.serverTimestamp() });
+      await usuariosRef.doc(email).set({ email, alias:'Administrador', permisos:{diseno:true, movimientos:true, productos:true, inventario:true, pallets:true, retiros:true, campanas:true, toma_inventario:true, kardex:true, merma:true, reportes:true, bitacora:true, eliminar:true, admin:true}, creado_en: firebase.firestore.FieldValue.serverTimestamp() });
       snap = await usuariosRef.doc(email).get();
     }else{
       showToast('No tienes permisos asignados. Contacta al administrador.','err');
@@ -2843,6 +2857,7 @@ function applyPermisosUI(){
     toma_inventario: admin || !!p.toma_inventario,
     kardex: admin || !!p.kardex,
     merma: admin || !!p.merma,
+    reportes: admin || !!p.reportes,
     bitacora: admin || !!p.bitacora,
     usuarios: admin
   };
@@ -3188,7 +3203,8 @@ const RENDERS_POR_VISTA = {
     if($('panel-unir') && $('panel-unir').style.display !== 'none') renderUnirPallets();
   },
   inventario: ()=>{ renderInventario(); },
-  pallets: ()=>{ renderPalletsTabla(); renderPalletDetalleTabla(); }
+  pallets: ()=>{ renderPalletsTabla(); renderPalletDetalleTabla(); },
+  reportes: ()=>{ renderReportesDuplicados(); }
 };
 const rendersPendientes = new Set();
 function vistaVisible(v){ const el = $('view-'+v); return !!el && el.classList.contains('active'); }
@@ -5220,6 +5236,68 @@ function renderUnirPallets(){
   });
 }
 $('un-buscar').addEventListener('input', renderUnirPallets);
+
+/* -------------------- Reportes: productos duplicados en varios pallets --------------------
+   Aplana en una fila por pallet los códigos que ya identifica
+   productosRepartidosEnVariosPallets(), agregando proveedor/costo del catálogo
+   y la fecha del último movimiento de cada pallet (campo "actualizado", o
+   "creado_en" si el pallet nunca se volvió a tocar desde que se creó). */
+function filasReporteDuplicados(){
+  const dup = productosRepartidosEnVariosPallets();
+  const filas = [];
+  dup.forEach(x=>{
+    const prod = productos[x.codigo] || {};
+    x.detalle.forEach(d=>{
+      const pal = pallets[d.pallet] || {};
+      const ts = pal.actualizado || pal.creado_en || null;
+      filas.push({
+        pallet: d.pallet,
+        codigo: x.codigo,
+        descripcion: x.descripcion || prod.descripcion || '',
+        proveedor: prod.proveedor || '',
+        costo: prod.costo!=null ? Number(prod.costo) : 0,
+        cantidad: Number(d.cantidad)||0,
+        fecha: (ts && ts.toDate) ? ts.toDate() : null
+      });
+    });
+  });
+  return filas;
+}
+function renderReportesDuplicados(){
+  const body = $('rep-dup-body'); if(!body) return;
+  const filas = filasReporteDuplicados();
+  if(filas.length===0){
+    body.innerHTML=''; $('rep-dup-empty').style.display='block';
+    return;
+  }
+  $('rep-dup-empty').style.display='none';
+  const filasPagina = tramoPaginado('rep-dup-body', filas, 30, renderReportesDuplicados);
+  body.innerHTML = filasPagina.map(f=>`<tr>
+    <td>${f.pallet}</td><td>${f.codigo}</td><td>${f.descripcion}</td><td>${f.proveedor}</td>
+    <td>${fmtMoney(f.costo)}</td><td>${fmtEntero(f.cantidad)}</td>
+    <td>${f.fecha ? f.fecha.toLocaleDateString('es-PE') : '—'}</td>
+  </tr>`).join('');
+}
+$('btn-exportar-duplicados').addEventListener('click', ()=>{
+  const filas = filasReporteDuplicados();
+  if(filas.length===0){ showToast('No hay productos duplicados en varios pallets para exportar.','err'); return; }
+  const nombreArchivo = `productos_duplicados_${new Date().toISOString().slice(0,10)}.xlsx`;
+  mostrarProgresoDescarga(nombreArchivo);
+  actualizarProgresoDescarga(30);
+  const datos = filas.map(f=>({
+    'Pallet': f.pallet, 'Código': f.codigo, 'Descripción': f.descripcion, 'Proveedor': f.proveedor,
+    'Costo': f.costo, 'Cantidad': f.cantidad,
+    'Fecha de movimiento': f.fecha ? f.fecha.toLocaleDateString('es-PE') : ''
+  }));
+  actualizarProgresoDescarga(65);
+  const ws = XLSX.utils.json_to_sheet(datos);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Duplicados');
+  actualizarProgresoDescarga(90);
+  XLSX.writeFile(wb, nombreArchivo);
+  finalizarProgresoDescarga();
+  showToast('Reporte de productos duplicados exportado.','ok');
+});
 
 /* -------------------- Inventario acumulado -------------------- */
 // El acumulado se recalcula sólo cuando cambian pallets o productos; antes se
@@ -13194,7 +13272,8 @@ const TABLAS_MOVIL = [
   {id:'ti-reg-body', tarjetas:true},
   {id:'merma-reg-body', tarjetas:true},
   {id:'merma-formatos-body', tarjetas:true},
-  {id:'aud-list-body', tarjetas:true}
+  {id:'aud-list-body', tarjetas:true},
+  {id:'rep-dup-body', tarjetas:true}
 ];
 function etiquetarCeldas(tbody){
   const tabla = tbody.closest('table'); if(!tabla) return;
@@ -13281,7 +13360,7 @@ inactivityTimer = setInterval(async ()=>{
   document.addEventListener(evt, resetInactivityTimer, {passive:true});
 });
 
-const US_CHECK_IDS = ['us-diseno','us-movimientos','us-productos','us-inventario','us-pallets','us-retiros','us-campanas','us-toma-inventario','us-kardex','us-merma','us-bitacora','us-eliminar','us-admin'];
+const US_CHECK_IDS = ['us-diseno','us-movimientos','us-productos','us-inventario','us-pallets','us-retiros','us-campanas','us-toma-inventario','us-kardex','us-merma','us-reportes','us-bitacora','us-eliminar','us-admin'];
 function limpiarFormularioUsuario(){
   $('us-email').value=''; $('us-alias').value='';
   US_CHECK_IDS.forEach(id=>{ $(id).checked=false; });
@@ -13307,6 +13386,7 @@ $('us-email').addEventListener('blur', async ()=>{
       $('us-toma-inventario').checked = !!p.toma_inventario;
       $('us-kardex').checked = !!p.kardex;
       $('us-merma').checked = !!p.merma;
+      $('us-reportes').checked = !!p.reportes;
       $('us-bitacora').checked = !!p.bitacora;
       $('us-eliminar').checked = !!p.eliminar;
       $('us-admin').checked = !!p.admin;
@@ -13331,7 +13411,7 @@ $('btn-guardar-usuario').addEventListener('click', async ()=>{
     pallets: $('us-pallets').checked, retiros: $('us-retiros').checked,
     campanas: $('us-campanas').checked,
     toma_inventario: $('us-toma-inventario').checked,
-    kardex: $('us-kardex').checked, merma: $('us-merma').checked, bitacora: $('us-bitacora').checked,
+    kardex: $('us-kardex').checked, merma: $('us-merma').checked, reportes: $('us-reportes').checked, bitacora: $('us-bitacora').checked,
     eliminar: $('us-eliminar').checked, admin: $('us-admin').checked
   };
   try{
