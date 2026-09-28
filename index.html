@@ -1261,7 +1261,7 @@
           <span>Bloques y nichos</span>
           <button class="btn btn-ghost btn-sm" id="btn-recalcular-bloques-normales" type="button" title="Renumera TODOS los nichos de los bloques normales (no extensiones) de derecha a izquierda y continuo entre bloques: A, B, C… para los que tienen rack; X1, X2, X3… para los de solo piso.">🔁 Renumerar bloques normales</button>
         </h3>
-        <p class="hint" style="margin-bottom:10px;">Nicho de 2 niveles: 4 posiciones de rack (2 arriba, 2 abajo) + 10 de piso. Nicho de 3 niveles: 6 de rack (2 arriba, 2 medio, 2 abajo) + 10 de piso. Puedes eliminar cualquier nicho vacío (abre "Seleccionar nichos para eliminar" en cada bloque) — las letras de los que ya existen NO cambian solas; usa "🔁 Renumerar bloques normales" arriba (o "🔁 Renumerar extensión" en un bloque anexado) cuando quieras cerrar los huecos que hayan quedado.</p>
+        <p class="hint" style="margin-bottom:10px;">Nicho de 2 niveles: 4 posiciones de rack (2 arriba, 2 abajo) + piso. Nicho de 3 niveles: 6 de rack (2 arriba, 2 medio, 2 abajo) + piso. El piso de cada nicho tiene de 1 a 5 filas de 2 posiciones (10 por defecto), según "Piso de cada nicho" en su bloque. Puedes eliminar cualquier nicho vacío (abre "Seleccionar nichos para eliminar" en cada bloque) — las letras de los que ya existen NO cambian solas; usa "🔁 Renumerar bloques normales" arriba (o "🔁 Renumerar extensión" en un bloque anexado) cuando quieras cerrar los huecos que hayan quedado.</p>
         <div id="bloques-list"></div>
       </div>
     </div>
@@ -2650,8 +2650,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v121';
-const APP_UPDATED = '28/09/2026 20:30';
+const APP_VERSION = 'v122';
+const APP_UPDATED = '28/09/2026 21:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3376,6 +3376,7 @@ function siguientePosVisualEnBloque(bloqueId){
 async function agregarNicho(bloqueId, bloqueNombre, niveles, sinPiso){
   niveles = (niveles===3) ? 3 : 2;
   const tipo = sinPiso ? 'solo_rack' : 'rack_piso';
+  const pisoFilas = pisoFilasDeBloque(bloqueId);
   const posVisual = siguientePosVisualEnBloque(bloqueId);
   try{
     let letra;
@@ -3390,7 +3391,9 @@ async function agregarNicho(bloqueId, bloqueNombre, niveles, sinPiso){
         if(!snap.exists) break;
         idx++;
       }
-      tx.set(nichosRef.doc(letra), { bloque_id: bloqueId, orden: posVisual, pos_visual: posVisual, tipo, niveles, creado_en: firebase.firestore.FieldValue.serverTimestamp() });
+      const datosNicho = { bloque_id: bloqueId, orden: posVisual, pos_visual: posVisual, tipo, niveles, creado_en: firebase.firestore.FieldValue.serverTimestamp() };
+      if(!sinPiso) datosNicho.piso_filas = pisoFilas;
+      tx.set(nichosRef.doc(letra), datosNicho);
       const nombresNivel = niveles===3 ? ['arriba','medio','abajo'] : ['arriba','abajo'];
       let num = 1;
       nombresNivel.forEach(nombreNivel=>{
@@ -3401,17 +3404,12 @@ async function agregarNicho(bloqueId, bloqueNombre, niveles, sinPiso){
         }
       });
       if(!sinPiso){
-        const rackCount = niveles*2;
-        for(let i=0;i<5;i++){
-          const izq = rackCount+1+i, der = rackCount+6+i;
-          [[izq,'izq'],[der,'der']].forEach(([n,columna])=>{
-            const codigo = `${letra}${String(n).padStart(2,'0')}`;
-            tx.set(posicionesRef.doc(codigo), { tipo:'piso', nicho:letra, bloque_id:bloqueId, nivel:null, fila:i, columna, estado:'vacio', bloqueada:false, pallet_codigo:null, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
-          });
-        }
+        planPisoNicho(letra, niveles*2, pisoFilas).forEach(({codigo, fila, columna})=>{
+          tx.set(posicionesRef.doc(codigo), { tipo:'piso', nicho:letra, bloque_id:bloqueId, nivel:null, fila, columna, estado:'vacio', bloqueada:false, pallet_codigo:null, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
+        });
       }
     });
-    await logAccion('nicho_creado', {detalle:`Nicho ${letra} (${niveles} niveles${sinPiso?', sin piso':''}) creado en ${bloqueNombre} (${niveles*2} rack${sinPiso?'':' + 10 piso'})`});
+    await logAccion('nicho_creado', {detalle:`Nicho ${letra} (${niveles} niveles${sinPiso?', sin piso':''}) creado en ${bloqueNombre} (${niveles*2} rack${sinPiso?'':` + ${pisoFilas*2} piso`})`});
     showToast(`Registro creado: nicho ${letra} en ${bloqueNombre}.`,'ok');
   }catch(err){ showToast('Error: '+err.message,'err'); }
 }
@@ -3703,7 +3701,7 @@ function renderBloqueForms(){
     nichosDelBloque.forEach(([l,n])=>{
       if(n.tipo==='solo_piso'){ pisoTotal += 12; }
       else if(n.tipo==='solo_rack'){ rackTotal += (n.niveles||2)*2; }
-      else { rackTotal += (n.niveles||2)*2; pisoTotal += 10; }
+      else { rackTotal += (n.niveles||2)*2; pisoTotal += pisoFilasDeNicho(n)*2; }
     });
     const posDelBloque = rackTotal + pisoTotal;
     const esAnexado = !!b.anexado_a;
@@ -3711,7 +3709,7 @@ function renderBloqueForms(){
     const prefijoBase = esAnexado ? sanitizarPrefijoBase(nombreBase) : '';
     const filasNicho = nichosDelBloque.map(([letra,n])=>{
       const ocupado = Object.entries(posiciones).some(([pid,p])=>p.nicho===letra && p.estado==='ocupado');
-      const tipoTxt = n.tipo==='solo_piso' ? 'Solo piso (12)' : n.tipo==='solo_rack' ? `${(n.niveles||2)} niveles, sin piso (${(n.niveles||2)*2} rack)` : `${(n.niveles||2)} niveles (${(n.niveles||2)*2} rack + 10 piso)`;
+      const tipoTxt = n.tipo==='solo_piso' ? 'Solo piso (12)' : n.tipo==='solo_rack' ? `${(n.niveles||2)} niveles, sin piso (${(n.niveles||2)*2} rack)` : `${(n.niveles||2)} niveles (${(n.niveles||2)*2} rack + ${pisoFilasDeNicho(n)*2} piso)`;
       return `<label style="display:flex; align-items:center; gap:8px; padding:4px 0; font-size:12px; ${esc(ocupado?'color:#AAA;':'')}">
         <input type="checkbox" class="nicho-check" data-bloque="${esc(id)}" data-letra="${esc(letra)}" ${esc(ocupado?'disabled title="Tiene posiciones ocupadas"':'')} style="width:auto;">
         <b style="font-family:var(--mono);">${esc(letra)}</b> — ${esc(tipoTxt)} ${esc(ocupado?' · ocupado':'')}
@@ -3732,6 +3730,12 @@ function renderBloqueForms(){
         <button class="btn btn-ghost btn-sm" data-add-nicho="${esc(id)}" data-nombre="${esc(b.nombre)}" data-niveles="3" data-sin-piso="true">+ Nicho (3 niv., sin piso)</button>
         <button class="btn btn-ghost btn-sm" data-add-piso="${esc(id)}" data-nombre="${esc(b.nombre)}">+ Piso (sin rack)</button>
       </div>
+      <label class="hint" style="display:flex; align-items:center; gap:6px; margin:4px 0 6px;" title="Cuántas filas de piso (de 2 posiciones cada una) lleva cada nicho con piso de este bloque">
+        Piso de cada nicho:
+        <select data-piso-filas="${esc(id)}" style="width:auto; padding:2px 6px; font-size:12px;">
+          ${[5,4,3,2,1].map(f=> `<option value="${esc(f)}" ${esc(pisoFilasDeBloque(id)===f ? 'selected' : '')}>${esc(f)} fila${esc(f>1?'s':'')} × 2 (${esc(f*2)} posiciones)</option>`).join('')}
+        </select>
+      </label>
       <div class="bloque-actions-grupo">
         ${esAnexado ? '' : `<button class="btn btn-ghost btn-sm" data-toggle-pasillo="${esc(id)}" data-valor="${esc(b.pasillo ? 'false':'true')}">${esc(b.pasillo ? '✕ Quitar pasillo' : '╱ Agregar pasillo debajo')}</button>`}
         ${esAnexado ? '' : `<button class="btn btn-ghost btn-sm" data-toggle-alinear="${esc(id)}" data-valor="${esc(b.alinear_izquierda ? 'false':'true')}" title="${esc(b.alinear_izquierda ? 'Los nichos de esta fila vuelven a empezar junto a la reja (lado derecho)' : 'Los nichos de esta fila empiezan en el borde izquierdo, alineados con la fila más larga')}">${esc(b.alinear_izquierda ? '⇥ Pegar a la derecha' : '⇤ Pegar a la izquierda')}</button>`}
@@ -3752,6 +3756,7 @@ function renderBloqueForms(){
   }).join('');
   list.querySelectorAll('[data-add-nicho]').forEach(btn=> btn.onclick = () => agregarNicho(btn.dataset.addNicho, btn.dataset.nombre, parseInt(btn.dataset.niveles), btn.dataset.sinPiso==='true'));
   list.querySelectorAll('[data-add-piso]').forEach(btn=> btn.onclick = () => agregarNichoSoloPiso(btn.dataset.addPiso, btn.dataset.nombre));
+  list.querySelectorAll('[data-piso-filas]').forEach(sel=> sel.onchange = () => cambiarPisoFilasBloque(sel.dataset.pisoFilas, parseInt(sel.value, 10)));
   list.querySelectorAll('[data-toggle-alinear]').forEach(btn=> btn.onclick = () => toggleAlinearIzquierda(btn.dataset.toggleAlinear, btn.dataset.valor==='true'));
   list.querySelectorAll('[data-toggle-pasillo]').forEach(btn=> btn.onclick = () => togglePasillo(btn.dataset.togglePasillo, btn.dataset.valor==='true'));
   list.querySelectorAll('[data-toggle-volteo]').forEach(btn=> btn.onclick = () => toggleVolteo(btn.dataset.toggleVolteo, btn.dataset.valor==='true'));
@@ -3783,6 +3788,63 @@ async function togglePasillo(bloqueId, valor){
     await logAccion('pasillo_actualizado', {detalle:`Pasillo ${valor?'agregado':'quitado'} en bloque`});
     showToast(`Pasillo ${valor?'agregado':'quitado'}.`,'ok');
   }catch(err){ showToast('Error: '+err.message,'err'); }
+}
+
+// Filas de piso (de 2 posiciones cada una) de los nichos con piso: se guarda
+// en el bloque (para los nichos nuevos) y en cada nicho (lo que realmente
+// tiene). Sin valor guardado = 5 filas, como siempre.
+const PISO_FILAS_DEFECTO = 5;
+function pisoFilasDeBloque(bid){
+  const f = bloques[bid] && bloques[bid].piso_filas;
+  return (f >= 1 && f <= 5) ? f : PISO_FILAS_DEFECTO;
+}
+function pisoFilasDeNicho(ndata){
+  return (ndata.piso_filas >= 1 && ndata.piso_filas <= 5) ? ndata.piso_filas : PISO_FILAS_DEFECTO;
+}
+// Códigos de las posiciones de piso de un nicho: columna izquierda primero y
+// luego la derecha, a continuación del rack (ej. rack 01-04, piso de 1 fila:
+// 05 izq y 06 der; de 5 filas: 05-09 izq y 10-14 der).
+function planPisoNicho(letra, rackCount, filas){
+  const plan = [];
+  for(let i=0;i<filas;i++){
+    plan.push({ codigo: `${letra}${String(rackCount+1+i).padStart(2,'0')}`, fila:i, columna:'izq' });
+    plan.push({ codigo: `${letra}${String(rackCount+1+filas+i).padStart(2,'0')}`, fila:i, columna:'der' });
+  }
+  return plan;
+}
+async function cambiarPisoFilasBloque(bloqueId, filas){
+  if(!(filas>=1 && filas<=5)) return;
+  const b = bloques[bloqueId]; if(!b) return;
+  try{
+    await bloquesRef.doc(bloqueId).update({ piso_filas: filas });
+    await logAccion('pasillo_actualizado', {detalle:`Bloque ${b.nombre}: piso de ${filas} fila(s) × 2 para nichos nuevos`});
+  }catch(err){ showToast('Error: '+err.message,'err'); return; }
+  const aCambiar = Object.entries(nichos).filter(([l,n])=> n.bloque_id===bloqueId && n.tipo!=='solo_rack' && n.tipo!=='solo_piso' && pisoFilasDeNicho(n)!==filas);
+  if(aCambiar.length===0){ showToast(`Bloque ${b.nombre}: los nichos nuevos tendrán piso de ${filas} fila(s) × 2.`,'ok'); return; }
+  const ok = confirm(`Los nichos NUEVOS del bloque ${b.nombre} tendrán piso de ${filas} fila(s) × 2 (${filas*2} posiciones).\n\n¿Aplicar también a los ${aCambiar.length} nicho(s) que ya existen (${aCambiar.map(([l])=>l).join(', ')})?\n\nSolo se cambian los nichos cuyo piso está completamente vacío y sin bloquear; sus posiciones de piso se vuelven a numerar después del rack (ej. ${aCambiar[0][0]}${String((aCambiar[0][1].niveles||2)*2+1).padStart(2,'0')}, ${aCambiar[0][0]}${String((aCambiar[0][1].niveles||2)*2+1+filas).padStart(2,'0')}…). El rack no cambia.`);
+  if(!ok){ showToast(`Bloque ${b.nombre}: los nichos nuevos tendrán piso de ${filas} fila(s) × 2.`,'ok'); return; }
+  const cambiados = [], omitidos = [];
+  for(const [letra, ndata] of aCambiar){
+    try{
+      await db.runTransaction(async tx=>{
+        const actuales = Object.entries(posiciones).filter(([id,p])=> p.nicho===letra && p.tipo==='piso').map(([id])=>id);
+        const snaps = await Promise.all(actuales.map(id=> tx.get(posicionesRef.doc(id))));
+        const ocupada = snaps.find(sn=> sn.exists && (sn.data().estado!=='vacio' || sn.data().pallet_codigo || sn.data().bloqueada));
+        if(ocupada) throw new Error(`${ocupada.id} está ocupada o bloqueada`);
+        const plan = planPisoNicho(letra, (ndata.niveles||2)*2, filas);
+        const nuevos = new Set(plan.map(x=>x.codigo));
+        actuales.forEach(id=>{ if(!nuevos.has(id)) tx.delete(posicionesRef.doc(id)); });
+        plan.forEach(({codigo, fila, columna})=>{
+          tx.set(posicionesRef.doc(codigo), { tipo:'piso', nicho:letra, bloque_id:ndata.bloque_id, nivel:null, fila, columna, estado:'vacio', bloqueada:false, pallet_codigo:null, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
+        });
+        tx.update(nichosRef.doc(letra), { piso_filas: filas });
+      });
+      cambiados.push(letra);
+    }catch(err){ omitidos.push(`${letra} (${err.message})`); }
+  }
+  if(cambiados.length) await logAccion('pasillo_actualizado', {detalle:`Piso de ${filas} fila(s) × 2 aplicado a nichos ${cambiados.join(', ')} del bloque ${b.nombre}`});
+  if(omitidos.length) showToast(`Cambiados: ${cambiados.length}. No se cambiaron (piso con pallets o bloqueado): ${omitidos.join('; ')}`,'err');
+  else showToast(`Piso de ${filas} fila(s) × 2 aplicado a ${cambiados.length} nicho(s) de ${b.nombre}.`,'ok');
 }
 
 // Solo cambia cómo se dibuja la fila (nichos pegados a la izquierda o a la
@@ -4145,7 +4207,7 @@ function nichosHTMLDeBloque(bid, volteadoFila, interactive, showReorder){
     const letraVisual = letra;
     const esSoloPiso = ndata.tipo === 'solo_piso';
     const esSoloRack = ndata.tipo === 'solo_rack';
-    const filaCount = esSoloPiso ? 6 : (esSoloRack ? 0 : 5);
+    const filaCount = esSoloPiso ? 6 : (esSoloRack ? 0 : pisoFilasDeNicho(ndata));
     const pisoRows = [];
     for(let i=0;i<filaCount;i++){
       const izqEntry = Object.entries(posiciones).find(([id,p])=> p.nicho===letra && p.tipo==='piso' && p.fila===i && (p.columna ? p.columna==='izq' : Number(id.slice(-2))<10));
