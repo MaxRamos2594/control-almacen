@@ -2650,8 +2650,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v125';
-const APP_UPDATED = '29/09/2026 00:30';
+const APP_VERSION = 'v126';
+const APP_UPDATED = '29/09/2026 02:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3755,11 +3755,21 @@ function renderBloqueForms(){
       ${!esAnexado && b.pasillo && nichosDelBloque.length ? `<div class="hint" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin:4px 0 6px;" title="Deja vacío (—) para que el pasillo llegue hasta el extremo de la fila">
         Pasillo desde
         <select data-pasillo-tramo="${esc(id)}" data-campo="pasillo_desde" style="width:auto; padding:2px 6px; font-size:12px;">
-          <option value="">— extremo derecho</option>${nichosPropiosOrdenados(id).map(l=> `<option value="${esc(l)}" ${esc(b.pasillo_desde===l?'selected':'')}>${esc(l)}</option>`).join('')}
+          <option value="">— extremo derecho</option>${opcionesNichosPasillo(id, b.pasillo_desde)}
         </select>
         hasta
         <select data-pasillo-tramo="${esc(id)}" data-campo="pasillo_hasta" style="width:auto; padding:2px 6px; font-size:12px;">
-          <option value="">— extremo izquierdo</option>${nichosPropiosOrdenados(id).map(l=> `<option value="${esc(l)}" ${esc(b.pasillo_hasta===l?'selected':'')}>${esc(l)}</option>`).join('')}
+          <option value="">— extremo izquierdo</option>${opcionesNichosPasillo(id, b.pasillo_hasta)}
+        </select>
+        · alto
+        <select data-pasillo-alto="${esc(id)}" style="width:auto; padding:2px 6px; font-size:12px;">
+          <option value="">normal</option>${[1,2,3,4].map(f=> `<option value="${esc(f)}" ${esc(Number(b.pasillo_filas)===f?'selected':'')}>${esc(f)} fila${esc(f>1?'s':'')} de posiciones</option>`).join('')}
+        </select>
+      </div>` : ''}
+      ${soloPisoDelBloque(id).length && !esAnexado ? `<div class="hint" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin:4px 0 6px;" title="Los nichos de solo piso de este bloque se dibujan en columna: su primera fila queda a la altura de la fila elegida del nicho vecino y siguen hacia abajo, cruzando el pasillo, hasta la fila siguiente. Solo cambia el dibujo.">
+        ${esc(soloPisoDelBloque(id).join(', '))}: empezar a la altura de
+        <select data-solo-piso-inicio="${esc(id)}" style="width:auto; padding:2px 6px; font-size:12px;">
+          <option value="">— normal (sin alinear)</option>${nivelesReferenciaSoloPiso(id).map((txt,i)=> `<option value="${esc(i)}" ${esc(b.solo_piso_inicio===i?'selected':'')}>${esc(txt)}</option>`).join('')}
         </select>
       </div>` : ''}
       <div class="bloque-actions-grupo">
@@ -3782,6 +3792,8 @@ function renderBloqueForms(){
   }).join('');
   list.querySelectorAll('[data-add-nicho]').forEach(btn=> btn.onclick = () => agregarNicho(btn.dataset.addNicho, btn.dataset.nombre, parseInt(btn.dataset.niveles), btn.dataset.sinPiso==='true'));
   list.querySelectorAll('[data-add-piso]').forEach(btn=> btn.onclick = () => agregarNichoSoloPiso(btn.dataset.addPiso, btn.dataset.nombre));
+  list.querySelectorAll('[data-pasillo-alto]').forEach(sel=> sel.onchange = () => guardarCampoBloque(sel.dataset.pasilloAlto, 'pasillo_filas', sel.value ? parseInt(sel.value,10) : null, `alto del pasillo: ${sel.value ? sel.value+' fila(s) de posiciones' : 'normal'}`));
+  list.querySelectorAll('[data-solo-piso-inicio]').forEach(sel=> sel.onchange = () => guardarCampoBloque(sel.dataset.soloPisoInicio, 'solo_piso_inicio', sel.value!=='' ? parseInt(sel.value,10) : null, `nichos de solo piso ${sel.value!=='' ? 'alineados desde '+sel.options[sel.selectedIndex].text : 'sin alinear'}`));
   list.querySelectorAll('[data-pasillo-tramo]').forEach(sel=> sel.onchange = () => guardarTramoPasillo(sel.dataset.pasilloTramo, sel.dataset.campo, sel.value));
   list.querySelectorAll('[data-piso-filas]').forEach(sel=> sel.onchange = () => cambiarPisoFilasBloque(sel.dataset.pisoFilas, parseInt(sel.value, 10), parseInt(sel.dataset.niveles, 10)));
   list.querySelectorAll('[data-toggle-alinear]').forEach(btn=> btn.onclick = () => toggleAlinearIzquierda(btn.dataset.toggleAlinear, btn.dataset.valor==='true'));
@@ -4328,7 +4340,7 @@ function nichosHTMLDeBloque(bid, volteadoFila, interactive, showReorder){
     // en vez de flotar pegado siempre arriba — se nota sobre todo en una
     // extensión anexada más corta que las de al lado, en una fila volteada.
     const alineacion = volteadoFila ? 'flex-end' : 'flex-start';
-    return `<div class="nicho${esc(esSoloPiso?' solo-piso':'')}${esc(esSoloRack?' solo-rack':'')}" style="align-self:${esc(alineacion)};">
+    return `<div class="nicho${esc(esSoloPiso?' solo-piso':'')}${esc(esSoloRack?' solo-rack':'')}" data-letra="${esc(letra)}" style="align-self:${esc(alineacion)};">
       ${reorderHTML}
       ${cuerpoHTML}
     </div>`;
@@ -4373,8 +4385,8 @@ function buildBloquesMarkup(interactive, showReorder){
     const huecosHTML = hueco.repeat(huecosRejaDeFilaBase(bid));
     const rellenoHTML = hueco.repeat(rellenoIzquierdaDeFilaBase(bid));
     const nichosHTML = nichosPropiosHTML ? huecosHTML + anexadosHTML + rellenoHTML + nichosPropiosHTML : anexadosHTML;
-    const pasilloHTML = b.pasillo ? `<div class="pasillo-divider" style="${esc(estiloPasilloParcial(bid, b, anexados))}">╱╱╱ PASILLO ╱╱╱</div>` : '';
-    return `<div class="bloque-row"><div class="bloque-title">${esc(b.nombre)}</div><div class="nichos-line">${nichosHTML || '<span class="empty-state">Sin nichos aún</span>'}</div></div>${pasilloHTML}`;
+    const pasilloHTML = b.pasillo ? `<div class="pasillo-divider" style="${esc(estiloPasilloParcial(bid, b, anexados) + estiloAltoPasillo(b))}">╱╱╱ PASILLO ╱╱╱</div>` : '';
+    return `<div class="bloque-row" data-bloque="${esc(bid)}"><div class="bloque-title">${esc(b.nombre)}</div><div class="nichos-line">${nichosHTML || '<span class="empty-state">Sin nichos aún</span>'}</div></div>${pasilloHTML}`;
   }).join('') || '<div class="empty-state">Aún no hay bloques configurados.</div>';
 }
 // Pasillo que no ocupa todo el ancho: solo debajo de los nichos entre
@@ -4385,21 +4397,97 @@ function nichosPropiosOrdenados(bid){
   return Object.entries(nichos).filter(([l,n])=> n.bloque_id===bid)
     .sort((a,b2)=> (a[1].pos_visual ?? a[1].orden) - (b2[1].pos_visual ?? b2[1].orden)).map(([l])=> l);
 }
+// Columna de un nicho contando desde el borde derecho (0 = el de más a la
+// derecha), según cómo se arma su fila en buildBloquesMarkup: huecos de la
+// reja, extensión (anexados), relleno de "pegar a la izquierda" y nichos
+// propios. Todas las filas comparten esta grilla, así que sirve para ubicar
+// cosas de una fila a la altura de nichos de otra. null si no se encuentra.
+function columnaDesdeDerecha(letra){
+  const n = nichos[letra]; if(!n || !bloques[n.bloque_id]) return null;
+  const bidNicho = n.bloque_id;
+  const baseId = bloques[bidNicho].anexado_a || bidNicho;
+  const anexados = sortBloquesEntries().filter(([cid,c])=> c.anexado_a===baseId);
+  const h = huecosRejaDeFilaBase(baseId);
+  if(bidNicho !== baseId){
+    if(ocultarLadoDerecho) return h;
+    let idx = h;
+    for(const [cid] of anexados){
+      const propios = nichosPropiosOrdenados(cid);
+      if(cid === bidNicho) return idx + propios.indexOf(letra);
+      idx += propios.length;
+    }
+    return null;
+  }
+  const anexVisibles = anexados.length===0 ? 0
+    : (ocultarLadoDerecho ? 1 : anexados.reduce((t,[cid])=> t + nichosPropiosOrdenados(cid).length, 0));
+  const k = nichosPropiosOrdenados(baseId).indexOf(letra);
+  return k < 0 ? null : h + anexVisibles + rellenoIzquierdaDeFilaBase(baseId) + k;
+}
 function estiloPasilloParcial(bid, b, anexados){
   if(!b.pasillo_desde && !b.pasillo_hasta) return '';
   const propios = nichosPropiosOrdenados(bid);
   if(propios.length===0) return '';
-  const i1 = b.pasillo_desde ? propios.indexOf(b.pasillo_desde) : 0;
-  const i2 = b.pasillo_hasta ? propios.indexOf(b.pasillo_hasta) : propios.length-1;
-  if(i1<0 || i2<0) return '';
-  const lo = Math.min(i1, i2), hi = Math.max(i1, i2);
-  const anexVisibles = !anexados || anexados.length===0 ? 0
-    : (ocultarLadoDerecho ? 1 : anexados.reduce((t,[cid])=> t + Object.values(nichos).filter(n=>n.bloque_id===cid).length, 0));
-  const base = huecosRejaDeFilaBase(bid) + anexVisibles + rellenoIzquierdaDeFilaBase(bid);
+  const c1 = columnaDesdeDerecha(b.pasillo_desde || propios[0]);
+  const c2 = columnaDesdeDerecha(b.pasillo_hasta || propios[propios.length-1]);
+  if(c1==null || c2==null) return '';
+  const lo = Math.min(c1, c2), hi = Math.max(c1, c2);
   const paso = rejaPasoNicho();
-  const derecha = (base + lo) * paso + 2; // 2px = padding derecho de .nichos-line
+  const derecha = lo * paso + 2; // 2px = padding derecho de .nichos-line
   const ancho = (hi - lo) * paso + nichoAnchoActual();
   return `margin-left:auto; margin-right:${derecha}px; width:${ancho}px;`;
+}
+// Alto del pasillo medido en filas de posiciones (pasillo_filas); sin valor,
+// el alto de siempre.
+function altoFilaPosicion(){
+  // Debe coincidir con .slot{height:24px} (34px en pantallas chicas) + .nicho-row{gap/margin:3px}.
+  return ((window.matchMedia && window.matchMedia('(max-width:640px)').matches) ? 34 : 24) + 3;
+}
+function estiloAltoPasillo(b){
+  const f = Number(b.pasillo_filas);
+  if(!(f >= 1 && f <= 6)) return '';
+  return `height:${f*altoFilaPosicion()}px; box-sizing:border-box; padding:0; display:flex; align-items:center; justify-content:center;`;
+}
+// Opciones para los extremos del pasillo: primero los nichos de su fila y
+// luego los de las demás filas (el pasillo puede llegar hasta la columna de
+// un nicho de otra fila, ej. X1).
+function opcionesNichosPasillo(bid, seleccionado){
+  const grupo = (etiqueta, letras)=> letras.length ? `<optgroup label="${esc(etiqueta)}">${letras.map(l=> `<option value="${esc(l)}" ${l===seleccionado?'selected':''}>${esc(l)}</option>`).join('')}</optgroup>` : '';
+  let html = grupo(`Fila ${bloques[bid] ? bloques[bid].nombre : ''}`, nichosPropiosOrdenados(bid));
+  sortBloquesEntries().forEach(([cid,c])=>{ if(cid!==bid) html += grupo(`${c.anexado_a ? 'Extensión' : 'Fila'} ${c.nombre}`, nichosPropiosOrdenados(cid)); });
+  return html;
+}
+function soloPisoDelBloque(bid){
+  return nichosPropiosOrdenados(bid).filter(l=> nichos[l].tipo==='solo_piso');
+}
+// Nicho de referencia para alinear los de solo piso: el nicho con rack y
+// piso de la misma fila más cercano a ellos (en el ejemplo, A junto a X3).
+function nichoReferenciaSoloPiso(bid){
+  const orden = nichosPropiosOrdenados(bid);
+  const posX = orden.findIndex(l=> nichos[l].tipo==='solo_piso');
+  if(posX<0) return null;
+  let mejor = null, dist = Infinity;
+  orden.forEach((l,i)=>{ if(nichos[l].tipo==='rack_piso' && Math.abs(i-posX)<dist){ dist = Math.abs(i-posX); mejor = l; } });
+  return mejor;
+}
+// Filas de posiciones del nicho de referencia, de arriba hacia abajo como se
+// dibujan (ej. "01 · 02 de A", "03 · 04 de A", "05 · 10 de A").
+function nivelesReferenciaSoloPiso(bid){
+  const ref = nichoReferenciaSoloPiso(bid); if(!ref) return [];
+  const n = nichos[ref];
+  const nombres = (n.niveles===3) ? ['arriba','medio','abajo'] : ['arriba','abajo'];
+  const rack = nombres.map(nv=> Object.keys(posiciones).filter(id=> posiciones[id].nicho===ref && posiciones[id].nivel===nv).sort());
+  const piso = [];
+  for(let i=0;i<pisoFilasDeNicho(n);i++){
+    piso.push(['izq','der'].map(c=> Object.keys(posiciones).find(id=> posiciones[id].nicho===ref && posiciones[id].tipo==='piso' && posiciones[id].fila===i && posiciones[id].columna===c)).filter(Boolean));
+  }
+  const filas = volteadoDeBloque(bid) ? piso.concat(rack) : rack.concat(piso);
+  return filas.filter(f=> f.length).map(f=> `${f.map(id=> id.slice(-2)).join(' · ')} de ${ref}`);
+}
+async function guardarCampoBloque(bloqueId, campo, valor, detalle){
+  try{
+    await bloquesRef.doc(bloqueId).update({ [campo]: valor });
+    await logAccion('pasillo_actualizado', {detalle:`Bloque ${bloques[bloqueId] ? bloques[bloqueId].nombre : ''}: ${detalle}`});
+  }catch(err){ showToast('Error: '+err.message,'err'); }
 }
 async function guardarTramoPasillo(bloqueId, campo, valor){
   try{
@@ -4588,9 +4676,80 @@ function rejaConteoDesdeLeft(left, bordeDerecho){
   if(n>totalNichos) n = totalNichos;
   return n;
 }
+// Dibuja los nichos de solo piso de un bloque con `solo_piso_inicio` en
+// columna: su fila 0 queda a la altura de la fila elegida del nicho de
+// referencia (ej. 03·04 de A) y cada fila siguiente a la altura de la
+// siguiente fila de posiciones hacia abajo: las demás del nicho de
+// referencia, luego el pasillo (una por cada fila de alto del pasillo) y
+// luego las del nicho más cercano de la fila de abajo (ej. AB). Solo
+// cambia el dibujo; se recalcula en cada pintada y al cambiar el zoom.
+function alinearSoloPiso(cont){
+  cont.querySelectorAll('.nicho[data-alineado]').forEach(el=>{
+    el.removeAttribute('data-alineado'); el.style.height = ''; el.style.marginBottom = ''; el.style.position = ''; el.style.zIndex = '';
+    el.querySelectorAll('.nicho-row').forEach(r=>{ r.style.position = ''; r.style.top = ''; r.style.left = ''; });
+  });
+  const filasDom = [...cont.querySelectorAll('.bloque-row')];
+  const tareas = [];
+  filasDom.forEach((rowEl, iFila)=>{
+    const bid = rowEl.dataset.bloque; const b = bloques[bid];
+    if(!b || b.solo_piso_inicio == null) return;
+    const ref = nichoReferenciaSoloPiso(bid);
+    const refEl = ref && rowEl.querySelector(`.nicho[data-letra="${CSS.escape(ref)}"]`);
+    const xs = soloPisoDelBloque(bid).map(l=> rowEl.querySelector(`.nicho[data-letra="${CSS.escape(l)}"]`)).filter(Boolean);
+    if(!refEl || xs.length===0) return;
+    const pasilloEl = rowEl.nextElementSibling && rowEl.nextElementSibling.classList.contains('pasillo-divider') ? rowEl.nextElementSibling : null;
+    const sigRow = filasDom[iFila+1] || null;
+    tareas.push({ b, refEl, xs, pasilloEl, sigRow });
+  });
+  if(tareas.length===0) return;
+  // 1) Los nichos a alinear no deben agrandar su fila: se achican primero y
+  //    después se mide todo lo demás ya en su lugar definitivo.
+  tareas.forEach(t=> t.xs.forEach(x=>{ x.setAttribute('data-alineado',''); x.style.position = 'relative'; x.style.zIndex = '3'; x.style.height = '40px'; }));
+  tareas.forEach(({ b, refEl, xs, pasilloEl, sigRow })=>{
+    const centros = el=> [...el.querySelectorAll('.nicho-row')].filter(r=> r.querySelector('.slot')).map(r=>{ const q = r.getBoundingClientRect(); return (q.top + q.bottom)/2; });
+    const niveles = centros(refEl);
+    if(pasilloEl){
+      const q = pasilloEl.getBoundingClientRect();
+      const nP = Math.max(1, Number(b.pasillo_filas) || 1);
+      for(let i=0;i<nP;i++) niveles.push(q.top + q.height*(i+0.5)/nP);
+    }
+    xs.forEach(x=>{
+      const qx = x.getBoundingClientRect();
+      const nivelesX = niveles.slice();
+      if(sigRow){
+        // Nicho de la fila de abajo más cercano en horizontal; si alguno
+        // queda justo debajo, no se alinea (se taparían).
+        const debajo = [...sigRow.querySelectorAll('.nicho:not(.nicho-hueco)')];
+        if(debajo.some(d=>{ const q = d.getBoundingClientRect(); return q.left < qx.right && q.right > qx.left; })){ nivelesX.length = 0; }
+        else{
+          const cx = (qx.left+qx.right)/2;
+          const cercano = debajo.filter(d=> !d.classList.contains('solo-piso')).sort((a,c)=>{ const qa=a.getBoundingClientRect(), qc=c.getBoundingClientRect(); return Math.abs((qa.left+qa.right)/2-cx) - Math.abs((qc.left+qc.right)/2-cx); })[0];
+          if(cercano) nivelesX.push(...centros(cercano));
+        }
+      }
+      const filas = [...x.querySelectorAll('.nicho-row')].filter(r=> r.querySelector('.slot'));
+      const inicio = b.solo_piso_inicio;
+      if(nivelesX.length===0 || inicio + filas.length > nivelesX.length){
+        x.removeAttribute('data-alineado'); x.style.height=''; x.style.position=''; x.style.zIndex=''; return;
+      }
+      const top = x.getBoundingClientRect().top + x.clientTop;
+      let fondo = 0;
+      filas.forEach((r, i)=>{
+        const alto = r.getBoundingClientRect().height;
+        const y = nivelesX[inicio+i] - top - alto/2;
+        r.style.position = 'absolute'; r.style.left = parseFloat(getComputedStyle(x).paddingLeft) + 'px'; r.style.top = y + 'px';
+        fondo = Math.max(fondo, y + alto);
+      });
+      const altoTotal = fondo + parseFloat(getComputedStyle(x).paddingBottom) + x.clientTop*2;
+      x.style.height = altoTotal + 'px';
+      x.style.marginBottom = (40 - altoTotal) + 'px';
+    });
+  });
+}
 function renderRejas(containerId, editable){
   const cont = document.getElementById(containerId);
   if(!cont) return;
+  alinearSoloPiso(cont);
   cont.querySelectorAll('.reja-linea').forEach(el=>el.remove());
   const entradas = Object.entries(rejas);
   if(entradas.length===0) return;
