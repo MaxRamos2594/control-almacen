@@ -7,9 +7,10 @@
     "humo": "node humo.js",
     "flujo": "node flujo.js",
     "xss": "node xss.js",
-    "todo": "node revisar.js && node humo.js && node flujo.js && node xss.js && node bloque_intermedio.js",
+    "todo": "node revisar.js && node humo.js && node flujo.js && node xss.js && node bloque_intermedio.js && node piso_filas.js",
     "bloque": "node bloque_intermedio.js",
-    "revisar": "node revisar.js"
+    "revisar": "node revisar.js",
+    "piso": "node piso_filas.js"
   },
   "devDependencies": {
     "acorn": "^8.18.0",
