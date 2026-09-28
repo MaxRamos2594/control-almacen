@@ -2649,8 +2649,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v118';
-const APP_UPDATED = '28/09/2026 15:00';
+const APP_VERSION = 'v119';
+const APP_UPDATED = '28/09/2026 17:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3058,6 +3058,8 @@ $('campsub-vouchers').addEventListener('click', ()=>{ setCampanasSubtab('voucher
 
 /* -------------------- Utilidades -------------------- */
 function indexToLetter(n){ n=n+1; let s=''; while(n>0){ n--; s=String.fromCharCode(65+(n%26))+s; n=Math.floor(n/26);} return s; }
+// Inversa de indexToLetter: 'A' → 0, 'Z' → 25, 'AA' → 26.
+function letterToIndex(s){ let n=0; for(const ch of s) n = n*26 + (ch.charCodeAt(0)-64); return n-1; }
 function fmtMoney(v){ return (v===null||v===undefined||isNaN(v)) ? '-' : Number(v).toFixed(2); }
 function fmtMoneyComma(v){ return (v===null||v===undefined||isNaN(v)) ? '-' : Number(v).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
 function fmtEntero(v){ return (v===null||v===undefined||isNaN(v)) ? '-' : Math.round(Number(v)).toLocaleString('en-US'); }
@@ -3241,22 +3243,59 @@ function poblarSelectAnexarBloque(){
   if(!sel) return;
   const valorActual = sel.value;
   const base = sortBloquesEntries().filter(([bid,b])=>!b.anexado_a);
-  sel.innerHTML = '<option value="">Bloque independiente (fila nueva, letras normales)</option>' +
+  sel.innerHTML = '<option value="">Bloque independiente (fila nueva al final, letras normales)</option>' +
+    base.map(([bid,b])=>`<option value="debajo:${esc(bid)}">Fila nueva debajo de "${esc(b.nombre)}"${b.pasillo ? ' (antes del pasillo)' : ''}</option>`).join('') +
     base.map(([bid,b])=>`<option value="${esc(bid)}">A la derecha de "${esc(b.nombre)}", después de la reja (letras RA, RB, RC…)</option>`).join('');
-  if(valorActual && bloques[valorActual] && !bloques[valorActual].anexado_a) sel.value = valorActual;
+  const bidActual = valorActual.replace(/^debajo:/, '');
+  if(valorActual && bloques[bidActual] && !bloques[bidActual].anexado_a) sel.value = valorActual;
 }
 $('bloque-anexar-a').addEventListener('change', ()=>{
-  $('bloque-anexar-hint').style.display = $('bloque-anexar-a').value ? 'block' : 'none';
+  const v = $('bloque-anexar-a').value;
+  const hint = $('bloque-anexar-hint');
+  if(v.startsWith('debajo:')){
+    const b = bloques[v.slice(7)];
+    hint.textContent = `Este bloque será una fila nueva justo debajo de "${b ? b.nombre : ''}"` +
+      (b && b.pasillo ? ', y el pasillo pasará a quedar debajo del bloque nuevo' : '') +
+      '. Sus nichos siguen la numeración normal después de la última letra usada (ej. AA, AB, AC…). No cambia ninguna ubicación existente.';
+  } else {
+    hint.textContent = 'Este bloque se pegará a la derecha del bloque elegido, en la misma fila, después de la reja — sus nichos se numerarán RA, RB, RC…';
+  }
+  hint.style.display = v ? 'block' : 'none';
 });
 $('btn-crear-bloque').addEventListener('click', async ()=>{
   const nombre = $('bloque-nombre').value.trim().toUpperCase();
   if(!nombre){ showMsg('bloque-msg','err','Ingresa un nombre de bloque.'); return; }
-  const anexarA = $('bloque-anexar-a').value;
+  const ubicacion = $('bloque-anexar-a').value;
+  const debajoDe = ubicacion.startsWith('debajo:') ? ubicacion.slice(7) : '';
+  const anexarA = debajoDe ? '' : ubicacion;
+  if(debajoDe && !bloques[debajoDe]){ showMsg('bloque-msg','err','El bloque elegido ya no existe.'); return; }
   try{
     const datos = { nombre, creado_en: firebase.firestore.FieldValue.serverTimestamp() };
-    if(anexarA) datos.anexado_a = anexarA;
-    await bloquesRef.add(datos);
-    const detalleAnexo = anexarA && bloques[anexarA] ? ` (anexado a la derecha de "${bloques[anexarA].nombre}", después de la reja)` : '';
+    let detalleAnexo = '';
+    if(anexarA){
+      datos.anexado_a = anexarA;
+      await bloquesRef.add(datos);
+      detalleAnexo = bloques[anexarA] ? ` (anexado a la derecha de "${bloques[anexarA].nombre}", después de la reja)` : '';
+    } else if(debajoDe){
+      // Se ubica entre `debajoDe` y la fila que hoy le sigue, con un `orden`
+      // intermedio. Solo se guarda `orden` en el bloque nuevo: los demás
+      // conservan su orden actual, y ningún nicho ni posición cambia.
+      const base = sortBloquesEntries().filter(([bid,b])=>!b.anexado_a);
+      const i = base.findIndex(([bid])=> bid === debajoDe);
+      const ordenArriba = claveOrdenBloque(base[i][1]);
+      const siguiente = base[i+1];
+      datos.orden = siguiente ? (ordenArriba + claveOrdenBloque(siguiente[1])) / 2 : ordenArriba + 1;
+      // El pasillo que estaba debajo del bloque de arriba pasa a quedar debajo del nuevo.
+      const pasaPasillo = !!bloques[debajoDe].pasillo;
+      if(pasaPasillo) datos.pasillo = true;
+      const batch = db.batch();
+      batch.set(bloquesRef.doc(), datos);
+      if(pasaPasillo) batch.update(bloquesRef.doc(debajoDe), { pasillo: false });
+      await batch.commit();
+      detalleAnexo = ` (fila nueva debajo de "${bloques[debajoDe].nombre}"${pasaPasillo ? ', antes del pasillo' : ''})`;
+    } else {
+      await bloquesRef.add(datos);
+    }
     await logAccion('bloque_creado', {detalle:`Bloque ${nombre} creado${detalleAnexo}`});
     $('bloque-nombre').value='';
     $('bloque-anexar-a').value='';
@@ -3314,6 +3353,12 @@ function calcularSiguienteLetraNicho(bloqueId, tipoNicho){
     }
   });
   let idx = 0;
+  if(!esAnexado && !esPisoTrack){
+    // Nichos con rack de bloques normales: siguen después de la ÚLTIMA letra
+    // en uso (…Y, Z → AA, AB…), sin rellenar huecos intermedios, para que un
+    // bloque nuevo continúe la secuencia del último bloque.
+    codigosUsados.forEach(c=>{ if(/^[A-Z]+$/.test(c)) idx = Math.max(idx, letterToIndex(c) + 1); });
+  }
   while(codigosUsados.has(generarCandidato(idx))) idx++;
   return { idx, generarCandidato };
 }
@@ -4057,12 +4102,15 @@ function slotReadonlyHTML(id, data){
   const icono = data.bloqueada ? (data.campana_dia ? '📢' : '🔒') : id.slice(-2);
   return `<div class="${esc(cls)}">${icono}</div>`;
 }
+// Orden de un bloque en el layout: el campo `orden` si existe (bloques
+// insertados entre dos filas), si no la fecha de creación en milisegundos.
+// Un bloque recién creado cuya fecha aún no llega del servidor va al final.
+function claveOrdenBloque(b){
+  if(typeof b.orden === 'number') return b.orden;
+  return b.creado_en ? b.creado_en.toMillis() : Number.MAX_SAFE_INTEGER;
+}
 function sortBloquesEntries(){
-  return Object.entries(bloques).sort((a,b)=>{
-    const ta = a[1].creado_en ? a[1].creado_en.toMillis() : 0;
-    const tb = b[1].creado_en ? b[1].creado_en.toMillis() : 0;
-    return ta - tb;
-  });
+  return Object.entries(bloques).sort((a,b)=> claveOrdenBloque(a[1]) - claveOrdenBloque(b[1]));
 }
 // Genera el HTML de los nichos propios de UN bloque (sin incluir los de ningún
 // bloque anexado a él) — se reutiliza tanto para el bloque "base" de una fila
