@@ -2650,8 +2650,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v122';
-const APP_UPDATED = '28/09/2026 21:30';
+const APP_VERSION = 'v123';
+const APP_UPDATED = '28/09/2026 22:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3246,14 +3246,18 @@ function poblarSelectAnexarBloque(){
   const base = sortBloquesEntries().filter(([bid,b])=>!b.anexado_a);
   sel.innerHTML = '<option value="">Bloque independiente (fila nueva al final, letras normales)</option>' +
     base.map(([bid,b])=>`<option value="debajo:${esc(bid)}">Fila nueva debajo de "${esc(b.nombre)}"${b.pasillo ? ' (antes del pasillo)' : ''}</option>`).join('') +
+    base.map(([bid,b], i)=>`<option value="arriba:${esc(bid)}">Fila nueva arriba de "${esc(b.nombre)}"${i>0 && base[i-1][1].pasillo ? ' (después del pasillo)' : ''}</option>`).join('') +
     base.map(([bid,b])=>`<option value="${esc(bid)}">A la derecha de "${esc(b.nombre)}", después de la reja (letras RA, RB, RC…)</option>`).join('');
-  const bidActual = valorActual.replace(/^debajo:/, '');
+  const bidActual = valorActual.replace(/^(debajo|arriba):/, '');
   if(valorActual && bloques[bidActual] && !bloques[bidActual].anexado_a) sel.value = valorActual;
 }
 $('bloque-anexar-a').addEventListener('change', ()=>{
   const v = $('bloque-anexar-a').value;
   const hint = $('bloque-anexar-hint');
-  if(v.startsWith('debajo:')){
+  if(v.startsWith('arriba:')){
+    const b = bloques[v.slice(7)];
+    hint.textContent = `Este bloque será una fila nueva justo arriba de "${b ? b.nombre : ''}"; el pasillo se queda donde está. Sus nichos siguen la numeración normal después de la última letra usada. No cambia ninguna ubicación existente.`;
+  } else if(v.startsWith('debajo:')){
     const b = bloques[v.slice(7)];
     hint.textContent = `Este bloque será una fila nueva justo debajo de "${b ? b.nombre : ''}"` +
       (b && b.pasillo ? ', y el pasillo pasará a quedar debajo del bloque nuevo' : '') +
@@ -3268,8 +3272,9 @@ $('btn-crear-bloque').addEventListener('click', async ()=>{
   if(!nombre){ showMsg('bloque-msg','err','Ingresa un nombre de bloque.'); return; }
   const ubicacion = $('bloque-anexar-a').value;
   const debajoDe = ubicacion.startsWith('debajo:') ? ubicacion.slice(7) : '';
-  const anexarA = debajoDe ? '' : ubicacion;
-  if(debajoDe && !bloques[debajoDe]){ showMsg('bloque-msg','err','El bloque elegido ya no existe.'); return; }
+  const arribaDe = ubicacion.startsWith('arriba:') ? ubicacion.slice(7) : '';
+  const anexarA = (debajoDe || arribaDe) ? '' : ubicacion;
+  if((debajoDe && !bloques[debajoDe]) || (arribaDe && !bloques[arribaDe])){ showMsg('bloque-msg','err','El bloque elegido ya no existe.'); return; }
   try{
     const datos = { nombre, creado_en: firebase.firestore.FieldValue.serverTimestamp() };
     let detalleAnexo = '';
@@ -3277,6 +3282,16 @@ $('btn-crear-bloque').addEventListener('click', async ()=>{
       datos.anexado_a = anexarA;
       await bloquesRef.add(datos);
       detalleAnexo = bloques[anexarA] ? ` (anexado a la derecha de "${bloques[anexarA].nombre}", después de la reja)` : '';
+    } else if(arribaDe){
+      // Se ubica entre la fila anterior y `arribaDe`, con un `orden`
+      // intermedio. El pasillo (si la fila anterior lo tiene) no se mueve.
+      const base = sortBloquesEntries().filter(([bid,b])=>!b.anexado_a);
+      const i = base.findIndex(([bid])=> bid === arribaDe);
+      const ordenAbajo = claveOrdenBloque(base[i][1]);
+      const anterior = base[i-1];
+      datos.orden = anterior ? (claveOrdenBloque(anterior[1]) + ordenAbajo) / 2 : ordenAbajo - 1;
+      await bloquesRef.add(datos);
+      detalleAnexo = ` (fila nueva arriba de "${bloques[arribaDe].nombre}")`;
     } else if(debajoDe){
       // Se ubica entre `debajoDe` y la fila que hoy le sigue, con un `orden`
       // intermedio. Solo se guarda `orden` en el bloque nuevo: los demás

@@ -107,6 +107,19 @@ function verificar(condicion, texto){
     reja: document.querySelector('#preview-bloques .reja-linea').getBoundingClientRect().left }));
   verificar(vuelta.AA < vuelta.reja && vuelta.reja - vuelta.AA < 20, 'Pegar a la derecha: AA vuelve junto a la reja');
 
+  // Bloque entre el pasillo y B: "Fila nueva arriba de B" (el pasillo no se mueve).
+  await page.fill('#bloque-nombre', 'D');
+  await page.selectOption('#bloque-anexar-a', 'arriba:BB');
+  const hintArriba = await page.textContent('#bloque-anexar-hint');
+  verificar(/arriba de "B"/.test(hintArriba) && /pasillo se queda/.test(hintArriba), 'El formulario explica que el bloque va arriba de B y el pasillo no se mueve');
+  const opcion = await page.evaluate(()=> [...document.querySelectorAll('#bloque-anexar-a option')].find(o=> o.value==='arriba:BB').textContent);
+  verificar(/después del pasillo/.test(opcion), `Opción: ${opcion}`);
+  await page.click('#btn-crear-bloque');
+  await page.waitForFunction(()=> Object.values(bloques).some(b=> b.nombre === 'D'), null, { timeout: 15000 });
+  await page.waitForTimeout(800);
+  const filas2 = await page.evaluate(()=> [...document.querySelectorAll('#preview-bloques > .bloque-row, #preview-bloques > .pasillo-divider')].map(el=> el.classList.contains('pasillo-divider') ? 'PASILLO' : el.querySelector('.bloque-title').textContent));
+  verificar(filas2.join(' | ') === 'A | C | PASILLO | D | B', `Con D arriba de B: ${filas2.join(' | ')}`);
+
   // Nada de lo existente cambió.
   const despues = JSON.parse(await foto());
   const a = JSON.parse(antes);
