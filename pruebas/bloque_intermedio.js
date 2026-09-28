@@ -28,10 +28,14 @@ function verificar(condicion, texto){
         await posicionesRef.doc(`${letra}0${i}`).set({ tipo:'rack', nicho: letra, bloque_id: bid, nivel, estado:'vacio', bloqueada:false, pallet_codigo:null });
     };
     await nicho('A','BA',0); await nicho('B','BA',1); await nicho('Y','BB',0); await nicho('Z','BB',1);
+    // Extensión del bloque A después de la reja (PA-A, PA-B) y la reja a 2 nichos del borde derecho.
+    await bloquesRef.doc('BAX').set({ nombre:'A EXT', anexado_a:'BA', creado_en: hace(20) });
+    await nicho('PA-A','BAX',0); await nicho('PA-B','BAX',1);
+    await rejasRef.doc('R1').set({ nichosDesdeDerecha: 2 });
     await posicionesRef.doc('Z01').update({ estado:'ocupado', pallet_codigo:'CD0001' });
     await palletsRef.doc('CD0001').set({ items:[{producto:'P1', descripcion:'PRUEBA', cantidad:5, costo:1}], posicion_actual:'Z01', estado:'activo' });
   });
-  await page.waitForFunction(()=> Object.keys(posiciones).length === 16 && pallets['CD0001'], null, { timeout: 15000 });
+  await page.waitForFunction(()=> Object.keys(posiciones).length === 24 && pallets['CD0001'], null, { timeout: 15000 });
   const foto = ()=> page.evaluate(()=> JSON.stringify({ posiciones, pallets, nichos }));
   const antes = await foto();
 
@@ -45,9 +49,9 @@ function verificar(condicion, texto){
   await page.waitForFunction(()=> Object.values(bloques).some(b=> b.nombre === 'C'), null, { timeout: 15000 });
   await page.waitForTimeout(800);
 
-  const orden = await page.evaluate(()=> sortBloquesEntries().map(([,b])=> b.nombre + (b.pasillo ? ' +PASILLO' : '')));
+  const orden = await page.evaluate(()=> sortBloquesEntries().filter(([,b])=> !b.anexado_a).map(([,b])=> b.nombre + (b.pasillo ? ' +PASILLO' : '')));
   verificar(orden.join(' | ') === 'A | C +PASILLO | B', `Orden de filas: ${orden.join(' | ')}`);
-  const filas = await page.evaluate(()=> [...document.querySelectorAll('#preview-bloques > *')].map(el=> el.classList.contains('pasillo-divider') ? 'PASILLO' : el.querySelector('.bloque-title').textContent));
+  const filas = await page.evaluate(()=> [...document.querySelectorAll('#preview-bloques > .bloque-row, #preview-bloques > .pasillo-divider')].map(el=> el.classList.contains('pasillo-divider') ? 'PASILLO' : el.querySelector('.bloque-title').textContent));
   verificar(filas.join(' | ') === 'A | C | PASILLO | B', `En pantalla: ${filas.join(' | ')}`);
 
   // Agregar un nicho al bloque nuevo: debe llamarse AA (sigue después de la Z).
@@ -60,6 +64,26 @@ function verificar(condicion, texto){
   verificar(nuevos.join(',') === 'AA,AB', `Nichos del bloque nuevo: ${nuevos.join(', ')}`);
   const posAA = await page.evaluate(()=> Object.keys(posiciones).filter(p=> p.startsWith('AA')).length);
   verificar(posAA === 14, `Nicho AA con sus 14 posiciones (4 rack + 10 piso): ${posAA}`);
+
+  // Los nichos del bloque nuevo quedan a la IZQUIERDA de la reja (la fila no tiene extensión).
+  const lados = await page.evaluate(()=>{
+    const reja = document.querySelector('#preview-bloques .reja-linea').getBoundingClientRect();
+    const der = (l)=> document.querySelector(`#preview-bloques [data-rename-nicho="${l}"]`).closest('.nicho').getBoundingClientRect().right;
+    return { reja: reja.left, AA: der('AA'), AB: der('AB'), PAB: der('PA-B') };
+  });
+  verificar(lados.AA < lados.reja && lados.AB < lados.reja, `Nichos AA y AB a la izquierda de la reja (reja x=${Math.round(lados.reja)}, AA termina en x=${Math.round(lados.AA)})`);
+  verificar(lados.PAB > lados.reja, 'La extensión PA-… del bloque A sigue a la derecha de la reja');
+  // Igual con "Ocultar lado derecho" activo.
+  await page.click('#btn-toggle-compacto-diseno');
+  await page.waitForTimeout(500);
+  const compacto = await page.evaluate(()=>{
+    const reja = document.querySelector('#preview-bloques .reja-linea').getBoundingClientRect().left;
+    const aa = document.querySelector('#preview-bloques [data-rename-nicho="AA"]').closest('.nicho').getBoundingClientRect().right;
+    return { reja, aa };
+  });
+  verificar(compacto.aa < compacto.reja, 'Con "Ocultar lado derecho": AA sigue a la izquierda de la reja');
+  await page.click('#btn-toggle-compacto-diseno');
+  await page.waitForTimeout(300);
 
   // Nada de lo existente cambió.
   const despues = JSON.parse(await foto());
