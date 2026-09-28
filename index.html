@@ -2644,6 +2644,11 @@ const db = firebase.firestore();
 const storage = firebase.storage();
 const auth = firebase.auth();
 const $ = (id) => document.getElementById(id);
+// Escapa texto de datos antes de insertarlo en HTML (innerHTML), para que
+// descripciones, nombres, etc. con "<", ">" o comillas no se ejecuten como código.
+function esc(v){
+  return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 const APP_VERSION = 'v117';
 const APP_UPDATED = '28/09/2026 09:30';
 function pintarVersionesEnPantalla(){
@@ -2809,7 +2814,8 @@ $('btn-logout').addEventListener('click', async ()=>{
 auth.onAuthStateChanged(async (user)=>{
   if(user){ await loadPermisos(user); resetInactivityTimer(); }
   else{
-    if(inactivityTimer) clearTimeout(inactivityTimer);
+    // No se detiene el intervalo de inactividad: ya ignora el caso sin sesión
+    // y debe seguir activo si el usuario vuelve a entrar sin recargar.
     stopListeners();
     $('login-screen').style.display='flex'; $('app-shell').style.display='none';
   }
@@ -3178,9 +3184,9 @@ function startListeners(){
         ? '<span style="color:#245C46; font-weight:700;">Activo</span>'
         : `<span class="hint">Revertido${d.revertido_por?' por '+d.revertido_por:''}</span>`;
       const accionHtml = estado === 'ACTIVO'
-        ? (puedeDeshacer ? `<button class="btn btn-sm btn-ghost btn-deshacer-retiro-campana" data-id="${doc.id}">↺ Deshacer</button>` : '')
+        ? (puedeDeshacer ? `<button class="btn btn-sm btn-ghost btn-deshacer-retiro-campana" data-id="${esc(doc.id)}">↺ Deshacer</button>` : '')
         : '—';
-      return `<tr><td>${d.pallet_codigo||''}</td><td>${d.producto||''}</td><td>${d.descripcion||''}</td><td>${fmtMoney(d.costo)}</td><td>${d.cantidad}</td><td>${d.usuario||''}</td><td>${fecha}</td><td>${estadoHtml}</td><td>${accionHtml}</td></tr>`;
+      return `<tr><td>${esc(d.pallet_codigo||'')}</td><td>${esc(d.producto||'')}</td><td>${esc(d.descripcion||'')}</td><td>${fmtMoney(d.costo)}</td><td>${esc(d.cantidad)}</td><td>${esc(d.usuario||'')}</td><td>${fecha}</td><td>${estadoHtml}</td><td>${accionHtml}</td></tr>`;
     }).join('');
   }, onErr));
   cargarRegistrosCampana(true);
@@ -3236,7 +3242,7 @@ function poblarSelectAnexarBloque(){
   const valorActual = sel.value;
   const base = sortBloquesEntries().filter(([bid,b])=>!b.anexado_a);
   sel.innerHTML = '<option value="">Bloque independiente (fila nueva, letras normales)</option>' +
-    base.map(([bid,b])=>`<option value="${bid}">A la derecha de "${b.nombre}", después de la reja (letras RA, RB, RC…)</option>`).join('');
+    base.map(([bid,b])=>`<option value="${bid}">A la derecha de "${esc(b.nombre)}", después de la reja (letras RA, RB, RC…)</option>`).join('');
   if(valorActual && bloques[valorActual] && !bloques[valorActual].anexado_a) sel.value = valorActual;
 }
 $('bloque-anexar-a').addEventListener('change', ()=>{
@@ -3670,25 +3676,25 @@ function renderBloqueForms(){
     const anexadosConNichos = anexadosDeEsteBloque.some(([cid])=> Object.values(nichos).some(n=>n.bloque_id===cid));
     return `<div class="bloque-card">
       <div class="bh">
-        <b>${b.nombre}</b>
+        <b>${esc(b.nombre)}</b>
         ${esAnexado ? `<span class="hint" style="color:var(--blue); font-weight:600; font-size:11px;">↳ anexado a "${nombreBase||'?'}"</span>` : ''}
       </div>
       <div class="bloque-actions-grupo">
-        <button class="btn btn-ghost btn-sm" data-add-nicho="${id}" data-nombre="${b.nombre}" data-niveles="2">+ Nicho (2 niveles)</button>
-        <button class="btn btn-ghost btn-sm" data-add-nicho="${id}" data-nombre="${b.nombre}" data-niveles="3">+ Nicho (3 niveles)</button>
-        <button class="btn btn-ghost btn-sm" data-add-nicho="${id}" data-nombre="${b.nombre}" data-niveles="2" data-sin-piso="true">+ Nicho (2 niv., sin piso)</button>
-        <button class="btn btn-ghost btn-sm" data-add-nicho="${id}" data-nombre="${b.nombre}" data-niveles="3" data-sin-piso="true">+ Nicho (3 niv., sin piso)</button>
-        <button class="btn btn-ghost btn-sm" data-add-piso="${id}" data-nombre="${b.nombre}">+ Piso (sin rack)</button>
+        <button class="btn btn-ghost btn-sm" data-add-nicho="${id}" data-nombre="${esc(b.nombre)}" data-niveles="2">+ Nicho (2 niveles)</button>
+        <button class="btn btn-ghost btn-sm" data-add-nicho="${id}" data-nombre="${esc(b.nombre)}" data-niveles="3">+ Nicho (3 niveles)</button>
+        <button class="btn btn-ghost btn-sm" data-add-nicho="${id}" data-nombre="${esc(b.nombre)}" data-niveles="2" data-sin-piso="true">+ Nicho (2 niv., sin piso)</button>
+        <button class="btn btn-ghost btn-sm" data-add-nicho="${id}" data-nombre="${esc(b.nombre)}" data-niveles="3" data-sin-piso="true">+ Nicho (3 niv., sin piso)</button>
+        <button class="btn btn-ghost btn-sm" data-add-piso="${id}" data-nombre="${esc(b.nombre)}">+ Piso (sin rack)</button>
       </div>
       <div class="bloque-actions-grupo">
         ${esAnexado ? '' : `<button class="btn btn-ghost btn-sm" data-toggle-pasillo="${id}" data-valor="${b.pasillo ? 'false':'true'}">${b.pasillo ? '✕ Quitar pasillo' : '╱ Agregar pasillo debajo'}</button>`}
         <button class="btn btn-ghost btn-sm" data-toggle-volteo="${id}" data-valor="${b.volteado ? 'false':'true'}">${b.volteado ? '↩ Bloque normal' : '🔄 Voltear (piso arriba)'}</button>
-        ${anexadosConNichos ? `<button class="btn btn-ghost btn-sm" data-recalcular-extension="${id}" data-nombre="${b.nombre}" title="Renumera los nichos de la extensión anexada a este bloque, cerrando huecos (ej. si falta una letra en el medio)">🔁 Renumerar extensión</button>` : ''}
+        ${anexadosConNichos ? `<button class="btn btn-ghost btn-sm" data-recalcular-extension="${id}" data-nombre="${esc(b.nombre)}" title="Renumera los nichos de la extensión anexada a este bloque, cerrando huecos (ej. si falta una letra en el medio)">🔁 Renumerar extensión</button>` : ''}
       </div>
       ${esAnexado ? `<div class="meta" style="font-size:10px;">El volteo de este anexado es independiente del bloque base — si no lo tocas, sigue la orientación de "${nombreBase||'?'}".</div>` : ''}
       ${esAnexado ? `<div class="meta" style="color:var(--blue);">Después de la reja, en la fila de "${nombreBase||'?'}" — letras P${prefijoBase}-A, P${prefijoBase}-B, P${prefijoBase}-C…</div>` : ''}
-      <div class="meta">${nichosDelBloque.length} nicho(s) · ${posDelBloque} posiciones (${rackTotal} rack + ${pisoTotal} piso)</div>
-      ${vacio ? `<button class="btn btn-danger btn-sm" data-del-bloque="${id}" data-nombre="${b.nombre}" style="width:100%; margin-top:8px;">🗑 Eliminar bloque (está vacío)</button>` : ''}
+      <div class="meta">${esc(nichosDelBloque.length)} nicho(s) · ${posDelBloque} posiciones (${rackTotal} rack + ${pisoTotal} piso)</div>
+      ${vacio ? `<button class="btn btn-danger btn-sm" data-del-bloque="${id}" data-nombre="${esc(b.nombre)}" style="width:100%; margin-top:8px;">🗑 Eliminar bloque (está vacío)</button>` : ''}
       ${nichosDelBloque.length>0 ? `
       <details style="margin-top:8px;">
         <summary style="cursor:pointer; font-size:11px; color:var(--ink-soft);">Seleccionar nichos para eliminar</summary>
@@ -3832,10 +3838,10 @@ function renderMezanine(){
       const nivel = p.nivel_apilado || 1;
       const boxY = tilePos.y - nivel*MEZ_BOX_H;
       const colores = mezBoxColores(p);
-      html += `<div class="mez-box" data-id="${id}" style="left:${tilePos.x}px; top:${boxY}px; width:${MEZ_TILE_W}px; height:${MEZ_TILE_H+MEZ_BOX_H}px; z-index:${zBase+nivel};">
-        <div class="mez-face" style="clip-path:${mezLeftPoly(MEZ_BOX_H)}; background:${colores.left}; width:${MEZ_TILE_W}px; height:${MEZ_TILE_H+MEZ_BOX_H}px;"></div>
-        <div class="mez-face" style="clip-path:${mezRightPoly(MEZ_BOX_H)}; background:${colores.right}; width:${MEZ_TILE_W}px; height:${MEZ_TILE_H+MEZ_BOX_H}px;"></div>
-        <div class="mez-face" style="clip-path:${MEZ_TOP_POLY}; background:${colores.top}; width:${MEZ_TILE_W}px; height:${MEZ_TILE_H}px;"></div>
+      html += `<div class="mez-box" data-id="${id}" style="left:${esc(tilePos.x)}px; top:${boxY}px; width:${MEZ_TILE_W}px; height:${MEZ_TILE_H+MEZ_BOX_H}px; z-index:${zBase+nivel};">
+        <div class="mez-face" style="clip-path:${mezLeftPoly(MEZ_BOX_H)}; background:${esc(colores.left)}; width:${MEZ_TILE_W}px; height:${MEZ_TILE_H+MEZ_BOX_H}px;"></div>
+        <div class="mez-face" style="clip-path:${mezRightPoly(MEZ_BOX_H)}; background:${esc(colores.right)}; width:${MEZ_TILE_W}px; height:${MEZ_TILE_H+MEZ_BOX_H}px;"></div>
+        <div class="mez-face" style="clip-path:${MEZ_TOP_POLY}; background:${esc(colores.top)}; width:${MEZ_TILE_W}px; height:${MEZ_TILE_H}px;"></div>
         <div class="mez-label">${id.replace('MEZ-','')}</div>
       </div>`;
     });
@@ -3936,7 +3942,7 @@ function showMezTooltip(e,id){
   if(p.bloqueada){ tt.innerHTML = `<b>${id}</b><br>${ubic}<br>${p.campana_dia?'Campaña del día':'Bloqueada'}`; }
   else if(p.estado==='ocupado'){
     const pal = pallets[p.pallet_codigo]; const n = pal && pal.items ? pal.items.length : 0;
-    tt.innerHTML = `<b>${id}</b><br>${ubic}<br>Pallet: ${p.pallet_codigo}<br>${n} producto(s)`;
+    tt.innerHTML = `<b>${id}</b><br>${ubic}<br>Pallet: ${esc(p.pallet_codigo)}<br>${n} producto(s)`;
   } else {
     tt.innerHTML = `<b>${id}</b><br>${ubic}<br>Vacío`;
   }
@@ -4154,7 +4160,7 @@ function buildBloquesMarkup(interactive, showReorder){
     const nichosPropiosHTML = nichosHTMLDeBloque(bid, b.volteado, interactive, showReorder);
     const nichosHTML = anexadosHTML + nichosPropiosHTML;
     const pasilloHTML = b.pasillo ? `<div class="pasillo-divider">╱╱╱ PASILLO ╱╱╱</div>` : '';
-    return `<div class="bloque-row"><div class="bloque-title">${b.nombre}</div><div class="nichos-line">${nichosHTML || '<span class="empty-state">Sin nichos aún</span>'}</div></div>${pasilloHTML}`;
+    return `<div class="bloque-row"><div class="bloque-title">${esc(b.nombre)}</div><div class="nichos-line">${nichosHTML || '<span class="empty-state">Sin nichos aún</span>'}</div></div>${pasilloHTML}`;
   }).join('') || '<div class="empty-state">Aún no hay bloques configurados.</div>';
 }
 function renderPreviewGrid(){
@@ -4480,7 +4486,7 @@ function showTooltip(e,id){
   if(p.bloqueada){ tt.innerHTML = `<b>${id}</b><br>${p.campana_dia ? 'Campaña del día' : 'Bloqueada'}`; }
   else if(p.estado==='ocupado'){
     const pal = pallets[p.pallet_codigo]; const n = pal && pal.items ? pal.items.length : 0;
-    tt.innerHTML = `<b>${id}</b><br>Pallet: ${p.pallet_codigo}<br>${n} producto(s)`;
+    tt.innerHTML = `<b>${id}</b><br>Pallet: ${esc(p.pallet_codigo)}<br>${n} producto(s)`;
   } else { tt.innerHTML = `<b>${id}</b><br>Vacío`; }
   tt.style.display='block'; positionTooltip(e);
 }
@@ -4633,7 +4639,7 @@ function renderDetalle(id, p){
     const descVivo = productos[it.producto] ? (productos[it.producto].descripcion || '') : (it.descripcion || '');
     totalCant += Number(it.cantidad)||0;
     totalCosto += (Number(it.cantidad)||0)*costoVivo;
-    return `<tr><td class="c-cod">${it.producto}</td><td class="c-desc">${descVivo}</td><td class="c-num">${fmtEntero(it.cantidad)}</td><td class="c-num">${fmtMoney(costoVivo)}</td></tr>`;
+    return `<tr><td class="c-cod">${esc(it.producto)}</td><td class="c-desc">${descVivo}</td><td class="c-num">${fmtEntero(it.cantidad)}</td><td class="c-num">${fmtMoney(costoVivo)}</td></tr>`;
   });
   // Los totales de arriba son del pallet completo; la tabla se pagina de 10 en 10.
   const POR_PAGINA = 10;
@@ -4644,11 +4650,11 @@ function renderDetalle(id, p){
   const rows = filas.slice(desde, desde+POR_PAGINA).join('');
   const pager = paginas > 1 ? `<div id="det-pager">
       <button class="btn btn-ghost btn-sm" data-det="prev"${detPagina.n===1?' disabled':''}>&lsaquo;</button>
-      <span>${desde+1}–${Math.min(desde+POR_PAGINA, filas.length)} de ${filas.length} productos</span>
+      <span>${desde+1}–${Math.min(desde+POR_PAGINA, filas.length)} de ${esc(filas.length)} productos</span>
       <button class="btn btn-ghost btn-sm" data-det="next"${detPagina.n===paginas?' disabled':''}>&rsaquo;</button>
     </div>` : '';
   content.innerHTML = `
-    <div style="font-family:var(--mono); font-size:13px; margin-bottom:6px;"><b>${id}</b> · Pallet ${p.pallet_codigo}</div>
+    <div style="font-family:var(--mono); font-size:13px; margin-bottom:6px;"><b>${id}</b> · Pallet ${esc(p.pallet_codigo)}</div>
     <table><colgroup><col class="w-cod"><col><col class="w-cant"><col class="w-costo"></colgroup><thead><tr><th>Producto</th><th>Desc.</th><th class="c-num">Cant.</th><th class="c-num">Costo u.</th></tr></thead><tbody>${rows}</tbody></table>
     ${pager}
     <div class="total-line"><span>Total cantidad</span><span>${fmtEntero(totalCant)}</span></div>
@@ -4727,10 +4733,15 @@ async function agregarProductoAPallet(codigoPallet, prodEl, descEl, costoEl, can
 
 async function retirarPallet(posId, codigo){
   if(!confirm(`¿Retirar el pallet ${codigo} y liberar la posición ${posId}? Esta acción no se puede deshacer.`)) return;
-  const itemsDelPallet = (pallets[codigo] && pallets[codigo].items) ? pallets[codigo].items.slice() : [];
   try{
     await db.runTransaction(async tx=>{
       const posRef = posicionesRef.doc(posId); const palRef = palletsRef.doc(codigo);
+      // Se leen pallet y posición DENTRO de la transacción: si otro usuario
+      // cambió el contenido justo antes, el kardex registra lo que de verdad sale.
+      const [posSnap, palSnap] = await Promise.all([tx.get(posRef), tx.get(palRef)]);
+      if(!posSnap.exists || posSnap.data().pallet_codigo !== codigo) throw new Error(`La posición ${posId} ya no contiene el pallet ${codigo}.`);
+      if(!palSnap.exists) throw new Error('Pallet no encontrado.');
+      const itemsDelPallet = palSnap.data().items || [];
       tx.update(posRef, { estado:'vacio', pallet_codigo:null, actualizado: firebase.firestore.FieldValue.serverTimestamp() });
       tx.delete(palRef);
       itemsDelPallet.forEach(it=>{
@@ -4749,7 +4760,7 @@ async function retirarPallet(posId, codigo){
 /* -------------------- Filtros/selects -------------------- */
 function renderFiltroBloques(){
   const sel = $('f-bloque'); const current = sel.value;
-  sel.innerHTML = '<option value="">Todos</option>' + Object.entries(bloques).map(([id,b])=>`<option value="${id}">${b.anexado_a ? '↳ ' : ''}${b.nombre}</option>`).join('');
+  sel.innerHTML = '<option value="">Todos</option>' + Object.entries(bloques).map(([id,b])=>`<option value="${id}">${b.anexado_a ? '↳ ' : ''}${esc(b.nombre)}</option>`).join('');
   sel.value = current;
 }
 function renderSelects(){
@@ -4757,7 +4768,7 @@ function renderSelects(){
   const vacias = Object.entries(posiciones).filter(([id,p])=>p.estado==='vacio' && !p.bloqueada);
   $('dl-cp-destino').innerHTML = vacias.map(([id])=>`<option value="${id}">`).join('');
   $('dl-mv-destino').innerHTML = vacias.map(([id])=>`<option value="${id}">`).join('');
-  $('dl-mv-origen').innerHTML = ocupadas.map(([id,p])=>`<option value="${id}">${p.pallet_codigo}</option>`).join('');
+  $('dl-mv-origen').innerHTML = ocupadas.map(([id,p])=>`<option value="${id}">${esc(p.pallet_codigo)}</option>`).join('');
   $('dl-pallets').innerHTML = Object.keys(pallets).map(c=>`<option value="${c}">`).join('');
 }
 function renderResumen(){
@@ -4903,7 +4914,7 @@ function wireProductoAutocomplete(inputEl){
     const val = inputEl.value.trim().toUpperCase();
     if(val.length < 3){ datalist.innerHTML=''; return; }
     const matches = Object.keys(productos).filter(c=>c.includes(val)).slice(0,20);
-    datalist.innerHTML = matches.map(c=>`<option value="${c}">${productos[c].descripcion||''}</option>`).join('');
+    datalist.innerHTML = matches.map(c=>`<option value="${c}">${esc(productos[c].descripcion||'')}</option>`).join('');
   });
 }
 function addItemRow(){
@@ -5065,7 +5076,7 @@ $('btn-mover').addEventListener('click', async ()=>{
 function cargarProductosDeOrigenTransferir(code){
   const pal = pallets[code]; const sel = $('tr-producto');
   if(pal && pal.items && pal.items.length){
-    sel.innerHTML = pal.items.map(it=>`<option value="${it.producto}">${it.producto} (disp: ${it.cantidad})</option>`).join('');
+    sel.innerHTML = pal.items.map(it=>`<option value="${esc(it.producto)}">${esc(it.producto)} (disp: ${esc(it.cantidad)})</option>`).join('');
   } else { sel.innerHTML = '<option value="">Pallet no encontrado o sin productos</option>'; }
 }
 function fijarOrigenTransferir(code){
@@ -5197,19 +5208,19 @@ function renderUnirPallets(){
       const bloqueadaTag = pos && pos.bloqueada ? ' <span style="color:var(--red);">(bloqueada)</span>' : '';
       const accion = esDestino
         ? `<span class="un-tag-destino">Destino sugerido</span>`
-        : `<button type="button" class="btn btn-ghost btn-sm" data-un-unir="${x.codigo}" data-un-origen="${d.pallet}" data-un-cant="${d.cantidad}" data-un-destino="${destino.pallet}">🔗 Unir aquí</button>`;
+        : `<button type="button" class="btn btn-ghost btn-sm" data-un-unir="${esc(x.codigo)}" data-un-origen="${esc(d.pallet)}" data-un-cant="${esc(d.cantidad)}" data-un-destino="${esc(destino.pallet)}">🔗 Unir aquí</button>`;
       return `<div class="un-pallet-row">
-        <span class="un-p-cod">${d.pallet}</span>
-        <span class="un-p-pos">${d.posicion || '—'}${bloqueadaTag}</span>
+        <span class="un-p-cod">${esc(d.pallet)}</span>
+        <span class="un-p-pos">${esc(d.posicion || '—')}${bloqueadaTag}</span>
         <span class="un-p-cant">${fmtEntero(d.cantidad)} uds</span>
         ${accion}
       </div>`;
     }).join('');
-    return `<div class="un-item" data-un-item="${x.codigo}">
-      <div class="un-item-head" data-un-toggle="${x.codigo}">
-        <span class="un-cod">${x.codigo}</span>
-        <span class="un-desc">${x.descripcion}</span>
-        <span class="un-meta">${x.detalle.length} pallets · ${fmtEntero(x.total)} uds</span>
+    return `<div class="un-item" data-un-item="${esc(x.codigo)}">
+      <div class="un-item-head" data-un-toggle="${esc(x.codigo)}">
+        <span class="un-cod">${esc(x.codigo)}</span>
+        <span class="un-desc">${esc(x.descripcion)}</span>
+        <span class="un-meta">${esc(x.detalle.length)} pallets · ${fmtEntero(x.total)} uds</span>
       </div>
       <div class="un-item-body">${filas}</div>
     </div>`;
@@ -5273,7 +5284,7 @@ function renderReportesDuplicados(){
   $('rep-dup-empty').style.display='none';
   const filasPagina = tramoPaginado('rep-dup-body', filas, 30, renderReportesDuplicados);
   body.innerHTML = filasPagina.map(f=>`<tr>
-    <td>${f.pallet}</td><td>${f.codigo}</td><td>${f.descripcion}</td><td>${f.proveedor}</td>
+    <td>${esc(f.pallet)}</td><td>${esc(f.codigo)}</td><td>${esc(f.descripcion)}</td><td>${esc(f.proveedor)}</td>
     <td>${fmtMoney(f.costo)}</td><td>${fmtEntero(f.cantidad)}</td>
     <td>${f.fecha ? f.fecha.toLocaleDateString('es-PE') : '—'}</td>
   </tr>`).join('');
@@ -5356,7 +5367,7 @@ function renderInventario(){
   body.innerHTML = entriesPagina.map(([codigo,data])=>{
     const detId = `inv-det-${codigo}`;
     invDetalleCache[detId] = data.detalle;
-    return `<tr><td>${codigo}</td><td>${data.descripcion||''}</td><td>${data.proveedor||''}</td><td>${fmtEntero(data.total)}</td><td>${fmtMoney(data.costo)}</td><td>S/ ${fmtMoneyComma(data.costoTotal)}</td><td><button class="btn btn-ghost btn-sm" data-toggle-inv="${detId}">Ver detalle</button></td></tr>
+    return `<tr><td>${codigo}</td><td>${esc(data.descripcion||'')}</td><td>${esc(data.proveedor||'')}</td><td>${fmtEntero(data.total)}</td><td>${fmtMoney(data.costo)}</td><td>S/ ${fmtMoneyComma(data.costoTotal)}</td><td><button class="btn btn-ghost btn-sm" data-toggle-inv="${detId}">Ver detalle</button></td></tr>
     <tr id="${detId}" style="display:none;"><td colspan="7"></td></tr>`;
   }).join('');
   body.querySelectorAll('[data-toggle-inv]').forEach(btn=>{
@@ -5365,7 +5376,7 @@ function renderInventario(){
       const row = document.getElementById(detId);
       const showing = row.style.display !== 'none';
       if(!showing && !row.dataset.montado){
-        const filas = (invDetalleCache[detId]||[]).map(d=>`<tr><td>${d.pallet}</td><td>${d.posicion||'—'}</td><td>${d.cantidad}</td></tr>`).join('');
+        const filas = (invDetalleCache[detId]||[]).map(d=>`<tr><td>${esc(d.pallet)}</td><td>${esc(d.posicion||'—')}</td><td>${esc(d.cantidad)}</td></tr>`).join('');
         row.firstElementChild.innerHTML = `<table style="margin-top:4px;"><thead><tr><th>Pallet</th><th>Posición</th><th>Cantidad</th></tr></thead><tbody>${filas}</tbody></table>`;
         row.dataset.montado = '1';
       }
@@ -5627,7 +5638,7 @@ function renderPalletsTabla(){
   else{
     $('pallets-empty').style.display='none';
     body.innerHTML = filas.map(f=>
-      `<tr><td>${f.codigo}</td><td>${f.posicion||'—'}</td><td>${f.nicho||'—'}</td><td>${f.bloque||'—'}</td><td>${f.nProductos} producto(s)</td></tr>`
+      `<tr><td>${esc(f.codigo)}</td><td>${esc(f.posicion||'—')}</td><td>${esc(f.nicho||'—')}</td><td>${esc(f.bloque||'—')}</td><td>${esc(f.nProductos)} producto(s)</td></tr>`
     ).join('');
   }
   document.querySelectorAll('#pallets-thead .th-ordenable').forEach(th=>{
@@ -5687,7 +5698,7 @@ function renderPalletDetalleTabla(){
   else{
     $('pallet-detalle-empty').style.display='none';
     body.innerHTML = filas.map(f=>
-      `<tr><td>${f.pallet}</td><td>${f.posicion||'—'}</td><td>${f.codigo}</td><td>${f.descripcion}</td><td>${fmtMoney(f.costo)}</td><td>${f.cantidad}</td></tr>`
+      `<tr><td>${esc(f.pallet)}</td><td>${esc(f.posicion||'—')}</td><td>${esc(f.codigo)}</td><td>${esc(f.descripcion)}</td><td>${fmtMoney(f.costo)}</td><td>${esc(f.cantidad)}</td></tr>`
     ).join('');
   }
   document.querySelectorAll('#pallet-detalle-thead .th-ordenable').forEach(th=>{
@@ -5743,9 +5754,9 @@ function renderProductosTabla(){
   body.innerHTML = entriesPagina.map(([codigo,p])=>{
     const fecha = p.creado_en ? p.creado_en.toDate().toLocaleString('es-PE') : '—';
     const img = p.imagen_url
-      ? `<img src="${p.imagen_url}" alt="" loading="lazy" decoding="async" style="width:42px; height:42px; object-fit:cover; border-radius:5px; border:1px solid var(--line-strong);">`
+      ? `<img src="${esc(p.imagen_url)}" alt="" loading="lazy" decoding="async" style="width:42px; height:42px; object-fit:cover; border-radius:5px; border:1px solid var(--line-strong);">`
       : `<div style="width:42px; height:42px; border-radius:5px; border:1px dashed var(--line-strong); display:flex; align-items:center; justify-content:center; font-size:9px; color:var(--ink-soft);">S/I</div>`;
-    return `<tr><td>${img}</td><td>${codigo}</td><td>${p.descripcion||''}</td><td>${fmtMoney(p.costo)}</td><td>${p.proveedor||''}</td><td>${p.empaque1 ?? ''}</td><td>${p.empaque2 ?? ''}</td><td>${fecha}</td><td>${p.creado_por||''}</td></tr>`;
+    return `<tr><td>${img}</td><td>${codigo}</td><td>${esc(p.descripcion||'')}</td><td>${fmtMoney(p.costo)}</td><td>${esc(p.proveedor||'')}</td><td>${esc(p.empaque1 ?? '')}</td><td>${esc(p.empaque2 ?? '')}</td><td>${fecha}</td><td>${esc(p.creado_por||'')}</td></tr>`;
   }).join('');
 }
 function reiniciarPaginaProductos(){ fijarPagina('prod-body', 1); renderProductosTabla(); }
@@ -5994,7 +6005,7 @@ function chequearPosiblesDuplicados(){
   if(candidatos.length===0){ warnEl.style.display='none'; warnEl.innerHTML=''; return; }
   warnEl.style.display='block';
   warnEl.innerHTML = `⚠ Ya existen productos parecidos — verifica que no sea el mismo antes de crear uno nuevo:<br>` +
-    candidatos.map(c=>`• <b>${c.codigo}</b> — ${c.descripcion}`).join('<br>');
+    candidatos.map(c=>`• <b>${esc(c.codigo)}</b> — ${esc(c.descripcion)}`).join('<br>');
 }
 $('pr-desc').addEventListener('blur', chequearPosiblesDuplicados);
 $('pr-desc').addEventListener('input', chequearPosiblesDuplicados);
@@ -6040,9 +6051,9 @@ $('btn-fus-analizar').addEventListener('click', async ()=>{
     fusAnalisis = { bueno, duplicados, resumenPorDup };
     $('fus-resumen').style.display = 'block';
     $('fus-resumen').innerHTML = `
-      <p class="hint" style="margin-bottom:8px;">Se actualizará todo esto para que pase a pertenecer a <b>${bueno}</b> — ${productos[bueno].descripcion || ''}:</p>
+      <p class="hint" style="margin-bottom:8px;">Se actualizará todo esto para que pase a pertenecer a <b>${bueno}</b> — ${esc(productos[bueno].descripcion || '')}:</p>
       <table><thead><tr><th>Código duplicado</th><th>Pallets afectados</th><th>Unidades en esos pallets</th><th>Filas en Campañas</th><th>Filas en Kardex</th></tr></thead><tbody>
-      ${resumenPorDup.map(r=>`<tr><td>${r.codigo}</td><td>${r.pallets}</td><td>${r.unidadesEnPallets}</td><td>${r.campanaFilas}</td><td>${r.kardexFilas}</td></tr>`).join('')}
+      ${resumenPorDup.map(r=>`<tr><td>${esc(r.codigo)}</td><td>${esc(r.pallets)}</td><td>${esc(r.unidadesEnPallets)}</td><td>${esc(r.campanaFilas)}</td><td>${esc(r.kardexFilas)}</td></tr>`).join('')}
       </tbody></table>`;
     $('btn-fus-confirmar').style.display = 'inline-block';
     showMsg('fus-msg','ok','Análisis listo. Revisa los números y confirma si está todo correcto.');
@@ -6194,8 +6205,8 @@ function renderRcTabla(){
   body.innerHTML = pagina.map(it=>{
     const valorGuardado = rcValores[it.producto] != null ? rcValores[it.producto] : 0;
     return `<tr>
-      <td>${it.producto}</td><td>${it.descripcion||''}</td><td>${it.cantidad}</td>
-      <td><input type="number" class="rc-cant" data-producto="${it.producto}" data-max="${it.cantidad}" min="0" max="${it.cantidad}" step="1" value="${valorGuardado}" style="width:60px;"></td>
+      <td>${esc(it.producto)}</td><td>${esc(it.descripcion||'')}</td><td>${esc(it.cantidad)}</td>
+      <td><input type="number" class="rc-cant" data-producto="${esc(it.producto)}" data-max="${esc(it.cantidad)}" min="0" max="${esc(it.cantidad)}" step="1" value="${valorGuardado}" style="width:60px;"></td>
     </tr>`;
   }).join('');
   body.querySelectorAll('.rc-cant').forEach(inp=>{
@@ -6420,7 +6431,7 @@ $('btn-cargar-kardex').addEventListener('click', async ()=>{
       const colorCant = d.tipo==='ingreso' ? '#245C46' : '#8A332A';
       const tipoLabelKx = d.motivo || (d.tipo==='ingreso'?'Ingreso':'Salida');
       const filaMasReciente = idx===0 ? ' style="background:#FFF3CD;"' : '';
-      return `<tr${filaMasReciente}><td>${fecha}</td><td>${d.usuario||''}</td><td>${d.pallet_codigo||''}</td><td>${d.producto}</td><td>${d.descripcion||''}</td><td>${tipoLabelKx}</td><td style="color:${colorCant}; font-weight:700;">${signo}${fmtEntero(d.cantidad)}</td><td style="font-weight:${idx===0?'700':'400'};">${fmtEntero(d.saldo)}</td></tr>`;
+      return `<tr${filaMasReciente}><td>${fecha}</td><td>${esc(d.usuario||'')}</td><td>${esc(d.pallet_codigo||'')}</td><td>${esc(d.producto)}</td><td>${esc(d.descripcion||'')}</td><td>${tipoLabelKx}</td><td style="color:${colorCant}; font-weight:700;">${signo}${fmtEntero(d.cantidad)}</td><td style="font-weight:${idx===0?'700':'400'};">${fmtEntero(d.saldo)}</td></tr>`;
     }).join('');
   }catch(err){ showToast('Error al cargar kardex: '+err.message,'err'); }
   finally{ $('btn-cargar-kardex').disabled = false; }
@@ -6657,7 +6668,7 @@ $('btn-cargar-bitacora').addEventListener('click', async ()=>{
     $('bit-empty').style.display='none';
     body.innerHTML = rows.map(d=>{
       const fecha = d.timestamp ? d.timestamp.toDate().toLocaleString('es-PE') : '…';
-      return `<tr><td>${tipoLabel(d.tipo)}</td><td>${d.pallet_codigo||'—'}</td><td>${d.origen||'—'}</td><td>${d.destino||'—'}</td><td>${d.detalle||''}</td><td>${d.usuario||''}</td><td>${fecha}</td></tr>`;
+      return `<tr><td>${tipoLabel(d.tipo)}</td><td>${esc(d.pallet_codigo||'—')}</td><td>${esc(d.origen||'—')}</td><td>${esc(d.destino||'—')}</td><td>${esc(d.detalle||'')}</td><td>${esc(d.usuario||'')}</td><td>${fecha}</td></tr>`;
     }).join('');
   }catch(err){ showToast('Error al cargar bitácora: '+err.message,'err'); }
   finally{ $('btn-cargar-bitacora').disabled = false; }
@@ -6927,7 +6938,7 @@ $('btn-procesar-pdf').addEventListener('click', async ()=>{
     $('camp-preview-resumen').textContent = `${rows.length} filas encontradas · ${skuDistintos} SKU distintos · ${participantes} participante(s). El PDF no se guarda — solo esta información, al presionar "Guardar en base de datos".`;
     $('camp-fecha-transaccion').value = '';
     $('camp-preview-body').innerHTML = rows.slice(0,300).map(r=>
-      `<tr><td>${r.codigo}</td><td>${r.campana}</td><td>${r.participante}</td><td>${r.sku}</td><td>${r.producto}</td><td>${r.area}</td><td>${r.cantidad}</td><td>${r.desglose}</td></tr>`
+      `<tr><td>${esc(r.codigo)}</td><td>${esc(r.campana)}</td><td>${esc(r.participante)}</td><td>${esc(r.sku)}</td><td>${esc(r.producto)}</td><td>${esc(r.area)}</td><td>${esc(r.cantidad)}</td><td>${esc(r.desglose)}</td></tr>`
     ).join('') + (rows.length>300 ? `<tr><td colspan="8" style="text-align:center; color:var(--ink-soft);">… y ${rows.length-300} filas más (se guardarán todas)</td></tr>` : '');
     $('camp-preview-wrap').style.display = 'block';
     showMsg('camp-msg','ok', `PDF procesado: ${rows.length} filas. Ingresa la fecha de transacción antes de guardar.`);
@@ -7072,9 +7083,9 @@ function renderRegistrosCampana(){
   $('camp-reg-body').innerHTML = filtrados.map(r=>{
     const estado = r.estado || 'ACTIVO';
     const accionHtml = estado === 'ACTIVO'
-      ? (puedeEliminar ? `<button class="btn btn-sm btn-ghost btn-invalidar-campana" data-correlativo="${r.correlativo}">Eliminar</button>` : '')
+      ? (puedeEliminar ? `<button class="btn btn-sm btn-ghost btn-invalidar-campana" data-correlativo="${esc(r.correlativo)}">Eliminar</button>` : '')
       : `<span class="hint">Invalidado${r.invalidado_por ? ' por '+r.invalidado_por : ''}</span>`;
-    return `<tr><td>${r.correlativo}</td><td>${r.campana||''}</td><td>${r.codigo||''}</td><td>${fmtFechaCorta(r.fecha_transaccion)}</td><td>${r.sku_distintos!=null?r.sku_distintos:''}</td><td>${r.total_filas!=null?r.total_filas:''}</td><td>${r.usuario||''}</td><td><button class="btn btn-sm btn-ver-detalle-campana" data-correlativo="${r.correlativo}" data-campana="${(r.campana||'').replace(/"/g,'&quot;')}">Ver detalle</button></td><td>${accionHtml}</td></tr>`;
+    return `<tr><td>${esc(r.correlativo)}</td><td>${esc(r.campana||'')}</td><td>${esc(r.codigo||'')}</td><td>${fmtFechaCorta(r.fecha_transaccion)}</td><td>${r.sku_distintos!=null?r.sku_distintos:''}</td><td>${r.total_filas!=null?r.total_filas:''}</td><td>${esc(r.usuario||'')}</td><td><button class="btn btn-sm btn-ver-detalle-campana" data-correlativo="${esc(r.correlativo)}" data-campana="${(r.campana||'').replace(/"/g,'&quot;')}">Ver detalle</button></td><td>${accionHtml}</td></tr>`;
   }).join('');
   $('btn-reg-cargar-mas').style.display = !campRegNoMore ? 'inline-block' : 'none';
   actualizarFlechasOrden('camp-reg-thead', campRegOrden, CAMP_REG_COLUMNAS);
@@ -7115,7 +7126,7 @@ function renderDetalleCabeceraCampana(correlativo, filas){
   const filasCab = Object.values(porParticipante).sort((a,b)=> a.participante.localeCompare(b.participante));
   $('camp-detalle-cabecera-body').innerHTML = filasCab.map(p=>
     `<tr class="camp-fila-participante" data-participante="${p.participante.replace(/"/g,'&quot;')}" style="cursor:pointer;">
-      <td>${p.participante}</td><td>${p.skus.size}</td><td>${p.total.toLocaleString('es-PE')}</td>
+      <td>${esc(p.participante)}</td><td>${esc(p.skus.size)}</td><td>${p.total.toLocaleString('es-PE')}</td>
     </tr>`
   ).join('') || '<tr><td colspan="3" style="text-align:center;">Sin datos.</td></tr>';
 }
@@ -7132,7 +7143,7 @@ $('camp-detalle-cabecera-body').addEventListener('click', (ev)=>{
   $('camp-detalle2-titulo').textContent = `Detalle 2 — ${participante} (${filasFiltradas.length} fila(s))`;
   $('camp-detalle2-vacio').style.display = filasFiltradas.length ? 'none' : 'block';
   $('camp-detalle-body').innerHTML = filasFiltradas.map(r=>
-    `<tr><td>${r.sku||''}</td><td>${r.producto||''}</td><td>${r.area||''}</td><td>${r.cantidad!=null?r.cantidad:''}</td><td>${r.desglose||''}</td></tr>`
+    `<tr><td>${esc(r.sku||'')}</td><td>${esc(r.producto||'')}</td><td>${esc(r.area||'')}</td><td>${r.cantidad!=null?r.cantidad:''}</td><td>${esc(r.desglose||'')}</td></tr>`
   ).join('');
 });
 
@@ -7420,14 +7431,14 @@ function renderCampBuscarTabla(){
   const pagina = filas.slice(inicio, inicio + CAMP_BUSCAR_POR_PAGINA);
 
   $('camp-buscar-body').innerHTML = pagina.map(g=>
-    `<tr class="camp-buscar-fila-cabecera" data-correlativo="${g.correlativo}" data-participante="${(g.participante||'').replace(/"/g,'&quot;')}" style="cursor:pointer;">
-      <td>${g.campana||''}</td>
-      <td>${g.participante||''}</td>
-      <td>${g.lineas}</td>
+    `<tr class="camp-buscar-fila-cabecera" data-correlativo="${esc(g.correlativo)}" data-participante="${(g.participante||'').replace(/"/g,'&quot;')}" style="cursor:pointer;">
+      <td>${esc(g.campana||'')}</td>
+      <td>${esc(g.participante||'')}</td>
+      <td>${esc(g.lineas)}</td>
       <td><span style="background:var(--green-bg); color:#245C46; font-weight:700; padding:2px 7px; border-radius:4px; display:inline-block;">${g.cantidad_total.toLocaleString('es-PE')}</span></td>
-      <td>${g.nro_guia ? `<span style="background:var(--blue-bg); color:var(--blue); font-weight:700; padding:2px 7px; border-radius:4px; display:inline-block;">${g.nro_guia}</span>` : '<span class="hint">Sin guía</span>'}</td>
+      <td>${g.nro_guia ? `<span style="background:var(--blue-bg); color:var(--blue); font-weight:700; padding:2px 7px; border-radius:4px; display:inline-block;">${esc(g.nro_guia)}</span>` : '<span class="hint">Sin guía</span>'}</td>
       <td>${g.bultos_total ? `<span style="background:#FDF0E4; color:var(--lacre-line); font-weight:700; padding:2px 7px; border-radius:4px; display:inline-block;">${g.bultos_total.toLocaleString('es-PE')}</span>` : '—'}</td>
-      <td>${g.fecha_guia || '—'}</td>
+      <td>${esc(g.fecha_guia || '—')}</td>
       <td><span class="hint">👁 Ver detalle</span></td>
     </tr>`
   ).join('');
@@ -7436,7 +7447,7 @@ function renderCampBuscarTabla(){
   const totalCantidad = filas.reduce((a,g)=> a + g.cantidad_total, 0);
   const totalBultos = filas.reduce((a,g)=> a + (g.bultos_total||0), 0);
   $('camp-buscar-tfoot').innerHTML = `<tr>
-    <td colspan="2" style="text-align:right;">TOTAL — ${filas.length} campaña/tienda</td>
+    <td colspan="2" style="text-align:right;">TOTAL — ${esc(filas.length)} campaña/tienda</td>
     <td>${totalLineas.toLocaleString('es-PE')}</td>
     <td>${totalCantidad.toLocaleString('es-PE')}</td>
     <td></td>
@@ -7445,7 +7456,7 @@ function renderCampBuscarTabla(){
   </tr>`;
 
   $('camp-buscar-paginacion').innerHTML = `
-    <span>${filas.length} resultado(s) · página ${campBuscarPagina} de ${totalPaginas}</span>
+    <span>${esc(filas.length)} resultado(s) · página ${campBuscarPagina} de ${totalPaginas}</span>
     <div style="display:flex; gap:6px;">
       <button type="button" class="btn btn-ghost btn-sm" id="btn-cb-pag-prev" ${campBuscarPagina<=1?'disabled':''}>‹ Anterior</button>
       <button type="button" class="btn btn-ghost btn-sm" id="btn-cb-pag-next" ${campBuscarPagina>=totalPaginas?'disabled':''}>Siguiente ›</button>
@@ -7509,18 +7520,18 @@ async function abrirDetalleCabeceraBusqueda(correlativo, participante){
 
     $('camp-buscar-detalle-body').innerHTML = filas.map(r=>
       `<tr>
-        <td><span style="background:var(--blue-bg); color:var(--blue); font-weight:700; padding:2px 7px; border-radius:4px; display:inline-block;">${r.sku||''}</span></td>
-        <td>${r.producto||''}</td>
-        <td>${r.area||''}</td>
+        <td><span style="background:var(--blue-bg); color:var(--blue); font-weight:700; padding:2px 7px; border-radius:4px; display:inline-block;">${esc(r.sku||'')}</span></td>
+        <td>${esc(r.producto||'')}</td>
+        <td>${esc(r.area||'')}</td>
         <td><span style="background:var(--green-bg); color:#245C46; font-weight:700; padding:2px 7px; border-radius:4px; display:inline-block;">${r.cantidad!=null?r.cantidad:0}</span></td>
-        <td><span style="background:#FDF0E4; color:var(--lacre-line); font-weight:700; padding:2px 7px; border-radius:4px; display:inline-block;">${r.cantidad_guia}</span></td>
-        <td>${r.desglose||''}</td>
-        <td>${r.fecha_transaccion||''}</td>
+        <td><span style="background:#FDF0E4; color:var(--lacre-line); font-weight:700; padding:2px 7px; border-radius:4px; display:inline-block;">${esc(r.cantidad_guia)}</span></td>
+        <td>${esc(r.desglose||'')}</td>
+        <td>${esc(r.fecha_transaccion||'')}</td>
       </tr>`
     ).join('');
   }catch(err){
     console.error(err);
-    $('camp-buscar-detalle-body').innerHTML = `<tr><td colspan="7" class="hint" style="color:#8A332A; text-align:center; padding:14px;">Error al cargar el detalle: ${err.message}</td></tr>`;
+    $('camp-buscar-detalle-body').innerHTML = `<tr><td colspan="7" class="hint" style="color:#8A332A; text-align:center; padding:14px;">Error al cargar el detalle: ${esc(err.message)}</td></tr>`;
   }
 }
 
@@ -7853,11 +7864,11 @@ function actualizarFilaTrasCambioCampana(idx){
 
 function renderGuiaBatch(){
   const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
-  const opcionesCampana = '<option value="">— Selecciona —</option>' + activos.map(r=>`<option value="${r.correlativo}">${r.correlativo} — ${r.campana}</option>`).join('');
+  const opcionesCampana = '<option value="">— Selecciona —</option>' + activos.map(r=>`<option value="${esc(r.correlativo)}">${esc(r.correlativo)} — ${esc(r.campana)}</option>`).join('');
 
   $('guia-batch-body').innerHTML = guiaBatch.map((item, idx)=>{
     if(!item.resultado){
-      return `<tr><td>${item.fileName}</td><td colspan="7" style="color:#8A332A;">⚠ ${item.error||'No se pudo procesar.'}</td></tr>`;
+      return `<tr><td>${esc(item.fileName)}</td><td colspan="7" style="color:#8A332A;">⚠ ${esc(item.error||'No se pudo procesar.')}</td></tr>`;
     }
     const r = item.resultado;
     let dupHtml;
@@ -7865,19 +7876,19 @@ function renderGuiaBatch(){
       // No se permite forzar: un N° de guía solo puede existir una vez mientras esa
       // carga original siga activa. Si de verdad hace falta volver a subirla, primero
       // hay que eliminar (invalidar) el registro original desde "Registros y Detalle".
-      dupHtml = `<span style="color:#8A332A; font-weight:700;">Ya existe (${item.duplicado.correlativo}) — no se guardará</span>`;
+      dupHtml = `<span style="color:#8A332A; font-weight:700;">Ya existe (${esc(item.duplicado.correlativo)}) — no se guardará</span>`;
     }else if(item.duplicadoEnLote){
-      dupHtml = `<span style="color:#8A332A; font-weight:700;">Repetida en este lote (igual que "${item.duplicadoEnLote}") — no se guardará</span>`;
+      dupHtml = `<span style="color:#8A332A; font-weight:700;">Repetida en este lote (igual que "${esc(item.duplicadoEnLote)}") — no se guardará</span>`;
     }else{
       dupHtml = `<span style="color:#245C46;">Nueva ✓</span>`;
     }
     const fechaISO = fechaDDMMYYYYaISO(r.fecha_traslado);
     return `<tr data-idx="${idx}">
-      <td>${item.fileName}</td>
-      <td>${r.nro_guia||'—'}</td>
+      <td>${esc(item.fileName)}</td>
+      <td>${esc(r.nro_guia||'—')}</td>
       <td><input type="date" class="guia-batch-fecha" data-idx="${idx}" value="${fechaISO}" style="width:150px;"></td>
-      <td>${r.bultos ?? '—'}</td>
-      <td>${r.items.length} <button type="button" class="btn btn-ghost btn-sm guia-batch-ver-items" data-idx="${idx}">Ver</button></td>
+      <td>${esc(r.bultos ?? '—')}</td>
+      <td>${esc(r.items.length)} <button type="button" class="btn btn-ghost btn-sm guia-batch-ver-items" data-idx="${idx}">Ver</button></td>
       <td>
         <select class="guia-batch-campana" data-idx="${idx}" style="max-width:220px;">${opcionesCampana}</select>
         <div class="guia-batch-pct" data-idx="${idx}" style="font-size:10px; color:var(--ink-soft); margin-top:2px;"></div>
@@ -7887,7 +7898,7 @@ function renderGuiaBatch(){
     </tr>
     <tr class="guia-batch-items-row" data-items-for="${idx}" style="display:none;"><td colspan="8">
       <table style="margin:6px 0;"><thead><tr><th>Item</th><th>Código</th><th>Descripción</th><th>Unidad</th><th>Cantidad</th></tr></thead><tbody>
-      ${r.items.map(it=>`<tr><td>${it.item}</td><td>${it.codigo}</td><td>${it.descripcion}</td><td>${it.unidad}</td><td>${it.cantidad}</td></tr>`).join('')}
+      ${r.items.map(it=>`<tr><td>${esc(it.item)}</td><td>${esc(it.codigo)}</td><td>${esc(it.descripcion)}</td><td>${esc(it.unidad)}</td><td>${esc(it.cantidad)}</td></tr>`).join('')}
       </tbody></table>
     </td></tr>`;
   }).join('');
@@ -8045,7 +8056,7 @@ async function abrirEditorParticipanteGuia(correlativoGuia){
   overlay.innerHTML = `
     <div id="edit-part-modal">
       <h3>Corregir participante</h3>
-      <p class="hint">Guía ${correlativoGuia}${g.nro_guia?' — N° '+g.nro_guia:''}<br>Destino: ${g.punto_llegada || '(sin destino registrado)'}</p>
+      <p class="hint">Guía ${correlativoGuia}${g.nro_guia?' — N° '+g.nro_guia:''}<br>Destino: ${esc(g.punto_llegada || '(sin destino registrado)')}</p>
       <div class="field"><label>Participante correcto</label>
         <select id="edit-part-select">${participantes.map(p=>`<option value="${p}" ${p===g.participante?'selected':''}>${p}</option>`).join('')}</select>
       </div>
@@ -8135,9 +8146,9 @@ function renderRegistrosGuias(){
   $('guia-reg-body').innerHTML = filtrados.map(r=>{
     const estado = r.estado || 'ACTIVO';
     const accionHtml = estado === 'ACTIVO'
-      ? (puedeEliminar ? `<button class="btn btn-sm btn-ghost btn-invalidar-guia" data-correlativo="${r.correlativo}">Eliminar</button> <button class="btn btn-sm btn-ghost btn-editar-participante-guia" data-correlativo="${r.correlativo}" title="Corregir el participante de esta guía">✏️ Participante</button>` : '')
+      ? (puedeEliminar ? `<button class="btn btn-sm btn-ghost btn-invalidar-guia" data-correlativo="${esc(r.correlativo)}">Eliminar</button> <button class="btn btn-sm btn-ghost btn-editar-participante-guia" data-correlativo="${esc(r.correlativo)}" title="Corregir el participante de esta guía">✏️ Participante</button>` : '')
       : `<span class="hint">Invalidado${r.invalidado_por ? ' por '+r.invalidado_por : ''}</span>`;
-    return `<tr><td>${r.correlativo}</td><td>${r.nro_guia||''}</td><td>${r.campana_correlativo||''} — ${r.campana_nombre||''}</td><td>${r.participante||''}</td><td>${r.fecha_traslado||''}</td><td>${r.punto_partida||''} → ${r.punto_llegada||''}</td><td>${r.total_items??''}</td><td>${r.bultos??''}</td><td>${r.usuario||''}</td><td><button class="btn btn-sm btn-ver-detalle-guia" data-correlativo="${r.correlativo}" data-nro="${(r.nro_guia||'').replace(/"/g,'&quot;')}">Ver detalle</button></td><td>${accionHtml}</td></tr>`;
+    return `<tr><td>${esc(r.correlativo)}</td><td>${esc(r.nro_guia||'')}</td><td>${esc(r.campana_correlativo||'')} — ${esc(r.campana_nombre||'')}</td><td>${esc(r.participante||'')}</td><td>${esc(r.fecha_traslado||'')}</td><td>${esc(r.punto_partida||'')} → ${esc(r.punto_llegada||'')}</td><td>${esc(r.total_items??'')}</td><td>${esc(r.bultos??'')}</td><td>${esc(r.usuario||'')}</td><td><button class="btn btn-sm btn-ver-detalle-guia" data-correlativo="${esc(r.correlativo)}" data-nro="${(r.nro_guia||'').replace(/"/g,'&quot;')}">Ver detalle</button></td><td>${accionHtml}</td></tr>`;
   }).join('');
   $('btn-guia-reg-cargar-mas').style.display = !guiaRegNoMore ? 'inline-block' : 'none';
   actualizarFlechasOrden('guia-reg-thead', guiaRegOrden, GUIA_REG_COLUMNAS);
@@ -8189,7 +8200,7 @@ $('guia-reg-body').addEventListener('click', async (ev)=>{
       }
       $('guia-detalle-titulo-text').textContent = `Detalle de ${correlativo} — Guía N° ${nro}`;
       $('guia-detalle-body').innerHTML = filas.slice().sort((a,b)=>(a.item||0)-(b.item||0)).map(r=>
-        `<tr><td>${r.item}</td><td>${r.codigo}</td><td>${r.descripcion}</td><td>${r.unidad}</td><td>${r.cantidad}</td></tr>`
+        `<tr><td>${esc(r.item)}</td><td>${esc(r.codigo)}</td><td>${esc(r.descripcion)}</td><td>${esc(r.unidad)}</td><td>${esc(r.cantidad)}</td></tr>`
       ).join('') || '<tr><td colspan="5" style="text-align:center;">Sin filas.</td></tr>';
       $('guia-detalle-panel').style.display = 'block';
       $('guia-detalle-panel').scrollIntoView({behavior:'smooth', block:'start'});
@@ -8360,26 +8371,26 @@ $('btn-procesar-guia-merma').addEventListener('click', async ()=>{
 function renderMermaBatch(){
   $('merma-batch-body').innerHTML = mermaBatch.map((item, idx)=>{
     if(!item.resultado){
-      return `<tr><td>${item.fileName}</td><td colspan="6" style="color:#8A332A;">⚠ ${item.error||'No se pudo procesar.'}</td></tr>`;
+      return `<tr><td>${esc(item.fileName)}</td><td colspan="6" style="color:#8A332A;">⚠ ${esc(item.error||'No se pudo procesar.')}</td></tr>`;
     }
     const r = item.resultado;
     let dupHtml;
-    if(item.duplicado) dupHtml = `<span style="color:#8A332A; font-weight:700;">Ya existe (${item.duplicado.correlativo}) — no se guardará</span>`;
-    else if(item.duplicadoEnLote) dupHtml = `<span style="color:#8A332A; font-weight:700;">Repetida en este lote (igual que "${item.duplicadoEnLote}") — no se guardará</span>`;
+    if(item.duplicado) dupHtml = `<span style="color:#8A332A; font-weight:700;">Ya existe (${esc(item.duplicado.correlativo)}) — no se guardará</span>`;
+    else if(item.duplicadoEnLote) dupHtml = `<span style="color:#8A332A; font-weight:700;">Repetida en este lote (igual que "${esc(item.duplicadoEnLote)}") — no se guardará</span>`;
     else dupHtml = `<span style="color:#245C46;">Nueva ✓</span>`;
     const fechaISO = fechaDDMMYYYYaISO(r.fecha_traslado);
     return `<tr data-idx="${idx}">
-      <td>${item.fileName}</td>
-      <td>${r.nro_guia||'—'}</td>
+      <td>${esc(item.fileName)}</td>
+      <td>${esc(r.nro_guia||'—')}</td>
       <td><input type="date" class="merma-batch-fecha" data-idx="${idx}" value="${fechaISO}" style="width:150px;"></td>
-      <td>${r.bultos ?? '—'}</td>
-      <td>${r.items.length} <button type="button" class="btn btn-ghost btn-sm merma-batch-ver-items" data-idx="${idx}">Ver</button></td>
+      <td>${esc(r.bultos ?? '—')}</td>
+      <td>${esc(r.items.length)} <button type="button" class="btn btn-ghost btn-sm merma-batch-ver-items" data-idx="${idx}">Ver</button></td>
       <td><input type="text" class="upper merma-batch-sede" data-idx="${idx}" value="${(item.sedeSugerida||'').toUpperCase()}" style="min-width:200px;" placeholder="EJ. MALL COMAS"></td>
       <td>${dupHtml}</td>
     </tr>
     <tr class="merma-batch-items-row" data-items-for="${idx}" style="display:none;"><td colspan="7">
       <table style="margin:6px 0;"><thead><tr><th>Item</th><th>Código</th><th>Descripción</th><th>Unidad</th><th>Cantidad</th></tr></thead><tbody>
-      ${r.items.map(it=>`<tr><td>${it.item}</td><td>${it.codigo}</td><td>${it.descripcion}</td><td>${it.unidad}</td><td>${it.cantidad}</td></tr>`).join('')}
+      ${r.items.map(it=>`<tr><td>${esc(it.item)}</td><td>${esc(it.codigo)}</td><td>${esc(it.descripcion)}</td><td>${esc(it.unidad)}</td><td>${esc(it.cantidad)}</td></tr>`).join('')}
       </tbody></table>
     </td></tr>`;
   }).join('');
@@ -8529,21 +8540,21 @@ function renderRegistrosMerma(){
   $('merma-reg-body').innerHTML = filtrados.map(r=>{
     const estado = r.estado || 'ACTIVO';
     const accionHtml = estado === 'ACTIVO'
-      ? (puedeEliminar ? `<button class="btn btn-sm btn-ghost btn-invalidar-merma" data-correlativo="${r.correlativo}">Eliminar</button> <button class="btn btn-sm btn-ghost btn-editar-sede-merma" data-correlativo="${r.correlativo}" title="Corregir la sede de esta guía">✏️ Sede</button>` : '')
+      ? (puedeEliminar ? `<button class="btn btn-sm btn-ghost btn-invalidar-merma" data-correlativo="${esc(r.correlativo)}">Eliminar</button> <button class="btn btn-sm btn-ghost btn-editar-sede-merma" data-correlativo="${esc(r.correlativo)}" title="Corregir la sede de esta guía">✏️ Sede</button>` : '')
       : `<span class="hint">Invalidado${r.invalidado_por ? ' por '+r.invalidado_por : ''}</span>`;
     let formatoHtml = '—';
     if(r.formato_correlativo){
       const fmt = mermaFormatosAllCache.find(f=>f.correlativo===r.formato_correlativo);
       const firmado = fmt && fmt.pdf_firmado_url;
-      formatoHtml = `<button class="btn btn-sm btn-ghost btn-ver-formato-merma" data-correlativo="${r.formato_correlativo}">${r.formato_correlativo} ${firmado?'✓ firmado':'⏳ sin firmar'}</button>`;
+      formatoHtml = `<button class="btn btn-sm btn-ghost btn-ver-formato-merma" data-correlativo="${esc(r.formato_correlativo)}">${esc(r.formato_correlativo)} ${firmado?'✓ firmado':'⏳ sin firmar'}</button>`;
     }
     let auditoriaHtml = '—';
     if(r.auditoria_correlativo){
       const esConfiable = r.auditoria_dictamen === 'CONFIABLE';
       const color = esConfiable ? '#245C46' : '#8A332A';
-      auditoriaHtml = `<button class="btn btn-sm btn-ghost btn-ver-auditoria-merma" data-correlativo="${r.auditoria_correlativo}" style="color:${color}; font-weight:700;">${esConfiable?'✓ CONFIABLE':'⚠ NO CONFIABLE'}</button>`;
+      auditoriaHtml = `<button class="btn btn-sm btn-ghost btn-ver-auditoria-merma" data-correlativo="${esc(r.auditoria_correlativo)}" style="color:${color}; font-weight:700;">${esConfiable?'✓ CONFIABLE':'⚠ NO CONFIABLE'}</button>`;
     }
-    return `<tr><td>${r.correlativo}</td><td>${r.nro_guia||''}</td><td>${r.sede||''}</td><td>${r.fecha_traslado||''}</td><td>${r.punto_partida||''} → ${r.punto_llegada||''}</td><td>${r.bultos??''}</td><td>${r.total_items??''}</td><td>${r.usuario||''}</td><td>${formatoHtml}</td><td>${auditoriaHtml}</td><td><button class="btn btn-sm btn-ver-detalle-merma" data-correlativo="${r.correlativo}" data-nro="${(r.nro_guia||'').replace(/"/g,'&quot;')}">Ver detalle</button></td><td>${accionHtml}</td></tr>`;
+    return `<tr><td>${esc(r.correlativo)}</td><td>${esc(r.nro_guia||'')}</td><td>${esc(r.sede||'')}</td><td>${esc(r.fecha_traslado||'')}</td><td>${esc(r.punto_partida||'')} → ${esc(r.punto_llegada||'')}</td><td>${esc(r.bultos??'')}</td><td>${esc(r.total_items??'')}</td><td>${esc(r.usuario||'')}</td><td>${formatoHtml}</td><td>${auditoriaHtml}</td><td><button class="btn btn-sm btn-ver-detalle-merma" data-correlativo="${esc(r.correlativo)}" data-nro="${(r.nro_guia||'').replace(/"/g,'&quot;')}">Ver detalle</button></td><td>${accionHtml}</td></tr>`;
   }).join('');
 }
 $('merma-reg-filtro-estado').addEventListener('change', ()=> renderRegistrosMerma());
@@ -8678,12 +8689,12 @@ function renderDetalleMerma(){
   const filas = mermaDetalleCache[mermaDetalleCorrelativoActual] || [];
   $('merma-detalle-body').innerHTML = filas.slice().sort((a,b)=>(a.item||0)-(b.item||0)).map((r,idx)=>{
     const diferencia = calcularDiferenciaMerma(r.cantidad, r.total_unidades);
-    return `<tr data-id="${r.id}">
-      <td>${r.item}</td><td>${r.codigo}</td><td>${r.descripcion}</td><td>${r.unidad}</td><td>${r.cantidad}</td>
-      <td><input type="number" class="merma-det-total" data-id="${r.id}" value="${r.total_unidades??''}" style="width:90px;" min="0"></td>
-      <td class="merma-det-dif" data-id="${r.id}" style="font-weight:700;">${diferencia}</td>
-      <td><input type="number" class="merma-det-noapta" data-id="${r.id}" value="${r.no_apta_venta??''}" style="width:90px;" min="0"></td>
-      <td><input type="text" class="upper merma-det-obs" data-id="${r.id}" value="${r.observacion||''}" style="min-width:140px;"></td>
+    return `<tr data-id="${esc(r.id)}">
+      <td>${esc(r.item)}</td><td>${esc(r.codigo)}</td><td>${esc(r.descripcion)}</td><td>${esc(r.unidad)}</td><td>${esc(r.cantidad)}</td>
+      <td><input type="number" class="merma-det-total" data-id="${esc(r.id)}" value="${esc(r.total_unidades??'')}" style="width:90px;" min="0"></td>
+      <td class="merma-det-dif" data-id="${esc(r.id)}" style="font-weight:700;">${diferencia}</td>
+      <td><input type="number" class="merma-det-noapta" data-id="${esc(r.id)}" value="${esc(r.no_apta_venta??'')}" style="width:90px;" min="0"></td>
+      <td><input type="text" class="upper merma-det-obs" data-id="${esc(r.id)}" value="${esc(r.observacion||'')}" style="min-width:140px;"></td>
     </tr>`;
   }).join('');
   document.querySelectorAll('.merma-det-total').forEach(inp=>{
@@ -8750,8 +8761,8 @@ $('merma-fmt-sede').addEventListener('change', ()=>{
   const guias = mermaRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO' && r.sede===sede);
   $('merma-fmt-guias-empty').style.display = guias.length ? 'none' : 'block';
   $('merma-fmt-guias-body').innerHTML = guias.map(g=>`<tr>
-    <td><input type="checkbox" class="merma-fmt-guia-check" data-correlativo="${g.correlativo}"></td>
-    <td>${g.correlativo}</td><td>${g.nro_guia||''}</td><td>${g.fecha_traslado||''}</td><td>${g.total_items??''}</td>
+    <td><input type="checkbox" class="merma-fmt-guia-check" data-correlativo="${esc(g.correlativo)}"></td>
+    <td>${esc(g.correlativo)}</td><td>${esc(g.nro_guia||'')}</td><td>${esc(g.fecha_traslado||'')}</td><td>${esc(g.total_items??'')}</td>
     <td>${g.formato_correlativo ? g.formato_correlativo : '—'}</td>
   </tr>`).join('');
 });
@@ -8791,11 +8802,11 @@ function renderFilasFormatoMerma(){
   $('merma-fmt-filas-body').innerHTML = mermaFmtFilas.map((r,idx)=>{
     const diferencia = calcularDiferenciaMerma(r.cantidad, r.total_unidades);
     return `<tr data-idx="${idx}">
-      <td>${idx+1}</td><td>${r.sede||''}</td><td>${r.nro_guia||''}</td><td>${r.codigo}</td><td>${r.descripcion}</td><td>${r.cantidad}</td>
-      <td><input type="number" class="merma-fmt-fila-total" data-idx="${idx}" value="${r.total_unidades??''}" style="width:90px;" min="0"></td>
+      <td>${idx+1}</td><td>${esc(r.sede||'')}</td><td>${esc(r.nro_guia||'')}</td><td>${esc(r.codigo)}</td><td>${esc(r.descripcion)}</td><td>${esc(r.cantidad)}</td>
+      <td><input type="number" class="merma-fmt-fila-total" data-idx="${idx}" value="${esc(r.total_unidades??'')}" style="width:90px;" min="0"></td>
       <td class="merma-fmt-fila-dif" data-idx="${idx}" style="font-weight:700;">${diferencia}</td>
-      <td><input type="number" class="merma-fmt-fila-noapta" data-idx="${idx}" value="${r.no_apta_venta??''}" style="width:90px;" min="0"></td>
-      <td><input type="text" class="upper merma-fmt-fila-obs" data-idx="${idx}" value="${r.observacion||''}" style="min-width:140px;"></td>
+      <td><input type="number" class="merma-fmt-fila-noapta" data-idx="${idx}" value="${esc(r.no_apta_venta??'')}" style="width:90px;" min="0"></td>
+      <td><input type="text" class="upper merma-fmt-fila-obs" data-idx="${idx}" value="${esc(r.observacion||'')}" style="min-width:140px;"></td>
     </tr>`;
   }).join('');
   document.querySelectorAll('.merma-fmt-fila-total').forEach(inp=>{
@@ -8995,10 +9006,10 @@ function renderFormatosMerma(){
   $('merma-formatos-body').innerHTML = filtrados.map(f=>{
     const firmado = !!f.pdf_firmado_url;
     const fecha = f.generado_en && f.generado_en.toDate ? f.generado_en.toDate().toLocaleString('es-PE') : (f.fecha_texto||'');
-    const accion = `<button class="btn btn-sm btn-ghost btn-merma-reimprimir" data-correlativo="${f.correlativo}">🖨 PDF</button>
-      <button class="btn btn-sm btn-ghost btn-merma-ver-panel" data-correlativo="${f.correlativo}">${firmado?'👁 Ver firmado':'📤 Subir firmado'}</button>
-      ${puedeEliminar ? `<button class="btn btn-sm btn-ghost btn-merma-eliminar-formato" data-correlativo="${f.correlativo}">Eliminar</button>` : ''}`;
-    return `<tr><td>${f.correlativo}</td><td>${f.sede||''}</td><td>${fecha}</td><td>${f.total_guias??(f.guias_incluidas||[]).length}</td><td>${f.total_filas??(f.filas||[]).length}</td><td>${f.generado_por||''}</td><td>${firmado?'✓ Sí':'— No'}</td><td style="white-space:nowrap;">${accion}</td></tr>`;
+    const accion = `<button class="btn btn-sm btn-ghost btn-merma-reimprimir" data-correlativo="${esc(f.correlativo)}">🖨 PDF</button>
+      <button class="btn btn-sm btn-ghost btn-merma-ver-panel" data-correlativo="${esc(f.correlativo)}">${firmado?'👁 Ver firmado':'📤 Subir firmado'}</button>
+      ${puedeEliminar ? `<button class="btn btn-sm btn-ghost btn-merma-eliminar-formato" data-correlativo="${esc(f.correlativo)}">Eliminar</button>` : ''}`;
+    return `<tr><td>${esc(f.correlativo)}</td><td>${esc(f.sede||'')}</td><td>${fecha}</td><td>${esc(f.total_guias??(f.guias_incluidas||[]).length)}</td><td>${esc(f.total_filas??(f.filas||[]).length)}</td><td>${esc(f.generado_por||'')}</td><td>${firmado?'✓ Sí':'— No'}</td><td style="white-space:nowrap;">${accion}</td></tr>`;
   }).join('');
 }
 $('merma-fmt-list-filtro-estado').addEventListener('change', ()=> renderFormatosMerma());
@@ -9212,7 +9223,7 @@ function poblarSelectGuiasAuditoria(){
   const activos = mermaRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
   const valorActual = $('aud-guia-select').value;
   $('aud-guia-select').innerHTML = '<option value="">— Ingresar datos manualmente —</option>' +
-    activos.map(r=>`<option value="${r.correlativo}">${r.correlativo} — N° ${r.nro_guia||'s/n'} — ${r.sede||''}</option>`).join('');
+    activos.map(r=>`<option value="${esc(r.correlativo)}">${esc(r.correlativo)} — N° ${esc(r.nro_guia||'s/n')} — ${esc(r.sede||'')}</option>`).join('');
   if(valorActual && activos.some(r=>r.correlativo===valorActual)) $('aud-guia-select').value = valorActual;
 }
 $('aud-guia-select').addEventListener('change', ()=>{
@@ -9228,7 +9239,7 @@ $('aud-guia-select').addEventListener('change', ()=>{
 function renderDiscrepanciasAuditoria(){
   $('aud-discrepancias-empty').style.display = mermaAudDiscrepancias.length ? 'none' : 'block';
   $('aud-discrepancias-body').innerHTML = mermaAudDiscrepancias.map((d,idx)=>`<tr data-idx="${idx}">
-    <td><input type="text" class="upper aud-disc-codigo" data-idx="${idx}" value="${d.codigo||''}" placeholder="EJ. 1454-COL175" style="min-width:140px;"></td>
+    <td><input type="text" class="upper aud-disc-codigo" data-idx="${idx}" value="${esc(d.codigo||'')}" placeholder="EJ. 1454-COL175" style="min-width:140px;"></td>
     <td><select class="aud-disc-motivo" data-idx="${idx}">${Object.entries(MERMA_AUD_MOTIVOS).map(([k,v])=>`<option value="${k}" ${k===d.motivo?'selected':''}>${v}</option>`).join('')}</select></td>
     <td><input type="text" class="aud-disc-detalle" data-idx="${idx}" value="${(d.detalle||'').replace(/"/g,'&quot;')}" placeholder="Opcional" style="min-width:180px;"></td>
     <td><button type="button" class="btn btn-sm btn-ghost btn-aud-quitar-discrepancia" data-idx="${idx}">🗑</button></td>
@@ -9414,7 +9425,7 @@ function renderAuditoriasMerma(){
     const fecha = a.fecha && a.fecha.toDate ? a.fecha.toDate().toLocaleString('es-PE') : '';
     const esConfiable = a.dictamen === 'CONFIABLE';
     const color = esConfiable ? '#245C46' : '#8A332A';
-    return `<tr><td>${a.correlativo}</td><td>${a.correlativo_guia || '—'}${a.nro_guia?' (N° '+a.nro_guia+')':''}</td><td>${a.sede||''}</td><td>${a.bultos_abrir}</td><td>${a.items_revisar}</td><td>${a.tiempo_estimado} min</td><td>${a.discrepancias_encontradas}</td><td style="color:${color}; font-weight:700;">${esConfiable?'✓ CONFIABLE':'⚠ NO CONFIABLE'}</td><td>${fecha}</td><td>${a.usuario||''}</td><td><button class="btn btn-sm btn-ghost btn-ver-detalle-auditoria" data-correlativo="${a.correlativo}">Ver</button></td></tr>`;
+    return `<tr><td>${esc(a.correlativo)}</td><td>${esc(a.correlativo_guia || '—')}${a.nro_guia?' (N° '+a.nro_guia+')':''}</td><td>${esc(a.sede||'')}</td><td>${esc(a.bultos_abrir)}</td><td>${esc(a.items_revisar)}</td><td>${esc(a.tiempo_estimado)} min</td><td>${esc(a.discrepancias_encontradas)}</td><td style="color:${color}; font-weight:700;">${esConfiable?'✓ CONFIABLE':'⚠ NO CONFIABLE'}</td><td>${fecha}</td><td>${esc(a.usuario||'')}</td><td><button class="btn btn-sm btn-ghost btn-ver-detalle-auditoria" data-correlativo="${esc(a.correlativo)}">Ver</button></td></tr>`;
   }).join('');
 }
 $('aud-list-filtro-dictamen').addEventListener('change', ()=> renderAuditoriasMerma());
@@ -9436,7 +9447,7 @@ function abrirDetalleAuditoriaMerma(correlativo){
   $('aud-detalle-titulo-text').textContent = `Detalle de ${a.correlativo}${a.correlativo_guia?' — guía '+a.correlativo_guia:''} — ${a.dictamen==='CONFIABLE'?'CONFIABLE':'NO CONFIABLE'}`;
   const discrepancias = a.discrepancias || [];
   $('aud-detalle-empty').style.display = discrepancias.length ? 'none' : 'block';
-  $('aud-detalle-body').innerHTML = discrepancias.map(d=>`<tr><td>${d.codigo||'—'}</td><td>${MERMA_AUD_MOTIVOS[d.motivo]||d.motivo}</td><td>${d.detalle||''}</td></tr>`).join('');
+  $('aud-detalle-body').innerHTML = discrepancias.map(d=>`<tr><td>${esc(d.codigo||'—')}</td><td>${MERMA_AUD_MOTIVOS[d.motivo]||d.motivo}</td><td>${esc(d.detalle||'')}</td></tr>`).join('');
   $('aud-detalle-panel').style.display = 'block';
   $('aud-detalle-panel').scrollIntoView({behavior:'smooth', block:'start'});
 }
@@ -9450,7 +9461,7 @@ async function poblarSelectCampanasAnalisis(){
   const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
   const valorActual = $('an-campana-select').value;
   $('an-campana-select').innerHTML = '<option value="">— Selecciona una campaña —</option>' +
-    activos.map(r=>`<option value="${r.correlativo}">${r.correlativo} — ${r.campana} (${r.fecha_transaccion||''})</option>`).join('');
+    activos.map(r=>`<option value="${esc(r.correlativo)}">${esc(r.correlativo)} — ${esc(r.campana)} (${esc(r.fecha_transaccion||'')})</option>`).join('');
   if(valorActual) $('an-campana-select').value = valorActual;
 }
 
@@ -9656,14 +9667,14 @@ function renderAnalisis(resultado, etiquetaAlcance, ranking){
       const activo = r.participante === (etiquetaAlcance==='Todos los participantes' ? '' : etiquetaAlcance);
       const nItems = itemsPorTienda[r.participante] ? itemsPorTienda[r.participante].size : 0;
       return `<tr class="an-ranking-fila an-fila-click" data-participante="${r.participante.replace(/"/g,'&quot;')}" style="${activo?'background:#EEF3FB;':''}">
-        <td><b>${r.participante}</b>${activo?' ←':''}</td>
+        <td><b>${esc(r.participante)}</b>${activo?' ←':''}</td>
         <td style="font-family:var(--mono);">${nItems}</td>
         <td style="font-family:var(--mono);">${anFmt(r.repartido)}</td>
         <td style="font-family:var(--mono);">${anFmt(r.guia)}</td>
         <td>
           <div class="an-barra-celda">
             <div class="pista"><div class="relleno" data-w="${Math.max(0,Math.min(100,r.pct))}" style="background:${color};"></div></div>
-            <span class="pct" style="color:${color};">${r.pct}%</span>
+            <span class="pct" style="color:${color};">${esc(r.pct)}%</span>
           </div>
         </td>
       </tr>`;
@@ -9698,12 +9709,12 @@ function renderTablaDetalleAnalisis(){
     const textoDif = r.diferencia>0 ? ('Faltan '+r.diferencia) : (r.diferencia<0 ? ('Exceso '+Math.abs(r.diferencia)) : 'Completo');
     const colorDif = r.diferencia>0 ? '#8A332A' : (r.diferencia<0 ? '#8A6D1D' : '#245C46');
     return `<tr>
-      <td>${r.sku}</td><td>${r.descripcion}</td><td>${r.repartido}</td><td>${r.guia}</td>
+      <td>${esc(r.sku)}</td><td>${esc(r.descripcion)}</td><td>${esc(r.repartido)}</td><td>${esc(r.guia)}</td>
       <td style="color:${colorDif}; font-weight:700;">${textoDif}</td>
       <td>
         <div class="an-barra-celda">
           <div class="pista"><div class="relleno" data-w="${pctClamp}" style="background:${colorBarra};"></div></div>
-          <span class="pct" style="color:${colorBarra};">${r.pct}%</span>
+          <span class="pct" style="color:${colorBarra};">${esc(r.pct)}%</span>
         </div>
       </td>
     </tr>`;
@@ -10045,15 +10056,15 @@ function renderValidadoresMaestroTabla(){
     $('vm-body').innerHTML = lista.map(v=>{
       const inicial = (v.nombre||'?').trim().charAt(0).toUpperCase();
       const foto = v.foto_url
-        ? `<img src="${v.foto_url}" alt="" class="vm-foto-thumb" data-foto="${v.foto_url}" data-nombre="${(v.nombre||'').replace(/"/g,'&quot;')}" title="Clic para ver en grande" style="width:30px; height:30px; object-fit:cover; border-radius:50%; border:1px solid var(--line-strong); cursor:pointer;">`
+        ? `<img src="${esc(v.foto_url)}" alt="" class="vm-foto-thumb" data-foto="${esc(v.foto_url)}" data-nombre="${(v.nombre||'').replace(/"/g,'&quot;')}" title="Clic para ver en grande" style="width:30px; height:30px; object-fit:cover; border-radius:50%; border:1px solid var(--line-strong); cursor:pointer;">`
         : `<span style="display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:50%; background:var(--blue-bg); color:var(--blue); font-family:var(--mono); font-size:11px; font-weight:700;">${inicial}</span>`;
       return `<tr>
         <td>${foto}</td>
-        <td style="font-family:var(--mono);">${v.dni}</td>
-        <td>${v.nombre||''}</td>
+        <td style="font-family:var(--mono);">${esc(v.dni)}</td>
+        <td>${esc(v.nombre||'')}</td>
         <td style="white-space:nowrap;">
-          <button type="button" class="btn btn-sm btn-ghost btn-vm-editar" data-dni="${v.dni}">Editar</button>
-          <button type="button" class="btn btn-sm btn-danger btn-vm-eliminar" data-dni="${v.dni}">Eliminar</button>
+          <button type="button" class="btn btn-sm btn-ghost btn-vm-editar" data-dni="${esc(v.dni)}">Editar</button>
+          <button type="button" class="btn btn-sm btn-danger btn-vm-eliminar" data-dni="${esc(v.dni)}">Eliminar</button>
         </td>
       </tr>`;
     }).join('');
@@ -10257,7 +10268,7 @@ async function poblarSelectCampanasValidadores(){
   const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
   const valorActual = $('val-campana-select').value;
   $('val-campana-select').innerHTML = '<option value="">— Selecciona una campaña —</option>' +
-    activos.map(r=>`<option value="${r.correlativo}">${r.correlativo} — ${r.campana}</option>`).join('');
+    activos.map(r=>`<option value="${esc(r.correlativo)}">${esc(r.correlativo)} — ${esc(r.campana)}</option>`).join('');
   if(valorActual) $('val-campana-select').value = valorActual;
 }
 
@@ -10311,7 +10322,7 @@ function renderValidadoresTabla(correlativo, participantes, asignados){
   $('val-resumen').innerHTML =
     (hayValidadores ? '' : `<div class="msg err" style="display:block; margin-bottom:8px;">⚠ Aún no registras validadores en el maestro (panel izquierdo). Regístralos ahí antes de poder asignarlos.</div>`) +
     (faltantes.length
-      ? `<div class="msg err" style="display:block;">⚠ ${faltantes.length} de ${participantes.length} tiendas SIN ningún validador: ${faltantes.join(', ')}</div>`
+      ? `<div class="msg err" style="display:block;">⚠ ${esc(faltantes.length)} de ${esc(participantes.length)} tiendas SIN ningún validador: ${faltantes.join(', ')}</div>`
       : `<div class="msg ok" style="display:block;">✓ Todas las tiendas de esta campaña tienen al menos un validador asignado.</div>`);
 
   $('val-body').innerHTML = participantes.map(p=>{
@@ -10319,7 +10330,7 @@ function renderValidadoresTabla(correlativo, participantes, asignados){
     const dnis = listaDnisAsignado(asignado);
     const slots = [0,1,2].map(i=> dnis[i] || '');
     const estadoHtml = dnis.length
-      ? `<span style="color:#245C46;">✓ ${dnis.length} validador${dnis.length>1?'es':''} asignado${dnis.length>1?'s':''}</span>`
+      ? `<span style="color:#245C46;">✓ ${esc(dnis.length)} validador${dnis.length>1?'es':''} asignado${dnis.length>1?'s':''}</span>`
       : `<span style="color:#8A332A; font-weight:700;">⚠ Falta</span>`;
     const slotsHtml = slots.map((dniSel,i)=> renderValSlotHtml(i, dniSel, p, hayValidadores)).join('');
     return `<tr data-participante="${p.replace(/"/g,'&quot;')}">
@@ -10337,9 +10348,9 @@ function renderValSlotContenido(dni){
   if(!v) return '';
   const inicial = (v.nombre||'?').trim().charAt(0).toUpperCase();
   const foto = v.foto_url
-    ? `<img src="${v.foto_url}" alt="" style="width:26px; height:26px; border-radius:50%; object-fit:cover; border:1px solid var(--line-strong); flex-shrink:0;">`
+    ? `<img src="${esc(v.foto_url)}" alt="" style="width:26px; height:26px; border-radius:50%; object-fit:cover; border:1px solid var(--line-strong); flex-shrink:0;">`
     : `<span style="display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:var(--blue-bg); color:var(--blue); font-family:var(--mono); font-size:10px; font-weight:700; flex-shrink:0;">${inicial}</span>`;
-  return `${foto}<span class="val-slot-nombre">${v.nombre||''}</span>`;
+  return `${foto}<span class="val-slot-nombre">${esc(v.nombre||'')}</span>`;
 }
 
 // Una casilla (tile) de "Validador N": gris con placeholder si está vacía, o
@@ -10390,11 +10401,11 @@ function abrirSelectorValidadorMosaico(slotEl){
       const inicial = (v.nombre||'?').trim().charAt(0).toUpperCase();
       const esActual = v.dni===dniActual;
       const foto = v.foto_url
-        ? `<img src="${v.foto_url}" alt="" style="width:56px; height:56px; border-radius:50%; object-fit:cover; border:2px solid ${esActual?'var(--blue)':'var(--line-strong)'};">`
+        ? `<img src="${esc(v.foto_url)}" alt="" style="width:56px; height:56px; border-radius:50%; object-fit:cover; border:2px solid ${esActual?'var(--blue)':'var(--line-strong)'};">`
         : `<span style="display:flex; align-items:center; justify-content:center; width:56px; height:56px; border-radius:50%; background:var(--blue-bg); color:var(--blue); font-family:var(--mono); font-size:18px; font-weight:700; border:2px solid ${esActual?'var(--blue)':'transparent'};">${inicial}</span>`;
-      return `<div class="val-picker-card ${esActual?'val-picker-card-actual':''}" data-dni="${v.dni}" title="${(v.nombre||'').replace(/"/g,'&quot;')}">
+      return `<div class="val-picker-card ${esActual?'val-picker-card-actual':''}" data-dni="${esc(v.dni)}" title="${(v.nombre||'').replace(/"/g,'&quot;')}">
         ${foto}
-        <div class="val-picker-nombre">${v.nombre||''}</div>
+        <div class="val-picker-nombre">${esc(v.nombre||'')}</div>
       </div>`;
     }).join('');
   }
@@ -10505,7 +10516,7 @@ async function calcularPendientesGlobalValidadores(){
       el.innerHTML = `<div class="msg ok" style="display:block;">✓ Todas las campañas activas tienen validador en todas sus tiendas.</div>`;
     }else{
       el.innerHTML = `<div class="msg err" style="display:block;">⚠ Faltan validadores en:<br>` +
-        pendientesPorCampana.map(p=>`• <b>${p.correlativo}</b> (${p.campana}): ${p.faltantes.length} tienda(s) — ${p.faltantes.join(', ')}`).join('<br>') +
+        pendientesPorCampana.map(p=>`• <b>${esc(p.correlativo)}</b> (${esc(p.campana)}): ${esc(p.faltantes.length)} tienda(s) — ${p.faltantes.join(', ')}`).join('<br>') +
         `</div>`;
     }
   }catch(err){
@@ -10691,7 +10702,7 @@ $('btn-ti-generar-proveedor').addEventListener('click', ()=>{
 function renderPreviewToma(){
   const filas = (tiSeleccionActual && tiSeleccionActual.filas) || [];
   $('ti-preview-body').innerHTML = filas.map((f,i)=>
-    `<tr><td>${f.posicion_id}</td><td>${f.tipo_posicion==='piso'?'Piso':'Rack'}</td><td>${f.pallet_codigo}</td><td>${f.producto_codigo}</td><td>${f.producto_descripcion}</td><td>${f.cantidad_sistema}</td>
+    `<tr><td>${esc(f.posicion_id)}</td><td>${f.tipo_posicion==='piso'?'Piso':'Rack'}</td><td>${esc(f.pallet_codigo)}</td><td>${esc(f.producto_codigo)}</td><td>${esc(f.producto_descripcion)}</td><td>${esc(f.cantidad_sistema)}</td>
       <td><button type="button" class="btn btn-sm btn-ghost ti-quitar-preview" data-i="${i}" title="Quitar esta línea de la toma">✕</button></td></tr>`
   ).join('');
   const pallets_ = new Set(filas.map(f=>f.pallet_codigo));
@@ -10907,7 +10918,7 @@ function renderTiNichoUbicaciones(){
   if(ubic.length === 0){ cont.innerHTML = '<span class="hint">Este nicho no tiene posiciones ocupadas con stock.</span>'; return; }
   cont.innerHTML = ubic.map(u=>
     `<label style="display:flex; align-items:center; gap:5px; font-family:var(--mono); font-size:11px; border:1px solid var(--line-strong); border-radius:4px; padding:3px 7px; cursor:pointer;">
-      <input type="checkbox" class="ti-nicho-ubic-check" value="${u.id}" checked> ${u.id}
+      <input type="checkbox" class="ti-nicho-ubic-check" value="${esc(u.id)}" checked> ${esc(u.id)}
     </label>`
   ).join('');
 }
@@ -11270,9 +11281,9 @@ const TI_REG_POR_PAGINA = 10;
 const TI_REG_COLUMNAS = { correlativo:'Correlativo', fecha:'Fecha', cantidad_generada:'Pos.', total_lineas:'Líneas', eri:'ERI', eru:'ERU', psm:'PSM' };
 
 function origenTomaTag(r){
-  if(r.proveedor_filtro) return `<br><span class="hint">🏭 ${r.proveedor_filtro}</span>`;
+  if(r.proveedor_filtro) return `<br><span class="hint">🏭 ${esc(r.proveedor_filtro)}</span>`;
   if(r.pallets_filtro && r.pallets_filtro.length) return `<br><span class="hint">📦 ${r.pallets_filtro.join(', ')}</span>`;
-  if(r.nicho_filtro) return `<br><span class="hint">🗂 Nicho ${r.nicho_filtro}</span>`;
+  if(r.nicho_filtro) return `<br><span class="hint">🗂 Nicho ${esc(r.nicho_filtro)}</span>`;
   return '';
 }
 
@@ -11324,15 +11335,15 @@ function renderTomasInventario(){
   $('ti-reg-body').innerHTML = pagina.map(r=>{
     const activo = r.correlativo === tiSeleccionCorrelativo;
     const pdfIcon = r.pdf_firmado_url ? '📄✓' : '—';
-    return `<tr class="ti-fila-toma" data-correlativo="${r.correlativo}" style="cursor:pointer; ${activo?'background:#EEF3FB;':''}">
-      <td>${r.correlativo}${origenTomaTag(r)}</td><td>${r.fecha||''}</td><td>${r.cantidad_generada??''}</td><td>${r.total_lineas??''}</td>
+    return `<tr class="ti-fila-toma" data-correlativo="${esc(r.correlativo)}" style="cursor:pointer; ${activo?'background:#EEF3FB;':''}">
+      <td>${esc(r.correlativo)}${origenTomaTag(r)}</td><td>${esc(r.fecha||'')}</td><td>${esc(r.cantidad_generada??'')}</td><td>${esc(r.total_lineas??'')}</td>
       <td>${fmtPct2(r.eri)}</td><td>${fmtPct2(r.eru)}</td><td>${fmtPct2(calcularPsm(r.eri, r.eru))}</td><td>${pdfIcon}</td>
-      <td>${puedeEliminar?`<button type="button" class="btn btn-sm btn-ghost ti-btn-eliminar-toma" data-correlativo="${r.correlativo}" title="Eliminar toma">🗑</button>`:''}</td>
+      <td>${puedeEliminar?`<button type="button" class="btn btn-sm btn-ghost ti-btn-eliminar-toma" data-correlativo="${esc(r.correlativo)}" title="Eliminar toma">🗑</button>`:''}</td>
     </tr>`;
   }).join('');
 
   $('ti-reg-paginacion').innerHTML = `
-    <span>${filtradas.length} toma(s) · página ${tiRegPagina} de ${totalPaginas}</span>
+    <span>${esc(filtradas.length)} toma(s) · página ${tiRegPagina} de ${totalPaginas}</span>
     <div style="display:flex; gap:6px;">
       <button type="button" class="btn btn-ghost btn-sm" id="btn-ti-reg-pag-prev" ${tiRegPagina<=1?'disabled':''}>‹ Anterior</button>
       <button type="button" class="btn btn-ghost btn-sm" id="btn-ti-reg-pag-next" ${tiRegPagina>=totalPaginas?'disabled':''}>Siguiente ›</button>
@@ -11434,7 +11445,7 @@ function actualizarResumenConteo(){
   const conDiferencia = contadas.filter(it=>Number(it.diferencia)!==0).length;
   const { eri, eru } = calcularEriEru(items);
   const psm = calcularPsm(eri, eru);
-  $('ti-conteo-resumen').innerHTML = `<span class="hint">${contadas.length}/${items.length} líneas contadas · <b style="color:${conDiferencia>0?'#8A332A':'#245C46'};">${conDiferencia} con diferencia</b>` +
+  $('ti-conteo-resumen').innerHTML = `<span class="hint">${esc(contadas.length)}/${esc(items.length)} líneas contadas · <b style="color:${conDiferencia>0?'#8A332A':'#245C46'};">${conDiferencia} con diferencia</b>` +
     (contadas.length ? ` · <span title="Exactitud de Registro de Inventario: 100% menos la desviación total de unidades.">ERI</span>: <b>${fmtPct2(eri)}</b> · <span title="Exactitud de ubicación: % de líneas contadas donde el producto sí estaba donde decía el sistema.">ERU</span>: <b>${fmtPct2(eru)}</b> · <span title="Perfect SKU Match: ERI × ERU.">PSM</span>: <b>${fmtPct2(psm)}</b>` : '') + `</span>`;
   const pct = items.length ? Math.round((contadas.length/items.length)*100) : 0;
   const barra = $('ti-progreso-barra'); if(barra) barra.style.width = pct+'%';
@@ -11520,7 +11531,7 @@ function renderConteoTomaEditable(){
       palletActual = it.pallet_codigo;
       const delPallet = tiConteoActual.items.filter(x=>x.pallet_codigo===palletActual);
       const hechas = delPallet.filter(x=>x.estado==='CONTADO').length;
-      partes.push(`<tr class="ti-grupo"><td colspan="10">Pallet ${palletActual} · ${it.posicion_id} · ${it.tipo_posicion==='piso'?'Piso':'Rack'} · ${hechas}/${delPallet.length} contadas</td></tr>`);
+      partes.push(`<tr class="ti-grupo"><td colspan="10">Pallet ${palletActual} · ${esc(it.posicion_id)} · ${it.tipo_posicion==='piso'?'Piso':'Rack'} · ${hechas}/${esc(delPallet.length)} contadas</td></tr>`);
     }
     const dif = contado ? Number(it.diferencia) : null;
     const colorDif = dif==null ? '' : (dif===0 ? '#245C46' : (dif>0 ? '#8A6D1D' : '#8A332A'));
@@ -11528,8 +11539,8 @@ function renderConteoTomaEditable(){
     const cantidadVal = contado ? it.cantidad_contada : '';
     const opciones = TI_MOTIVOS.map(m=>`<option value="${m}" ${it.motivo===m?'selected':''}>${m}</option>`).join('');
     partes.push(`<tr data-idx="${idx}" class="${contado?'ti-fila-contada':''}">
-      <td>${it.posicion_id}</td><td>${it.tipo_posicion==='piso'?'Piso':'Rack'}</td><td>${it.pallet_codigo}</td>
-      <td>${it.producto_codigo}</td><td>${it.producto_descripcion}</td><td class="c6">${it.cantidad_sistema}</td>
+      <td>${esc(it.posicion_id)}</td><td>${it.tipo_posicion==='piso'?'Piso':'Rack'}</td><td>${esc(it.pallet_codigo)}</td>
+      <td>${esc(it.producto_codigo)}</td><td>${esc(it.producto_descripcion)}</td><td class="c6">${esc(it.cantidad_sistema)}</td>
       <td><select class="ti-motivo ti-select-motivo" data-idx="${idx}"><option value="">—</option>${opciones}</select></td>
       <td><input type="number" class="ti-input-contada" data-idx="${idx}" value="${cantidadVal}" style="width:80px;" min="0"></td>
       <td class="ti-celda-dif c9" data-idx="${idx}" style="color:${colorDif}; font-weight:700;">${textoDif}</td>
@@ -11566,19 +11577,19 @@ function renderConteoTomaBloqueado(){
       const cantidadVal = it.cantidad_contada ?? '';
       const activoFix = Number(cantidadVal) > 0;
       const encontradoVal = activoFix ? (it.encontrado===false ? 'no' : 'si') : 'no';
-      return `<tr data-id="${it.id}" style="background:#FFF8E1;">
-        <td>${it.posicion_id}</td><td>${it.tipo_posicion==='piso'?'Piso':'Rack'}</td><td>${it.pallet_codigo}</td>
-        <td>${it.producto_codigo}</td><td>${it.producto_descripcion}</td><td class="c6">${it.cantidad_sistema}</td>
+      return `<tr data-id="${esc(it.id)}" style="background:#FFF8E1;">
+        <td>${esc(it.posicion_id)}</td><td>${it.tipo_posicion==='piso'?'Piso':'Rack'}</td><td>${esc(it.pallet_codigo)}</td>
+        <td>${esc(it.producto_codigo)}</td><td>${esc(it.producto_descripcion)}</td><td class="c6">${esc(it.cantidad_sistema)}</td>
         <td>
-          <select class="ti-select-encontrado-fix" data-id="${it.id}" ${activoFix?'':'disabled'}>
+          <select class="ti-select-encontrado-fix" data-id="${esc(it.id)}" ${activoFix?'':'disabled'}>
             <option value="si" ${encontradoVal==='si'?'selected':''}>Sí</option>
             <option value="no" ${encontradoVal==='no'?'selected':''}>No</option>
           </select>
         </td>
-        <td><input type="number" class="ti-input-contada-fix" data-id="${it.id}" value="${cantidadVal}" style="width:80px;" min="0" ${(encontradoVal==='no' && activoFix)?'disabled':''}></td>
+        <td><input type="number" class="ti-input-contada-fix" data-id="${esc(it.id)}" value="${cantidadVal}" style="width:80px;" min="0" ${(encontradoVal==='no' && activoFix)?'disabled':''}></td>
         <td class="c9">—</td>
         <td style="white-space:nowrap;">
-          <button type="button" class="btn btn-sm btn-primary btn-ti-guardar-correccion" data-id="${it.id}">Guardar</button>
+          <button type="button" class="btn btn-sm btn-primary btn-ti-guardar-correccion" data-id="${esc(it.id)}">Guardar</button>
           <button type="button" class="btn btn-sm btn-ghost btn-ti-cancelar-correccion">Cancelar</button>
         </td>
       </tr>`;
@@ -11589,11 +11600,11 @@ function renderConteoTomaBloqueado(){
     const textoDif = dif==null ? '—' : (dif===0?'OK':(dif>0?'+'+dif:dif));
     const encontradoTxt = contado ? (it.encontrado===false ? 'No' : 'Sí') : '—';
     return `<tr style="background:#FAFAFA; color:#555;">
-      <td>${it.posicion_id}</td><td>${it.tipo_posicion==='piso'?'Piso':'Rack'}</td><td>${it.pallet_codigo}</td>
-      <td>${it.producto_codigo}</td><td>${it.producto_descripcion}</td><td class="c6">${it.cantidad_sistema}</td>
+      <td>${esc(it.posicion_id)}</td><td>${it.tipo_posicion==='piso'?'Piso':'Rack'}</td><td>${esc(it.pallet_codigo)}</td>
+      <td>${esc(it.producto_codigo)}</td><td>${esc(it.producto_descripcion)}</td><td class="c6">${esc(it.cantidad_sistema)}</td>
       <td>${it.motivo || (encontradoTxt==='No' ? 'No encontrado' : '—')}</td><td>${contado ? it.cantidad_contada : '—'}</td>
       <td class="c9" style="color:${colorDif}; font-weight:700;">${textoDif}</td>
-      <td>${puedeCorregir ? `<button type="button" class="btn btn-sm btn-ghost btn-ti-editar-linea" data-id="${it.id}">✏️ Corregir</button>` : ''}</td>
+      <td>${puedeCorregir ? `<button type="button" class="btn btn-sm btn-ghost btn-ti-editar-linea" data-id="${esc(it.id)}">✏️ Corregir</button>` : ''}</td>
     </tr>`;
   }).join('');
 
@@ -12093,7 +12104,7 @@ function renderPanelImg(){
     const im = conPallet.find(x=>x.pallet_codigo===codigo);
     if(im){
       return `<div class="ti-img-card" data-pallet="${codigo}" title="Clic para ver en grande">
-        <img src="${im.url}" alt="">
+        <img src="${esc(im.url)}" alt="">
         <button type="button" class="ti-img-del" data-pallet="${codigo}" title="Eliminar esta foto">✕</button>
         <div class="ti-img-nombre">Pallet ${codigo}</div>
       </div>`;
@@ -12108,7 +12119,7 @@ function renderPanelImg(){
     html += `<div class="hint" style="width:100%; margin:8px 0 0;">Fotos previas sin pallet asignado:</div>` +
       sinPallet.map((im,i)=>`
         <div class="ti-img-card" data-idx-legado="${i}" title="Clic para ver en grande">
-          <img src="${im.url}" alt="">
+          <img src="${esc(im.url)}" alt="">
           <button type="button" class="ti-img-del-legado" data-idx-legado="${i}" title="Eliminar esta foto">✕</button>
           ${im.nombre ? `<div class="ti-img-nombre">${im.nombre.replace(/</g,'&lt;')}</div>` : ''}
         </div>
@@ -12336,7 +12347,7 @@ async function poblarSelectCampanasVouchers(){
   const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
   const valorActual = $('vch-campana-select').value;
   $('vch-campana-select').innerHTML = '<option value="">— Selecciona una campaña —</option>' +
-    activos.map(r=>`<option value="${r.correlativo}">${r.correlativo} — ${r.campana}</option>`).join('');
+    activos.map(r=>`<option value="${esc(r.correlativo)}">${esc(r.correlativo)} — ${esc(r.campana)}</option>`).join('');
   if(valorActual) $('vch-campana-select').value = valorActual;
 }
 
@@ -12371,11 +12382,11 @@ function renderVchGuiasChecklist(){
   $('vch-guias-empty').style.display = vchGuiasCache.length ? 'none' : 'block';
   tbody.innerHTML = vchGuiasCache.map(g=>`
     <tr>
-      <td><input type="checkbox" class="vch-guia-check" data-correlativo="${g.correlativo}" style="width:auto;"></td>
-      <td><b>${g.nro_guia||''}</b></td>
-      <td>${g.fecha_traslado||''}</td>
-      <td>${g.participante||''} <span class="hint">(${g.punto_llegada||''})</span></td>
-      <td><input type="number" class="vch-guia-bultos" data-correlativo="${g.correlativo}" min="1" step="1" style="width:80px;" disabled></td>
+      <td><input type="checkbox" class="vch-guia-check" data-correlativo="${esc(g.correlativo)}" style="width:auto;"></td>
+      <td><b>${esc(g.nro_guia||'')}</b></td>
+      <td>${esc(g.fecha_traslado||'')}</td>
+      <td>${esc(g.participante||'')} <span class="hint">(${esc(g.punto_llegada||'')})</span></td>
+      <td><input type="number" class="vch-guia-bultos" data-correlativo="${esc(g.correlativo)}" min="1" step="1" style="width:80px;" disabled></td>
     </tr>
   `).join('');
 }
@@ -12466,10 +12477,10 @@ function renderVchListaVouchers(){
   const tbody = $('vch-lista-body');
   $('vch-lista-empty').style.display = vchVouchersCache.length ? 'none' : 'block';
   tbody.innerHTML = vchVouchersCache.map(v=>`
-    <tr class="vch-fila-voucher" data-correlativo="${v.correlativo}" style="cursor:pointer; ${vchVoucherSeleccionado===v.correlativo?'background:var(--lacre-bg);':''}">
-      <td><b>${v.correlativo}</b></td>
-      <td>${v.cantidad_guias||0}</td>
-      <td>${v.creado_por||''}</td>
+    <tr class="vch-fila-voucher" data-correlativo="${esc(v.correlativo)}" style="cursor:pointer; ${vchVoucherSeleccionado===v.correlativo?'background:var(--lacre-bg);':''}">
+      <td><b>${esc(v.correlativo)}</b></td>
+      <td>${esc(v.cantidad_guias||0)}</td>
+      <td>${esc(v.creado_por||'')}</td>
       <td>${v.creado_en && v.creado_en.toDate ? v.creado_en.toDate().toLocaleString('es-PE') : ''}</td>
     </tr>
   `).join('');
@@ -12489,8 +12500,8 @@ async function seleccionarVoucher(correlativo){
   $('vch-pdf-wrap').style.display = 'none';
   const voucher = vchVouchersCache.find(v=>v.correlativo===correlativo);
   $('vch-detalle-info').innerHTML = voucher ? `
-    <p class="hint"><b>${voucher.correlativo}</b> — ${voucher.campana_nombre||''}</p>
-    <p class="hint">Creado por <b>${voucher.creado_por||''}</b> el ${voucher.creado_en && voucher.creado_en.toDate ? voucher.creado_en.toDate().toLocaleString('es-PE') : ''}</p>
+    <p class="hint"><b>${esc(voucher.correlativo)}</b> — ${esc(voucher.campana_nombre||'')}</p>
+    <p class="hint">Creado por <b>${esc(voucher.creado_por||'')}</b> el ${voucher.creado_en && voucher.creado_en.toDate ? voucher.creado_en.toDate().toLocaleString('es-PE') : ''}</p>
   ` : '';
   try{
     const snap = await vouchersAgenciaItemsRef.where('voucher_correlativo','==',correlativo).get();
@@ -12511,20 +12522,20 @@ function renderVchItemsTabla(){
     const editandoBultos = it.id === vchEditandoBultosId;
     return `
     <tr>
-      <td><b>${it.nro_guia||''}</b></td>
-      <td>${it.fecha_traslado||''}</td>
-      <td>${it.participante||''}</td>
+      <td><b>${esc(it.nro_guia||'')}</b></td>
+      <td>${esc(it.fecha_traslado||'')}</td>
+      <td>${esc(it.participante||'')}</td>
       <td>${editandoBultos
-        ? `<input type="number" class="vch-bultos-edit-input" data-id="${it.id}" min="1" step="1" value="${it.bultos||''}" style="width:70px;"> <button class="btn btn-sm btn-primary vch-guardar-bultos" data-id="${it.id}">💾</button> <button class="btn btn-sm btn-ghost vch-cancelar-bultos" data-id="${it.id}">✕</button>`
-        : `${it.bultos||''} <button class="btn btn-sm btn-ghost vch-editar-bultos" data-id="${it.id}">✏️</button>`}
+        ? `<input type="number" class="vch-bultos-edit-input" data-id="${esc(it.id)}" min="1" step="1" value="${esc(it.bultos||'')}" style="width:70px;"> <button class="btn btn-sm btn-primary vch-guardar-bultos" data-id="${esc(it.id)}">💾</button> <button class="btn btn-sm btn-ghost vch-cancelar-bultos" data-id="${esc(it.id)}">✕</button>`
+        : `${esc(it.bultos||'')} <button class="btn btn-sm btn-ghost vch-editar-bultos" data-id="${esc(it.id)}">✏️</button>`}
       </td>
       <td>
         <span class="vch-pill ${tienePdf?'ok':'no'}">${tienePdf?'Subido':'Pendiente'}</span>
-        ${tienePdf?`<br><span class="hint">${it.pdf_subido_por||''} · ${it.pdf_subido_en && it.pdf_subido_en.toDate ? it.pdf_subido_en.toDate().toLocaleString('es-PE') : ''}</span>`:''}
+        ${tienePdf?`<br><span class="hint">${esc(it.pdf_subido_por||'')} · ${it.pdf_subido_en && it.pdf_subido_en.toDate ? it.pdf_subido_en.toDate().toLocaleString('es-PE') : ''}</span>`:''}
       </td>
       <td style="white-space:nowrap;">
-        ${tienePdf?`<button class="btn btn-ghost btn-sm vch-ver-pdf" data-id="${it.id}">👁 Ver</button> <button class="btn btn-ghost btn-sm vch-reemplazar-pdf" data-id="${it.id}">↺</button> <button class="btn btn-sm vch-eliminar-pdf" data-id="${it.id}" style="background:#8A332A; color:#fff;">🗑</button>`
-        :`<button class="btn btn-primary btn-sm vch-subir-pdf" data-id="${it.id}">📤 Subir PDF</button>`}
+        ${tienePdf?`<button class="btn btn-ghost btn-sm vch-ver-pdf" data-id="${esc(it.id)}">👁 Ver</button> <button class="btn btn-ghost btn-sm vch-reemplazar-pdf" data-id="${esc(it.id)}">↺</button> <button class="btn btn-sm vch-eliminar-pdf" data-id="${esc(it.id)}" style="background:#8A332A; color:#fff;">🗑</button>`
+        :`<button class="btn btn-primary btn-sm vch-subir-pdf" data-id="${esc(it.id)}">📤 Subir PDF</button>`}
       </td>
     </tr>`;
   }).join('');
@@ -12815,7 +12826,7 @@ function renderSobrantesToma(){
   }
   $('ti-sob-empty').style.display = 'none';
   $('ti-sob-body').innerHTML = tiSobrantesCache.map(o=>
-    `<tr><td>${o.producto_codigo||''}</td><td>${o.producto_descripcion||''}</td><td>${o.cantidad_contada??''}</td><td>${o.pallet_codigo||''}</td><td>${o.posicion_id||''}</td><td>${o.estado==='SOLUCIONADO'?'Solucionado':'Pendiente'}</td></tr>`
+    `<tr><td>${esc(o.producto_codigo||'')}</td><td>${esc(o.producto_descripcion||'')}</td><td>${esc(o.cantidad_contada??'')}</td><td>${esc(o.pallet_codigo||'')}</td><td>${esc(o.posicion_id||'')}</td><td>${o.estado==='SOLUCIONADO'?'Solucionado':'Pendiente'}</td></tr>`
   ).join('');
 }
 
@@ -12924,10 +12935,10 @@ function kpiCardHtml(titulo, valorNumerico, opts){
   const cardBgRule = opts.cardBg ? `--kpi-card-bg:${opts.cardBg};` : '';
   let extra = '';
   if(opts.barra){
-    extra = `<div class="kpi-bar-track"><span class="kpi-bar-fill" data-fill="${opts.barra.pct}"></span></div>`;
+    extra = `<div class="kpi-bar-track"><span class="kpi-bar-fill" data-fill="${esc(opts.barra.pct)}"></span></div>`;
   } else if(opts.dual){
     extra = `<div class="kpi-dual">` + opts.dual.map(d=>
-      `<div class="kpi-dual-row"><span class="kpi-dual-tag">${d.tag}</span><div class="kpi-bar-track"><span class="kpi-bar-fill" data-fill="${d.pct}"></span></div></div>`
+      `<div class="kpi-dual-row"><span class="kpi-dual-tag">${esc(d.tag)}</span><div class="kpi-bar-track"><span class="kpi-bar-fill" data-fill="${esc(d.pct)}"></span></div></div>`
     ).join('') + `</div>`;
   }
   return `<div class="kpi-card" style="--kpi-accent:${accent}; --kpi-accent-bg:${badgeBg}; ${cardBgRule}">
@@ -13037,24 +13048,24 @@ function renderResKpis(){
       accent: estadoResuelto.accent, badgeBg: estadoResuelto.bg, cardBg: estadoResuelto.bg,
       barra: { pct: pctResuelto }
     }) +
-    `<div class="kpi-card" style="--kpi-accent:${estadoEriEru.accent}; --kpi-accent-bg:${estadoEriEru.bg}; --kpi-card-bg:${estadoEriEru.bg};">
+    `<div class="kpi-card" style="--kpi-accent:${esc(estadoEriEru.accent)}; --kpi-accent-bg:${esc(estadoEriEru.bg)}; --kpi-card-bg:${esc(estadoEriEru.bg)};">
       <div class="kpi-top"><span class="kpi-icon">${KPI_ICONOS.barras}</span></div>
       <div class="kpi-label" style="margin-top:0; margin-bottom:8px;">ERI / ERU / PSM promedio</div>
       <div class="kpi-dual">
         <div class="kpi-dual-row">
           <span class="kpi-dual-tag">ERI</span>
-          <div class="kpi-value" data-target="${eriProm}" data-decimales="2" data-sufijo="%" style="font-size:14px; width:58px; flex-shrink:0; color:${eriEstado.accent};">0%</div>
-          <div class="kpi-bar-track" style="flex:1;"><span class="kpi-bar-fill" style="background:${eriEstado.accent};" data-fill="${eriProm}"></span></div>
+          <div class="kpi-value" data-target="${eriProm}" data-decimales="2" data-sufijo="%" style="font-size:14px; width:58px; flex-shrink:0; color:${esc(eriEstado.accent)};">0%</div>
+          <div class="kpi-bar-track" style="flex:1;"><span class="kpi-bar-fill" style="background:${esc(eriEstado.accent)};" data-fill="${eriProm}"></span></div>
         </div>
         <div class="kpi-dual-row">
           <span class="kpi-dual-tag">ERU</span>
-          <div class="kpi-value" data-target="${eruProm}" data-decimales="2" data-sufijo="%" style="font-size:14px; width:58px; flex-shrink:0; color:${eruEstado.accent};">0%</div>
-          <div class="kpi-bar-track" style="flex:1;"><span class="kpi-bar-fill" style="background:${eruEstado.accent};" data-fill="${eruProm}"></span></div>
+          <div class="kpi-value" data-target="${eruProm}" data-decimales="2" data-sufijo="%" style="font-size:14px; width:58px; flex-shrink:0; color:${esc(eruEstado.accent)};">0%</div>
+          <div class="kpi-bar-track" style="flex:1;"><span class="kpi-bar-fill" style="background:${esc(eruEstado.accent)};" data-fill="${eruProm}"></span></div>
         </div>
         <div class="kpi-dual-row">
           <span class="kpi-dual-tag">PSM</span>
-          <div class="kpi-value" data-target="${psmProm}" data-decimales="2" data-sufijo="%" style="font-size:14px; width:58px; flex-shrink:0; color:${psmEstado.accent};">0%</div>
-          <div class="kpi-bar-track" style="flex:1;"><span class="kpi-bar-fill" style="background:${psmEstado.accent};" data-fill="${psmProm}"></span></div>
+          <div class="kpi-value" data-target="${psmProm}" data-decimales="2" data-sufijo="%" style="font-size:14px; width:58px; flex-shrink:0; color:${esc(psmEstado.accent)};">0%</div>
+          <div class="kpi-bar-track" style="flex:1;"><span class="kpi-bar-fill" style="background:${esc(psmEstado.accent)};" data-fill="${psmProm}"></span></div>
         </div>
       </div>
     </div>`;
@@ -13083,15 +13094,15 @@ function renderResTablaTomas(){
   $('res-tomas-body').innerHTML = pagina.map(r=>{
     const activo = r.correlativo === resSeleccionCorrelativo;
     const pend = r.observaciones_pendientes || 0;
-    return `<tr class="res-fila-toma" data-correlativo="${r.correlativo}" style="cursor:pointer; ${activo?'background:#EEF3FB;':''}">
-      <td>${r.correlativo}</td><td>${r.fecha||''}</td><td>${fmtPct2(r.eri)}</td><td>${fmtPct2(r.eru)}</td><td>${fmtPct2(calcularPsm(r.eri, r.eru))}</td>
-      <td>${r.total_observaciones??0}</td>
+    return `<tr class="res-fila-toma" data-correlativo="${esc(r.correlativo)}" style="cursor:pointer; ${activo?'background:#EEF3FB;':''}">
+      <td>${esc(r.correlativo)}</td><td>${esc(r.fecha||'')}</td><td>${fmtPct2(r.eri)}</td><td>${fmtPct2(r.eru)}</td><td>${fmtPct2(calcularPsm(r.eri, r.eru))}</td>
+      <td>${esc(r.total_observaciones??0)}</td>
       <td style="color:${pend>0?'#8A332A':'#245C46'}; font-weight:700;">${pend}</td>
     </tr>`;
   }).join('');
 
   $('res-tomas-paginacion').innerHTML = `
-    <span>${ordenadas.length} toma(s) · página ${resTablaPagina} de ${totalPaginas}</span>
+    <span>${esc(ordenadas.length)} toma(s) · página ${resTablaPagina} de ${totalPaginas}</span>
     <div style="display:flex; gap:6px;">
       <button type="button" class="btn btn-ghost btn-sm" id="btn-res-pag-prev" ${resTablaPagina<=1?'disabled':''}>‹ Anterior</button>
       <button type="button" class="btn btn-ghost btn-sm" id="btn-res-pag-next" ${resTablaPagina>=totalPaginas?'disabled':''}>Siguiente ›</button>
@@ -13149,7 +13160,7 @@ function renderObservaciones(){
   const pendientes = obs.filter(o=>o.estado==='PENDIENTE').length;
   $('res-obs-resumen').innerHTML = obs.length === 0
     ? '✓ Esta toma no generó observaciones — todo cuadró.'
-    : `${obs.length} observación(es) · <b style="color:${pendientes>0?'#8A332A':'#245C46'};">${pendientes} pendiente(s)</b>`;
+    : `${esc(obs.length)} observación(es) · <b style="color:${pendientes>0?'#8A332A':'#245C46'};">${pendientes} pendiente(s)</b>`;
 
   if(obs.length===0){ $('res-obs-body').innerHTML=''; return; }
 
@@ -13158,14 +13169,14 @@ function renderObservaciones(){
     const colorDif = o.diferencia==null ? '#555' : (o.diferencia>0 ? '#8A6D1D' : (o.diferencia<0 ? '#8A332A' : '#245C46'));
     const textoDif = o.diferencia==null ? '—' : (o.diferencia>0?'+'+o.diferencia:o.diferencia);
     const accion = solucionado
-      ? `<span style="color:#245C46; font-size:11px;">✓ por ${o.resuelto_por||''}</span><br><button type="button" class="btn btn-sm btn-ghost res-btn-reabrir" data-id="${o.id}">Reabrir</button>`
-      : `<button type="button" class="btn btn-sm btn-primary res-btn-resolver" data-id="${o.id}">Marcar solucionado</button>`;
+      ? `<span style="color:#245C46; font-size:11px;">✓ por ${esc(o.resuelto_por||'')}</span><br><button type="button" class="btn btn-sm btn-ghost res-btn-reabrir" data-id="${esc(o.id)}">Reabrir</button>`
+      : `<button type="button" class="btn btn-sm btn-primary res-btn-resolver" data-id="${esc(o.id)}">Marcar solucionado</button>`;
     return `<tr style="${solucionado?'opacity:.7;':''}">
-      <td>${o.posicion_id||''}${o.pallet_codigo?' / '+o.pallet_codigo:''}</td><td>${o.producto_codigo||''}</td><td>${o.producto_descripcion||''}</td>
-      <td>${TIPO_OBS_LABEL[o.tipo]||o.tipo}</td><td>${o.cantidad_sistema??'—'}</td><td>${o.cantidad_contada??''}</td>
+      <td>${esc(o.posicion_id||'')}${o.pallet_codigo?' / '+o.pallet_codigo:''}</td><td>${esc(o.producto_codigo||'')}</td><td>${esc(o.producto_descripcion||'')}</td>
+      <td>${TIPO_OBS_LABEL[o.tipo]||o.tipo}</td><td>${esc(o.cantidad_sistema??'—')}</td><td>${esc(o.cantidad_contada??'')}</td>
       <td style="color:${colorDif}; font-weight:700;">${textoDif}</td>
       <td>${solucionado?'Solucionado':'Pendiente'}</td>
-      <td>${accion}${solucionado && o.comentario_resolucion ? `<div class="hint" style="margin-top:4px; max-width:160px;">"${o.comentario_resolucion}"</div>` : ''}</td>
+      <td>${accion}${solucionado && o.comentario_resolucion ? `<div class="hint" style="margin-top:4px; max-width:160px;">"${esc(o.comentario_resolucion)}"</div>` : ''}</td>
     </tr>`;
   }).join('');
 }
