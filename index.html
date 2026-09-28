@@ -231,6 +231,7 @@
      contenido necesita. */
   .nichos-line{display:flex; flex-direction:row-reverse; align-items:flex-start; gap:16px; padding:4px 2px 10px;}
   .nicho{border:2px solid var(--frame-blue); border-radius:5px; background:#F5F6F8; padding:5px; width:68px; flex-shrink:0;}
+  .nicho.nicho-hueco{visibility:hidden; min-height:40px;}
   .nicho-section-label{font-size:8px; color:var(--ink-soft); text-align:center; text-transform:uppercase; margin:3px 0 2px;}
   .nicho-row{display:flex; gap:3px; margin-bottom:3px;}
   .nicho-row:last-child{margin-bottom:0;}
@@ -2649,8 +2650,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v119';
-const APP_UPDATED = '28/09/2026 17:00';
+const APP_VERSION = 'v120';
+const APP_UPDATED = '28/09/2026 19:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4206,7 +4207,10 @@ function buildBloquesMarkup(interactive, showReorder){
       anexadosHTML = anexados.map(([cid,c])=> nichosHTMLDeBloque(cid, (c.volteado != null ? c.volteado : b.volteado), interactive, showReorder)).join('');
     }
     const nichosPropiosHTML = nichosHTMLDeBloque(bid, b.volteado, interactive, showReorder);
-    const nichosHTML = anexadosHTML + nichosPropiosHTML;
+    // Primero en el HTML = más a la derecha (row-reverse): los huecos ocupan
+    // la zona de la reja cuando la fila no tiene extensión suficiente.
+    const huecosHTML = '<div class="nicho nicho-hueco" aria-hidden="true"></div>'.repeat(huecosRejaDeFilaBase(bid));
+    const nichosHTML = nichosPropiosHTML ? huecosHTML + anexadosHTML + nichosPropiosHTML : anexadosHTML;
     const pasilloHTML = b.pasillo ? `<div class="pasillo-divider">╱╱╱ PASILLO ╱╱╱</div>` : '';
     return `<div class="bloque-row"><div class="bloque-title">${esc(b.nombre)}</div><div class="nichos-line">${nichosHTML || '<span class="empty-state">Sin nichos aún</span>'}</div></div>${pasilloHTML}`;
   }).join('') || '<div class="empty-state">Aún no hay bloques configurados.</div>';
@@ -4279,7 +4283,7 @@ function nichoAnchoActual(){
 // propios más los de cualquier bloque anexado a su derecha (mismos que dibuja
 // buildBloquesMarkup en esa misma fila).
 function contarNichosDeFilaBase(bidBase){
-  let total = 0;
+  let total = huecosRejaDeFilaBase(bidBase);
   Object.values(nichos).forEach(n=>{ if(n.bloque_id===bidBase) total++; });
   const idsAnexados = Object.entries(bloques).filter(([cid,c])=>c.anexado_a===bidBase).map(([cid])=>cid);
   if(idsAnexados.length===0) return total;
@@ -4309,6 +4313,23 @@ function totalNichosEnLayout(){
 // Cuántos nichos REALES (sin colapsar) tiene el grupo de anexados de la fila
 // base `bidBase` — a diferencia de contarNichosDeFilaBase, esta SIEMPRE cuenta
 // uno por uno, sin importar el modo compacto.
+// Huecos vacíos que se dejan al extremo derecho de una fila para que sus
+// nichos propios empiecen a la IZQUIERDA de la reja cuando la fila no tiene
+// extensión (o tiene menos nichos anexados que el ancho de la zona de la
+// reja). Así, al agregar nichos a una fila sin extensión, no se meten del
+// lado derecho de la reja. Se usa la reja más cercana al borde derecho. Una
+// fila sin nichos propios no necesita huecos.
+function huecosRejaDeFilaBase(bidBase){
+  const conteos = Object.values(rejas)
+    .map(r=> Math.round(Number(r.nichosDesdeDerecha)))
+    .filter(n=> Number.isFinite(n) && n > 0);
+  if(conteos.length === 0) return 0;
+  if(!Object.values(nichos).some(n=> n.bloque_id === bidBase)) return 0;
+  const anex = anexCountDeFilaBase(bidBase);
+  const rejaVisible = Math.min(...conteos) - (ocultarLadoDerecho ? deltaCompactacionReja() : 0);
+  const anexVisible = ocultarLadoDerecho ? (anex > 0 ? 1 : 0) : anex;
+  return Math.max(0, rejaVisible - anexVisible);
+}
 function anexCountDeFilaBase(bidBase){
   let total = 0;
   Object.entries(bloques).forEach(([cid,c])=>{
@@ -4924,7 +4945,7 @@ function dibujarMinimapa(){
   let html = '';
   filas.forEach((fila, i)=>{
     let ticks = '';
-    fila.querySelectorAll('.nicho').forEach(n=>{
+    fila.querySelectorAll('.nicho:not(.nicho-hueco)').forEach(n=>{
       const izq = (n.offsetLeft/total)*100;
       const ancho = Math.max(0.25, (n.offsetWidth/total)*100);
       const ids = [...n.querySelectorAll('.slot')].map(s=>s.dataset.id).filter(Boolean);
@@ -4936,7 +4957,7 @@ function dibujarMinimapa(){
       else if(ocup > 0) clase = 'parcial';
       ticks += '<i class="mm-tick '+esc(clase)+'" style="left:'+esc(izq.toFixed(2))+'%; width:'+esc(ancho.toFixed(2))+'%"></i>';
     });
-    html += '<div class="mm-fila" style="top:'+(2 + i*(altoFila+2))+'px; height:'+esc(altoFila)+'px">'+esc(ticks)+'</div>';
+    html += '<div class="mm-fila" style="top:'+(2 + i*(altoFila+2))+'px; height:'+esc(altoFila)+'px">'+ticks+'</div>';
   });
   html += '<div class="mm-vista" id="mm-vista"></div>';
   mm.innerHTML = html;
@@ -7133,7 +7154,7 @@ function renderRegistrosCampana(){
     const accionHtml = estado === 'ACTIVO'
       ? (puedeEliminar ? `<button class="btn btn-sm btn-ghost btn-invalidar-campana" data-correlativo="${esc(r.correlativo)}">Eliminar</button>` : '')
       : `<span class="hint">Invalidado${esc(r.invalidado_por ? ' por '+r.invalidado_por : '')}</span>`;
-    return `<tr><td>${esc(r.correlativo)}</td><td>${esc(r.campana||'')}</td><td>${esc(r.codigo||'')}</td><td>${fmtFechaCorta(r.fecha_transaccion)}</td><td>${esc(r.sku_distintos!=null?r.sku_distintos:'')}</td><td>${r.total_filas!=null?r.total_filas:''}</td><td>${esc(r.usuario||'')}</td><td><button class="btn btn-sm btn-ver-detalle-campana" data-correlativo="${esc(r.correlativo)}" data-campana="${(r.campana||'').replace(/"/g,'&quot;')}">Ver detalle</button></td><td>${accionHtml}</td></tr>`;
+    return `<tr><td>${esc(r.correlativo)}</td><td>${esc(r.campana||'')}</td><td>${esc(r.codigo||'')}</td><td>${fmtFechaCorta(r.fecha_transaccion)}</td><td>${esc(r.sku_distintos!=null?r.sku_distintos:'')}</td><td>${esc(r.total_filas!=null?r.total_filas:'')}</td><td>${esc(r.usuario||'')}</td><td><button class="btn btn-sm btn-ver-detalle-campana" data-correlativo="${esc(r.correlativo)}" data-campana="${(r.campana||'').replace(/"/g,'&quot;')}">Ver detalle</button></td><td>${accionHtml}</td></tr>`;
   }).join('');
   $('btn-reg-cargar-mas').style.display = !campRegNoMore ? 'inline-block' : 'none';
   actualizarFlechasOrden('camp-reg-thead', campRegOrden, CAMP_REG_COLUMNAS);
@@ -9332,7 +9353,7 @@ function renderResultadoAuditoria(calc){
     badgeBg: calc.excedeTiempo ? '#F7E1DE' : '#DCEEE6',
     alerta: calc.excedeTiempo
   }));
-  $('aud-resultado-kpis').innerHTML = esc(cards.join(''));
+  $('aud-resultado-kpis').innerHTML = cards.join('');
   animarKpis('aud-resultado-kpis');
 }
 
@@ -10049,9 +10070,9 @@ $('btn-an-comparar').addEventListener('click', ()=>{
   wrap.style.display = abierto ? 'none' : 'block';
   if(abierto) return;
   const ops = campRegAllCache.filter(r=>r.estado!=='INVALIDADO')
-    .map(r=> '<option value="' + esc(r.correlativo) + '">' + esc(r.campana) + ' · ' + (r.fecha_transaccion||'') + '</option>').join('');
-  $('an-cmp-a').innerHTML = '<option value="">—</option>' + esc(ops);
-  $('an-cmp-b').innerHTML = '<option value="">—</option>' + esc(ops);
+    .map(r=> '<option value="' + esc(r.correlativo) + '">' + esc(r.campana) + ' · ' + esc(r.fecha_transaccion||'') + '</option>').join('');
+  $('an-cmp-a').innerHTML = '<option value="">—</option>' + ops;
+  $('an-cmp-b').innerHTML = '<option value="">—</option>' + ops;
   if($('an-campana-select').value) $('an-cmp-a').value = $('an-campana-select').value;
 });
 $('btn-an-cmp-cerrar').addEventListener('click', ()=>{ $('an-comparador').style.display = 'none'; });
@@ -11598,7 +11619,7 @@ function renderConteoTomaEditable(){
       </td>
     </tr>`);
   });
-  $('ti-conteo-body').innerHTML = esc(partes.join('')) ||
+  $('ti-conteo-body').innerHTML = partes.join('') ||
     '<tr><td colspan="10" style="text-align:center; color:var(--ink-soft); padding:14px;">No quedan líneas pendientes.</td></tr>';
 
   // Enter guarda la línea y salta a la siguiente cantidad pendiente.
