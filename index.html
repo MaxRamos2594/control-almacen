@@ -216,10 +216,18 @@
     background:#7A1F17; color:#fff; border:none; font-size:10px; line-height:16px; padding:0; cursor:pointer;
   }
   .reja-quitar:hover{background:#5B160F;}
-  .bloque-row{margin-bottom:20px;}
+  /* La etiqueta del bloque (A, B, C…) va en la esquina izquierda de su fila,
+     no en una línea propia encima, para no agregar alto entre filas. Las filas
+     se empaquetan desde la derecha, así que el padding izquierdo no cambia la
+     posición horizontal de los nichos ni de la reja. */
+  .bloque-row{margin-bottom:20px; position:relative; padding-left:30px;}
+  .bloque-row > .bloque-title{position:absolute; left:0; top:4px; margin:0;}
+  /* Fila seguida de un pasillo: el pasillo queda casi pegado arriba y abajo. */
+  .bloque-row:has(+ .pasillo-divider){margin-bottom:0;}
+  .bloque-row:has(+ .pasillo-divider) > .nichos-line{padding-bottom:0;}
   .pasillo-divider{
     text-align:center; color:#8A6D3B; font-size:11px; font-weight:700; letter-spacing:.15em; text-transform:uppercase;
-    padding:8px 0; margin:-6px 0 20px; border-top:2px dashed #C9A227; border-bottom:2px dashed #C9A227;
+    padding:8px 0; margin:3px 0 3px; border-top:2px dashed #C9A227; border-bottom:2px dashed #C9A227;
     background:repeating-linear-gradient(135deg,#FFF6DA,#FFF6DA 10px,#FDEFC0 10px,#FDEFC0 20px);
   }
   .bloque-title{font-family:var(--mono); font-size:12px; font-weight:700; color:#fff; background:var(--ink); display:inline-block; padding:3px 10px; border-radius:3px; margin-bottom:8px;}
@@ -2650,8 +2658,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v126';
-const APP_UPDATED = '29/09/2026 02:00';
+const APP_VERSION = 'v127';
+const APP_UPDATED = '29/09/2026 03:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
