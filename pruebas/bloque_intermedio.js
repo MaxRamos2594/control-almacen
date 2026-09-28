@@ -27,7 +27,7 @@ function verificar(condicion, texto){
       for(const [i, nivel] of [[1,'arriba'],[2,'arriba'],[3,'abajo'],[4,'abajo']])
         await posicionesRef.doc(`${letra}0${i}`).set({ tipo:'rack', nicho: letra, bloque_id: bid, nivel, estado:'vacio', bloqueada:false, pallet_codigo:null });
     };
-    await nicho('A','BA',0); await nicho('B','BA',1); await nicho('Y','BB',0); await nicho('Z','BB',1);
+    await nicho('A','BA',0); await nicho('B','BA',1); await nicho('K','BA',2); await nicho('L','BA',3); await nicho('Y','BB',0); await nicho('Z','BB',1);
     // Extensión del bloque A después de la reja (PA-A, PA-B) y la reja a 2 nichos del borde derecho.
     await bloquesRef.doc('BAX').set({ nombre:'A EXT', anexado_a:'BA', creado_en: hace(20) });
     await nicho('PA-A','BAX',0); await nicho('PA-B','BAX',1);
@@ -35,7 +35,7 @@ function verificar(condicion, texto){
     await posicionesRef.doc('Z01').update({ estado:'ocupado', pallet_codigo:'CD0001' });
     await palletsRef.doc('CD0001').set({ items:[{producto:'P1', descripcion:'PRUEBA', cantidad:5, costo:1}], posicion_actual:'Z01', estado:'activo' });
   });
-  await page.waitForFunction(()=> Object.keys(posiciones).length === 24 && pallets['CD0001'], null, { timeout: 15000 });
+  await page.waitForFunction(()=> Object.keys(posiciones).length === 32 && pallets['CD0001'], null, { timeout: 15000 });
   const foto = ()=> page.evaluate(()=> JSON.stringify({ posiciones, pallets, nichos }));
   const antes = await foto();
 
@@ -84,6 +84,28 @@ function verificar(condicion, texto){
   verificar(compacto.aa < compacto.reja, 'Con "Ocultar lado derecho": AA sigue a la izquierda de la reja');
   await page.click('#btn-toggle-compacto-diseno');
   await page.waitForTimeout(300);
+
+  // "Pegar a la izquierda": el primer nicho de C queda alineado con el de la fila más larga (L en A).
+  const rejaAntes = await page.evaluate(()=> document.querySelector('#preview-bloques .reja-linea').getBoundingClientRect().left);
+  await page.click(`[data-toggle-alinear="${idC}"]`);
+  await page.waitForFunction(id=> bloques[id].alinear_izquierda === true, idC, { timeout: 15000 });
+  await page.waitForTimeout(500);
+  const izq = await page.evaluate(()=>{
+    const x = (l)=> document.querySelector(`#preview-bloques [data-rename-nicho="${l}"]`).closest('.nicho').getBoundingClientRect().left;
+    return { L: x('L'), AB: x('AB'), reja: document.querySelector('#preview-bloques .reja-linea').getBoundingClientRect().left };
+  });
+  verificar(Math.abs(izq.AB - izq.L) < 1, `Pegado a la izquierda: AB empieza en x=${Math.round(izq.AB)}, igual que L (x=${Math.round(izq.L)})`);
+  verificar(Math.abs(izq.reja - rejaAntes) < 1, 'La reja no se movió');
+  await page.locator('#preview-bloques').screenshot({ path: path.join(__dirname, 'salida', 'bloque_izquierda.png') });
+  const boton = await page.textContent(`[data-toggle-alinear="${idC}"]`);
+  verificar(/derecha/.test(boton), `El botón cambia a "${boton.trim()}"`);
+  await page.click(`[data-toggle-alinear="${idC}"]`);
+  await page.waitForFunction(id=> bloques[id].alinear_izquierda === false, idC, { timeout: 15000 });
+  await page.waitForTimeout(500);
+  const vuelta = await page.evaluate(()=> ({
+    AA: document.querySelector('#preview-bloques [data-rename-nicho="AA"]').closest('.nicho').getBoundingClientRect().right,
+    reja: document.querySelector('#preview-bloques .reja-linea').getBoundingClientRect().left }));
+  verificar(vuelta.AA < vuelta.reja && vuelta.reja - vuelta.AA < 20, 'Pegar a la derecha: AA vuelve junto a la reja');
 
   // Nada de lo existente cambió.
   const despues = JSON.parse(await foto());
