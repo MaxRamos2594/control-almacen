@@ -2650,8 +2650,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v124';
-const APP_UPDATED = '28/09/2026 23:30';
+const APP_VERSION = 'v125';
+const APP_UPDATED = '29/09/2026 00:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3391,7 +3391,7 @@ function siguientePosVisualEnBloque(bloqueId){
 async function agregarNicho(bloqueId, bloqueNombre, niveles, sinPiso){
   niveles = (niveles===3) ? 3 : 2;
   const tipo = sinPiso ? 'solo_rack' : 'rack_piso';
-  const pisoFilas = pisoFilasDeBloque(bloqueId);
+  const pisoFilas = pisoFilasDeBloque(bloqueId, niveles);
   const pisoCompacto = pisoCompactoEnBloque(bloqueId);
   const posVisual = siguientePosVisualEnBloque(bloqueId);
   try{
@@ -3746,12 +3746,22 @@ function renderBloqueForms(){
         <button class="btn btn-ghost btn-sm" data-add-nicho="${esc(id)}" data-nombre="${esc(b.nombre)}" data-niveles="3" data-sin-piso="true">+ Nicho (3 niv., sin piso)</button>
         <button class="btn btn-ghost btn-sm" data-add-piso="${esc(id)}" data-nombre="${esc(b.nombre)}">+ Piso (sin rack)</button>
       </div>
-      <label class="hint" style="display:flex; align-items:center; gap:6px; margin:4px 0 6px;" title="Cuántas filas de piso (de 2 posiciones cada una) lleva cada nicho con piso de este bloque">
-        Piso de cada nicho:
-        <select data-piso-filas="${esc(id)}" style="width:auto; padding:2px 6px; font-size:12px;">
-          ${[5,4,3,2,1].map(f=> `<option value="${esc(f)}" ${esc(pisoFilasDeBloque(id)===f ? 'selected' : '')}>${esc(f)} fila${esc(f>1?'s':'')} × 2 (${esc(f*2)} posiciones)</option>`).join('')}
+      ${[2,3].map(nv=> `<label class="hint" style="display:flex; align-items:center; gap:6px; margin:4px 0 6px;" title="Cuántas filas de piso (de 2 posiciones cada una) lleva cada nicho de ${esc(nv)} niveles con piso de este bloque">
+        Piso nichos de ${esc(nv)} niveles:
+        <select data-piso-filas="${esc(id)}" data-niveles="${esc(nv)}" style="width:auto; padding:2px 6px; font-size:12px;">
+          ${[5,4,3,2,1].map(f=> `<option value="${esc(f)}" ${esc(pisoFilasDeBloque(id, nv)===f ? 'selected' : '')}>${esc(f)} fila${esc(f>1?'s':'')} × 2 (${esc(f*2)} posiciones)</option>`).join('')}
         </select>
-      </label>
+      </label>`).join('')}
+      ${!esAnexado && b.pasillo && nichosDelBloque.length ? `<div class="hint" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin:4px 0 6px;" title="Deja vacío (—) para que el pasillo llegue hasta el extremo de la fila">
+        Pasillo desde
+        <select data-pasillo-tramo="${esc(id)}" data-campo="pasillo_desde" style="width:auto; padding:2px 6px; font-size:12px;">
+          <option value="">— extremo derecho</option>${nichosPropiosOrdenados(id).map(l=> `<option value="${esc(l)}" ${esc(b.pasillo_desde===l?'selected':'')}>${esc(l)}</option>`).join('')}
+        </select>
+        hasta
+        <select data-pasillo-tramo="${esc(id)}" data-campo="pasillo_hasta" style="width:auto; padding:2px 6px; font-size:12px;">
+          <option value="">— extremo izquierdo</option>${nichosPropiosOrdenados(id).map(l=> `<option value="${esc(l)}" ${esc(b.pasillo_hasta===l?'selected':'')}>${esc(l)}</option>`).join('')}
+        </select>
+      </div>` : ''}
       <div class="bloque-actions-grupo">
         ${esAnexado ? '' : `<button class="btn btn-ghost btn-sm" data-toggle-pasillo="${esc(id)}" data-valor="${esc(b.pasillo ? 'false':'true')}">${esc(b.pasillo ? '✕ Quitar pasillo' : '╱ Agregar pasillo debajo')}</button>`}
         ${esAnexado ? '' : `<button class="btn btn-ghost btn-sm" data-toggle-alinear="${esc(id)}" data-valor="${esc(b.alinear_izquierda ? 'false':'true')}" title="${esc(b.alinear_izquierda ? 'Los nichos de esta fila vuelven a empezar junto a la reja (lado derecho)' : 'Los nichos de esta fila empiezan en el borde izquierdo, alineados con la fila más larga')}">${esc(b.alinear_izquierda ? '⇥ Pegar a la derecha' : '⇤ Pegar a la izquierda')}</button>`}
@@ -3772,7 +3782,8 @@ function renderBloqueForms(){
   }).join('');
   list.querySelectorAll('[data-add-nicho]').forEach(btn=> btn.onclick = () => agregarNicho(btn.dataset.addNicho, btn.dataset.nombre, parseInt(btn.dataset.niveles), btn.dataset.sinPiso==='true'));
   list.querySelectorAll('[data-add-piso]').forEach(btn=> btn.onclick = () => agregarNichoSoloPiso(btn.dataset.addPiso, btn.dataset.nombre));
-  list.querySelectorAll('[data-piso-filas]').forEach(sel=> sel.onchange = () => cambiarPisoFilasBloque(sel.dataset.pisoFilas, parseInt(sel.value, 10)));
+  list.querySelectorAll('[data-pasillo-tramo]').forEach(sel=> sel.onchange = () => guardarTramoPasillo(sel.dataset.pasilloTramo, sel.dataset.campo, sel.value));
+  list.querySelectorAll('[data-piso-filas]').forEach(sel=> sel.onchange = () => cambiarPisoFilasBloque(sel.dataset.pisoFilas, parseInt(sel.value, 10), parseInt(sel.dataset.niveles, 10)));
   list.querySelectorAll('[data-toggle-alinear]').forEach(btn=> btn.onclick = () => toggleAlinearIzquierda(btn.dataset.toggleAlinear, btn.dataset.valor==='true'));
   list.querySelectorAll('[data-toggle-pasillo]').forEach(btn=> btn.onclick = () => togglePasillo(btn.dataset.togglePasillo, btn.dataset.valor==='true'));
   list.querySelectorAll('[data-toggle-volteo]').forEach(btn=> btn.onclick = () => toggleVolteo(btn.dataset.toggleVolteo, btn.dataset.valor==='true'));
@@ -3807,12 +3818,21 @@ async function togglePasillo(bloqueId, valor){
 }
 
 // Filas de piso (de 2 posiciones cada una) de los nichos con piso: se guarda
-// en el bloque (para los nichos nuevos) y en cada nicho (lo que realmente
-// tiene). Sin valor guardado = 5 filas, como siempre.
+// en el bloque (para los nichos nuevos, por separado para los de 2 y 3
+// niveles) y en cada nicho (lo que realmente tiene). Sin valor guardado = 5
+// filas, como siempre. `piso_filas_n3` (3 niveles) cae en `piso_filas`.
 const PISO_FILAS_DEFECTO = 5;
-function pisoFilasDeBloque(bid){
-  const f = bloques[bid] && bloques[bid].piso_filas;
+function pisoFilasDeBloque(bid, niveles){
+  const b = bloques[bid] || {};
+  const f = (niveles===3 && b.piso_filas_n3 != null) ? b.piso_filas_n3 : b.piso_filas;
   return (f >= 1 && f <= 5) ? f : PISO_FILAS_DEFECTO;
+}
+// Volteo efectivo de un bloque (piso dibujado arriba del rack): un anexado
+// usa el suyo si lo tiene, si no el de su bloque base.
+function volteadoDeBloque(bid){
+  const b = bloques[bid]; if(!b) return false;
+  if(b.volteado != null) return !!b.volteado;
+  return !!(b.anexado_a && bloques[b.anexado_a] && bloques[b.anexado_a].volteado);
 }
 function pisoFilasDeNicho(ndata){
   return (ndata.piso_filas >= 1 && ndata.piso_filas <= 5) ? ndata.piso_filas : PISO_FILAS_DEFECTO;
@@ -3843,17 +3863,25 @@ function pisoCompactoEnBloque(bloqueId){
     return !!der && Number(der[0].slice(-2)) === rack+2;
   });
 }
-async function cambiarPisoFilasBloque(bloqueId, filas){
+async function cambiarPisoFilasBloque(bloqueId, filas, niveles){
   if(!(filas>=1 && filas<=5)) return;
+  niveles = niveles===3 ? 3 : 2;
   const b = bloques[bloqueId]; if(!b) return;
+  const txt = `nichos de ${niveles} niveles`;
   try{
-    await bloquesRef.doc(bloqueId).update({ piso_filas: filas });
-    await logAccion('pasillo_actualizado', {detalle:`Bloque ${b.nombre}: piso de ${filas} fila(s) × 2 para nichos nuevos`});
+    // piso_filas (2 niveles) también es el valor por defecto de los de 3
+    // niveles: al cambiarlo se fija el de 3 niveles con su valor actual para
+    // que no cambie sin querer.
+    const upd = niveles===3 ? { piso_filas_n3: filas } : { piso_filas: filas };
+    if(niveles===2 && b.piso_filas_n3 == null) upd.piso_filas_n3 = pisoFilasDeBloque(bloqueId, 3);
+    await bloquesRef.doc(bloqueId).update(upd);
+    await logAccion('pasillo_actualizado', {detalle:`Bloque ${b.nombre}: piso de ${filas} fila(s) × 2 para ${txt} nuevos`});
   }catch(err){ showToast('Error: '+err.message,'err'); return; }
-  const aCambiar = Object.entries(nichos).filter(([l,n])=> n.bloque_id===bloqueId && n.tipo!=='solo_rack' && n.tipo!=='solo_piso' && pisoFilasDeNicho(n)!==filas);
-  if(aCambiar.length===0){ showToast(`Bloque ${b.nombre}: los nichos nuevos tendrán piso de ${filas} fila(s) × 2.`,'ok'); return; }
-  const ok = confirm(`Los nichos NUEVOS del bloque ${b.nombre} tendrán piso de ${filas} fila(s) × 2 (${filas*2} posiciones).\n\n¿Aplicar también a los ${aCambiar.length} nicho(s) que ya existen (${aCambiar.map(([l])=>l).join(', ')})?\n\nSe conservan las filas de arriba (las más cercanas al rack) con sus mismos códigos y pallets. Si se quitan filas, solo se eliminan las de abajo y solo si están vacías; si alguna tiene un pallet o está bloqueada, ese nicho no se cambia. El rack no cambia.`);
-  if(!ok){ showToast(`Bloque ${b.nombre}: los nichos nuevos tendrán piso de ${filas} fila(s) × 2.`,'ok'); return; }
+  const aCambiar = Object.entries(nichos).filter(([l,n])=> n.bloque_id===bloqueId && n.tipo==='rack_piso' && (n.niveles===3 ? 3 : 2)===niveles && pisoFilasDeNicho(n)!==filas);
+  if(aCambiar.length===0){ showToast(`Bloque ${b.nombre}: los ${txt} nuevos tendrán piso de ${filas} fila(s) × 2.`,'ok'); return; }
+  const volteado = volteadoDeBloque(bloqueId);
+  const ok = confirm(`Los ${txt} NUEVOS del bloque ${b.nombre} tendrán piso de ${filas} fila(s) × 2 (${filas*2} posiciones).\n\n¿Aplicar también a los ${aCambiar.length} ${txt} que ya existen (${aCambiar.map(([l])=>l).join(', ')})?\n\nSe conservan las filas de piso más cercanas al rack (en este bloque, las de ${volteado ? 'ABAJO, porque el piso está dibujado arriba del rack' : 'ARRIBA'}) con sus mismos códigos, pallets y bloqueos. Si se quitan filas, solo se eliminan las más alejadas del rack y solo si están vacías; si alguna tiene un pallet o está bloqueada, ese nicho no se cambia. El rack y los nichos de otro número de niveles no cambian.`);
+  if(!ok){ showToast(`Bloque ${b.nombre}: los ${txt} nuevos tendrán piso de ${filas} fila(s) × 2.`,'ok'); return; }
   const cambiados = [], omitidos = [];
   for(const [letra, ndata] of aCambiar){
     try{
@@ -3861,21 +3889,30 @@ async function cambiarPisoFilasBloque(bloqueId, filas){
         const actuales = Object.entries(posiciones).filter(([id,p])=> p.nicho===letra && p.tipo==='piso');
         const snaps = await Promise.all(actuales.map(([id])=> tx.get(posicionesRef.doc(id))));
         const enUso = sn=> sn.exists && (sn.data().estado!=='vacio' || sn.data().pallet_codigo || sn.data().bloqueada);
-        // Filas que se quitan: las de abajo (fila >= filas); deben estar vacías.
-        const quitar = snaps.filter(sn=> sn.exists && sn.data().fila >= filas);
+        const antes = pisoFilasDeNicho(ndata);
+        // Fila nueva de cada posición existente. Sin voltear, la fila 0 es la
+        // pegada al rack: se quitan/agregan filas al final. Volteado (piso
+        // dibujado arriba), la pegada al rack es la última: se quitan/agregan
+        // filas al principio, corriendo las demás.
+        const corrimiento = volteado ? filas - antes : 0;
+        const filaNueva = sn=> sn.data().fila + corrimiento;
+        const existentes = snaps.filter(sn=> sn.exists);
+        const quitar = existentes.filter(sn=> filaNueva(sn) < 0 || filaNueva(sn) >= filas);
         const ocupada = quitar.find(enUso);
         if(ocupada) throw new Error(`${ocupada.id} está ocupada o bloqueada`);
         quitar.forEach(sn=> tx.delete(sn.ref));
+        const quedan = existentes.filter(sn=> !quitar.includes(sn));
+        quedan.forEach(sn=>{ if(corrimiento) tx.update(sn.ref, { fila: filaNueva(sn) }); });
         // Filas que faltan (al aumentar): se agregan sin tocar las que ya existen.
         const columnaDe = sn=> sn.data().columna || (Number(sn.id.slice(-2))<10 ? 'izq' : 'der');
-        const existe = new Set(snaps.filter(sn=> sn.exists).map(sn=> sn.data().fila+'_'+columnaDe(sn)));
-        const usados = new Set(snaps.filter(sn=> sn.exists).map(sn=> sn.id));
+        const existe = new Set(quedan.map(sn=> filaNueva(sn)+'_'+columnaDe(sn)));
+        const usados = new Set(existentes.map(sn=> sn.id));
         const rackCount = (ndata.niveles||2)*2;
         for(let i=0;i<filas;i++){
           for(const columna of ['izq','der']){
             if(existe.has(i+'_'+columna)) continue;
             // Código según la numeración de 5 filas (izq 05-09, der 10-14 en
-            // un nicho de 2 niveles), así nunca choca con los ya existentes.
+            // un nicho de 2 niveles); si ya está en uso, el siguiente libre.
             let n = columna==='izq' ? rackCount+1+i : rackCount+1+PISO_FILAS_DEFECTO+i;
             let codigo = `${letra}${String(n).padStart(2,'0')}`;
             while(usados.has(codigo)){ n++; codigo = `${letra}${String(n).padStart(2,'0')}`; }
@@ -3888,9 +3925,9 @@ async function cambiarPisoFilasBloque(bloqueId, filas){
       cambiados.push(letra);
     }catch(err){ omitidos.push(`${letra} (${err.message})`); }
   }
-  if(cambiados.length) await logAccion('pasillo_actualizado', {detalle:`Piso de ${filas} fila(s) × 2 aplicado a nichos ${cambiados.join(', ')} del bloque ${b.nombre}`});
+  if(cambiados.length) await logAccion('pasillo_actualizado', {detalle:`Piso de ${filas} fila(s) × 2 aplicado a ${txt} ${cambiados.join(', ')} del bloque ${b.nombre}`});
   if(omitidos.length) showToast(`Cambiados: ${cambiados.length}. No se cambiaron (piso con pallets o bloqueado): ${omitidos.join('; ')}`,'err');
-  else showToast(`Piso de ${filas} fila(s) × 2 aplicado a ${cambiados.length} nicho(s) de ${b.nombre}.`,'ok');
+  else showToast(`Piso de ${filas} fila(s) × 2 aplicado a ${cambiados.length} ${txt} de ${b.nombre}.`,'ok');
 }
 
 // Solo cambia cómo se dibuja la fila (nichos pegados a la izquierda o a la
@@ -4336,9 +4373,41 @@ function buildBloquesMarkup(interactive, showReorder){
     const huecosHTML = hueco.repeat(huecosRejaDeFilaBase(bid));
     const rellenoHTML = hueco.repeat(rellenoIzquierdaDeFilaBase(bid));
     const nichosHTML = nichosPropiosHTML ? huecosHTML + anexadosHTML + rellenoHTML + nichosPropiosHTML : anexadosHTML;
-    const pasilloHTML = b.pasillo ? `<div class="pasillo-divider">╱╱╱ PASILLO ╱╱╱</div>` : '';
+    const pasilloHTML = b.pasillo ? `<div class="pasillo-divider" style="${esc(estiloPasilloParcial(bid, b, anexados))}">╱╱╱ PASILLO ╱╱╱</div>` : '';
     return `<div class="bloque-row"><div class="bloque-title">${esc(b.nombre)}</div><div class="nichos-line">${nichosHTML || '<span class="empty-state">Sin nichos aún</span>'}</div></div>${pasilloHTML}`;
   }).join('') || '<div class="empty-state">Aún no hay bloques configurados.</div>';
+}
+// Pasillo que no ocupa todo el ancho: solo debajo de los nichos entre
+// `pasillo_desde` y `pasillo_hasta` (letras de nichos propios de la fila).
+// Como la fila se empaqueta desde la derecha con un paso fijo por nicho
+// (igual que la reja), se ubica con margen derecho y ancho en px.
+function nichosPropiosOrdenados(bid){
+  return Object.entries(nichos).filter(([l,n])=> n.bloque_id===bid)
+    .sort((a,b2)=> (a[1].pos_visual ?? a[1].orden) - (b2[1].pos_visual ?? b2[1].orden)).map(([l])=> l);
+}
+function estiloPasilloParcial(bid, b, anexados){
+  if(!b.pasillo_desde && !b.pasillo_hasta) return '';
+  const propios = nichosPropiosOrdenados(bid);
+  if(propios.length===0) return '';
+  const i1 = b.pasillo_desde ? propios.indexOf(b.pasillo_desde) : 0;
+  const i2 = b.pasillo_hasta ? propios.indexOf(b.pasillo_hasta) : propios.length-1;
+  if(i1<0 || i2<0) return '';
+  const lo = Math.min(i1, i2), hi = Math.max(i1, i2);
+  const anexVisibles = !anexados || anexados.length===0 ? 0
+    : (ocultarLadoDerecho ? 1 : anexados.reduce((t,[cid])=> t + Object.values(nichos).filter(n=>n.bloque_id===cid).length, 0));
+  const base = huecosRejaDeFilaBase(bid) + anexVisibles + rellenoIzquierdaDeFilaBase(bid);
+  const paso = rejaPasoNicho();
+  const derecha = (base + lo) * paso + 2; // 2px = padding derecho de .nichos-line
+  const ancho = (hi - lo) * paso + nichoAnchoActual();
+  return `margin-left:auto; margin-right:${derecha}px; width:${ancho}px;`;
+}
+async function guardarTramoPasillo(bloqueId, campo, valor){
+  try{
+    await bloquesRef.doc(bloqueId).update({ [campo]: valor || null });
+    const b = bloques[bloqueId] || {};
+    const desde = campo==='pasillo_desde' ? valor : b.pasillo_desde, hasta = campo==='pasillo_hasta' ? valor : b.pasillo_hasta;
+    await logAccion('pasillo_actualizado', {detalle:`Pasillo del bloque ${b.nombre||''}: ${desde||hasta ? `desde ${desde||'el extremo'} hasta ${hasta||'el extremo'}` : 'todo el ancho'}`});
+  }catch(err){ showToast('Error: '+err.message,'err'); }
 }
 function renderPreviewGrid(){
   $('preview-bloques').innerHTML = buildBloquesMarkup(false, true);
