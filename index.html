@@ -2659,8 +2659,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v130';
-const APP_UPDATED = '29/09/2026 14:00';
+const APP_VERSION = 'v131';
+const APP_UPDATED = '29/09/2026 15:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4762,6 +4762,7 @@ function rejaConteoDesdeLeft(left, bordeDerecho){
 function alinearFilas(cont){
   cont.querySelectorAll('.bloque-row[data-alineada]').forEach(el=>{ el.removeAttribute('data-alineada'); el.style.marginTop = ''; el.style.paddingBottom = ''; });
   cont.querySelectorAll('.nicho[data-bajado]').forEach(el=>{ el.removeAttribute('data-bajado'); el.style.position = ''; el.style.top = ''; });
+  cont.querySelectorAll('.nicho[data-estirado]').forEach(el=>{ el.removeAttribute('data-estirado'); el.style.height = ''; el.style.marginBottom = ''; });
   cont.querySelectorAll('.bloque-row[data-encima]').forEach(el=>{ el.removeAttribute('data-encima'); el.style.zIndex = ''; });
   cont.querySelectorAll('.pasillo-divider[data-alineado]').forEach(el=>{ el.removeAttribute('data-alineado'); el.style.marginTop = ''; el.style.position = ''; el.style.zIndex = ''; });
   const filasDom = [...cont.querySelectorAll('.bloque-row')];
@@ -4830,7 +4831,25 @@ function alinearFilas(cont){
         bajadaMax = Math.max(bajadaMax, bajar);
       }
     });
-    if(bajadaMax) rowEl.style.paddingBottom = bajadaMax + 'px';
+    if(bajadaMax){
+      rowEl.style.paddingBottom = bajadaMax + 'px';
+      // El borde de abajo de los demás nichos de la fila (ej. W…P, O, N, M)
+      // se estira hasta el de los que bajaron (ej. X), sin mover nada: se
+      // alarga el cuadro y un margen negativo igual mantiene la fila y la
+      // posición de todo su contenido.
+      const bajados = [...rowEl.querySelectorAll('.nicho[data-bajado]')];
+      const fondo = Math.max(...bajados.map(n=> n.getBoundingClientRect().bottom));
+      rowEl.querySelectorAll('.nicho:not(.nicho-hueco):not([data-bajado])').forEach(n=>{
+        const q = n.getBoundingClientRect();
+        const extra = fondo - q.bottom;
+        if(extra > 0.5){
+          const mb = parseFloat(getComputedStyle(n).marginBottom) || 0;
+          n.setAttribute('data-estirado', '');
+          n.style.height = (q.height + extra) + 'px';
+          n.style.marginBottom = (mb - extra) + 'px';
+        }
+      });
+    }
   });
 }
 function alinearSoloPiso(cont){

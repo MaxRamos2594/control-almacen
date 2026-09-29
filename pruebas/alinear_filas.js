@@ -124,7 +124,10 @@ function verificar(condicion, texto){
       const encimaX = document.elementFromPoint((x.left+x.right)/2, (x.top+x.bottom)/2);
       return { an: c(rot('AN')), ao: c(rot('AO')), w: c(rot('W')), x: c(x), aa: c(rot('AA')), an56: c(fila('AN','05,06')), w712: c(fila('W','07,12')),
         w0304: c(fila('W','03,04')), w914: fila('W','09,14'), w0102: fila('W','01,02'), pas: { top: pas.top, bottom: pas.bottom },
-        xVisible: !!(encimaX && encimaX.closest('.nicho[data-letra="X"]')) };
+        xVisible: !!(encimaX && encimaX.closest('.nicho[data-letra="X"]')),
+        wFondo: cont.querySelector('.nicho[data-letra="W"]').getBoundingClientRect().bottom,
+        xFondo: cont.querySelector('.nicho[data-letra="X"]').getBoundingClientRect().bottom,
+        filaB: cont.querySelector('.bloque-row[data-bloque="BB"]').getBoundingClientRect().bottom };
     }, contId);
     const cerca = (a,b,tol=2)=> a!=null && b!=null && Math.abs(a-b) <= tol;
     verificar(cerca(t.an, t.w) && cerca(t.ao, t.w), `${vista} (títulos): títulos de AN y AO a la altura del título de W`);
@@ -132,6 +135,8 @@ function verificar(condicion, texto){
     verificar(cerca(t.pas.top, t.w914.top, 3) && cerca(t.pas.bottom, t.w0102.bottom, 4), `${vista} (títulos): pasillo a la altura de W 09·14 y 01·02`);
     verificar(cerca(t.x, t.w0304) && cerca(t.aa, t.w0304), `${vista} (títulos): títulos de X y AA a la altura de la última fila de W (03·04)`);
     verificar(t.xVisible, `${vista} (títulos): el título de X se ve (no lo tapa el pasillo)`);
+    verificar(cerca(t.wFondo, t.xFondo, 1), `${vista} (títulos): el borde de abajo de W llega al de X (W y=${Math.round(t.wFondo)}, X y=${Math.round(t.xFondo)})`);
+    verificar(t.wFondo <= t.filaB + 1, `${vista} (títulos): el cuadro estirado no se sale de la fila`);
     await page.locator('#' + contId).screenshot({ path: path.join(__dirname, 'salida', `alinear_titulos_${contId}.png`) });
   }
   await page.evaluate(()=> switchTab('diseno'));
