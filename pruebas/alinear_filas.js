@@ -47,11 +47,11 @@ function verificar(condicion, texto){
   await page.selectOption('[data-alinear-fila="BB"][data-campo="nicho"]', 'W');
   await page.waitForFunction(()=> bloques['BB'].alinear_fila && bloques['BB'].alinear_fila.nicho === 'W', null, { timeout: 15000 });
   await page.selectOption('[data-alinear-fila="BB"][data-campo="ref_nicho"]', 'AN');
-  await page.waitForFunction(()=> bloques['BB'].alinear_fila.ref_nicho === 'AN', null, { timeout: 15000 });
+  await page.waitForFunction(()=> bloques['BB'].alinear_fila.ref_nicho === 'AN' && /\(AN\)/.test((document.querySelector('[data-alinear-fila="BB"][data-campo="ref_fila"] option')||{}).textContent||''), null, { timeout: 15000 });
   const opcionesRef = await page.evaluate(()=> [...document.querySelectorAll('[data-alinear-fila="BB"][data-campo="ref_fila"] option')].map(o=> o.textContent));
-  verificar(opcionesRef.join(' | ') === '01 · 02 | 03 · 04 | 05 · 06 | 07 · 12', `Filas de AN para elegir: ${opcionesRef.join(' | ')}`);
+  verificar(opcionesRef.join(' | ') === 'Título (AN) | 01 · 02 | 03 · 04 | 05 · 06 | 07 · 12', `Filas de AN para elegir: ${opcionesRef.join(' | ')}`);
   const opcionesW = await page.evaluate(()=> [...document.querySelectorAll('[data-alinear-fila="BB"][data-campo="fila"] option')].map(o=> o.textContent));
-  verificar(opcionesW[0] === '05 · 10' && opcionesW.length === 7, `Filas de W para elegir: ${opcionesW.join(' | ')}`);
+  verificar(opcionesW[0] === 'Título (W)' && opcionesW[1] === '05 · 10' && opcionesW.length === 8, `Filas de W para elegir: ${opcionesW.join(' | ')}`);
   await page.selectOption('[data-alinear-fila="BB"][data-campo="ref_fila"]', '2');
   await page.waitForFunction(()=> bloques['BB'].alinear_fila.ref_fila === 2, null, { timeout: 15000 });
   await page.waitForTimeout(700);
@@ -66,8 +66,10 @@ function verificar(condicion, texto){
     const pas = cont.querySelector('.pasillo-divider').getBoundingClientRect();
     const x07 = fila('X','📢,12') || fila('X','07,12'); // X07 está bloqueada por campaña: se ve 📢
     const encima = x07 ? document.elementFromPoint((x07.left+x07.right)/2, (x07.top+x07.bottom)/2) : null;
-    const xNicho = cont.querySelector('.nicho[data-letra="X"]').getBoundingClientRect();
-    const aaNicho = cont.querySelector('.nicho[data-letra="AA"]').getBoundingClientRect();
+    // Tope del contenido (letra, etiquetas y posiciones), sin el marco.
+    const topeContenido = l=> Math.min(...[...cont.querySelector(`.nicho[data-letra="${l}"]`).querySelectorAll('.nicho-label, .nicho-section-label, .nicho-row')].map(e=> e.getBoundingClientRect()).filter(q=> q.height>0).map(q=> q.top));
+    const xNicho = { top: topeContenido('X') };
+    const aaNicho = { top: topeContenido('AA') };
     const ultimo = [...cont.querySelectorAll('.nicho')].reduce((m,n)=> Math.max(m, n.getBoundingClientRect().bottom), 0);
     const filaB = cont.querySelector('.bloque-row[data-bloque="BB"]').getBoundingClientRect();
     const c = q=> q ? (q.top+q.bottom)/2 : null;
@@ -93,6 +95,51 @@ function verificar(condicion, texto){
   }
   const datosDespues = await page.evaluate(()=> JSON.stringify({ posiciones, pallets, nichos }));
   verificar(datosAntes === datosDespues, 'Ninguna posición, pallet ni nicho cambió (solo dibujo)');
+
+  // Caso 2 (pedido después): B compacta y títulos alineados: título de W = título de AN.
+  // Entonces AN 05·06 = W 07·12, el pasillo va a la altura de W 09·14 y 01·02,
+  // y el título de X (que baja) queda a la altura de la última fila de W (03·04).
+  await page.evaluate(()=> switchTab('diseno'));
+  await page.check('[data-nicho-compacto="BB"]');
+  await page.waitForFunction(()=> bloques['BB'].nicho_compacto === true, null, { timeout: 15000 });
+  await page.selectOption('[data-alinear-fila="BB"][data-campo="fila"]', '-1');
+  await page.waitForFunction(()=> bloques['BB'].alinear_fila.fila === -1, null, { timeout: 15000 });
+  await page.selectOption('[data-alinear-fila="BB"][data-campo="ref_fila"]', '-1');
+  await page.waitForFunction(()=> bloques['BB'].alinear_fila.ref_fila === -1, null, { timeout: 15000 });
+  await page.waitForTimeout(700);
+  for(const [vista, contId] of [['Diseño','preview-bloques'],['Movimientos','mov-bloques']]){
+    if(vista==='Movimientos'){ await page.evaluate(()=> switchTab('mov')); await page.waitForTimeout(700); }
+    const t = await page.evaluate((contId)=>{
+      const cont = document.getElementById(contId);
+      cont.querySelector('.nicho[data-letra="X"]').scrollIntoView({ block:'center' });
+      const c = q=> q ? (q.top+q.bottom)/2 : null;
+      const rot = l=> cont.querySelector(`.nicho[data-letra="${l}"] .nicho-label`).getBoundingClientRect();
+      const fila = (letra, codigos)=>{
+        const n = cont.querySelector(`.nicho[data-letra="${letra}"]`);
+        const r = [...n.querySelectorAll('.nicho-row')].find(row=> [...row.querySelectorAll('.slot')].map(s=> s.textContent.trim().slice(-2)).join(',') === codigos);
+        return r ? r.getBoundingClientRect() : null;
+      };
+      const pas = cont.querySelector('.pasillo-divider').getBoundingClientRect();
+      const x = rot('X');
+      const encimaX = document.elementFromPoint((x.left+x.right)/2, (x.top+x.bottom)/2);
+      return { an: c(rot('AN')), ao: c(rot('AO')), w: c(rot('W')), x: c(x), aa: c(rot('AA')), an56: c(fila('AN','05,06')), w712: c(fila('W','07,12')),
+        w0304: c(fila('W','03,04')), w914: fila('W','09,14'), w0102: fila('W','01,02'), pas: { top: pas.top, bottom: pas.bottom },
+        xVisible: !!(encimaX && encimaX.closest('.nicho[data-letra="X"]')),
+        wFondo: cont.querySelector('.nicho[data-letra="W"]').getBoundingClientRect().bottom,
+        xFondo: cont.querySelector('.nicho[data-letra="X"]').getBoundingClientRect().bottom,
+        filaB: cont.querySelector('.bloque-row[data-bloque="BB"]').getBoundingClientRect().bottom };
+    }, contId);
+    const cerca = (a,b,tol=2)=> a!=null && b!=null && Math.abs(a-b) <= tol;
+    verificar(cerca(t.an, t.w) && cerca(t.ao, t.w), `${vista} (títulos): títulos de AN y AO a la altura del título de W`);
+    verificar(cerca(t.an56, t.w712), `${vista} (títulos): AN 05·06 a la altura de W 07·12`);
+    verificar(cerca(t.pas.top, t.w914.top, 3) && cerca(t.pas.bottom, t.w0102.bottom, 4), `${vista} (títulos): pasillo a la altura de W 09·14 y 01·02`);
+    verificar(cerca(t.x, t.w0304) && cerca(t.aa, t.w0304), `${vista} (títulos): títulos de X y AA a la altura de la última fila de W (03·04)`);
+    verificar(t.xVisible, `${vista} (títulos): el título de X se ve (no lo tapa el pasillo)`);
+    verificar(cerca(t.wFondo, t.xFondo, 1), `${vista} (títulos): el borde de abajo de W llega al de X (W y=${Math.round(t.wFondo)}, X y=${Math.round(t.xFondo)})`);
+    verificar(t.wFondo <= t.filaB + 1, `${vista} (títulos): el cuadro estirado no se sale de la fila`);
+    await page.locator('#' + contId).screenshot({ path: path.join(__dirname, 'salida', `alinear_titulos_${contId}.png`) });
+  }
+  await page.evaluate(()=> switchTab('diseno'));
 
   // Quitar el alineado: la fila B vuelve a su lugar.
   await page.evaluate(()=> switchTab('diseno'));
