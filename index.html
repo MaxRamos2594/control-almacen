@@ -2659,8 +2659,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v128';
-const APP_UPDATED = '29/09/2026 10:00';
+const APP_VERSION = 'v129';
+const APP_UPDATED = '29/09/2026 12:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4759,7 +4759,8 @@ function rejaConteoDesdeLeft(left, bordeDerecho){
 // pasillo, se ubica justo debajo del nicho de referencia (a la distancia
 // normal entre filas de posiciones) y queda por encima de lo que tape.
 function alinearFilas(cont){
-  cont.querySelectorAll('.bloque-row[data-alineada]').forEach(el=>{ el.removeAttribute('data-alineada'); el.style.marginTop = ''; });
+  cont.querySelectorAll('.bloque-row[data-alineada]').forEach(el=>{ el.removeAttribute('data-alineada'); el.style.marginTop = ''; el.style.paddingBottom = ''; });
+  cont.querySelectorAll('.nicho[data-bajado]').forEach(el=>{ el.removeAttribute('data-bajado'); el.style.position = ''; el.style.top = ''; });
   cont.querySelectorAll('.bloque-row[data-encima]').forEach(el=>{ el.removeAttribute('data-encima'); el.style.zIndex = ''; });
   cont.querySelectorAll('.pasillo-divider[data-alineado]').forEach(el=>{ el.removeAttribute('data-alineado'); el.style.marginTop = ''; el.style.position = ''; el.style.zIndex = ''; });
   const filasDom = [...cont.querySelectorAll('.bloque-row')];
@@ -4792,6 +4793,24 @@ function alinearFilas(cont){
     // Al montarse, la fila de arriba (con el nicho de referencia) se dibuja
     // por encima de la de abajo, y el pasillo por encima de ambas.
     arribaEl.setAttribute('data-encima', ''); arribaEl.style.zIndex = '3';
+    // Los nichos de esta fila que quedarían debajo del pasillo (o de la fila
+    // de arriba) bajan lo justo para quedar después del pasillo, sin que nada
+    // los tape; la fila reserva ese espacio abajo.
+    const limite = pasillo ? pasillo.getBoundingClientRect() : null;
+    const nichosArriba = [...arribaEl.querySelectorAll('.nicho:not(.nicho-hueco)')].map(n=> n.getBoundingClientRect());
+    let bajadaMax = 0;
+    rowEl.querySelectorAll('.nicho:not(.nicho-hueco)').forEach(n=>{
+      const q = n.getBoundingClientRect();
+      let piso = -Infinity; // hasta dónde llega lo que tiene encima
+      if(limite && q.left < limite.right && q.right > limite.left) piso = Math.max(piso, limite.bottom);
+      nichosArriba.forEach(a=>{ if(q.left < a.right && q.right > a.left) piso = Math.max(piso, a.bottom); });
+      const bajar = piso + 3 - q.top;
+      if(bajar > 0){
+        n.setAttribute('data-bajado', ''); n.style.position = 'relative'; n.style.top = bajar + 'px';
+        bajadaMax = Math.max(bajadaMax, bajar);
+      }
+    });
+    if(bajadaMax) rowEl.style.paddingBottom = bajadaMax + 'px';
   });
 }
 function alinearSoloPiso(cont){
