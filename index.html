@@ -2659,8 +2659,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v129';
-const APP_UPDATED = '29/09/2026 12:00';
+const APP_VERSION = 'v130';
+const APP_UPDATED = '29/09/2026 14:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3782,7 +3782,7 @@ function renderBloqueForms(){
         const al = b.alinear_fila || {};
         const arriba = filaBaseAnterior(id);
         const propios = nichosPropiosOrdenados(id), deArriba = arriba ? nichosPropiosOrdenados(arriba) : [];
-        const opFilas = (letra, sel)=> letra ? filasVisualesDeNicho(letra).map((t,i)=> `<option value="${esc(i)}" ${i===sel?'selected':''}>${esc(t)}</option>`).join('') : '';
+        const opFilas = (letra, sel)=> letra ? `<option value="-1" ${sel===-1?'selected':''}>Título (${esc(letra)})</option>` + filasVisualesDeNicho(letra).map((t,i)=> `<option value="${esc(i)}" ${i===sel?'selected':''}>${esc(t)}</option>`).join('') : '';
         return `<div class="hint" style="display:flex; align-items:center; gap:4px; flex-wrap:wrap; margin:4px 0 6px;" title="Sube o baja esta fila para que una fila de posiciones de uno de sus nichos quede a la altura de una fila de posiciones de un nicho de la fila de arriba. El pasillo entre ambas se acomoda justo debajo del nicho de arriba. Solo cambia el dibujo.">
           Alinear con la fila de arriba:
           <select data-alinear-fila="${esc(id)}" data-campo="nicho" style="width:auto; padding:2px 6px; font-size:12px;"><option value="">— no</option>${propios.map(l=> `<option value="${esc(l)}" ${l===al.nicho?'selected':''}>${esc(l)}</option>`).join('')}</select>
@@ -4550,7 +4550,8 @@ async function cambiarAlineadoFila(bloqueId, campo, valor){
     }
   } else if(campo==='ref_nicho'){ al.ref_nicho = valor; al.ref_fila = 0; }
   else { al[campo] = parseInt(valor, 10) || 0; }
-  const detalle = al && al.nicho ? `fila alineada: ${al.nicho} (${filasVisualesDeNicho(al.nicho)[al.fila]||''}) a la altura de ${al.ref_nicho} (${filasVisualesDeNicho(al.ref_nicho)[al.ref_fila]||''})` : 'fila sin alinear';
+  const nombreFila = (letra, i)=> i===-1 ? 'título' : (filasVisualesDeNicho(letra)[i] || '');
+  const detalle = al && al.nicho ? `fila alineada: ${al.nicho} (${nombreFila(al.nicho, al.fila)}) a la altura de ${al.ref_nicho} (${nombreFila(al.ref_nicho, al.ref_fila)})` : 'fila sin alinear';
   await guardarCampoBloque(bloqueId, 'alinear_fila', al, detalle);
 }
 async function guardarCampoBloque(bloqueId, campo, valor, detalle){
@@ -4784,7 +4785,8 @@ function alinearFilas(cont){
         pasillo.style.marginTop = (actual + (ultima.bottom + 3) - q.top) + 'px';
       }
     }
-    const fr = filasDe(ref)[al.ref_fila], ft = filasDe(tgt)[al.fila];
+    const filaORotulo = (el, i)=> i===-1 ? (el.querySelector('.nicho-label') || null)?.getBoundingClientRect() : filasDe(el)[i];
+    const fr = filaORotulo(ref, al.ref_fila), ft = filaORotulo(tgt, al.fila);
     if(!fr || !ft) return;
     const delta = (fr.top + fr.bottom)/2 - (ft.top + ft.bottom)/2;
     const actual = parseFloat(getComputedStyle(rowEl).marginTop) || 0;
@@ -4804,7 +4806,25 @@ function alinearFilas(cont){
       let piso = -Infinity; // hasta dónde llega lo que tiene encima
       if(limite && q.left < limite.right && q.right > limite.left) piso = Math.max(piso, limite.bottom);
       nichosArriba.forEach(a=>{ if(q.left < a.right && q.right > a.left) piso = Math.max(piso, a.bottom); });
-      const bajar = piso + 3 - q.top;
+      let bajar = piso + 3 - q.top;
+      // Si hay que bajarlo, se calza con la grilla del nicho alineado (ej. W):
+      // lo primero visible del nicho (su letra si es compacto, o su primera
+      // fila de posiciones) queda a la altura de la primera fila de W libre
+      // debajo del pasillo (ej. título de X = W 03·04). El borde del marco
+      // puede quedar bajo el pasillo; el contenido no.
+      if(bajar > 0){
+        const partes = [...n.querySelectorAll('.nicho-label, .nicho-section-label, .nicho-row')]
+          .filter(el=> !el.classList.contains('nicho-row') || el.querySelector('.slot'))
+          .map(el=> ({ el, q: el.getBoundingClientRect() })).filter(x=> x.q.height > 0);
+        const topeContenido = Math.min(...partes.map(x=> x.q.top));
+        const ancla = partes.filter(x=> !x.el.classList.contains('nicho-section-label')).sort((x,y)=> x.q.top - y.q.top)[0];
+        if(ancla){
+          const centroAncla = (ancla.q.top + ancla.q.bottom)/2;
+          const filasGuia = [...tgt.querySelectorAll('.nicho-row')].filter(f=> f.querySelector('.slot')).map(f=> f.getBoundingClientRect());
+          const guia = filasGuia.find(f=> topeContenido + ((f.top+f.bottom)/2 - centroAncla) >= piso + 2);
+          if(guia) bajar = (guia.top+guia.bottom)/2 - centroAncla;
+        }
+      }
       if(bajar > 0){
         n.setAttribute('data-bajado', ''); n.style.position = 'relative'; n.style.top = bajar + 'px';
         bajadaMax = Math.max(bajadaMax, bajar);
