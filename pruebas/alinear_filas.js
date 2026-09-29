@@ -78,6 +78,7 @@ function verificar(condicion, texto){
       tapa: !!(encima && encima.closest('.pasillo-divider')), encima: encima ? encima.className : null,
       xTop: xNicho.top, aaTop: aaNicho.top, dentroDeFila: ultimo <= filaB.bottom + 1,
       x07visible: !!(encima && encima.closest('.nicho[data-letra="X"]')),
+      barraX: (()=>{ const b = cont.querySelector('.nicho[data-letra="X"] > .nicho-reorder'); if(!b) return 'sin botones'; b.scrollIntoView({block:'center'}); const q = b.getBoundingClientRect(); const p = cont.querySelector('.pasillo-divider').getBoundingClientRect(); const e = document.elementFromPoint((q.left+q.right)/2, (q.top+q.bottom)/2); return (q.top >= p.bottom && e && e.closest('.nicho[data-letra="X"]')) ? 'visible' : 'tapada'; })(),
       an712visible: (()=>{ const q = fila('AN','07,12'); const e = q && document.elementFromPoint((q.left+q.right)/2, (q.top+q.bottom)/2); return !!(e && e.closest('.nicho[data-letra="AN"]')); })() };
   }, contId);
   const cerca = (a,b,t=2)=> a!=null && b!=null && Math.abs(a-b) <= t;
@@ -90,6 +91,7 @@ function verificar(condicion, texto){
     verificar(!m.tapa && m.x07visible, `${vista}: el pasillo NO tapa el piso de X (se ve) [${m.encima}]`);
     verificar(m.xTop >= m.pas.bottom && m.aaTop >= m.pas.bottom, `${vista}: X y AA empiezan debajo del pasillo (X y=${Math.round(m.xTop)}, pasillo termina en y=${Math.round(m.pas.bottom)})`);
     verificar(m.dentroDeFila, `${vista}: la fila B reserva el espacio de lo que bajó (no se sale)`);
+    verificar(m.barraX !== 'tapada', `${vista}: botones ◀ ▶ ✏️ de X: ${m.barraX}`);
     verificar(m.an712visible, `${vista}: AN 07·12 se ve (no la tapa la fila de abajo)`);
     await page.locator('#' + contId).screenshot({ path: path.join(__dirname, 'salida', `alinear_filas_${contId}.png`) });
   }
@@ -127,7 +129,8 @@ function verificar(condicion, texto){
         xVisible: !!(encimaX && encimaX.closest('.nicho[data-letra="X"]')),
         wFondo: cont.querySelector('.nicho[data-letra="W"]').getBoundingClientRect().bottom,
         xFondo: cont.querySelector('.nicho[data-letra="X"]').getBoundingClientRect().bottom,
-        filaB: cont.querySelector('.bloque-row[data-bloque="BB"]').getBoundingClientRect().bottom };
+        filaB: cont.querySelector('.bloque-row[data-bloque="BB"]').getBoundingClientRect().bottom,
+        barraX: (()=>{ const b = cont.querySelector('.nicho[data-letra="X"] > .nicho-reorder'); if(!b) return 'sin botones'; const q = b.getBoundingClientRect(); const e = document.elementFromPoint((q.left+q.right)/2, (q.top+q.bottom)/2); return (q.top >= pas.bottom && e && e.closest('.nicho[data-letra="X"]')) ? 'visible' : 'tapada'; })() };
     }, contId);
     const cerca = (a,b,tol=2)=> a!=null && b!=null && Math.abs(a-b) <= tol;
     verificar(cerca(t.an, t.w) && cerca(t.ao, t.w), `${vista} (títulos): títulos de AN y AO a la altura del título de W`);
@@ -137,6 +140,7 @@ function verificar(condicion, texto){
     verificar(t.xVisible, `${vista} (títulos): el título de X se ve (no lo tapa el pasillo)`);
     verificar(cerca(t.wFondo, t.xFondo, 1), `${vista} (títulos): el borde de abajo de W llega al de X (W y=${Math.round(t.wFondo)}, X y=${Math.round(t.xFondo)})`);
     verificar(t.wFondo <= t.filaB + 1, `${vista} (títulos): el cuadro estirado no se sale de la fila`);
+    verificar(t.barraX !== 'tapada', `${vista} (títulos): botones ◀ ▶ ✏️ de X: ${t.barraX}`);
     await page.locator('#' + contId).screenshot({ path: path.join(__dirname, 'salida', `alinear_titulos_${contId}.png`) });
   }
   await page.evaluate(()=> switchTab('diseno'));

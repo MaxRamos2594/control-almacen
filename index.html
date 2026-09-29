@@ -245,6 +245,8 @@
   .nicho-row:last-child{margin-bottom:0;}
   .nicho-label.nicho-label-arriba{margin:0 0 4px;}
   .nicho-label{text-align:center; font-family:var(--mono); font-size:11px; font-weight:700; color:#fff; background:var(--frame-blue); border-radius:3px; margin-top:5px; padding:2px 0;}
+  .nicho.reorden-abajo{display:flex; flex-direction:column;}
+  .nicho.reorden-abajo > .nicho-reorder{order:2; margin:4px 0 0;}
   .nicho-reorder{display:flex; justify-content:space-between; margin-bottom:4px; gap:3px;}
   .btn-reorder{background:var(--frame-blue); color:#fff; border:none; border-radius:3px; flex:1; height:18px; font-size:10px; cursor:pointer; line-height:1;}
   .btn-reorder:hover{background:var(--blue);}
@@ -2659,8 +2661,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v131';
-const APP_UPDATED = '29/09/2026 15:30';
+const APP_VERSION = 'v132';
+const APP_UPDATED = '29/09/2026 17:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4761,7 +4763,7 @@ function rejaConteoDesdeLeft(left, bordeDerecho){
 // normal entre filas de posiciones) y queda por encima de lo que tape.
 function alinearFilas(cont){
   cont.querySelectorAll('.bloque-row[data-alineada]').forEach(el=>{ el.removeAttribute('data-alineada'); el.style.marginTop = ''; el.style.paddingBottom = ''; });
-  cont.querySelectorAll('.nicho[data-bajado]').forEach(el=>{ el.removeAttribute('data-bajado'); el.style.position = ''; el.style.top = ''; });
+  cont.querySelectorAll('.nicho[data-bajado]').forEach(el=>{ el.removeAttribute('data-bajado'); el.style.position = ''; el.style.top = ''; el.classList.remove('reorden-abajo'); });
   cont.querySelectorAll('.nicho[data-estirado]').forEach(el=>{ el.removeAttribute('data-estirado'); el.style.height = ''; el.style.marginBottom = ''; });
   cont.querySelectorAll('.bloque-row[data-encima]').forEach(el=>{ el.removeAttribute('data-encima'); el.style.zIndex = ''; });
   cont.querySelectorAll('.pasillo-divider[data-alineado]').forEach(el=>{ el.removeAttribute('data-alineado'); el.style.marginTop = ''; el.style.position = ''; el.style.zIndex = ''; });
@@ -4808,6 +4810,10 @@ function alinearFilas(cont){
       if(limite && q.left < limite.right && q.right > limite.left) piso = Math.max(piso, limite.bottom);
       nichosArriba.forEach(a=>{ if(q.left < a.right && q.right > a.left) piso = Math.max(piso, a.bottom); });
       let bajar = piso + 3 - q.top;
+      // En Diseño, los botones ◀ ▶ ✏️ de un nicho que baja pasan abajo de su
+      // cuadro, para que no queden bajo el pasillo y el nicho quede calzado
+      // igual que en Movimientos (donde no hay botones).
+      if(bajar > 0 && n.querySelector(':scope > .nicho-reorder')) n.classList.add('reorden-abajo');
       // Si hay que bajarlo, se calza con la grilla del nicho alineado (ej. W):
       // lo primero visible del nicho (su letra si es compacto, o su primera
       // fila de posiciones) queda a la altura de la primera fila de W libre
