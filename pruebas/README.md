@@ -33,6 +33,7 @@ En otra terminal:
 | `npm run piso` | Piso de 1 fila × 2: en A (normal) se conserva la fila de arriba con sus pallets; en B (volteado) solo los nichos de 3 niveles, conservando la fila pegada al rack; nichos nuevos; volver a 5 filas. |
 | `npm run pasillo` | Pasillo parcial (desde un nicho hasta otro): queda justo debajo de esos nichos, también en modo compacto, y vuelve a todo el ancho. |
 | `npm run columna` | X1–X3 en columna desde 03·04 de A, cruzando el pasillo (2 filas de alto) hasta AB; pasillo de C hasta X1; en Diseño y Movimientos, sin cambiar datos. |
+| `npm run alinear` | Fila D compacta + pasillo de 2 filas y fila B alineada: AN 05·06 = W 05·10, AN 07·12 = W 06·11, pasillo = W 07·12 y 08·13 y tapa el piso de X; en Diseño y Movimientos, sin cambiar datos. |
 | `npm run revisar` | Revisión del código sin emuladores: datos insertados en HTML sin `esc()` y HTML del programa escapado por error. |
 | `npm run todo` | Todas las anteriores. |
 | `node texto.js antes` / `node texto.js despues` | Guarda el texto visible de cada pestaña para comparar antes y después de un cambio (`diff salida/texto-antes.txt salida/texto-despues.txt`). |
