@@ -1,7 +1,8 @@
 // Caso real: fila D (AQ…AN, nichos compactos, pasillo de 2 filas debajo) y
 // fila B volteada (W: piso 05-14 arriba). Se alinea B con la de arriba:
 //   AN 05·06 = W 05·10, AN 07·12 = W 06·11, pasillo = W 07·12 y 08·13,
-// y el pasillo tapa la parte de arriba de X (debajo de AN). Solo dibujo.
+// y X y AA (debajo de AN y AO) bajan para quedar después del pasillo, sin
+// que nada los tape. Solo dibujo.
 // Requiere los emuladores encendidos (npm run emuladores).
 const path = require('path');
 const { abrirApp, limpiarEmuladores } = require('./app');
@@ -65,10 +66,16 @@ function verificar(condicion, texto){
     const pas = cont.querySelector('.pasillo-divider').getBoundingClientRect();
     const x07 = fila('X','📢,12') || fila('X','07,12'); // X07 está bloqueada por campaña: se ve 📢
     const encima = x07 ? document.elementFromPoint((x07.left+x07.right)/2, (x07.top+x07.bottom)/2) : null;
+    const xNicho = cont.querySelector('.nicho[data-letra="X"]').getBoundingClientRect();
+    const aaNicho = cont.querySelector('.nicho[data-letra="AA"]').getBoundingClientRect();
+    const ultimo = [...cont.querySelectorAll('.nicho')].reduce((m,n)=> Math.max(m, n.getBoundingClientRect().bottom), 0);
+    const filaB = cont.querySelector('.bloque-row[data-bloque="BB"]').getBoundingClientRect();
     const c = q=> q ? (q.top+q.bottom)/2 : null;
     return { an56: c(fila('AN','05,06')), an712: c(fila('AN','07,12')), w510: c(fila('W','05,10')), w611: c(fila('W','06,11')),
       w712: fila('W','07,12'), w813: fila('W','08,13'), pas: { top: pas.top, bottom: pas.bottom },
       tapa: !!(encima && encima.closest('.pasillo-divider')), encima: encima ? encima.className : null,
+      xTop: xNicho.top, aaTop: aaNicho.top, dentroDeFila: ultimo <= filaB.bottom + 1,
+      x07visible: !!(encima && encima.closest('.nicho[data-letra="X"]')),
       an712visible: (()=>{ const q = fila('AN','07,12'); const e = q && document.elementFromPoint((q.left+q.right)/2, (q.top+q.bottom)/2); return !!(e && e.closest('.nicho[data-letra="AN"]')); })() };
   }, contId);
   const cerca = (a,b,t=2)=> a!=null && b!=null && Math.abs(a-b) <= t;
@@ -78,7 +85,9 @@ function verificar(condicion, texto){
     verificar(cerca(m.an56, m.w510), `${vista}: AN 05·06 a la altura de W 05·10`);
     verificar(cerca(m.an712, m.w611), `${vista}: AN 07·12 a la altura de W 06·11`);
     verificar(cerca(m.pas.top, m.w712.top, 3) && cerca(m.pas.bottom, m.w813.bottom, 4), `${vista}: pasillo a la altura de W 07·12 y 08·13 (pasillo ${Math.round(m.pas.top)}–${Math.round(m.pas.bottom)}, W ${Math.round(m.w712.top)}–${Math.round(m.w813.bottom)})`);
-    verificar(m.tapa, `${vista}: el pasillo tapa el piso de X (debajo de AN) [${m.encima}]`);
+    verificar(!m.tapa && m.x07visible, `${vista}: el pasillo NO tapa el piso de X (se ve) [${m.encima}]`);
+    verificar(m.xTop >= m.pas.bottom && m.aaTop >= m.pas.bottom, `${vista}: X y AA empiezan debajo del pasillo (X y=${Math.round(m.xTop)}, pasillo termina en y=${Math.round(m.pas.bottom)})`);
+    verificar(m.dentroDeFila, `${vista}: la fila B reserva el espacio de lo que bajó (no se sale)`);
     verificar(m.an712visible, `${vista}: AN 07·12 se ve (no la tapa la fila de abajo)`);
     await page.locator('#' + contId).screenshot({ path: path.join(__dirname, 'salida', `alinear_filas_${contId}.png`) });
   }
