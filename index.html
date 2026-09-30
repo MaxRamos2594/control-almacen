@@ -2661,8 +2661,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v132';
-const APP_UPDATED = '29/09/2026 17:00';
+const APP_VERSION = 'v133';
+const APP_UPDATED = '30/09/2026 09:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -6154,6 +6154,7 @@ async function generarPDFInventarioAcumulado(){
 
     const COL_IMAGEN = 6;
     doc.autoTable({
+      rowPageBreak: 'avoid', // una fila nunca se parte entre dos páginas
       startY: y+5,
       head: [['Código','Descripción','Proveedor','Cantidad total','Costo unitario','Costo total','Foto']],
       body: filas,
@@ -6164,7 +6165,9 @@ async function generarPDFInventarioAcumulado(){
         0: {cellWidth:22}, 3: {cellWidth:22, halign:'right'}, 4: {cellWidth:24, halign:'right'},
         5: {cellWidth:26, halign:'right'}, [COL_IMAGEN]: {cellWidth:32, halign:'center'}
       },
-      margin: { left: margin, right: margin, top: 32 },
+      // Arriba de la tabla en las páginas 2 en adelante solo hace falta el
+      // margen normal (el encabezado del reporte va solo en la página 1).
+      margin: { left: margin, right: margin, top: 12 },
       didDrawCell: (data)=>{
         if(data.section==='body' && data.column.index===COL_IMAGEN){
           const codigo = data.row.raw[0];
@@ -7362,6 +7365,7 @@ function generarPDFBitacora(){
       });
 
       doc.autoTable({
+      rowPageBreak: 'avoid', // una fila nunca se parte entre dos páginas
         startY: y,
         head: [['Fecha/Hora','Acción','Pallet','De','A','Detalle']],
         body,
@@ -9538,6 +9542,7 @@ function generarPDFMerma(formato){
   ]);
 
   doc.autoTable({
+      rowPageBreak: 'avoid', // una fila nunca se parte entre dos páginas
     startY: headerTop+headerH+3,
     head: [['Nº','SEDE','N° GUIA','CODIGO','DESCRIPCION','CNTD.GUIA','TOTAL DE\nUNIDADES','DIFERENCIAS','NO APTA PARA\nLA VENTA','OBSERVACION']],
     body: filas,
@@ -13342,6 +13347,7 @@ function generarPDFToma(header, items){
 
   const COL_SI = 8, COL_NO = 9;
   doc.autoTable({
+      rowPageBreak: 'avoid', // una fila nunca se parte entre dos páginas
     startY: y+2,
     head: [['N°','Posición','Tipo','Pallet','Código','Descripción','Cant. Sistema','Cant. Inventariada','SÍ','NO']],
     body: filas,
@@ -13371,6 +13377,7 @@ function generarPDFToma(header, items){
 
   // Espacio en blanco para anotar a mano códigos ENCONTRADOS que no estaban en la lista
   doc.autoTable({
+      rowPageBreak: 'avoid', // una fila nunca se parte entre dos páginas
     startY: doc.lastAutoTable.finalY + 8,
     head: [['CÓDIGOS SOBRANTES / NO LISTADOS (llenar a mano si encuentras algo que no está en la tabla de arriba)']],
     body: [],
@@ -13379,6 +13386,7 @@ function generarPDFToma(header, items){
     margin: { left: margin, right: margin }
   });
   doc.autoTable({
+      rowPageBreak: 'avoid', // una fila nunca se parte entre dos páginas
     startY: doc.lastAutoTable.finalY + 1,
     head: [['Código','Descripción','Cantidad','Pallet','Posición']],
     body: Array.from({length:6}, ()=>['','','','','']),

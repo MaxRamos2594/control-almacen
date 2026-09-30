@@ -7,13 +7,14 @@
     "humo": "node humo.js",
     "flujo": "node flujo.js",
     "xss": "node xss.js",
-    "todo": "node revisar.js && node humo.js && node flujo.js && node xss.js && node bloque_intermedio.js && node piso_filas.js && node pasillo.js && node columna_piso.js && node alinear_filas.js",
+    "todo": "node revisar.js && node humo.js && node flujo.js && node xss.js && node bloque_intermedio.js && node piso_filas.js && node pasillo.js && node columna_piso.js && node alinear_filas.js && node pdf_inventario.js",
     "bloque": "node bloque_intermedio.js",
     "revisar": "node revisar.js",
     "piso": "node piso_filas.js",
     "pasillo": "node pasillo.js",
     "columna": "node columna_piso.js",
-    "alinear": "node alinear_filas.js"
+    "alinear": "node alinear_filas.js",
+    "pdf": "node pdf_inventario.js"
   },
   "devDependencies": {
     "acorn": "^8.18.0",
