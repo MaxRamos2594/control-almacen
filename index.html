@@ -1486,6 +1486,7 @@
       <div class="field" style="max-width:320px;"><label>Buscar (código o descripción que contengan)</label><input type="text" id="inv-buscar" class="upper" list="inv-codigo-datalist" autocomplete="off" placeholder="EJ. SANDALIA o 06TP"><datalist id="inv-codigo-datalist"></datalist></div>
       <div class="field" style="max-width:260px;"><label>Proveedor (nombre que contenga)</label><input type="text" id="inv-buscar-proveedor" class="upper" list="pr-proveedor-datalist" autocomplete="off" placeholder="EJ. DISTRIBUIDORA XYZ"></div>
     </div>
+    <div id="inv-aviso-costos" class="hint" style="display:none; margin:0 0 10px; padding:8px 10px; border:1px solid #E3B8B0; background:#FBEDEA; border-radius:6px; color:#6B2A20;"></div>
     <div class="hist-wrap" style="max-height:600px;">
       <table class="tabla-compacta"><thead><tr><th>Código</th><th>Descripción</th><th>Proveedor</th><th>Cantidad total</th><th>Costo unitario</th><th>Costo total</th><th></th></tr></thead><tbody id="inv-body"></tbody></table>
       <!-- Cantidad total en formato de miles sin decimales (fmtEntero); Costo total en soles con 2 decimales (fmtMoneyComma). -->
@@ -2661,8 +2662,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v133';
-const APP_UPDATED = '30/09/2026 09:00';
+const APP_VERSION = 'v134';
+const APP_UPDATED = '01/10/2026 09:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -5247,7 +5248,9 @@ function renderDetalle(id, p){
   const filas = (pal.items||[]).map(it=>{
     // Costo y descripción en vivo desde el catálogo de productos si existe; si el
     // producto ya no está en el catálogo, se usa lo guardado en el pallet como respaldo.
-    const costoVivo = productos[it.producto] ? (Number(productos[it.producto].costo)||0) : (Number(it.costo)||0);
+    // (si el catálogo no tiene costo —vacío o 0—, también se usa el del pallet).
+    const costoCatalogo = productos[it.producto] ? (Number(productos[it.producto].costo)||0) : 0;
+    const costoVivo = costoCatalogo > 0 ? costoCatalogo : (Number(it.costo)||0);
     const descVivo = productos[it.producto] ? (productos[it.producto].descripcion || '') : (it.descripcion || '');
     totalCant += Number(it.cantidad)||0;
     totalCosto += (Number(it.cantidad)||0)*costoVivo;
@@ -5932,14 +5935,27 @@ function computeInventario(){
   const inv = {};
   Object.entries(pallets).forEach(([codigoPallet, p])=>{
     (p.items||[]).forEach(it=>{
-      if(!inv[it.producto]) inv[it.producto] = { descripcion: it.descripcion, total:0, detalle:[] };
+      if(!inv[it.producto]) inv[it.producto] = { descripcion: it.descripcion, total:0, detalle:[], _cantConCosto:0, _valorPallets:0 };
       inv[it.producto].total += Number(it.cantidad)||0;
+      // Costo guardado en el pallet (respaldo si el catálogo no tiene costo).
+      const cPallet = Number(it.costo);
+      if(cPallet > 0){ inv[it.producto]._cantConCosto += Number(it.cantidad)||0; inv[it.producto]._valorPallets += cPallet * (Number(it.cantidad)||0); }
       inv[it.producto].detalle.push({ pallet: codigoPallet, posicion: p.posicion_actual, cantidad: it.cantidad });
     });
   });
   Object.keys(inv).forEach(codigo=>{
     const prod = productos[codigo];
-    const costo = prod ? Number(prod.costo)||0 : 0;
+    // El costo es el del catálogo de Productos. Si el catálogo no tiene costo
+    // (no existe, vacío o 0), se usa el guardado en los pallets al ingresar
+    // el producto (promedio ponderado por cantidad); costoOrigen lo indica.
+    let costo = prod ? Number(prod.costo)||0 : 0;
+    inv[codigo].costoOrigen = costo > 0 ? 'catalogo' : 'sin_costo';
+    if(!(costo > 0) && inv[codigo]._cantConCosto > 0){
+      costo = inv[codigo]._valorPallets / inv[codigo]._cantConCosto;
+      inv[codigo].costoOrigen = 'pallet';
+    }
+    inv[codigo].enCatalogo = !!prod;
+    delete inv[codigo]._cantConCosto; delete inv[codigo]._valorPallets;
     inv[codigo].costo = costo;
     inv[codigo].costoTotal = costo * inv[codigo].total;
     inv[codigo].proveedor = prod ? (prod.proveedor || '') : '';
@@ -5949,12 +5965,28 @@ function computeInventario(){
   return inv;
 }
 let invDetalleCache = {};
+let invSoloSinCosto = false;
 function renderInventario(){
   const body = $('inv-body'); if(!body) return;
   const inv = computeInventario();
   const buscar = ($('inv-buscar') ? $('inv-buscar').value.trim().toLowerCase() : '');
   const buscarProveedor = ($('inv-buscar-proveedor') ? $('inv-buscar-proveedor').value.trim().toLowerCase() : '');
   let entries = Object.entries(inv).sort((a,b)=>a[0].localeCompare(b[0]));
+  // Aviso de productos cuyo costo no está en el catálogo de Productos.
+  const delPallet = Object.values(inv).filter(d=> d.costoOrigen==='pallet').length;
+  const sinCosto = Object.values(inv).filter(d=> d.costoOrigen==='sin_costo').length;
+  const aviso = $('inv-aviso-costos');
+  if(aviso){
+    if(delPallet || sinCosto){
+      aviso.style.display = 'block';
+      aviso.innerHTML = `<b>Costos a revisar en el catálogo de Productos:</b> ` +
+        (delPallet ? `${esc(delPallet)} producto(s) sin costo en el catálogo usan el costo guardado en sus pallets <i>(pallet)</i>. ` : '') +
+        (sinCosto ? `${esc(sinCosto)} producto(s) no tienen costo en ningún lado <b>(⚠ sin costo)</b> y suman 0 al valorizado. ` : '') +
+        `<label style="display:inline-flex; align-items:center; gap:4px; margin-left:6px;"><input type="checkbox" id="inv-solo-sin-costo" ${invSoloSinCosto ? 'checked' : ''} style="width:auto;"> Ver solo estos</label>`;
+      $('inv-solo-sin-costo').onchange = (e)=>{ invSoloSinCosto = e.target.checked; reiniciarPaginaInventario(); };
+    } else { aviso.style.display = 'none'; invSoloSinCosto = false; }
+  }
+  if(invSoloSinCosto) entries = entries.filter(([,d])=> d.costoOrigen!=='catalogo');
   if(buscar){
     entries = entries.filter(([codigo,data])=> codigo.toLowerCase().includes(buscar) || (data.descripcion||'').toLowerCase().includes(buscar));
   }
@@ -5979,7 +6011,7 @@ function renderInventario(){
   body.innerHTML = entriesPagina.map(([codigo,data])=>{
     const detId = `inv-det-${codigo}`;
     invDetalleCache[detId] = data.detalle;
-    return `<tr><td>${esc(codigo)}</td><td>${esc(data.descripcion||'')}</td><td>${esc(data.proveedor||'')}</td><td>${fmtEntero(data.total)}</td><td>${fmtMoney(data.costo)}</td><td>S/ ${fmtMoneyComma(data.costoTotal)}</td><td><button class="btn btn-ghost btn-sm" data-toggle-inv="${esc(detId)}">Ver detalle</button></td></tr>
+    return `<tr><td>${esc(codigo)}</td><td>${esc(data.descripcion||'')}</td><td>${esc(data.proveedor||'')}</td><td>${fmtEntero(data.total)}</td><td>${fmtMoney(data.costo)}${data.costoOrigen==='pallet' ? ' <span class="hint" title="El catálogo de Productos no tiene costo para este código: se usa el costo guardado en los pallets">(pallet)</span>' : (data.costoOrigen==='sin_costo' ? ' <span style="color:#8A332A; font-weight:700;" title="Ni el catálogo de Productos ni los pallets tienen costo para este código">⚠ sin costo</span>' : '')}</td><td>S/ ${fmtMoneyComma(data.costoTotal)}</td><td><button class="btn btn-ghost btn-sm" data-toggle-inv="${esc(detId)}">Ver detalle</button></td></tr>
     <tr id="${esc(detId)}" style="display:none;"><td colspan="7"></td></tr>`;
   }).join('');
   body.querySelectorAll('[data-toggle-inv]').forEach(btn=>{
@@ -6009,10 +6041,11 @@ $('btn-exportar-inventario').addEventListener('click', ()=>{
   actualizarProgresoDescarga(30);
   const filas = entries.map(([codigo,data])=>({
     'Código': codigo, 'Descripción': data.descripcion||'', 'Proveedor': data.proveedor||'', 'Cantidad total': data.total,
-    'Costo unitario': data.costo, 'Costo total': data.costoTotal
+    'Costo unitario': data.costo, 'Costo total': data.costoTotal,
+    'Origen del costo': data.costoOrigen==='catalogo' ? 'Catálogo' : (data.costoOrigen==='pallet' ? 'Pallet (sin costo en catálogo)' : 'SIN COSTO')
   }));
   const totalValorizado = entries.reduce((acc,[,d])=>acc+d.costoTotal, 0);
-  filas.push({ 'Código':'', 'Descripción':'', 'Proveedor':'', 'Cantidad total':'', 'Costo unitario':'TOTAL VALORIZADO', 'Costo total': totalValorizado });
+  filas.push({ 'Código':'', 'Descripción':'', 'Proveedor':'', 'Cantidad total':'', 'Costo unitario':'TOTAL VALORIZADO', 'Costo total': totalValorizado, 'Origen del costo':'' });
   actualizarProgresoDescarga(65);
   const ws = XLSX.utils.json_to_sheet(filas);
   const wb = XLSX.utils.book_new();
