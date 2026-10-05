@@ -1485,7 +1485,12 @@
     <div style="display:flex; gap:14px; flex-wrap:wrap;">
       <div class="field" style="max-width:320px;"><label>Buscar (código o descripción que contengan)</label><input type="text" id="inv-buscar" class="upper" list="inv-codigo-datalist" autocomplete="off" placeholder="EJ. SANDALIA o 06TP"><datalist id="inv-codigo-datalist"></datalist></div>
       <div class="field" style="max-width:260px;"><label>Proveedor (nombre que contenga)</label><input type="text" id="inv-buscar-proveedor" class="upper" list="pr-proveedor-datalist" autocomplete="off" placeholder="EJ. DISTRIBUIDORA XYZ"></div>
+      <div class="field" style="max-width:130px;" title="Posición (A01) o nicho completo (A). Vacío = desde el inicio."><label>Posición desde</label><input type="text" id="inv-pos-desde" class="upper" list="inv-pos-datalist" autocomplete="off" placeholder="EJ. A01 o A"></div>
+      <div class="field" style="max-width:130px;" title="Posición (L14) o nicho completo (L). Vacío = hasta el final."><label>Posición hasta</label><input type="text" id="inv-pos-hasta" class="upper" list="inv-pos-datalist" autocomplete="off" placeholder="EJ. L14 o L"></div>
+      <datalist id="inv-pos-datalist"></datalist>
+      <div class="field" style="align-self:flex-end;"><button class="btn btn-ghost btn-sm" id="btn-inv-limpiar" type="button" style="display:none;">✕ Limpiar filtros</button></div>
     </div>
+    <div id="inv-resumen" style="margin:2px 0 10px; font-size:12px;"></div>
     <div id="inv-aviso-costos" class="hint" style="display:none; margin:0 0 10px; padding:8px 10px; border:1px solid #E3B8B0; background:#FBEDEA; border-radius:6px; color:#6B2A20;"></div>
     <div class="hist-wrap" style="max-height:600px;">
       <table class="tabla-compacta"><thead><tr><th>Código</th><th>Descripción</th><th>Proveedor</th><th>Cantidad total</th><th>Costo unitario</th><th>Costo total</th><th></th></tr></thead><tbody id="inv-body"></tbody></table>
@@ -1493,7 +1498,7 @@
 
       <div class="empty-state" id="inv-empty">Sin inventario todavía.</div>
     </div>
-    <div class="total-line" style="font-size:15px; margin-top:12px;"><span><b>TOTAL VALORIZADO DEL ALMACÉN</b></span><span id="inv-total-valorizado"><b>0.00</b></span></div>
+    <div class="total-line" style="font-size:15px; margin-top:12px;"><span><b id="inv-total-label">TOTAL VALORIZADO DEL ALMACÉN</b></span><span id="inv-total-valorizado"><b>0.00</b></span></div>
   </div>
 </div>
 
@@ -2662,8 +2667,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v135';
-const APP_UPDATED = '05/10/2026 09:00';
+const APP_VERSION = 'v136';
+const APP_UPDATED = '06/10/2026 09:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -5964,14 +5969,104 @@ function computeInventario(){
   invCache = inv;
   return inv;
 }
+// Inventario de solo los pallets que están en ciertas posiciones (filtro
+// "Posición desde/hasta"). Los costos son los del inventario completo, para
+// que un producto valga lo mismo con o sin filtro.
+function computeInventarioEnPosiciones(enRango){
+  const completo = computeInventario();
+  const inv = {};
+  Object.entries(pallets).forEach(([codigoPallet, p])=>{
+    if(!p.posicion_actual || !enRango(p.posicion_actual)) return;
+    (p.items||[]).forEach(it=>{
+      const base = completo[it.producto]; if(!base) return;
+      if(!inv[it.producto]) inv[it.producto] = Object.assign({}, base, { total:0, detalle:[] });
+      inv[it.producto].total += Number(it.cantidad)||0;
+      inv[it.producto].detalle.push({ pallet: codigoPallet, posicion: p.posicion_actual, cantidad: it.cantidad });
+    });
+  });
+  Object.values(inv).forEach(d=>{ d.costoTotal = d.costo * d.total; });
+  return inv;
+}
+// Orden de las posiciones para los rangos: por nicho (A, B … Z, AA, AB …, y
+// después los demás códigos como X1, PA-A… en orden alfabético) y dentro del
+// nicho por número (A01, A02 …).
+function claveNichoOrden(n){
+  return /^[A-Z]+$/.test(n) ? [0, letterToIndex(n), ''] : [1, 0, n];
+}
+function compararPosClave(a, b){
+  const ka = claveNichoOrden(a.nicho), kb = claveNichoOrden(b.nicho);
+  if(ka[0]!==kb[0]) return ka[0]-kb[0];
+  if(ka[1]!==kb[1]) return ka[1]-kb[1];
+  if(ka[2]!==kb[2]) return ka[2] < kb[2] ? -1 : 1;
+  return a.num - b.num;
+}
+function partesDePosicion(posId){
+  const p = posiciones[posId];
+  if(!p || !p.nicho || !posId.startsWith(p.nicho)) return null;
+  const num = parseInt(posId.slice(p.nicho.length), 10);
+  return Number.isFinite(num) ? { nicho: p.nicho, num } : null;
+}
+// Interpreta lo escrito en "desde"/"hasta": una posición (A01), un nicho
+// completo (A = A01…A99) o nicho + número. null = vacío; false = no existe.
+function limiteDePosicion(texto, esHasta){
+  const t = (texto||'').trim().toUpperCase();
+  if(!t) return null;
+  const exacta = partesDePosicion(t);
+  if(exacta) return exacta;
+  if(nichos[t]) return { nicho: t, num: esHasta ? Infinity : -Infinity };
+  const m = t.match(/^(.+?)(\d+)$/);
+  if(m && nichos[m[1]]) return { nicho: m[1], num: parseInt(m[2], 10) };
+  return false;
+}
+// Filtro de posición del inventario: null si no hay filtro; si no, una
+// función posId → si está en el rango (los extremos se aceptan en cualquier orden).
+function filtroPosicionInventario(){
+  const dTxt = $('inv-pos-desde') ? $('inv-pos-desde').value : '';
+  const hTxt = $('inv-pos-hasta') ? $('inv-pos-hasta').value : '';
+  let d = limiteDePosicion(dTxt, false), h = limiteDePosicion(hTxt, true);
+  if(d===null && h===null) return null;
+  const errores = [];
+  if(d===false) errores.push(`"${dTxt.trim().toUpperCase()}"`);
+  if(h===false) errores.push(`"${hTxt.trim().toUpperCase()}"`);
+  if(errores.length) return { error: `No existe la posición o nicho ${errores.join(' ni ')}.` };
+  if(d && h && compararPosClave(d, h) > 0){
+    // Al revés (ej. desde L hasta A): se invierte, con los extremos de nicho correctos.
+    const d2 = limiteDePosicion(hTxt, false), h2 = limiteDePosicion(dTxt, true); d = d2; h = h2;
+  }
+  return { enRango: (posId)=>{
+    const k = partesDePosicion(posId); if(!k) return false;
+    if(d && compararPosClave(k, d) < 0) return false;
+    if(h && compararPosClave(k, h) > 0) return false;
+    return true;
+  }, texto: `posición ${d ? (dTxt||'').trim().toUpperCase() : 'inicio'} – ${h ? (hTxt||'').trim().toUpperCase() : 'fin'}` };
+}
+// Inventario con todos los filtros de la pantalla (código/descripción,
+// proveedor, posición y "ver solo sin costo"); lo usan la tabla, el Excel y el PDF.
+function inventarioConFiltros(){
+  const completo = computeInventario();
+  const buscar = ($('inv-buscar') ? $('inv-buscar').value.trim().toLowerCase() : '');
+  const buscarProveedor = ($('inv-buscar-proveedor') ? $('inv-buscar-proveedor').value.trim().toLowerCase() : '');
+  const fPos = filtroPosicionInventario();
+  const inv = fPos && fPos.enRango ? computeInventarioEnPosiciones(fPos.enRango) : completo;
+  let entries = Object.entries(inv);
+  if(invSoloSinCosto) entries = entries.filter(([,d])=> d.costoOrigen!=='catalogo');
+  if(buscar) entries = entries.filter(([codigo,data])=> codigo.toLowerCase().includes(buscar) || (data.descripcion||'').toLowerCase().includes(buscar));
+  if(buscarProveedor) entries = entries.filter(([,data])=> (data.proveedor||'').toLowerCase().includes(buscarProveedor));
+  const activos = [];
+  if(buscar) activos.push(`código/descripción "${buscar.toUpperCase()}"`);
+  if(buscarProveedor) activos.push(`proveedor "${buscarProveedor.toUpperCase()}"`);
+  if(fPos && fPos.texto) activos.push(fPos.texto);
+  if(invSoloSinCosto) activos.push('solo costos a revisar');
+  if(fPos && fPos.error) entries = [];
+  return { completo, entries, activos, errorPosicion: fPos && fPos.error ? fPos.error : '' };
+}
 let invDetalleCache = {};
 let invSoloSinCosto = false;
 function renderInventario(){
   const body = $('inv-body'); if(!body) return;
-  const inv = computeInventario();
-  const buscar = ($('inv-buscar') ? $('inv-buscar').value.trim().toLowerCase() : '');
-  const buscarProveedor = ($('inv-buscar-proveedor') ? $('inv-buscar-proveedor').value.trim().toLowerCase() : '');
-  let entries = Object.entries(inv).sort((a,b)=>a[0].localeCompare(b[0]));
+  const filtrado = inventarioConFiltros();
+  const inv = filtrado.completo;
+  let entries = filtrado.entries.sort((a,b)=>a[0].localeCompare(b[0]));
   // Aviso de productos cuyo costo no está en el catálogo de Productos.
   const delPallet = Object.values(inv).filter(d=> d.costoOrigen==='pallet').length;
   const sinCosto = Object.values(inv).filter(d=> d.costoOrigen==='sin_costo').length;
@@ -5986,21 +6081,23 @@ function renderInventario(){
       $('inv-solo-sin-costo').onchange = (e)=>{ invSoloSinCosto = e.target.checked; reiniciarPaginaInventario(); };
     } else { aviso.style.display = 'none'; invSoloSinCosto = false; }
   }
-  if(invSoloSinCosto) entries = entries.filter(([,d])=> d.costoOrigen!=='catalogo');
-  if(buscar){
-    entries = entries.filter(([codigo,data])=> codigo.toLowerCase().includes(buscar) || (data.descripcion||'').toLowerCase().includes(buscar));
-  }
-  if(buscarProveedor){
-    entries = entries.filter(([,data])=> (data.proveedor||'').toLowerCase().includes(buscarProveedor));
-  }
-  let totalValorizado = 0;
-  entries.forEach(([,data])=>{ totalValorizado += data.costoTotal; });
+  let totalValorizado = 0, totalUnidades = 0;
+  entries.forEach(([,data])=>{ totalValorizado += data.costoTotal; totalUnidades += Number(data.total)||0; });
+  const hayFiltros = filtrado.activos.length > 0;
+  $('inv-total-label').textContent = hayFiltros ? 'TOTAL VALORIZADO (FILTRADO)' : 'TOTAL VALORIZADO DEL ALMACÉN';
   $('inv-total-valorizado').innerHTML = `<b>S/ ${fmtMoneyComma(totalValorizado)}</b>`;
+  // Resumen de lo que se está viendo + filtros activos
+  const resumen = $('inv-resumen');
+  resumen.innerHTML = filtrado.errorPosicion
+    ? `<span style="color:#8A332A; font-weight:700;">${esc(filtrado.errorPosicion)}</span>`
+    : `<b>${esc(fmtEntero(entries.length))}</b> producto(s) · <b>${esc(fmtEntero(totalUnidades))}</b> unidades · <b>S/ ${esc(fmtMoneyComma(totalValorizado))}</b>` +
+      (hayFiltros ? ` <span class="hint">· Filtros: ${esc(filtrado.activos.join(' · '))}</span>` : '');
+  $('btn-inv-limpiar').style.display = hayFiltros || filtrado.errorPosicion ? '' : 'none';
   if(entries.length===0){
     body.innerHTML=''; $('inv-empty').style.display='block';
-    $('inv-empty').textContent = (buscar||buscarProveedor)
-      ? 'Sin resultados para esa búsqueda.'
-      : (datosListos ? 'Sin inventario todavía.' : 'Cargando inventario…');
+    $('inv-empty').textContent = filtrado.errorPosicion ? filtrado.errorPosicion
+      : (hayFiltros ? 'Sin resultados con esos filtros.'
+      : (datosListos ? 'Sin inventario todavía.' : 'Cargando inventario…'));
     return;
   }
   invDetalleCache = {};
@@ -6032,20 +6129,40 @@ function renderInventario(){
 function reiniciarPaginaInventario(){ fijarPagina('inv-body', 1); renderInventario(); }
 $('inv-buscar').addEventListener('input', reiniciarPaginaInventario);
 $('inv-buscar-proveedor').addEventListener('input', reiniciarPaginaInventario);
+['inv-pos-desde','inv-pos-hasta'].forEach(id=>{
+  $(id).addEventListener('input', reiniciarPaginaInventario);
+  // Sugerencias: nichos y posiciones con pallet, en orden (se arman al enfocar).
+  $(id).addEventListener('focus', ()=>{
+    const dl = $('inv-pos-datalist'); if(dl.dataset.listo === String(Object.keys(posiciones).length)) return;
+    const conPallet = Object.keys(posiciones).filter(pid=> posiciones[pid].pallet_codigo && partesDePosicion(pid))
+      .sort((a,b)=> compararPosClave(partesDePosicion(a), partesDePosicion(b)));
+    const nichosOrd = Object.keys(nichos).sort((a,b)=> compararPosClave({nicho:a,num:0},{nicho:b,num:0}));
+    dl.innerHTML = nichosOrd.map(n=> `<option value="${esc(n)}">Nicho completo</option>`).join('') + conPallet.map(pid=> `<option value="${esc(pid)}">`).join('');
+    dl.dataset.listo = String(Object.keys(posiciones).length);
+  });
+});
+$('btn-inv-limpiar').addEventListener('click', ()=>{
+  ['inv-buscar','inv-buscar-proveedor','inv-pos-desde','inv-pos-hasta'].forEach(id=> $(id).value = '');
+  invSoloSinCosto = false;
+  reiniciarPaginaInventario();
+});
 $('btn-exportar-inventario').addEventListener('click', ()=>{
-  const inv = computeInventario();
-  const entries = Object.entries(inv).sort((a,b)=>a[0].localeCompare(b[0]));
-  if(entries.length===0){ showToast('No hay inventario para exportar.','err'); return; }
+  // Exporta lo mismo que se ve en pantalla (con los filtros activos).
+  const filtrado = inventarioConFiltros();
+  const entries = filtrado.entries.sort((a,b)=>a[0].localeCompare(b[0]));
+  if(entries.length===0){ showToast(filtrado.errorPosicion || 'No hay inventario para exportar con esos filtros.','err'); return; }
   const nombreArchivo = `inventario_${new Date().toISOString().slice(0,10)}.xlsx`;
   mostrarProgresoDescarga(nombreArchivo);
   actualizarProgresoDescarga(30);
   const filas = entries.map(([codigo,data])=>({
     'Código': codigo, 'Descripción': data.descripcion||'', 'Proveedor': data.proveedor||'', 'Cantidad total': data.total,
+    'Posiciones': [...new Set(data.detalle.map(d=> d.posicion).filter(Boolean))].join(', '),
     'Costo unitario': data.costo, 'Costo total': data.costoTotal,
     'Origen del costo': data.costoOrigen==='catalogo' ? 'Catálogo' : (data.costoOrigen==='pallet' ? 'Pallet (sin costo en catálogo)' : 'SIN COSTO')
   }));
   const totalValorizado = entries.reduce((acc,[,d])=>acc+d.costoTotal, 0);
-  filas.push({ 'Código':'', 'Descripción':'', 'Proveedor':'', 'Cantidad total':'', 'Costo unitario':'TOTAL VALORIZADO', 'Costo total': totalValorizado, 'Origen del costo':'' });
+  filas.push({ 'Código':'', 'Descripción':'', 'Proveedor':'', 'Cantidad total':'', 'Posiciones':'', 'Costo unitario':'TOTAL VALORIZADO', 'Costo total': totalValorizado, 'Origen del costo':'' });
+  if(filtrado.activos.length) filas.push({ 'Código':'Filtros: ' + filtrado.activos.join(' · ') });
   actualizarProgresoDescarga(65);
   const ws = XLSX.utils.json_to_sheet(filas);
   const wb = XLSX.utils.book_new();
@@ -6120,13 +6237,10 @@ async function cargarImagenComoDataURL(url){
 // fecha/hora y usuario de exportación, ordenado de mayor a menor por costo total,
 // foto del producto a la derecha de cada fila, y totales de unidades y valorizado al final.
 async function generarPDFInventarioAcumulado(){
-  const inv = computeInventario();
-  const buscar = ($('inv-buscar') ? $('inv-buscar').value.trim().toLowerCase() : '');
-  const buscarProveedor = ($('inv-buscar-proveedor') ? $('inv-buscar-proveedor').value.trim().toLowerCase() : '');
-  let entries = Object.entries(inv);
-  if(buscar){ entries = entries.filter(([codigo,data])=> codigo.toLowerCase().includes(buscar) || (data.descripcion||'').toLowerCase().includes(buscar)); }
-  if(buscarProveedor){ entries = entries.filter(([,data])=> (data.proveedor||'').toLowerCase().includes(buscarProveedor)); }
-  if(entries.length===0){ showToast('No hay inventario para exportar.','err'); return; }
+  // Exporta lo mismo que se ve en pantalla (con los filtros activos).
+  const filtrado = inventarioConFiltros();
+  let entries = filtrado.entries;
+  if(entries.length===0){ showToast(filtrado.errorPosicion || 'No hay inventario para exportar con esos filtros.','err'); return; }
   entries.sort((a,b)=> b[1].costoTotal - a[1].costoTotal); // mayor a menor por costo total
 
   const btnExport = $('btn-exportar-inventario-pdf');
@@ -6177,6 +6291,10 @@ async function generarPDFInventarioAcumulado(){
     doc.text(`Fecha: ${fechaStr}   Hora: ${horaStr}`, margin, y);
     y += 5.5;
     doc.text(`Exportado por: ${currentUserAlias||''}`, margin, y);
+    if(filtrado.activos.length){
+      y += 5.5;
+      doc.text(doc.splitTextToSize(`Filtros: ${filtrado.activos.join(' · ')}`, pageW - margin*2 - 40)[0], margin, y);
+    }
 
     let totalUnidades = 0, totalValorizado = 0;
     const filas = entries.map(([codigo,data])=>{
