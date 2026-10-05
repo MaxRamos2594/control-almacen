@@ -2662,8 +2662,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v134';
-const APP_UPDATED = '01/10/2026 09:00';
+const APP_VERSION = 'v135';
+const APP_UPDATED = '05/10/2026 09:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -8284,8 +8284,10 @@ function parseGuiaPDF(paginas){
   let enTabla = false;
   for(const g of todasLineas){
     const textos = g.items.map(txtItem);
-    if(textos.length===5 && /^item$/i.test(textos[0]) && /^codigo$/i.test(textos[1])){ enTabla = true; continue; }
-    if(/^Datos del Vehiculo/i.test(textos[0]||'')){ enTabla = false; continue; }
+    // Se compara sin tildes: según el sistema que emite la guía, el encabezado
+    // viene como "Item/Codigo" o "Ítem/Código" (y "Vehiculo" o "Vehículo").
+    if(textos.length===5 && normalizarTexto(textos[0])==='ITEM' && normalizarTexto(textos[1])==='CODIGO'){ enTabla = true; continue; }
+    if(normalizarTexto(textos[0]).startsWith('DATOS DEL VEHICULO')){ enTabla = false; continue; }
     if(!enTabla) continue;
     if(textos.length===5 && /^\d+$/.test(textos[0]) && /^[\d,]+\.\d{2}$/.test(textos[4])){
       items.push({
