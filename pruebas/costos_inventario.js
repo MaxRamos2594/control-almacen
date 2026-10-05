@@ -42,12 +42,12 @@ function verificar(condicion, texto){
     filas: [...document.querySelectorAll('#inv-body tr')].filter(r=> r.style.display!=='none').map(r=> r.innerText.replace(/\s+/g,' ')),
     total: $('inv-total-valorizado').innerText }));
   verificar(pantalla.visible && /2 producto\(s\) sin costo en el catálogo/.test(pantalla.aviso) && /1 producto\(s\) no tienen costo/.test(pantalla.aviso), `Aviso: ${pantalla.aviso.replace(/\s+/g,' ').slice(0,160)}…`);
-  verificar(pantalla.filas.some(f=> /^P2 .*5\.50 \(pallet\)/.test(f)) && pantalla.filas.some(f=> /^P4 .*⚠ sin costo/.test(f)), 'En la tabla: P2 muestra 5.50 (pallet) y P4 "⚠ sin costo"');
+  verificar(pantalla.filas.some(f=> /\bP2 .*5\.50 \(pallet\)/.test(f)) && pantalla.filas.some(f=> /\bP4 .*⚠ sin costo/.test(f)), 'En la tabla: P2 muestra 5.50 (pallet) y P4 "⚠ sin costo"');
   verificar(/276\.00/.test(pantalla.total), `Total valorizado = 50 + 220 + 6 + 0 = 276 → ${pantalla.total}`);
 
   await page.check('#inv-solo-sin-costo');
   await page.waitForTimeout(400);
-  const filtradas = await page.evaluate(()=> [...document.querySelectorAll('#inv-body tr')].filter(r=> r.style.display!=='none' && !r.id).map(r=> r.cells[0].innerText));
+  const filtradas = await page.evaluate(()=> [...document.querySelectorAll('#inv-body tr')].filter(r=> r.style.display!=='none' && !r.id).map(r=> r.cells[1].innerText));
   verificar(filtradas.join(',') === 'P2,P3,P4', `"Ver solo estos": ${filtradas.join(', ')}`);
   await page.uncheck('#inv-solo-sin-costo');
   await page.waitForTimeout(300);

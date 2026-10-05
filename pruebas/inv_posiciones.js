@@ -33,7 +33,7 @@ function verificar(condicion, texto){
   await page.waitForTimeout(600);
 
   const ver = ()=> page.evaluate(()=> ({
-    filas: [...document.querySelectorAll('#inv-body tr')].filter(r=> !r.id).map(r=> `${r.cells[0].innerText}:${r.cells[3].innerText}`).join(' '),
+    filas: [...document.querySelectorAll('#inv-body tr')].filter(r=> !r.id).map(r=> `${r.cells[1].innerText}:${r.cells[4].innerText}`).join(' '),
     resumen: $('inv-resumen').innerText.replace(/\s+/g,' '), total: $('inv-total-valorizado').innerText, etiqueta: $('inv-total-label').innerText,
     limpiar: $('btn-inv-limpiar').style.display !== 'none', vacio: $('inv-empty').style.display !== 'none' ? $('inv-empty').innerText : '' }));
   const filtrar = async (desde, hasta, prov='')=>{
@@ -61,9 +61,11 @@ function verificar(condicion, texto){
 
   // Ver detalle muestra solo los pallets del rango
   await filtrar('A', 'B');
-  await page.click('#inv-body [data-toggle-inv="inv-det-P1"]');
-  const detalle = await page.evaluate(()=> document.getElementById('inv-det-P1').innerText.replace(/\s+/g,' '));
-  verificar(/CD0001 A01 5/.test(detalle) && !/C05/.test(detalle), `Ver detalle de P1 con A a B: ${detalle}`);
+  await page.click('#inv-body button[data-inv-det="P1"]');
+  await page.waitForSelector('#inv-drawer.abierto');
+  const detalle = await page.evaluate(()=> [...document.querySelectorAll('#inv-drawer-cuerpo tbody tr')].map(r=> r.innerText.replace(/\s+/g,' ').trim()).join(' | '));
+  verificar(/^CD0001 A01 A 5/.test(detalle) && !/C05/.test(detalle), `Ver detalle de P1 con A a B: ${detalle}`);
+  await page.click('#inv-drawer-cerrar');
 
   // Excel con filtros
   await filtrar('A01', 'C05');
