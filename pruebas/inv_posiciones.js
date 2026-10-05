@@ -79,6 +79,26 @@ function verificar(condicion, texto){
   verificar(p1['Cantidad total'] === 8 && p1['Posiciones'] === 'A01, C05', `Excel: P1 con 8 unidades en "${p1['Posiciones']}"`);
   verificar(/Filtros: posición A01 – C05/.test(filas[filas.length-1]['Código'] || ''), `Excel: anota los filtros (${filas[filas.length-1]['Código']})`);
 
+  // Excel por pallet: una fila por pallet + posición + producto, ordenado por pallet
+  const excelPallet = async (nombre)=>{
+    const [d] = await Promise.all([ page.waitForEvent('download', { timeout: 30000 }), page.click('#btn-exportar-inventario-pallet') ]);
+    const f = path.join(__dirname, 'salida', nombre); await d.saveAs(f);
+    return XLSX.utils.sheet_to_json(XLSX.readFile(f).Sheets['Por pallet']);
+  };
+  const resumenFilas = filas=> filas.filter(f=> /^CD/.test(f['Pallet'])).map(f=> `${f['Pallet']}/${f['Posición']||'-'}/${f['Código']}:${f['Cantidad']}`).join(' ');
+  await page.click('#btn-inv-limpiar'); await page.waitForTimeout(300);
+  let fp = await excelPallet('inventario_por_pallet.xlsx');
+  verificar(resumenFilas(fp) === 'CD0001/A01/P1:5 CD0002/B01/P2:10 CD0003/C05/P1:3 CD0003/C05/P2:1 CD0004/K03/P3:2 CD0005/X101/P4:4 CD0006/-/P5:7',
+    `Excel por pallet sin filtros, ordenado por pallet: ${resumenFilas(fp)}`);
+  const tot = fp.find(f=> /^TOTAL/.test(f['Pallet'])) || {};
+  verificar(tot['Pallet'] === 'TOTAL (6 pallets)' && tot['Cantidad'] === 32 && tot['Costo total'] === 320, `Excel por pallet: fila de total (${tot['Pallet']}, ${tot['Cantidad']} unidades, ${tot['Costo total']})`);
+  const c3 = fp.find(f=> f['Pallet']==='CD0003' && f['Código']==='P1') || {};
+  verificar(c3['Nicho'] === 'C' && c3['Bloque'] === 'A' && c3['Costo unitario'] === 10 && c3['Costo total'] === 30 && c3['Descripción'] === 'PRODUCTO UNO', 'Excel por pallet: nicho, bloque, descripción y costos por fila');
+  await filtrar('A', 'K', 'HERRAMIENTAS');
+  fp = await excelPallet('inventario_por_pallet_filtrado.xlsx');
+  verificar(resumenFilas(fp) === 'CD0002/B01/P2:10 CD0003/C05/P2:1 CD0004/K03/P3:2', `Excel por pallet con filtros A–K + HERRAMIENTAS: ${resumenFilas(fp)}`);
+  verificar(/Filtros: proveedor "HERRAMIENTAS" · posición A – K/.test(fp[fp.length-1]['Pallet'] || ''), `Excel por pallet anota los filtros (${fp[fp.length-1]['Pallet']})`);
+
   // Limpiar
   await page.click('#btn-inv-limpiar');
   await page.waitForTimeout(300);

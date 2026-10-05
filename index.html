@@ -1541,6 +1541,7 @@
       <h3 style="margin:0;">Inventario (acumulado por producto)</h3>
       <div class="inv-acciones">
         <button class="btn btn-primary btn-sm" id="btn-exportar-inventario" type="button" title="Exporta lo que se ve, con los filtros activos">⬇ Excel</button>
+        <button class="btn btn-primary btn-sm" id="btn-exportar-inventario-pallet" type="button" title="Lo mismo que el Excel, pero una fila por pallet, posición y producto, ordenado por pallet">⬇ Excel por pallet</button>
         <button class="btn btn-ghost btn-sm" id="btn-exportar-inventario-pdf" type="button" title="Exporta lo que se ve, con los filtros activos">📄 PDF</button>
       </div>
     </div>
@@ -2751,8 +2752,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v137';
-const APP_UPDATED = '06/10/2026 12:00';
+const APP_VERSION = 'v138';
+const APP_UPDATED = '06/10/2026 15:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -6339,6 +6340,49 @@ $('btn-exportar-inventario').addEventListener('click', ()=>{
   XLSX.writeFile(wb, nombreArchivo);
   finalizarProgresoDescarga();
   showToast('Inventario exportado.','ok');
+});
+
+// Excel por pallet: lo mismo que el Excel de inventario (con los filtros
+// activos), pero una fila por pallet + posición + producto, ordenado por
+// pallet ascendente (y dentro del pallet, por código de producto).
+$('btn-exportar-inventario-pallet').addEventListener('click', ()=>{
+  const filtrado = inventarioConFiltros();
+  const origen = d=> d.costoOrigen==='catalogo' ? 'Catálogo' : (d.costoOrigen==='pallet' ? 'Pallet (sin costo en catálogo)' : 'SIN COSTO');
+  const lineas = [];
+  filtrado.entries.forEach(([codigo, data])=>{
+    data.detalle.forEach(det=>{
+      const cantidad = Number(det.cantidad)||0;
+      const pos = det.posicion ? posiciones[det.posicion] : null;
+      const bloque = pos && pos.bloque_id && bloques[pos.bloque_id] ? bloques[pos.bloque_id].nombre : '';
+      lineas.push({ pallet: det.pallet, posicion: det.posicion || '', nicho: pos && pos.nicho ? pos.nicho : '', bloque, codigo, data, cantidad });
+    });
+  });
+  if(lineas.length===0){ showToast(filtrado.errorPosicion || 'No hay inventario para exportar con esos filtros.','err'); return; }
+  const porTexto = (a,b)=> String(a).localeCompare(String(b), 'es', { numeric:true });
+  lineas.sort((a,b)=> porTexto(a.pallet, b.pallet) || porTexto(a.codigo, b.codigo));
+  const nombreArchivo = `inventario_por_pallet_${new Date().toISOString().slice(0,10)}.xlsx`;
+  mostrarProgresoDescarga(nombreArchivo);
+  actualizarProgresoDescarga(30);
+  const filas = lineas.map(l=>({
+    'Pallet': l.pallet, 'Posición': l.posicion, 'Nicho': l.nicho, 'Bloque': l.bloque,
+    'Código': l.codigo, 'Descripción': l.data.descripcion||'', 'Proveedor': l.data.proveedor||'',
+    'Cantidad': l.cantidad, 'Costo unitario': l.data.costo, 'Costo total': l.data.costo * l.cantidad,
+    'Origen del costo': origen(l.data)
+  }));
+  const totalUnidades = lineas.reduce((t,l)=> t + l.cantidad, 0);
+  const totalValorizado = lineas.reduce((t,l)=> t + l.data.costo * l.cantidad, 0);
+  const nPallets = new Set(lineas.map(l=> l.pallet)).size;
+  filas.push({ 'Pallet': `TOTAL (${nPallets} pallets)`, 'Cantidad': totalUnidades, 'Costo unitario':'TOTAL VALORIZADO', 'Costo total': totalValorizado });
+  if(filtrado.activos.length) filas.push({ 'Pallet':'Filtros: ' + filtrado.activos.join(' · ') });
+  actualizarProgresoDescarga(65);
+  const ws = XLSX.utils.json_to_sheet(filas);
+  ws['!cols'] = [10,9,6,10,14,50,18,9,13,13,26].map(w=>({ wch: w }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Por pallet');
+  actualizarProgresoDescarga(90);
+  XLSX.writeFile(wb, nombreArchivo);
+  finalizarProgresoDescarga();
+  showToast(`Inventario por pallet exportado (${nPallets} pallets, ${lineas.length} filas).`,'ok');
 });
 
 // Descarga una imagen (típicamente una URL de Firebase Storage) y la convierte a
