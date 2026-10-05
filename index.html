@@ -656,6 +656,63 @@
   th.th-ordenable.th-activo{color:var(--blue);}
   tfoot td{border-bottom:none; border-top:2px solid var(--line-strong); font-weight:700; background:#FAFBFC;}
   .hist-wrap{max-height:420px; overflow:auto;}
+  /* ---- Inventario ---- */
+  .inv-cabecera{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:12px;}
+  .inv-acciones{display:flex; gap:8px;}
+  .inv-kpis{display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:10px; margin-bottom:12px;}
+  .inv-kpi{display:flex; flex-direction:column; gap:2px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:#FAFBFC; text-align:left; font:inherit; color:inherit;}
+  .inv-kpi b{font-family:var(--mono); font-size:20px; color:var(--ink); line-height:1.2; overflow-wrap:anywhere;}
+  .inv-kpi-l{font-size:10px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft);}
+  button.inv-kpi{cursor:pointer;}
+  .inv-kpi-alerta.hay b{color:#8A332A;}
+  .inv-kpi-alerta.hay{border-color:#E3B8B0; background:#FBEDEA;}
+  .inv-kpi-alerta.activo{outline:2px solid #8A332A; outline-offset:1px;}
+  .inv-filtros{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:6px;}
+  .inv-filtros input{height:32px; padding:4px 8px; font-size:12px; width:auto;}
+  .inv-f-buscar{flex:2 1 220px;} .inv-f-prov{flex:1 1 150px;}
+  .inv-f-pos{display:flex; align-items:center; gap:4px; flex:1 1 230px;}
+  .inv-f-pos input{flex:1 1 90px; min-width:0;}
+  .inv-resumen{margin:2px 0 10px; font-size:12px; min-height:16px;}
+  .inv-tabla td.num, .inv-tabla th.num{text-align:right; white-space:nowrap;}
+  .inv-tabla th.th-ordenable.num{text-align:right;}
+  .inv-tabla td.inv-c-desc{max-width:420px;}
+  .inv-desc{display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; line-height:1.35;}
+  .inv-c-foto{width:44px;}
+  .inv-foto{width:36px; height:36px; object-fit:cover; border-radius:4px; border:1px solid var(--line); display:block; background:#F1F3F5; cursor:pointer;}
+  .inv-foto-vacia{width:36px; height:36px; border-radius:4px; border:1px dashed var(--line-strong); display:flex; align-items:center; justify-content:center; font-size:8px; color:var(--ink-soft);}
+  .inv-drawer-fondo{display:none; position:fixed; inset:0; background:rgba(20,28,38,.35); z-index:900;}
+  .inv-drawer-fondo.abierto{display:block;}
+  .inv-drawer{position:fixed; top:0; right:0; bottom:0; width:min(440px, 100vw); background:#fff; z-index:901; box-shadow:-8px 0 24px rgba(0,0,0,.18);
+    transform:translateX(105%); transition:transform .18s ease; display:flex; flex-direction:column;}
+  .inv-drawer.abierto{transform:none;}
+  .inv-drawer-cab{display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--line);}
+  #inv-drawer-cuerpo{padding:14px; overflow:auto;}
+  .inv-det-prod{display:flex; gap:12px; margin-bottom:12px;}
+  .inv-det-prod img, .inv-det-prod .inv-foto-vacia{width:96px; height:96px; flex-shrink:0;}
+  .inv-det-cifras{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px;}
+  .inv-det-cifras div{border:1px solid var(--line); border-radius:6px; padding:6px 8px; background:#FAFBFC;}
+  .inv-det-cifras span{display:block; font-size:9px; text-transform:uppercase; color:var(--ink-soft);}
+  .inv-det-cifras b{font-family:var(--mono); font-size:13px;}
+  @media (max-width:900px){ .inv-kpis{grid-template-columns:repeat(2, minmax(0,1fr));} }
+  /* En el celular, cada producto es una tarjeta en vez de una fila de tabla. */
+  @media (max-width:640px){
+    .inv-tabla-wrap table.inv-tabla{min-width:0 !important;}
+    .inv-tabla thead{display:none;}
+    .inv-tabla, .inv-tabla tbody{display:block;}
+    .inv-tabla tr{display:grid; grid-template-columns:44px minmax(0,1fr) minmax(0,1fr); gap:2px 8px; padding:8px 4px; border-bottom:1px solid var(--line);}
+    .inv-tabla td{min-width:0; overflow-wrap:anywhere;}
+    .inv-tabla td.inv-c-cod{grid-column:2; grid-row:1; align-self:center;}
+    .inv-tabla td{display:block; border:none; padding:0; font-size:11px;}
+    .inv-tabla td.inv-c-foto{grid-row:1 / span 4;}
+    .inv-tabla td.inv-c-cod{font-weight:700;}
+    .inv-tabla td.inv-c-desc{grid-column:2 / span 2; max-width:none;}
+    .inv-tabla td.num{text-align:left; white-space:normal;}
+    .inv-tabla td[data-label]::before{content:attr(data-label) ": "; color:var(--ink-soft); font-family:inherit;}
+    .inv-tabla td.inv-c-acc{grid-column:3; grid-row:1; justify-self:end;}
+    .inv-f-pos{flex:1 1 100%; min-width:0;}
+    .inv-f-pos input{width:0;}
+    .inv-kpi b{font-size:16px;}
+  }
   .hist-wrap thead th{position:sticky; top:0; background:#fff; z-index:2;}
   @media (max-width:900px){ .hist-wrap table{min-width:700px;} }
   .items-table input{width:100%; padding:4px 6px; font-size:11px; border:1px solid var(--line-strong); border-radius:3px; font-family:var(--mono);}
@@ -1479,27 +1536,54 @@
 
 <!-- INVENTARIO -->
 <div class="view" id="view-inventario">
-  <div class="panel">
-    <h3><span style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;"><span>Inventario (acumulado por producto)</span><button class="btn btn-primary btn-sm" id="btn-exportar-inventario" type="button">⬇ Exportar a Excel</button><button class="btn btn-ghost btn-sm" id="btn-exportar-inventario-pdf" type="button">📄 Exportar a PDF</button></span></h3>
-    <p class="hint" style="margin-bottom:10px;">Suma la cantidad de cada producto en todos los pallets activos del almacén. Haz clic en "Ver detalle" para ver en qué pallets y posiciones está.</p>
-    <div style="display:flex; gap:14px; flex-wrap:wrap;">
-      <div class="field" style="max-width:320px;"><label>Buscar (código o descripción que contengan)</label><input type="text" id="inv-buscar" class="upper" list="inv-codigo-datalist" autocomplete="off" placeholder="EJ. SANDALIA o 06TP"><datalist id="inv-codigo-datalist"></datalist></div>
-      <div class="field" style="max-width:260px;"><label>Proveedor (nombre que contenga)</label><input type="text" id="inv-buscar-proveedor" class="upper" list="pr-proveedor-datalist" autocomplete="off" placeholder="EJ. DISTRIBUIDORA XYZ"></div>
-      <div class="field" style="max-width:130px;" title="Posición (A01) o nicho completo (A). Vacío = desde el inicio."><label>Posición desde</label><input type="text" id="inv-pos-desde" class="upper" list="inv-pos-datalist" autocomplete="off" placeholder="EJ. A01 o A"></div>
-      <div class="field" style="max-width:130px;" title="Posición (L14) o nicho completo (L). Vacío = hasta el final."><label>Posición hasta</label><input type="text" id="inv-pos-hasta" class="upper" list="inv-pos-datalist" autocomplete="off" placeholder="EJ. L14 o L"></div>
-      <datalist id="inv-pos-datalist"></datalist>
-      <div class="field" style="align-self:flex-end;"><button class="btn btn-ghost btn-sm" id="btn-inv-limpiar" type="button" style="display:none;">✕ Limpiar filtros</button></div>
+  <div class="panel inv-panel">
+    <div class="inv-cabecera">
+      <h3 style="margin:0;">Inventario (acumulado por producto)</h3>
+      <div class="inv-acciones">
+        <button class="btn btn-primary btn-sm" id="btn-exportar-inventario" type="button" title="Exporta lo que se ve, con los filtros activos">⬇ Excel</button>
+        <button class="btn btn-ghost btn-sm" id="btn-exportar-inventario-pdf" type="button" title="Exporta lo que se ve, con los filtros activos">📄 PDF</button>
+      </div>
     </div>
-    <div id="inv-resumen" style="margin:2px 0 10px; font-size:12px;"></div>
+    <div class="inv-kpis">
+      <div class="inv-kpi"><span class="inv-kpi-l" id="inv-kpi-valor-l">Valorizado</span><b id="inv-kpi-valor">S/ 0.00</b></div>
+      <div class="inv-kpi"><span class="inv-kpi-l">Productos</span><b id="inv-kpi-productos">0</b></div>
+      <div class="inv-kpi"><span class="inv-kpi-l">Unidades</span><b id="inv-kpi-unidades">0</b></div>
+      <button class="inv-kpi inv-kpi-alerta" id="inv-kpi-sincosto" type="button" title="Productos sin costo en el catálogo de Productos. Clic para ver solo esos."><span class="inv-kpi-l">Costos a revisar</span><b id="inv-kpi-sincosto-n">0</b></button>
+    </div>
+    <div class="inv-filtros">
+      <input type="text" id="inv-buscar" class="upper inv-f-buscar" list="inv-codigo-datalist" autocomplete="off" placeholder="🔍 Código o descripción" aria-label="Buscar por código o descripción"><datalist id="inv-codigo-datalist"></datalist>
+      <input type="text" id="inv-buscar-proveedor" class="upper inv-f-prov" list="pr-proveedor-datalist" autocomplete="off" placeholder="Proveedor" aria-label="Proveedor">
+      <span class="inv-f-pos" title="Posición (A01) o nicho completo (A). Puedes llenar solo uno de los dos.">
+        <input type="text" id="inv-pos-desde" class="upper" list="inv-pos-datalist" autocomplete="off" placeholder="Posición desde" aria-label="Posición desde">
+        <span>–</span>
+        <input type="text" id="inv-pos-hasta" class="upper" list="inv-pos-datalist" autocomplete="off" placeholder="hasta" aria-label="Posición hasta">
+      </span>
+      <datalist id="inv-pos-datalist"></datalist>
+      <button class="btn btn-ghost btn-sm" id="btn-inv-limpiar" type="button" style="display:none;">✕ Limpiar filtros</button>
+    </div>
+    <div id="inv-resumen" class="inv-resumen"></div>
     <div id="inv-aviso-costos" class="hint" style="display:none; margin:0 0 10px; padding:8px 10px; border:1px solid #E3B8B0; background:#FBEDEA; border-radius:6px; color:#6B2A20;"></div>
-    <div class="hist-wrap" style="max-height:600px;">
-      <table class="tabla-compacta"><thead><tr><th>Código</th><th>Descripción</th><th>Proveedor</th><th>Cantidad total</th><th>Costo unitario</th><th>Costo total</th><th></th></tr></thead><tbody id="inv-body"></tbody></table>
-      <!-- Cantidad total en formato de miles sin decimales (fmtEntero); Costo total en soles con 2 decimales (fmtMoneyComma). -->
-
+    <div class="hist-wrap inv-tabla-wrap" style="max-height:600px;">
+      <table class="tabla-compacta inv-tabla"><thead id="inv-thead"><tr>
+        <th class="inv-c-foto"></th>
+        <th class="th-ordenable" data-key="codigo"></th>
+        <th class="th-ordenable" data-key="descripcion"></th>
+        <th class="th-ordenable" data-key="proveedor"></th>
+        <th class="th-ordenable num" data-key="total"></th>
+        <th class="th-ordenable num" data-key="costo"></th>
+        <th class="th-ordenable num" data-key="costoTotal"></th>
+        <th></th>
+      </tr></thead><tbody id="inv-body"></tbody></table>
       <div class="empty-state" id="inv-empty">Sin inventario todavía.</div>
     </div>
     <div class="total-line" style="font-size:15px; margin-top:12px;"><span><b id="inv-total-label">TOTAL VALORIZADO DEL ALMACÉN</b></span><span id="inv-total-valorizado"><b>0.00</b></span></div>
   </div>
+  <!-- Detalle de un producto: panel lateral -->
+  <div id="inv-drawer-fondo" class="inv-drawer-fondo"></div>
+  <aside id="inv-drawer" class="inv-drawer" aria-hidden="true" role="dialog" aria-label="Detalle del producto">
+    <div class="inv-drawer-cab"><b>Detalle del producto</b><button type="button" class="btn btn-ghost btn-sm" id="inv-drawer-cerrar" aria-label="Cerrar">✕</button></div>
+    <div id="inv-drawer-cuerpo"></div>
+  </aside>
 </div>
 
 <!-- PALLETS -->
@@ -2667,8 +2751,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v136';
-const APP_UPDATED = '06/10/2026 09:00';
+const APP_VERSION = 'v137';
+const APP_UPDATED = '06/10/2026 12:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -6060,10 +6144,11 @@ function inventarioConFiltros(){
   if(fPos && fPos.error) entries = [];
   return { completo, entries, activos, errorPosicion: fPos && fPos.error ? fPos.error : '' };
 }
-let invDetalleCache = {};
 let invSoloSinCosto = false;
 function renderInventario(){
   const body = $('inv-body'); if(!body) return;
+  pintarEncabezadoInventario();
+  invFilasVisibles = {};
   const filtrado = inventarioConFiltros();
   const inv = filtrado.completo;
   let entries = filtrado.entries.sort((a,b)=>a[0].localeCompare(b[0]));
@@ -6086,12 +6171,19 @@ function renderInventario(){
   const hayFiltros = filtrado.activos.length > 0;
   $('inv-total-label').textContent = hayFiltros ? 'TOTAL VALORIZADO (FILTRADO)' : 'TOTAL VALORIZADO DEL ALMACÉN';
   $('inv-total-valorizado').innerHTML = `<b>S/ ${fmtMoneyComma(totalValorizado)}</b>`;
-  // Resumen de lo que se está viendo + filtros activos
+  // Tarjetas de resumen (de lo que se está viendo) + filtros activos
+  $('inv-kpi-valor-l').textContent = hayFiltros ? 'Valorizado (filtrado)' : 'Valorizado del almacén';
+  $('inv-kpi-valor').textContent = 'S/ ' + fmtMoneyComma(totalValorizado);
+  $('inv-kpi-productos').textContent = fmtEntero(entries.length);
+  $('inv-kpi-unidades').textContent = fmtEntero(totalUnidades);
+  const nRevisar = delPallet + sinCosto;
+  $('inv-kpi-sincosto-n').textContent = fmtEntero(nRevisar);
+  $('inv-kpi-sincosto').classList.toggle('hay', nRevisar > 0);
+  $('inv-kpi-sincosto').classList.toggle('activo', invSoloSinCosto);
   const resumen = $('inv-resumen');
   resumen.innerHTML = filtrado.errorPosicion
     ? `<span style="color:#8A332A; font-weight:700;">${esc(filtrado.errorPosicion)}</span>`
-    : `<b>${esc(fmtEntero(entries.length))}</b> producto(s) · <b>${esc(fmtEntero(totalUnidades))}</b> unidades · <b>S/ ${esc(fmtMoneyComma(totalValorizado))}</b>` +
-      (hayFiltros ? ` <span class="hint">· Filtros: ${esc(filtrado.activos.join(' · '))}</span>` : '');
+    : (hayFiltros ? `<span class="hint">Filtros: ${esc(filtrado.activos.join(' · '))} — ${esc(fmtEntero(entries.length))} producto(s) · ${esc(fmtEntero(totalUnidades))} unidades</span>` : '');
   $('btn-inv-limpiar').style.display = hayFiltros || filtrado.errorPosicion ? '' : 'none';
   if(entries.length===0){
     body.innerHTML=''; $('inv-empty').style.display='block';
@@ -6100,32 +6192,108 @@ function renderInventario(){
       : (datosListos ? 'Sin inventario todavía.' : 'Cargando inventario…'));
     return;
   }
-  invDetalleCache = {};
   $('inv-empty').style.display='none';
-  // La subtabla de pallets de cada producto se construye al pulsar "Ver detalle";
-  // antes se generaba para todos los productos en cada render, aunque estuviera oculta.
+  // Orden elegido con los encabezados (por defecto, por código).
+  entries = ordenarInventario(entries);
   const entriesPagina = tramoPaginado('inv-body', entries, 30, renderInventario);
+  invFilasVisibles = Object.fromEntries(entriesPagina);
   body.innerHTML = entriesPagina.map(([codigo,data])=>{
-    const detId = `inv-det-${codigo}`;
-    invDetalleCache[detId] = data.detalle;
-    return `<tr><td>${esc(codigo)}</td><td>${esc(data.descripcion||'')}</td><td>${esc(data.proveedor||'')}</td><td>${fmtEntero(data.total)}</td><td>${fmtMoney(data.costo)}${data.costoOrigen==='pallet' ? ' <span class="hint" title="El catálogo de Productos no tiene costo para este código: se usa el costo guardado en los pallets">(pallet)</span>' : (data.costoOrigen==='sin_costo' ? ' <span style="color:#8A332A; font-weight:700;" title="Ni el catálogo de Productos ni los pallets tienen costo para este código">⚠ sin costo</span>' : '')}</td><td>S/ ${fmtMoneyComma(data.costoTotal)}</td><td><button class="btn btn-ghost btn-sm" data-toggle-inv="${esc(detId)}">Ver detalle</button></td></tr>
-    <tr id="${esc(detId)}" style="display:none;"><td colspan="7"></td></tr>`;
+    const prod = productos[codigo];
+    const foto = prod && prod.imagen_url
+      ? `<img class="inv-foto" src="${esc(prod.imagen_url)}" alt="" loading="lazy" data-inv-det="${esc(codigo)}">`
+      : `<div class="inv-foto-vacia">S/F</div>`;
+    const marcaCosto = data.costoOrigen==='pallet'
+      ? ' <span class="hint" title="El catálogo de Productos no tiene costo para este código: se usa el costo guardado en los pallets">(pallet)</span>'
+      : (data.costoOrigen==='sin_costo' ? ' <span style="color:#8A332A; font-weight:700;" title="Ni el catálogo de Productos ni los pallets tienen costo para este código">⚠ sin costo</span>' : '');
+    return `<tr>
+      <td class="inv-c-foto">${foto}</td>
+      <td class="inv-c-cod">${esc(codigo)}</td>
+      <td class="inv-c-desc" title="${esc(data.descripcion||'')}"><span class="inv-desc">${esc(data.descripcion||'')}</span></td>
+      <td data-label="Proveedor">${esc(data.proveedor||'—')}</td>
+      <td class="num" data-label="Cantidad">${fmtEntero(data.total)}</td>
+      <td class="num" data-label="Costo unit.">${fmtMoneyComma(data.costo)}${marcaCosto}</td>
+      <td class="num" data-label="Costo total"><b>S/ ${fmtMoneyComma(data.costoTotal)}</b></td>
+      <td class="inv-c-acc"><button class="btn btn-ghost btn-sm" data-inv-det="${esc(codigo)}">Ver detalle</button></td>
+    </tr>`;
   }).join('');
-  body.querySelectorAll('[data-toggle-inv]').forEach(btn=>{
-    btn.onclick = () => {
-      const detId = btn.dataset.toggleInv;
-      const row = document.getElementById(detId);
-      const showing = row.style.display !== 'none';
-      if(!showing && !row.dataset.montado){
-        const filas = (invDetalleCache[detId]||[]).map(d=>`<tr><td>${esc(d.pallet)}</td><td>${esc(d.posicion||'—')}</td><td>${esc(d.cantidad)}</td></tr>`).join('');
-        row.firstElementChild.innerHTML = `<table style="margin-top:4px;"><thead><tr><th>Pallet</th><th>Posición</th><th>Cantidad</th></tr></thead><tbody>${filas}</tbody></table>`;
-        row.dataset.montado = '1';
-      }
-      row.style.display = showing ? 'none' : 'table-row';
-      btn.textContent = showing ? 'Ver detalle' : 'Ocultar detalle';
-    };
+}
+// ---- Orden de la tabla de inventario ----
+const INV_COLUMNAS = { codigo:'Código', descripcion:'Descripción', proveedor:'Proveedor', total:'Cantidad', costo:'Costo unit.', costoTotal:'Costo total' };
+let invOrden = { campo:'codigo', dir:1 };
+let invFilasVisibles = {};
+function ordenarInventario(entries){
+  const { campo, dir } = invOrden;
+  const numerico = campo==='total' || campo==='costo' || campo==='costoTotal';
+  return entries.slice().sort((a,b)=>{
+    const va = campo==='codigo' ? a[0] : a[1][campo], vb = campo==='codigo' ? b[0] : b[1][campo];
+    const r = numerico ? ((Number(va)||0) - (Number(vb)||0)) : String(va||'').localeCompare(String(vb||''));
+    return (r || a[0].localeCompare(b[0])) * (r ? dir : 1);
   });
 }
+function pintarEncabezadoInventario(){
+  document.querySelectorAll('#inv-thead .th-ordenable').forEach(th=>{
+    const campo = th.dataset.key, activo = invOrden.campo === campo;
+    th.classList.toggle('th-activo', activo);
+    th.innerHTML = `${esc(INV_COLUMNAS[campo]||campo)}<span class="th-arrow">${activo ? (invOrden.dir===1 ? '▲' : '▼') : ''}</span>`;
+    th.title = 'Ordenar por ' + (INV_COLUMNAS[campo]||campo);
+  });
+}
+$('inv-thead').addEventListener('click', (ev)=>{
+  const th = ev.target.closest('.th-ordenable'); if(!th) return;
+  const campo = th.dataset.key;
+  if(invOrden.campo === campo) invOrden.dir *= -1;
+  else invOrden = { campo, dir: (campo==='total' || campo==='costo' || campo==='costoTotal') ? -1 : 1 }; // cifras: de mayor a menor
+  reiniciarPaginaInventario();
+});
+// ---- Detalle de un producto (panel lateral) ----
+function abrirDetalleInventario(codigo){
+  const data = invFilasVisibles[codigo]; if(!data) return;
+  const prod = productos[codigo];
+  const foto = prod && prod.imagen_url ? `<img class="inv-foto" src="${esc(prod.imagen_url)}" alt="">` : `<div class="inv-foto-vacia">Sin foto</div>`;
+  const puedeIr = $('tab-mov') && !$('tab-mov').classList.contains('hidden-perm');
+  const origen = data.costoOrigen==='catalogo' ? 'catálogo' : (data.costoOrigen==='pallet' ? 'pallet' : 'sin costo');
+  const filas = data.detalle.slice().sort((x,y)=>{
+    const kx = x.posicion && partesDePosicion(x.posicion), ky = y.posicion && partesDePosicion(y.posicion);
+    if(kx && ky) return compararPosClave(kx, ky);
+    return kx ? -1 : (ky ? 1 : String(x.pallet).localeCompare(String(y.pallet)));
+  }).map(d=>{
+    const pos = d.posicion ? posiciones[d.posicion] : null;
+    const bloque = pos && pos.bloque_id && bloques[pos.bloque_id] ? bloques[pos.bloque_id].nombre : '';
+    return `<tr><td>${esc(d.pallet)}</td><td>${esc(d.posicion||'—')}</td><td>${esc(bloque||'—')}</td><td class="num">${fmtEntero(d.cantidad)}</td>
+      <td>${puedeIr && pos ? `<button type="button" class="btn btn-ghost btn-sm" data-inv-ir="${esc(d.posicion)}" title="Ver esta posición en Movimientos">Ir ›</button>` : ''}</td></tr>`;
+  }).join('');
+  $('inv-drawer-cuerpo').innerHTML = `
+    <div class="inv-det-prod">${foto}<div><div style="font-family:var(--mono); font-weight:700; font-size:14px;">${esc(codigo)}</div>
+      <div style="font-size:12px; margin:4px 0;">${esc(data.descripcion||'')}</div><div class="hint">Proveedor: ${esc(data.proveedor||'—')}</div></div></div>
+    <div class="inv-det-cifras">
+      <div><span>Unidades</span><b>${fmtEntero(data.total)}</b></div>
+      <div><span>Costo unit. (${esc(origen)})</span><b>${fmtMoneyComma(data.costo)}</b></div>
+      <div><span>Costo total</span><b>S/ ${fmtMoneyComma(data.costoTotal)}</b></div>
+    </div>
+    <table class="tabla-compacta"><thead><tr><th>Pallet</th><th>Posición</th><th>Bloque</th><th class="num">Cantidad</th><th></th></tr></thead><tbody>${filas}</tbody></table>`;
+  $('inv-drawer').classList.add('abierto'); $('inv-drawer').setAttribute('aria-hidden','false');
+  $('inv-drawer-fondo').classList.add('abierto');
+  $('inv-drawer-cerrar').focus();
+}
+function cerrarDetalleInventario(){
+  $('inv-drawer').classList.remove('abierto'); $('inv-drawer').setAttribute('aria-hidden','true');
+  $('inv-drawer-fondo').classList.remove('abierto');
+}
+$('inv-body').addEventListener('click', (ev)=>{
+  const el = ev.target.closest('[data-inv-det]'); if(el) abrirDetalleInventario(el.dataset.invDet);
+});
+$('inv-drawer-cuerpo').addEventListener('click', (ev)=>{
+  const b = ev.target.closest('[data-inv-ir]'); if(!b) return;
+  const pos = b.dataset.invIr;
+  cerrarDetalleInventario();
+  switchTab('mov');
+  if(posiciones[pos]) selectSlot(pos);
+  const slot = $('slot-'+pos); if(slot && slot.scrollIntoView) slot.scrollIntoView({ behavior:'smooth', block:'center', inline:'center' });
+});
+$('inv-drawer-cerrar').addEventListener('click', cerrarDetalleInventario);
+$('inv-drawer-fondo').addEventListener('click', cerrarDetalleInventario);
+document.addEventListener('keydown', (ev)=>{ if(ev.key==='Escape' && $('inv-drawer').classList.contains('abierto')) cerrarDetalleInventario(); });
+$('inv-kpi-sincosto').addEventListener('click', ()=>{ invSoloSinCosto = !invSoloSinCosto; reiniciarPaginaInventario(); });
 function reiniciarPaginaInventario(){ fijarPagina('inv-body', 1); renderInventario(); }
 $('inv-buscar').addEventListener('input', reiniciarPaginaInventario);
 $('inv-buscar-proveedor').addEventListener('input', reiniciarPaginaInventario);
