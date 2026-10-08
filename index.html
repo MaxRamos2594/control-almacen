@@ -2752,8 +2752,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v138';
-const APP_UPDATED = '06/10/2026 15:00';
+const APP_VERSION = 'v139';
+const APP_UPDATED = '08/10/2026 12:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -7518,6 +7518,8 @@ $('rotsub-campana').addEventListener('click', ()=>{ setRotSubtab('campana'); pob
 // Junta las tiendas (participantes) de TODAS las campañas activas en un solo
 // desplegable, sin pedir elegir campaña primero.
 async function poblarSelectTiendasRotuloCampana(){
+  // Si aún no se abrió "Campañas (PDF)", la caché está vacía: cargarla aquí.
+  if(!campRegAllCache.length) await cargarRegistrosCampana(true);
   const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
   const tiendasSet = new Set();
   for(const campania of activos){
