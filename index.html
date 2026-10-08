@@ -2752,8 +2752,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v139';
-const APP_UPDATED = '08/10/2026 12:00';
+const APP_VERSION = 'v140';
+const APP_UPDATED = '08/10/2026 13:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -7538,6 +7538,11 @@ async function poblarSelectTiendasRotuloCampana(){
   $('rotc-tienda-select').innerHTML = '<option value="">— Selecciona una tienda —</option>' +
     tiendas.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
   if(valorActual && tiendas.includes(valorActual)) $('rotc-tienda-select').value = valorActual;
+  if(!tiendas.length){
+    showMsg('rotc-msg','err', activos.length
+      ? `Hay ${activos.length} campaña(s) activa(s) pero ninguna tiene tiendas (participantes) cargadas.`
+      : 'No hay campañas activas. Carga una hoja de reparto en "Campañas (PDF)".');
+  }
   actualizarPreviewRotuloCampana();
 }
 
