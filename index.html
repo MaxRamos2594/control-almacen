@@ -2752,8 +2752,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v140';
-const APP_UPDATED = '08/10/2026 13:00';
+const APP_VERSION = 'v141';
+const APP_UPDATED = '09/10/2026 09:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -7516,32 +7516,75 @@ $('rotsub-pallet').addEventListener('click', ()=> setRotSubtab('pallet'));
 $('rotsub-campana').addEventListener('click', ()=>{ setRotSubtab('campana'); poblarSelectTiendasRotuloCampana(); });
 
 // Junta las tiendas (participantes) de TODAS las campañas activas en un solo
-// desplegable, sin pedir elegir campaña primero.
+// desplegable, sin pedir elegir campaña primero. Para que cargue rápido:
+//  - usa la lista de tiendas guardada en el encabezado de cada campaña
+//    (participantes_lista); solo las campañas antiguas que no la tienen
+//    descargan sus filas, todas a la vez, y se les guarda la lista para la
+//    próxima vez;
+//  - recuerda la lista ya armada mientras no cambien las campañas activas;
+//  - si tarda más de 50 ms, el desplegable muestra "Cargando tiendas…".
+let rotcTiendasMemo = { clave: null, tiendas: [] };
+let rotcCargaId = 0;
 async function poblarSelectTiendasRotuloCampana(){
-  // Si aún no se abrió "Campañas (PDF)", la caché está vacía: cargarla aquí.
-  if(!campRegAllCache.length) await cargarRegistrosCampana(true);
-  const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
-  const tiendasSet = new Set();
-  for(const campania of activos){
-    let filas = campRegCache[campania.correlativo];
-    if(!filas){
-      try{
-        const snap = await campanaItemsRef.where('correlativo','==',campania.correlativo).limit(3000).get();
-        filas = snap.docs.map(d=>d.data());
-        campRegCache[campania.correlativo] = filas;
-      }catch(err){ console.error(err); continue; }
+  const sel = $('rotc-tienda-select');
+  const cargaId = ++rotcCargaId;
+  const valorActual = sel.value;
+  let terminado = false;
+  const aviso = setTimeout(()=>{
+    if(terminado || cargaId !== rotcCargaId) return;
+    sel.disabled = true;
+    sel.innerHTML = '<option value="">⏳ Cargando tiendas…</option>';
+    showMsg('rotc-msg','ok','Cargando tiendas de las campañas activas…');
+  }, 50);
+  try{
+    // Si aún no se abrió "Campañas (PDF)", la caché está vacía: cargarla aquí.
+    if(!campRegAllCache.length) await cargarRegistrosCampana(true);
+    const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
+    const clave = activos.map(r=> r.correlativo).sort().join('|');
+    let tiendas;
+    if(rotcTiendasMemo.clave === clave){
+      tiendas = rotcTiendasMemo.tiendas;
+    } else {
+      const listas = await Promise.all(activos.map(async campania=>{
+        if(Array.isArray(campania.participantes_lista)) return campania.participantes_lista;
+        let filas = campRegCache[campania.correlativo];
+        if(!filas){
+          try{
+            const snap = await campanaItemsRef.where('correlativo','==',campania.correlativo).limit(3000).get();
+            filas = snap.docs.map(d=>d.data());
+            campRegCache[campania.correlativo] = filas;
+          }catch(err){ console.error(err); return []; }
+        }
+        const lista = [...new Set(filas.map(f=> f.participante).filter(Boolean))].sort();
+        // Campaña antigua: se le guarda la lista para no volver a descargar sus filas.
+        campania.participantes_lista = lista;
+        campanaRegistrosRef.doc(campania.correlativo).set({ participantes_lista: lista }, { merge:true }).catch(err=> console.warn('No se pudo guardar la lista de tiendas', err));
+        return lista;
+      }));
+      tiendas = [...new Set(listas.flat())].sort();
+      rotcTiendasMemo = { clave, tiendas };
     }
-    filas.forEach(f=>{ if(f.participante) tiendasSet.add(f.participante); });
-  }
-  const tiendas = [...tiendasSet].sort();
-  const valorActual = $('rotc-tienda-select').value;
-  $('rotc-tienda-select').innerHTML = '<option value="">— Selecciona una tienda —</option>' +
-    tiendas.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
-  if(valorActual && tiendas.includes(valorActual)) $('rotc-tienda-select').value = valorActual;
-  if(!tiendas.length){
-    showMsg('rotc-msg','err', activos.length
-      ? `Hay ${activos.length} campaña(s) activa(s) pero ninguna tiene tiendas (participantes) cargadas.`
-      : 'No hay campañas activas. Carga una hoja de reparto en "Campañas (PDF)".');
+    if(cargaId !== rotcCargaId) return; // llegó otra carga más nueva
+    sel.innerHTML = '<option value="">— Selecciona una tienda —</option>' +
+      tiendas.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
+    if(valorActual && tiendas.includes(valorActual)) sel.value = valorActual;
+    if(!tiendas.length){
+      showMsg('rotc-msg','err', activos.length
+        ? `Hay ${activos.length} campaña(s) activa(s) pero ninguna tiene tiendas (participantes) cargadas.`
+        : 'No hay campañas activas. Carga una hoja de reparto en "Campañas (PDF)".');
+    } else if($('rotc-msg').textContent.startsWith('Cargando tiendas')){
+      $('rotc-msg').style.display = 'none';
+    }
+  }catch(err){
+    console.error(err);
+    if(cargaId === rotcCargaId){
+      sel.innerHTML = '<option value="">— Selecciona una tienda —</option>';
+      showMsg('rotc-msg','err','No se pudieron cargar las tiendas: ' + err.message);
+    }
+  }finally{
+    terminado = true;
+    clearTimeout(aviso);
+    if(cargaId === rotcCargaId) sel.disabled = false;
   }
   actualizarPreviewRotuloCampana();
 }
@@ -7955,6 +7998,9 @@ $('btn-guardar-campana').addEventListener('click', async ()=>{
       sku_distintos: skuDistintos,
       total_filas: campParsedRows.length,
       participantes: participantesSet.size,
+      // Nombres de las tiendas (participantes): Rótulos de Campaña los usa sin
+      // tener que descargar todas las filas de la campaña.
+      participantes_lista: [...participantesSet].filter(Boolean).sort(),
       estado: 'ACTIVO',
       usuario: currentUserAlias,
       fecha_carga: firebase.firestore.FieldValue.serverTimestamp()

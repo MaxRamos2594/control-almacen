@@ -7,7 +7,7 @@
     "humo": "node humo.js",
     "flujo": "node flujo.js",
     "xss": "node xss.js",
-    "todo": "node revisar.js && node humo.js && node flujo.js && node xss.js && node bloque_intermedio.js && node piso_filas.js && node pasillo.js && node columna_piso.js && node alinear_filas.js && node pdf_inventario.js && node costos_inventario.js && node guia_pdf.js && node inv_posiciones.js && node inv_interfaz.js",
+    "todo": "node revisar.js && node humo.js && node flujo.js && node xss.js && node bloque_intermedio.js && node piso_filas.js && node pasillo.js && node columna_piso.js && node alinear_filas.js && node pdf_inventario.js && node costos_inventario.js && node guia_pdf.js && node inv_posiciones.js && node inv_interfaz.js && node rotulos_tiendas.js",
     "bloque": "node bloque_intermedio.js",
     "revisar": "node revisar.js",
     "piso": "node piso_filas.js",
@@ -18,7 +18,8 @@
     "costos": "node costos_inventario.js",
     "guia": "node guia_pdf.js",
     "posiciones": "node inv_posiciones.js",
-    "interfaz": "node inv_interfaz.js"
+    "interfaz": "node inv_interfaz.js",
+    "rotulos": "node rotulos_tiendas.js"
   },
   "devDependencies": {
     "acorn": "^8.18.0",
