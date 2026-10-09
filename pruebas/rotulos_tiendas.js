@@ -41,6 +41,13 @@ function verificar(condicion, texto){
         if(prop==='limit' || prop==='where' || prop==='orderBy') return (...a)=> envolver(t[prop](...a)); const v = t[prop]; return typeof v === 'function' ? v.bind(t) : v; } });
       return envolver(q); };
   });
+  // La preparación en segundo plano (4 s después de entrar) pudo correr mientras
+  // se sembraban los datos: se espera y se deja todo como antes de la actualización.
+  await page.waitForTimeout(4500);
+  await page.evaluate(async ()=>{
+    for(const c of ['CAMP-0001','CAMP-0002']) await campanaRegistrosRef.doc(c).update({ participantes_lista: firebase.firestore.FieldValue.delete() });
+    rotcTiendasMemo = { clave:null, tiendas:[] }; campRegAllCache = []; campRegCache = {}; window.__descargasFilas = 0; window.__tramos = [];
+  });
   await page.evaluate(()=> switchTab('rotulos'));
   await page.waitForTimeout(300);
 
@@ -49,8 +56,12 @@ function verificar(condicion, texto){
   await page.click('#rotsub-campana');
   await page.waitForTimeout(150);
   const durante = await page.evaluate(()=> ({ txt: $('rotc-tienda-select').options[0].text, bloqueado: $('rotc-tienda-select').disabled, msg: $('rotc-msg').innerText }));
-  verificar(/Cargando tiendas/.test(durante.txt) && durante.bloqueado, `Mientras carga: "${durante.txt}" y el desplegable bloqueado`);
-  await page.waitForFunction(()=> !$('rotc-tienda-select').disabled && $('rotc-tienda-select').options.length > 1, null, { timeout: 20000 });
+  const opcionesDurante = await page.evaluate(()=> [...$('rotc-tienda-select').options].map(o=> o.text).join(' | '));
+  verificar(/Cargando/.test(opcionesDurante), `Mientras carga, el desplegable lo indica: "${opcionesDurante.slice(0,90)}…"`);
+  verificar(/de 4 campaña/.test(durante.msg), `Muestra el avance: "${durante.msg}"`);
+  const parcial = await page.evaluate(()=> ({ opciones: [...$('rotc-tienda-select').options].map(o=> o.text), bloqueado: $('rotc-tienda-select').disabled }));
+  verificar(!parcial.bloqueado && parcial.opciones.includes('AREQUIPA') && parcial.opciones.some(t=> /Cargando más tiendas/.test(t)), `Ya se puede elegir entre las tiendas que llegaron (${parcial.opciones.slice(1,4).join(', ')}…) mientras cargan las demás`);
+  await page.waitForFunction(()=> !$('rotc-tienda-select').disabled && $('rotc-tienda-select').options.length > 1 && ![...$('rotc-tienda-select').options].some(o=> /Cargando/.test(o.text)), null, { timeout: 20000 });
   const ms1 = Date.now() - t0;
   const r1 = await page.evaluate(()=> ({ tiendas: [...$('rotc-tienda-select').options].slice(1).map(o=> o.value), descargas: window.__descargasFilas, tramos: window.__tramos || [], msgVisible: $('rotc-msg').style.display !== 'none' && /Cargando/.test($('rotc-msg').innerText) }));
   verificar(r1.tiendas.join(',') === 'AREQUIPA,ATE,COMAS,HUAYCÁN,ICA,PIURA,TACNA,VMT', `Tiendas de las 4 campañas activas, sin repetir ni la invalidada: ${r1.tiendas.join(', ')}`);
@@ -85,6 +96,19 @@ function verificar(condicion, texto){
   await page.waitForFunction(()=> $('rotc-tienda-select').options.length > 1, null, { timeout: 10000 });
   const r3 = await page.evaluate(()=> ({ n: $('rotc-tienda-select').options.length - 1, descargas: window.__descargasFilas }));
   verificar(r3.n === 8 && r3.descargas === 0, `Después de recargar la app: ${r3.n} tiendas sin descargar ninguna fila (${r3.descargas})`);
+
+  // Preparación en segundo plano: al entrar, sin abrir Rótulos, las campañas sin lista la generan
+  await page.evaluate(async ()=>{ for(const c of ['CAMP-0001','CAMP-0002']) await campanaRegistrosRef.doc(c).update({ participantes_lista: firebase.firestore.FieldValue.delete() }); });
+  await page.reload();
+  await page.waitForFunction(()=> document.getElementById('status-text').textContent === 'Sincronizado en vivo', null, { timeout: 20000 });
+  await page.waitForTimeout(7000);
+  const pre = await page.evaluate(async ()=>{ const a = await campanaRegistrosRef.doc('CAMP-0001').get(); return { lista: a.data().participantes_lista, memo: rotcTiendasMemo.tiendas.length }; });
+  verificar(pre.lista && pre.lista.join(',') === 'ATE,COMAS,ICA' && pre.memo === 8, `Al entrar a la app se prepara sola la lista (sin abrir Rótulos): ${JSON.stringify(pre)}`);
+  await page.evaluate(()=>{ window.__descargasFilas = 0; const w = campanaItemsRef.where.bind(campanaItemsRef); campanaItemsRef.where = (...a)=>{ window.__descargasFilas++; return w(...a); }; switchTab('rotulos'); });
+  const t4 = Date.now();
+  await page.click('#rotsub-campana');
+  await page.waitForFunction(()=> $('rotc-tienda-select').options.length > 1, null, { timeout: 10000 });
+  verificar(Date.now() - t4 < 300, `Al abrir Rótulos después, sale al instante (${Date.now() - t4} ms)`);
 
   if(errores.length) console.log('\nErrores de JavaScript:\n' + [...new Set(errores)].join('\n'));
   console.log(fallas || errores.length ? `\n${fallas} verificación(es) fallida(s).` : '\nTodo correcto.');
