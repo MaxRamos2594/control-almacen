@@ -2752,8 +2752,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v141';
-const APP_UPDATED = '09/10/2026 09:00';
+const APP_VERSION = 'v142';
+const APP_UPDATED = '09/10/2026 12:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3300,6 +3300,7 @@ function startListeners(){
   cargarRegistrosMerma(true);
   cargarFormatosMerma(true);
   cargarAuditoriasMerma(true);
+  prepararTiendasEnSegundoPlano();
 }
 
 /* Render agrupado: varios snapshots seguidos producen UNA sola pasada (un frame),
@@ -7525,60 +7526,101 @@ $('rotsub-campana').addEventListener('click', ()=>{ setRotSubtab('campana'); pob
 //  - si tarda más de 50 ms, el desplegable muestra "Cargando tiendas…".
 let rotcTiendasMemo = { clave: null, tiendas: [] };
 let rotcCargaId = 0;
-async function poblarSelectTiendasRotuloCampana(){
-  const sel = $('rotc-tienda-select');
-  const cargaId = ++rotcCargaId;
-  const valorActual = sel.value;
-  let terminado = false;
-  const aviso = setTimeout(()=>{
-    if(terminado || cargaId !== rotcCargaId) return;
-    sel.disabled = true;
-    sel.innerHTML = '<option value="">⏳ Cargando tiendas…</option>';
-    showMsg('rotc-msg','ok','Cargando tiendas de las campañas activas…');
-  }, 50);
-  try{
+let rotcPreparando = null; // promesa en curso (la comparten el desplegable y la preparación en segundo plano)
+// Arma la lista de tiendas de las campañas activas. onAvance(tiendasHastaAhora, listas, total)
+// se llama cada vez que termina una campaña, para mostrar el avance.
+function obtenerTiendasCampanas(onAvance){
+  if(rotcPreparando){ if(onAvance) rotcPreparando.oyentes.push(onAvance); return rotcPreparando.promesa; }
+  const oyentes = onAvance ? [onAvance] : [];
+  const promesa = (async ()=>{
     // Si aún no se abrió "Campañas (PDF)", la caché está vacía: cargarla aquí.
     if(!campRegAllCache.length) await cargarRegistrosCampana(true);
     const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
     const clave = activos.map(r=> r.correlativo).sort().join('|');
-    let tiendas;
-    if(rotcTiendasMemo.clave === clave){
-      tiendas = rotcTiendasMemo.tiendas;
-    } else {
-      const listas = await Promise.all(activos.map(async campania=>{
-        if(Array.isArray(campania.participantes_lista)) return campania.participantes_lista;
-        let filas = campRegCache[campania.correlativo];
-        if(!filas){
-          try{
-            const snap = await campanaItemsRef.where('correlativo','==',campania.correlativo).limit(3000).get();
-            filas = snap.docs.map(d=>d.data());
-            campRegCache[campania.correlativo] = filas;
-          }catch(err){ console.error(err); return []; }
-        }
-        const lista = [...new Set(filas.map(f=> f.participante).filter(Boolean))].sort();
-        // Campaña antigua: se le guarda la lista para no volver a descargar sus filas.
-        campania.participantes_lista = lista;
-        campanaRegistrosRef.doc(campania.correlativo).set({ participantes_lista: lista }, { merge:true }).catch(err=> console.warn('No se pudo guardar la lista de tiendas', err));
-        return lista;
-      }));
-      tiendas = [...new Set(listas.flat())].sort();
-      rotcTiendasMemo = { clave, tiendas };
-    }
+    if(rotcTiendasMemo.clave === clave) return { tiendas: rotcTiendasMemo.tiendas, activos };
+    const juntas = new Set();
+    let listas = 0;
+    const avisar = ()=> oyentes.forEach(f=>{ try{ f([...juntas].sort(), listas, activos.length); }catch(e){} });
+    activos.forEach(c=>{ if(Array.isArray(c.participantes_lista)){ c.participantes_lista.forEach(t=> juntas.add(t)); listas++; } });
+    avisar();
+    await Promise.all(activos.filter(c=> !Array.isArray(c.participantes_lista)).map(async campania=>{
+      let filas = campRegCache[campania.correlativo];
+      if(!filas){
+        try{
+          const snap = await campanaItemsRef.where('correlativo','==',campania.correlativo).limit(3000).get();
+          filas = snap.docs.map(d=>d.data());
+          campRegCache[campania.correlativo] = filas;
+        }catch(err){ console.error(err); listas++; avisar(); return; }
+      }
+      const lista = [...new Set(filas.map(f=> f.participante).filter(Boolean))].sort();
+      // Campaña antigua: se le guarda la lista para no volver a descargar sus filas.
+      campania.participantes_lista = lista;
+      campanaRegistrosRef.doc(campania.correlativo).set({ participantes_lista: lista }, { merge:true }).catch(err=> console.warn('No se pudo guardar la lista de tiendas', err));
+      lista.forEach(t=> juntas.add(t));
+      listas++; avisar();
+    }));
+    const tiendas = [...juntas].sort();
+    rotcTiendasMemo = { clave, tiendas };
+    return { tiendas, activos };
+  })();
+  rotcPreparando = { promesa, oyentes };
+  promesa.finally(()=>{ rotcPreparando = null; });
+  return promesa;
+}
+// Al entrar a la app se prepara la lista en segundo plano: las campañas que
+// aún no tienen su lista guardada la generan una sola vez, sin esperar a que
+// alguien abra Rótulos de Campaña.
+function prepararTiendasEnSegundoPlano(){
+  setTimeout(()=>{
+    const tab = $('tab-rotulos');
+    if(!auth.currentUser || !tab || tab.classList.contains('hidden-perm')) return; // solo quien usa Rótulos
+    obtenerTiendasCampanas().catch(err=> console.warn('Preparación de tiendas:', err));
+  }, 4000);
+}
+async function poblarSelectTiendasRotuloCampana(){
+  const sel = $('rotc-tienda-select');
+  const cargaId = ++rotcCargaId;
+  const valorElegido = ()=> sel.value || valorInicial;
+  const valorInicial = sel.value;
+  let terminado = false, mostrandoAvance = false, ultimo = null;
+  const mostrarAvance = ()=>{
+    if(!ultimo){ pintar([], true); showMsg('rotc-msg','ok','Cargando tiendas de las campañas activas… (solo la primera vez)'); return; }
+    pintar(ultimo.parcial, true);
+    showMsg('rotc-msg','ok', `Cargando tiendas… ${ultimo.listas} de ${ultimo.total} campaña(s) (solo la primera vez; después queda guardado).`);
+  };
+  const pintar = (tiendas, cargando)=>{
+    const v = valorElegido();
+    sel.innerHTML = '<option value="">' + (tiendas.length || !cargando ? '— Selecciona una tienda —' : '⏳ Cargando tiendas…') + '</option>' +
+      tiendas.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('') +
+      (cargando && tiendas.length ? '<option value="" disabled>⏳ Cargando más tiendas…</option>' : '');
+    if(v && tiendas.includes(v)) sel.value = v;
+    // Se puede elegir apenas haya alguna tienda, aunque sigan llegando otras.
+    sel.disabled = cargando && !tiendas.length;
+  };
+  const aviso = setTimeout(()=>{
+    if(terminado || cargaId !== rotcCargaId) return;
+    mostrandoAvance = true;
+    mostrarAvance();
+  }, 50);
+  try{
+    const { tiendas, activos } = await obtenerTiendasCampanas((parcial, listas, total)=>{
+      ultimo = { parcial, listas, total };
+      if(mostrandoAvance && cargaId === rotcCargaId && !terminado) mostrarAvance();
+    });
     if(cargaId !== rotcCargaId) return; // llegó otra carga más nueva
-    sel.innerHTML = '<option value="">— Selecciona una tienda —</option>' +
-      tiendas.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
-    if(valorActual && tiendas.includes(valorActual)) sel.value = valorActual;
+    terminado = true;
+    pintar(tiendas, false);
     if(!tiendas.length){
       showMsg('rotc-msg','err', activos.length
         ? `Hay ${activos.length} campaña(s) activa(s) pero ninguna tiene tiendas (participantes) cargadas.`
         : 'No hay campañas activas. Carga una hoja de reparto en "Campañas (PDF)".');
-    } else if($('rotc-msg').textContent.startsWith('Cargando tiendas')){
+    } else if(/^Cargando tiendas/.test($('rotc-msg').textContent)){
       $('rotc-msg').style.display = 'none';
     }
   }catch(err){
     console.error(err);
     if(cargaId === rotcCargaId){
-      sel.innerHTML = '<option value="">— Selecciona una tienda —</option>';
+      pintar([], false);
       showMsg('rotc-msg','err','No se pudieron cargar las tiendas: ' + err.message);
     }
   }finally{
