@@ -75,10 +75,47 @@ function guiaSunatDePrueba(){
   await limpiarEmuladores();
   const { browser, page, errores } = await abrirApp();
   await page.waitForFunction(()=> $('status-text').textContent === 'Sincronizado en vivo', null, { timeout: 20000 });
+  // Modo normal: 3 campañas activas con red lenta simulada (7 s por descarga)
+  // para ver el aviso de avance, que no se oculte a los 5 s y que las
+  // descargas vayan en paralelo.
+  const conAvance = !real && !sunat;
+  if(conAvance) await page.evaluate(async ()=>{
+    const hoy = firebase.firestore.Timestamp.now();
+    for(const [corr, skus] of [['CAMP-0001',['99NS-3801','99NS-3802','021503']], ['CAMP-0002',['OTRO-1']], ['CAMP-0003',['OTRO-2']]]){
+      await campanaRegistrosRef.doc(corr).set({ correlativo:corr, campana:'CAMP '+corr, estado:'ACTIVO', fecha_carga: hoy, total_filas: skus.length });
+      for(const sku of skus) await campanaItemsRef.doc().set({ correlativo: corr, participante:'ATE', sku, cantidad:1 });
+    }
+    campRegAllCache = []; campRegCache = {};
+    const whereOrig = campanaItemsRef.where.bind(campanaItemsRef);
+    window.__tramos = [];
+    campanaItemsRef.where = (...args)=>{ const q = whereOrig(...args);
+      const envolver = (qq)=> new Proxy(qq, { get(t, prop){ if(prop==='get') return async (...a)=>{ const ini = performance.now(); await new Promise(r=> setTimeout(r, 7000)); const res = await t.get(...a); window.__tramos.push([ini, performance.now()]); return res; };
+        if(prop==='limit' || prop==='where' || prop==='orderBy') return (...a)=> envolver(t[prop](...a)); const v = t[prop]; return typeof v === 'function' ? v.bind(t) : v; } });
+      return envolver(q); };
+    // Registra cada texto del aviso y si estaba visible
+    window.__avisos = [];
+    const el = $('guia-msg');
+    new MutationObserver(()=> window.__avisos.push(el.innerText)).observe(el, { childList:true, characterData:true, subtree:true });
+  });
   await page.evaluate(()=> switchTab('campanas'));
   await page.setInputFiles('#guia-pdf-input', archivo);
+  const t0 = Date.now();
   await page.evaluate(()=> $('btn-procesar-guia').click());
+  if(conAvance){
+    await page.waitForTimeout(6000);
+    const a = await page.evaluate(()=> ({ visible: getComputedStyle($('guia-msg')).display !== 'none', txt: $('guia-msg').innerText, giro: !!document.querySelector('#guia-msg .giro') }));
+    verificar(a.visible && /^Procesando/.test(a.txt) && a.giro, `A los 6 s el aviso sigue visible: "${a.txt}"`);
+  }
   await page.waitForFunction(()=> !$('btn-procesar-guia').disabled && guiaBatch.length > 0, null, { timeout: 30000 });
+  if(conAvance){
+    const ms = Date.now() - t0;
+    const info = await page.evaluate(()=> ({ avisos: window.__avisos, tramos: window.__tramos, sug: guiaBatch[0].correlativoSugerido, fin: $('guia-msg').innerText }));
+    verificar(info.avisos.some(t=> /página 1 de 3/.test(t)) && info.avisos.some(t=> /página 3 de 3/.test(t)), 'Muestra la página que está leyendo (1 de 3 … 3 de 3)');
+    verificar(info.avisos.some(t=> /campañas activas: 0 de 3/.test(t)) && info.avisos.some(t=> /campañas activas: 3 de 3/.test(t)) && info.avisos.some(t=> /\d+ s$/.test(t)), 'Muestra el avance "X de 3 campañas" y los segundos que lleva');
+    const ini = info.tramos.map(t=> t[0]).sort((x,y)=> x-y);
+    verificar(info.tramos.length === 3 && ini[2] - ini[0] < 1000 && ms < 12000, `Descarga las 3 campañas en paralelo (total ${ms} ms en vez de 21 s+)`);
+    verificar(info.sug === 'CAMP-0001' && /^Se procesaron 1 archivo/.test(info.fin), `Sugiere la campaña correcta (${info.sug}) y termina con "${info.fin}"`);
+  }
   const r = await page.evaluate(()=> guiaBatch.map(g=> ({ error: g.error || null, nro: g.resultado && g.resultado.nro_guia, fecha: g.resultado && g.resultado.fecha_traslado,
     bultos: g.resultado && g.resultado.bultos, llegada: g.resultado && g.resultado.punto_llegada, n: g.resultado ? g.resultado.items.length : 0,
     items: g.resultado ? g.resultado.items.map(i=> [i.item, i.codigo, i.descripcion, i.cantidad]) : [] }))[0]);
