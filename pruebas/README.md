@@ -39,6 +39,7 @@ En otra terminal:
 | `npm run guia` | Carga una guía de remisión de prueba (encabezado con tildes "Ítem/Código", 3 páginas, 60 ítems) en Cargar Guía y verifica N° de guía, fecha, bultos e ítems. `node guia_pdf.js ruta.pdf` prueba un PDF real (no lo subas al repo). |
 | `npm run posiciones` | Filtro "Posición desde/hasta" del inventario (nichos o posiciones, al revés, solo desde/hasta, posición inexistente) combinado con proveedor; resumen, Ver detalle, Excel con filtros, Excel por pallet (orden por pallet, totales y filtros) y Limpiar. |
 | `npm run interfaz` | Pantalla de Inventario: orden por columnas, tarjetas de resumen (y "Costos a revisar" como filtro), foto, cifras a la derecha, descripción en 2 líneas, panel lateral con "Ir ›" a Movimientos y vista de tarjetas en el celular sin que nada se salga. |
+| `npm run rotulos` | Rótulos de Campaña: tiendas de todas las campañas activas; aviso "Cargando tiendas…" si tarda; campañas antiguas descargan sus filas una sola vez (en paralelo) y guardan su lista; la segunda vez y tras recargar, sin descargas. |
 | `npm run revisar` | Revisión del código sin emuladores: datos insertados en HTML sin `esc()` y HTML del programa escapado por error. |
 | `npm run todo` | Todas las anteriores. |
 | `node texto.js antes` / `node texto.js despues` | Guarda el texto visible de cada pestaña para comparar antes y después de un cambio (`diff salida/texto-antes.txt salida/texto-despues.txt`). |
