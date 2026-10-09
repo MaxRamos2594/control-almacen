@@ -39,11 +39,38 @@ function guiaDePrueba(){
   return { buffer: Buffer.from(doc.output('arraybuffer')), esperado: { nro_guia:'TG01-00009999', items: 60, bultos: 155, fecha:'03/10/2026', primero: '99NS-3801', segundo: '021503' } };
 }
 
+// Guía con el formato de SUNAT: encabezado de varias líneas, código 1 pt más
+// arriba que la fila, "Observaciones: N BULTOS" y el ítem 30 partido entre
+// páginas (se repite arriba de la página 2 sin descripción).
+function guiaSunatDePrueba(){
+  const doc = new jsPDF({ unit:'pt', format:[842, 1191] });
+  const H = 1191, Y = y=> H - y; // coordenadas como en el PDF real (desde abajo)
+  doc.setFontSize(8);
+  doc.text('GUÍA DE REMISIÓN ELECTRÓNICA', 554, Y(1098)); doc.text('N° EG07 - 00000099', 599, Y(1070));
+  doc.text('Fecha de entrega de Bienes al transportista:', 14, Y(991)); doc.text('06/10/2026', 228, Y(991));
+  doc.text('Punto de Partida', 382, Y(991)); doc.text('CAL. SANTA FRANCISCA NRO. 890', 469, Y(991)); doc.text('- LIMA - LIMA - LIMA', 469, Y(979));
+  doc.text('Punto de llegada', 382, Y(940)); doc.text('AV. GIRALDEZ NRO. 354 - HUANCAYO - JUNIN', 469, Y(940));
+  doc.text('Bienes por transportar:', 14, Y(887));
+  const cab = (y0)=>{ [['Bien',59,y0],['Código de',109,y0-6],['Partida',247,y0-6],['N°',17,y0-11],['normalizado',42,y0-11],['producto',174,y0-11],['Descripción Detallada',454,y0-11],['Cantidad',727,y0-11],['Unidad de',656,y0-6]].forEach(([t,x,y])=> doc.text(t, x, Y(y))); };
+  cab(856);
+  const fila = (n, y, cod, desc, cant)=>{ doc.text(String(n), 21, Y(y)); doc.text('NO', 64, Y(y)); if(cod) doc.text(cod, 112, Y(y+1)); if(desc) doc.text(desc, 358, Y(y)); doc.text('UNIDAD (NIU)', 656, Y(y)); doc.text(cant, 764, Y(y)); };
+  let y = 823;
+  for(let n=1;n<=30;n++){ fila(n, y, n===4 ? '1311' : `06X-${1900+n}`, n===2 ? 'Cinta métrica suave de 30 cm' : `PRODUCTO ${n}`, (n*3).toFixed(2)); y -= 18; }
+  doc.addPage([842, 1191]); doc.setFontSize(8);
+  cab(1120);
+  fila(30, 1087, '06X-1930', '', '90.00');               // ítem 30 repetido sin descripción
+  y = 1069;
+  for(let n=31;n<=35;n++){ fila(n, y, `06X-${1900+n}`, `PRODUCTO ${n}`, (n*3).toFixed(2)); y -= 18; }
+  doc.text('Observaciones :', 14, Y(571)); doc.text('11 BULTOS', 95, Y(571));
+  return { buffer: Buffer.from(doc.output('arraybuffer')), esperado: { nro_guia:'EG07-00000099', items: 35, bultos: 11, fecha:'06/10/2026', primero:'06X-1901', segundo:'06X-1902' } };
+}
+
 (async ()=>{
-  const real = process.argv[2];
-  const archivo = real || path.join(__dirname, 'salida', 'guia_prueba.pdf');
+  const real = process.argv[2] && process.argv[2] !== '--sunat' ? process.argv[2] : null;
+  const sunat = process.argv.includes('--sunat');
+  const archivo = real || path.join(__dirname, 'salida', sunat ? 'guia_sunat_prueba.pdf' : 'guia_prueba.pdf');
   let esperado = null;
-  if(!real){ const g = guiaDePrueba(); fs.mkdirSync(path.dirname(archivo), { recursive: true }); fs.writeFileSync(archivo, g.buffer); esperado = g.esperado; }
+  if(!real){ const g = sunat ? guiaSunatDePrueba() : guiaDePrueba(); fs.mkdirSync(path.dirname(archivo), { recursive: true }); fs.writeFileSync(archivo, g.buffer); esperado = g.esperado; }
 
   await limpiarEmuladores();
   const { browser, page, errores } = await abrirApp();
@@ -63,6 +90,12 @@ function guiaDePrueba(){
   if(esperado){
     verificar(r.nro === esperado.nro_guia && r.fecha === esperado.fecha && r.bultos === esperado.bultos, 'N° de guía, fecha de traslado y bultos correctos');
     verificar(r.n === esperado.items && r.items[0][1] === esperado.primero && r.items[1][1] === esperado.segundo, `Lee los ${esperado.items} ítems de todas las páginas con su código`);
+    if(sunat){
+      const i30 = r.items.find(i=> i[0]===30) || [];
+      verificar(i30[2] === 'PRODUCTO 30' && i30[3] === 90 && r.items.filter(i=> i[0]===30).length === 1, `Ítem 30 partido entre páginas: una sola vez, con descripción y cantidad 90 (${JSON.stringify(i30)})`);
+      verificar(r.items[1][2] === 'CINTA MÉTRICA SUAVE DE 30 CM' && r.items[3][1] === '1311', 'Descripción en mayúsculas y código corto (1311) bien leídos');
+      verificar(/HUANCAYO/.test(r.llegada), `Punto de llegada: ${r.llegada}`);
+    }
   } else {
     verificar(r.n > 0, `Lee ítems del PDF real (${r.n})`);
   }

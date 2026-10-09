@@ -2752,8 +2752,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v142';
-const APP_UPDATED = '09/10/2026 12:00';
+const APP_VERSION = 'v143';
+const APP_UPDATED = '09/10/2026 16:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -8659,7 +8659,89 @@ async function extractGuiaLineGroups(arrayBuffer){
 }
 function txtItem(item){ return (item ? item.str : '').trim(); }
 
+// Guía de remisión en el formato de SUNAT ("Bienes por transportar", columnas
+// N° · Bien normalizado · Código de producto · … · Descripción Detallada ·
+// Unidad de medida · Cantidad). Una fila de ítem empieza con el N° y "SI"/"NO"
+// y termina con la unidad y la cantidad; el código va antes de la descripción.
+// Si un ítem se parte entre páginas, SUNAT lo repite arriba de la siguiente
+// (sin descripción): se junta por N° para no contarlo dos veces.
+function esGuiaSunat(paginas){
+  return paginas.flat().some(g=> g.items.some(it=> /^Bienes por transportar/i.test(txtItem(it))));
+}
+function parseGuiaSunatPDF(paginas){
+  const todasLineas = paginas.flat();
+  const textoLinea = g=> g.items.map(txtItem).join(' ');
+  const valorTrasEtiqueta = (re)=>{
+    for(const g of todasLineas){
+      const i = g.items.findIndex(it=> re.test(txtItem(it)));
+      if(i >= 0 && g.items[i+1]) return { g, i, valor: txtItem(g.items[i+1]) };
+    }
+    return null;
+  };
+  let nro_guia = '';
+  for(const g of todasLineas){
+    const m = textoLinea(g).match(/N°\s*([A-Z0-9]{2,8})\s*-\s*(\d{5,10})/i);
+    if(m){ nro_guia = `${m[1].toUpperCase()}-${m[2]}`; break; }
+  }
+  const fTras = valorTrasEtiqueta(/^Fecha de entrega de Bienes al transportista:?$/i) || valorTrasEtiqueta(/^Fecha de inicio de traslado:?$/i);
+  const fecha_traslado = fTras ? (fTras.valor.match(/\d{2}\/\d{2}\/\d{4}/)||[''])[0] : '';
+  // Puntos de partida y llegada: el valor va a la derecha de la etiqueta y puede seguir en la línea de abajo.
+  function punto(re){
+    const idx = todasLineas.findIndex(g=> g.items.some(it=> re.test(txtItem(it))));
+    if(idx < 0) return '';
+    const g = todasLineas[idx];
+    const i = g.items.findIndex(it=> re.test(txtItem(it)));
+    const x0 = g.items[i+1] ? g.items[i+1].x : null;
+    let texto = g.items[i+1] ? txtItem(g.items[i+1]) : '';
+    const sig = todasLineas[idx+1];
+    if(x0 != null && sig && sig.items.length === 1 && Math.abs(sig.items[0].x - x0) < 3) texto += ' ' + txtItem(sig.items[0]);
+    return texto;
+  }
+  const punto_partida = punto(/^Punto de Partida:?$/i);
+  const punto_llegada = punto(/^Punto de llegada:?$/i);
+  let bultos = null;
+  for(const g of todasLineas){
+    const m = textoLinea(g).match(/(\d[\d.,]*)\s*BULTOS?\b/i);
+    if(m){ bultos = Number(m[1].replace(/,/g,'')); }
+  }
+  const items = [], porNumero = {};
+  for(const g of todasLineas){
+    const t = g.items.map(it=> ({ s: txtItem(it), x: it.x }));
+    if(t.length < 4) continue;
+    if(!/^\d+$/.test(t[0].s) || !/^(SI|NO)$/i.test(t[1].s)) continue;
+    const cant = t[t.length-1].s;
+    if(!/^[\d,]+(\.\d+)?$/.test(cant)) continue;
+    const unidad = t[t.length-2].s;
+    const medio = t.slice(2, t.length-2);   // código y/o descripción
+    let codigo = '', descripcion = '';
+    if(medio.length){
+      // El código va en la columna angosta de la izquierda; el resto es descripción.
+      if(medio[0].x < 300){ codigo = medio[0].s; descripcion = medio.slice(1).map(m=> m.s).join(' '); }
+      else descripcion = medio.map(m=> m.s).join(' ');
+    }
+    const n = Number(t[0].s);
+    const fila = { item: n, codigo: codigo.toUpperCase(), descripcion: descripcion.replace(/\s+/g,' ').trim().toUpperCase(),
+      unidad: unidad.toUpperCase(), cantidad: Number(cant.replace(/,/g,'')) };
+    if(porNumero[n]){
+      // Repetido arriba de la página siguiente: completa lo que falte, sin sumar.
+      if(!porNumero[n].descripcion && fila.descripcion) porNumero[n].descripcion = fila.descripcion;
+      if(!porNumero[n].codigo && fila.codigo) porNumero[n].codigo = fila.codigo;
+      continue;
+    }
+    porNumero[n] = fila; items.push(fila);
+  }
+  return {
+    nro_guia,
+    fecha_traslado,
+    punto_partida: punto_partida.replace(/\s+/g,' ').trim().toUpperCase(),
+    punto_llegada: punto_llegada.replace(/\s+/g,' ').trim().toUpperCase(),
+    bultos,
+    items
+  };
+}
+
 function parseGuiaPDF(paginas){
+  if(esGuiaSunat(paginas)) return parseGuiaSunatPDF(paginas);
   const todasLineas = paginas.flat();
 
   function buscarCampo(etiquetaRegex){
