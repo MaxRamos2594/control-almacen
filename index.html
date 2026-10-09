@@ -133,6 +133,8 @@
   .msg{font-size:12px; padding:8px 10px; border-radius:5px; margin-top:10px; display:none;}
   .msg.ok{background:var(--green-bg); color:#245C46; display:block;}
   .msg.err{background:var(--red-bg); color:#8A332A; display:block;}
+  .msg .giro{display:inline-block; width:11px; height:11px; margin-right:7px; vertical-align:-1px; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:msgGiro .8s linear infinite;}
+  @keyframes msgGiro{ to{ transform:rotate(360deg); } }
   .hidden-perm{display:none !important;}
 
   #login-screen{
@@ -2752,8 +2754,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v143';
-const APP_UPDATED = '09/10/2026 16:00';
+const APP_VERSION = 'v144';
+const APP_UPDATED = '09/10/2026 17:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -2886,7 +2888,15 @@ function ocultarProgresoDescarga(){
 }
 function showMsg(id, type, text){
   const el = $(id); el.className = 'msg '+type; el.textContent = text; el.style.display='block';
-  setTimeout(()=>{ el.style.display='none'; }, 5000);
+  clearTimeout(el._ocultar);
+  el._ocultar = setTimeout(()=>{ el.style.display='none'; }, 5000);
+}
+// Aviso de "procesando" que no se oculta solo (con ícono girando), para
+// procesos que pueden tardar más de 5 segundos.
+function msgProceso(id, text){
+  const el = $(id); el.className = 'msg ok'; el.style.display='block';
+  clearTimeout(el._ocultar);
+  el.innerHTML = '<span class="giro"></span>' + esc(text);
 }
 document.addEventListener('input', (e)=>{
   if(e.target.classList && e.target.classList.contains('upper')){
@@ -8635,10 +8645,11 @@ async function generarCorrelativoGuia(){
 // cada celda de la tabla (etiqueta, valor, item de producto) es un solo
 // "item" de texto de pdf.js, así que no hace falta repartir por columnas X
 // como en las hojas de reparto — cada línea ya viene con sus celdas separadas.
-async function extractGuiaLineGroups(arrayBuffer){
+async function extractGuiaLineGroups(arrayBuffer, onPagina){
   const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
   const paginas = [];
   for(let p=1; p<=pdf.numPages; p++){
+    if(onPagina) onPagina(p, pdf.numPages);
     const page = await pdf.getPage(p);
     const content = await page.getTextContent();
     const items = content.items
@@ -8869,6 +8880,24 @@ async function guardarMapeoDestinoParticipante(puntoLlegada, participante){
   }catch(err){ console.error('No se pudo guardar el mapeo destino->participante', err); }
 }
 
+// Descarga (una sola vez por sesión) las filas de las campañas activas que aún
+// no están en memoria, todas a la vez. onAvance(listas, total) por cada una.
+async function cargarFilasCampanasActivas(onAvance){
+  if(!campRegAllCache.length) await cargarRegistrosCampana(true);
+  const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
+  let listas = activos.filter(c=> campRegCache[c.correlativo]).length;
+  if(onAvance) onAvance(listas, activos.length);
+  await Promise.all(activos.filter(c=> !campRegCache[c.correlativo]).map(async campania=>{
+    try{
+      const snap = await campanaItemsRef.where('correlativo','==',campania.correlativo).limit(3000).get();
+      campRegCache[campania.correlativo] = snap.docs.map(d=>d.data());
+    }finally{
+      listas++; if(onAvance) onAvance(listas, activos.length);
+    }
+  }));
+  return activos;
+}
+
 async function sugerirCampanaYParticipante(resultado){
   const codigosGuia = new Set(resultado.items.map(it=>it.codigo));
   const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
@@ -8929,12 +8958,20 @@ $('btn-procesar-guia').addEventListener('click', async ()=>{
   $('guia-batch-wrap').style.display = 'none';
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
+  const inicio = Date.now();
+  const seg = ()=> { const s = Math.round((Date.now()-inicio)/1000); return s >= 2 ? ` · ${s} s` : ''; };
+  // Aviso de avance que se queda visible hasta terminar (se refresca cada segundo).
+  let textoAvance = '';
+  const avance = (t)=>{ textoAvance = t; msgProceso('guia-msg', t + seg()); };
+  const reloj = setInterval(()=> avance(textoAvance), 1000);
+  try{
   for(let i=0;i<files.length;i++){
     const file = files[i];
-    showMsg('guia-msg','ok', `Procesando ${i+1}/${files.length}: ${file.name}…`);
+    const archivo = files.length > 1 ? `archivo ${i+1} de ${files.length} (${file.name})` : file.name;
+    avance(`Procesando… leyendo ${archivo}`);
     try{
       const arrayBuffer = await file.arrayBuffer();
-      const paginas = await extractGuiaLineGroups(arrayBuffer);
+      const paginas = await extractGuiaLineGroups(arrayBuffer, (p, n)=> avance(`Procesando… leyendo ${archivo}: página ${p} de ${n}`));
       const resultado = parseGuiaPDF(paginas);
       if(resultado.items.length === 0){
         guiaBatch.push({ fileName: file.name, resultado: null, error: 'No se reconocieron ítems en este PDF.' });
@@ -8947,7 +8984,13 @@ $('btn-procesar-guia').addEventListener('click', async ()=>{
     }
   }
 
-  showMsg('guia-msg','ok', 'Comparando contra campañas activas y verificando duplicados…');
+  if(guiaBatch.some(it=> it.resultado)){
+    avance('Procesando… descargando campañas activas para comparar');
+    try{
+      await cargarFilasCampanasActivas((listas, total)=> avance(`Procesando… comparando contra campañas activas: ${listas} de ${total}`));
+    }catch(err){ console.error(err); }
+  }
+  avance('Procesando… verificando duplicados');
   for(const item of guiaBatch){
     if(!item.resultado) continue;
     try{
@@ -8984,8 +9027,11 @@ $('btn-procesar-guia').addEventListener('click', async ()=>{
   const errores = guiaBatch.filter(it=>!it.resultado).length;
   $('guia-batch-resumen').textContent = `${guiaBatch.length} archivo(s) procesado(s): ${validas} listo(s) para guardar${dups?`, ${dups} ya existían (duplicados)`:''}${dupsLote?`, ${dupsLote} repetidos dentro de este mismo lote`:''}${errores?`, ${errores} con error`:''}. Revisa/edita fecha, campaña y participante de cada uno antes de guardar.`;
   $('guia-batch-wrap').style.display = 'block';
-  showMsg('guia-msg','ok', `Se procesaron ${guiaBatch.length} archivo(s).`);
-  $('btn-procesar-guia').disabled = false;
+  showMsg('guia-msg','ok', `Se procesaron ${guiaBatch.length} archivo(s)${seg()}.`);
+  }finally{
+    clearInterval(reloj);
+    $('btn-procesar-guia').disabled = false;
+  }
 });
 
 function actualizarFilaTrasCambioCampana(idx){
@@ -9482,12 +9528,19 @@ $('btn-procesar-guia-merma').addEventListener('click', async ()=>{
   $('merma-batch-wrap').style.display = 'none';
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
+  const inicio = Date.now();
+  const seg = ()=> { const s = Math.round((Date.now()-inicio)/1000); return s >= 2 ? ` · ${s} s` : ''; };
+  let textoAvance = '';
+  const avance = (t)=>{ textoAvance = t; msgProceso('merma-msg', t + seg()); };
+  const reloj = setInterval(()=> avance(textoAvance), 1000);
+  try{
   for(let i=0;i<files.length;i++){
     const file = files[i];
-    showMsg('merma-msg','ok', `Procesando ${i+1}/${files.length}: ${file.name}…`);
+    const archivo = files.length > 1 ? `archivo ${i+1} de ${files.length} (${file.name})` : file.name;
+    avance(`Procesando… leyendo ${archivo}`);
     try{
       const arrayBuffer = await file.arrayBuffer();
-      const paginas = await extractGuiaLineGroups(arrayBuffer);
+      const paginas = await extractGuiaLineGroups(arrayBuffer, (p, n)=> avance(`Procesando… leyendo ${archivo}: página ${p} de ${n}`));
       const resultado = parseGuiaPDF(paginas);
       if(resultado.items.length === 0){
         mermaBatch.push({ fileName: file.name, resultado: null, error: 'No se reconocieron ítems en este PDF.' });
@@ -9500,7 +9553,7 @@ $('btn-procesar-guia-merma').addEventListener('click', async ()=>{
     }
   }
 
-  showMsg('merma-msg','ok', 'Verificando duplicados…');
+  avance('Procesando… verificando duplicados');
   for(const item of mermaBatch){
     if(!item.resultado) continue;
     try{ item.duplicado = await buscarMermaGuiaDuplicada(item.resultado.nro_guia); }
@@ -9522,8 +9575,11 @@ $('btn-procesar-guia-merma').addEventListener('click', async ()=>{
   const errores = mermaBatch.filter(it=>!it.resultado).length;
   $('merma-batch-resumen').textContent = `${mermaBatch.length} archivo(s) procesado(s): ${validas} listo(s) para guardar${dups?`, ${dups} ya existían (duplicados)`:''}${dupsLote?`, ${dupsLote} repetidos dentro de este mismo lote`:''}${errores?`, ${errores} con error`:''}. Revisa/edita fecha y sede de cada uno antes de guardar.`;
   $('merma-batch-wrap').style.display = 'block';
-  showMsg('merma-msg','ok', `Se procesaron ${mermaBatch.length} archivo(s).`);
-  $('btn-procesar-guia-merma').disabled = false;
+  showMsg('merma-msg','ok', `Se procesaron ${mermaBatch.length} archivo(s)${seg()}.`);
+  }finally{
+    clearInterval(reloj);
+    $('btn-procesar-guia-merma').disabled = false;
+  }
 });
 
 function renderMermaBatch(){
