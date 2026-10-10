@@ -8,6 +8,7 @@ rules_version = '2';
 //   - Solo un admin puede crear/editar permisos (colección usuarios).
 //   - La bitácora (movimientos) no se puede editar ni borrar.
 //   - El kardex no se puede borrar; solo admin/eliminar lo corrige (fusión).
+//   - El maestro de participantes solo lo edita un admin.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -56,10 +57,16 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Maestro de participantes (tiendas): todos lo leen; solo admin lo edita.
+    match /participantes_maestro/{id} {
+      allow read: if registered();
+      allow create, update, delete: if isAdmin();
+    }
+
     // Resto de colecciones de la app: cualquier usuario registrado.
     match /{coleccion}/{id} {
       allow read, write: if registered()
-        && !(coleccion in ['usuarios', 'movimientos', 'kardex']);
+        && !(coleccion in ['usuarios', 'movimientos', 'kardex', 'participantes_maestro']);
     }
   }
 }
