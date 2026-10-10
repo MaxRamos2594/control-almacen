@@ -2166,7 +2166,7 @@
   <div id="camp-voucher-grid">
     <div class="panel">
       <h3>Crear voucher de agencia</h3>
-      <p class="hint" style="margin-bottom:10px;">Selecciona una campaña, elige una o varias guías de remisión activas (aún no incluidas en otro voucher) e indica los bultos de cada una.</p>
+      <p class="hint" style="margin-bottom:10px;">Selecciona una campaña, elige una o varias guías de remisión activas (aún no incluidas en otro voucher) e indica los bultos de cada una. Solo se listan las guías de tiendas marcadas como <b>Provincia</b> en el maestro de participantes.</p>
       <div style="display:flex; gap:14px; align-items:end; flex-wrap:wrap; margin-bottom:12px;">
         <div class="field" style="margin:0; max-width:340px;">
           <label>Campaña</label>
@@ -2175,6 +2175,7 @@
         <button class="btn btn-primary" id="btn-vch-cargar-guias">Cargar guías</button>
       </div>
       <div class="msg" id="vch-guias-msg"></div>
+      <p class="hint" id="vch-guias-fuera" style="display:none; margin:0 0 8px; padding:7px 10px; background:#fbf3e6; border-radius:6px; color:#7a4a12;"></p>
       <div class="hist-wrap" style="max-height:320px; margin-bottom:12px;">
         <table><thead><tr><th></th><th>N° guía</th><th>Fecha</th><th>Tienda / destino</th><th>Bultos</th></tr></thead><tbody id="vch-guias-body"></tbody></table>
         <div class="empty-state" id="vch-guias-empty">Elige una campaña y presiona "Cargar guías".</div>
@@ -2888,8 +2889,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v153';
-const APP_UPDATED = '12/10/2026 11:00';
+const APP_VERSION = 'v154';
+const APP_UPDATED = '12/10/2026 13:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -14210,10 +14211,32 @@ async function generarCorrelativoVoucher(){
 
 function poblarSelectCampanasVouchers(){ return poblarSelectCampanas('vch-campana-select'); }
 
+// Los vouchers de agencia son para envíos a provincia: solo se listan las
+// guías cuyo participante está marcado como PROVINCIA en el maestro de
+// participantes. Las demás se cuentan en un aviso (Lima / sin zona / no
+// registrado) para que no desaparezcan sin explicación.
+let vchGuiasFuera = { lima: [], sinZona: [], noRegistrado: [] };
 async function cargarGuiasDisponiblesVoucher(correlativoCampana){
   const snap = await guiasRegistrosRef.where('campana_correlativo','==',correlativoCampana).where('estado','==','ACTIVO').get();
-  vchGuiasCache = snap.docs.map(d=>d.data()).filter(g=>!g.voucher_correlativo);
+  const libres = snap.docs.map(d=>d.data()).filter(g=>!g.voucher_correlativo);
+  vchGuiasFuera = { lima: [], sinZona: [], noRegistrado: [] };
+  vchGuiasCache = libres.filter(g=>{
+    const p = participanteDelMaestro(g.participante);
+    if(p && p.zona === 'PROVINCIA') return true;
+    if(!p) vchGuiasFuera.noRegistrado.push(g);
+    else if(p.zona === 'LIMA') vchGuiasFuera.lima.push(g);
+    else vchGuiasFuera.sinZona.push(g);
+    return false;
+  });
   renderVchGuiasChecklist();
+}
+function avisoGuiasFueraVoucher(){
+  const f = vchGuiasFuera, partes = [];
+  const nombres = arr=> [...new Set(arr.map(g=> g.participante || '(sin participante)'))].sort().join(', ');
+  if(f.lima.length) partes.push(`${f.lima.length} de Lima`);
+  if(f.sinZona.length) partes.push(`${f.sinZona.length} de tiendas sin zona en el maestro (${nombres(f.sinZona)})`);
+  if(f.noRegistrado.length) partes.push(`${f.noRegistrado.length} de tiendas que no están en el maestro (${nombres(f.noRegistrado)})`);
+  return partes.length ? `Solo se listan guías de tiendas de Provincia. No se muestran: ${partes.join(' · ')}.` + (f.sinZona.length || f.noRegistrado.length ? ' Complétalas en Gestionar → Participantes.' : '') : '';
 }
 
 $('btn-vch-cargar-guias').addEventListener('click', async ()=>{
@@ -14239,6 +14262,10 @@ $('btn-vch-cargar-guias').addEventListener('click', async ()=>{
 function renderVchGuiasChecklist(){
   const tbody = $('vch-guias-body');
   $('vch-guias-empty').style.display = vchGuiasCache.length ? 'none' : 'block';
+  const aviso = avisoGuiasFueraVoucher();
+  $('vch-guias-fuera').textContent = aviso;
+  $('vch-guias-fuera').style.display = aviso ? 'block' : 'none';
+  if(!vchGuiasCache.length && vchCampanaActual) $('vch-guias-empty').textContent = 'No hay guías de tiendas de Provincia pendientes de voucher en esta campaña.';
   tbody.innerHTML = vchGuiasCache.map(g=>`
     <tr>
       <td><input type="checkbox" class="vch-guia-check" data-correlativo="${esc(g.correlativo)}" style="width:auto;"></td>
