@@ -2754,8 +2754,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v145';
-const APP_UPDATED = '10/10/2026 10:00';
+const APP_VERSION = 'v146';
+const APP_UPDATED = '10/10/2026 12:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3850,7 +3850,7 @@ function renderBloqueForms(){
       const ocupado = Object.entries(posiciones).some(([pid,p])=>p.nicho===letra && p.estado==='ocupado');
       const tipoTxt = n.tipo==='solo_piso' ? 'Solo piso (12)' : n.tipo==='solo_rack' ? `${(n.niveles||2)} niveles, sin piso (${(n.niveles||2)*2} rack)` : `${(n.niveles||2)} niveles (${(n.niveles||2)*2} rack + ${pisoFilasDeNicho(n)*2} piso)`;
       return `<label style="display:flex; align-items:center; gap:8px; padding:4px 0; font-size:12px; ${esc(ocupado?'color:#AAA;':'')}">
-        <input type="checkbox" class="nicho-check" data-bloque="${esc(id)}" data-letra="${esc(letra)}" ${esc(ocupado?'disabled title="Tiene posiciones ocupadas"':'')} style="width:auto;">
+        <input type="checkbox" class="nicho-check" data-bloque="${esc(id)}" data-letra="${esc(letra)}" ${ocupado?'disabled title="Tiene posiciones ocupadas"':''} style="width:auto;">
         <b style="font-family:var(--mono);">${esc(letra)}</b> — ${esc(tipoTxt)} ${esc(ocupado?' · ocupado':'')}
       </label>`;
     }).join('');
@@ -10920,7 +10920,7 @@ function renderAnalisis(resultado, etiquetaAlcance, ranking){
     const suf = String(valor).endsWith('%') ? '%' : '';
     return `<div class="an-kpi">
       <div class="t">${esc(titulo)}</div>
-      <div class="v" style="color:${esc(color||'var(--ink)')};" ${esc(num?`data-num="${limpio}" data-suf="${suf}"`:'')}>${esc(num?'0'+suf:valor)}</div>
+      <div class="v" style="color:${esc(color||'var(--ink)')};" ${num?`data-num="${esc(limpio)}" data-suf="${esc(suf)}"`:''}>${esc(num?'0'+suf:valor)}</div>
     </div>`;
   };
   $('an-kpis').innerHTML =

@@ -70,6 +70,10 @@ function verificar(condicion, texto){
   await page.waitForFunction(()=> !$('btn-analizar').disabled, null, { timeout: 20000 });
   const fin = await page.evaluate(()=> ({ res: $('an-resultados').style.display, msg: getComputedStyle($('an-msg')).display }));
   verificar(fin.res !== 'none' && fin.msg === 'none', 'Al terminar muestra el análisis y quita el aviso');
+  // Indicadores: el contador animado llega al valor real (antes se quedaba en 0"")
+  await page.waitForTimeout(1500);
+  const kpis = await page.evaluate(()=> [...document.querySelectorAll('#an-kpis .an-kpi')].map(k=> k.querySelector('.t').innerText.trim() + '=' + k.querySelector('.v').innerText.trim()).join(' | '));
+  verificar(/Repartido \(hoja\)=20 \| En guías \(salida\)=10 \| Cumplimiento=50% \| Ítems \(SKU distintos\)=1 \| SKU con faltante=1 \| SKU con exceso=0$/i.test(kpis), `Indicadores con sus valores: ${kpis}`);
 
   // Segunda vez: ya está todo en memoria, sin aviso
   await page.click('#campsub-registros'); await page.click('#campsub-analisis');
