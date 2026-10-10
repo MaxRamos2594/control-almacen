@@ -21,6 +21,10 @@ function verificar(condicion, texto){
       for(const t of tiendas) await campanaItemsRef.doc().set({ correlativo: corr, participante: t, sku:'S1', producto:'PRODUCTO 1', cantidad:10 });
     }
     await guiaItemsRef.doc().set({ campana_correlativo:'CAMP-0001', participante:'ATE', codigo:'S1', descripcion:'PRODUCTO 1', cantidad:10 });
+    // Código partido en dos líneas en la hoja ("BK-" / "AMARILLO" → BK-AMARILLO)
+    // y con espacio en la guía ("BK- AMARILLO"): es el mismo producto.
+    await campanaItemsRef.doc().set({ correlativo:'CAMP-0001', participante:'ATE', sku:'BK-AMARILLO', producto:'LUCES AMARILLAS', cantidad:30 });
+    await guiaItemsRef.doc().set({ campana_correlativo:'CAMP-0001', participante:'ATE', codigo:'BK- AMARILLO', descripcion:'LUCES AMARILLAS', cantidad:30 });
     // Red lenta simulada: cabeceras 1.5 s, filas de campaña 1.5 s, filas de guías 7 s.
     const lento = (ref, metodo, ms)=>{
       const orig = ref[metodo].bind(ref);
@@ -73,7 +77,9 @@ function verificar(condicion, texto){
   // Indicadores: el contador animado llega al valor real (antes se quedaba en 0"")
   await page.waitForTimeout(1500);
   const kpis = await page.evaluate(()=> [...document.querySelectorAll('#an-kpis .an-kpi')].map(k=> k.querySelector('.t').innerText.trim() + '=' + k.querySelector('.v').innerText.trim()).join(' | '));
-  verificar(/Repartido \(hoja\)=20 \| En guías \(salida\)=10 \| Cumplimiento=50% \| Ítems \(SKU distintos\)=1 \| SKU con faltante=1 \| SKU con exceso=0$/i.test(kpis), `Indicadores con sus valores: ${kpis}`);
+  verificar(/Repartido \(hoja\)=50 \| En guías \(salida\)=40 \| Cumplimiento=80% \| Ítems \(SKU distintos\)=2 \| SKU con faltante=1 \| SKU con exceso=0$/i.test(kpis), `Indicadores con sus valores (BK-AMARILLO de la hoja cruza con "BK- AMARILLO" de la guía): ${kpis}`);
+  const bk = await page.evaluate(()=> [...document.querySelectorAll('#an-detalle-body tr')].map(r=> r.innerText.replace(/\s+/g,' ').trim()).find(t=> /^BK-/.test(t)) || '');
+  verificar(/^BK-AMARILLO LUCES AMARILLAS 30 30 Completo 100%/.test(bk), `Detalle por SKU: "${bk}"`);
   const sinLinea = await page.evaluate(()=> !$('an-timeline') && !/Línea de tiempo/i.test($('an-resultados').innerText));
   verificar(sinLinea, 'Ya no aparece la "Línea de tiempo de la campaña"');
 
