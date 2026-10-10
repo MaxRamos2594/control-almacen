@@ -74,6 +74,8 @@ function verificar(condicion, texto){
   await page.waitForTimeout(1500);
   const kpis = await page.evaluate(()=> [...document.querySelectorAll('#an-kpis .an-kpi')].map(k=> k.querySelector('.t').innerText.trim() + '=' + k.querySelector('.v').innerText.trim()).join(' | '));
   verificar(/Repartido \(hoja\)=20 \| En guías \(salida\)=10 \| Cumplimiento=50% \| Ítems \(SKU distintos\)=1 \| SKU con faltante=1 \| SKU con exceso=0$/i.test(kpis), `Indicadores con sus valores: ${kpis}`);
+  const sinLinea = await page.evaluate(()=> !$('an-timeline') && !/Línea de tiempo/i.test($('an-resultados').innerText));
+  verificar(sinLinea, 'Ya no aparece la "Línea de tiempo de la campaña"');
 
   // Segunda vez: ya está todo en memoria, sin aviso
   await page.click('#campsub-registros'); await page.click('#campsub-analisis');
