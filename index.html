@@ -423,19 +423,6 @@
   tr.an-fila-click{cursor:pointer;}
   tr.an-fila-click:hover td{background:var(--blue-bg);}
 
-  /* Línea de tiempo */
-  .an-timeline{position:relative; padding-left:26px;}
-  .an-timeline::before{content:''; position:absolute; left:8px; top:6px; bottom:6px; width:2px; background:var(--line-strong);}
-  .an-hito{position:relative; padding:0 0 15px 0; animation:an-entra .4s both;}
-  .an-hito::before{
-    content:''; position:absolute; left:-22px; top:4px; width:11px; height:11px; border-radius:50%;
-    background:#fff; border:2px solid var(--blue);
-  }
-  .an-hito.reparto::before{border-color:#2E5F8A;} .an-hito.guia::before{border-color:#B8791F;} .an-hito.voucher::before{border-color:#2E7D46;}
-  .an-hito .f{font-family:var(--mono); font-size:11px; color:var(--ink-soft);}
-  .an-hito .t{font-size:13px; font-weight:600;}
-  .an-hito .d{font-size:12px; color:var(--ink-soft);}
-
   /* Chips de filtro */
   .an-chips{display:flex; gap:7px; flex-wrap:wrap; align-items:center; min-height:30px;}
   .an-chip{
@@ -1998,9 +1985,6 @@
         <span><i style="background:#EDF0F3;"></i> no aplica</span>
       </div>
 
-      <h4 style="font-size:12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; margin:24px 0 8px;">Línea de tiempo de la campaña</h4>
-      <div class="an-timeline an-bloque" id="an-timeline" style="margin-bottom:10px;"></div>
-
       <h4 class="an-solo-edicion" style="font-size:12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; margin:24px 0 8px;">Detalle por SKU</h4>
       <div class="an-solo-edicion" style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
         <div class="field" style="margin:0; max-width:280px;"><label>Buscar SKU o descripción</label><input type="text" id="an-filtro-sku" class="upper" placeholder="EJ. R4561"></div>
@@ -2754,8 +2738,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v146';
-const APP_UPDATED = '10/10/2026 12:00';
+const APP_VERSION = 'v147';
+const APP_UPDATED = '10/10/2026 15:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -10792,8 +10776,7 @@ $('btn-analizar').addEventListener('click', async ()=>{
       participante: participanteFiltro || null,
       filasReparto: filasRepartoCompleto,
       filasGuia: filasGuiaCompleto,
-      validadores: await cargarValidadoresCampana(correlativo),
-      guias: await cargarGuiasCampana(correlativo)
+      validadores: await cargarValidadoresCampana(correlativo)
     };
     renderAnalisis(resultado, participanteFiltro || 'Todos los participantes', ranking);
     $('an-msg').style.display = 'none';
@@ -10871,16 +10854,11 @@ let anContexto = null;
 
 /* Validadores asignados a la campaña y guías cabecera: se cachean por campaña
    para no repetir lecturas en cada análisis. */
-const anValidadoresCache = {}, anGuiasCache = {};
+const anValidadoresCache = {};
 async function cargarValidadoresCampana(correlativo){
   if(anValidadoresCache[correlativo]) return anValidadoresCache[correlativo];
   const snap = await validadoresRef.where('correlativo','==',correlativo).limit(1000).get();
   return (anValidadoresCache[correlativo] = snap.docs.map(d=>d.data()));
-}
-async function cargarGuiasCampana(correlativo){
-  if(anGuiasCache[correlativo]) return anGuiasCache[correlativo];
-  const snap = await guiasRegistrosRef.where('campana_correlativo','==',correlativo).limit(500).get();
-  return (anGuiasCache[correlativo] = snap.docs.map(d=>d.data()));
 }
 
 const anFmt = n => Number(n||0).toLocaleString('es-PE');
@@ -10912,7 +10890,6 @@ function renderAnalisis(resultado, etiquetaAlcance, ranking){
   renderAnEmbudo(resultado);
   renderAnValidadores();
   renderAnHeatmap();
-  renderAnTimeline();
 
   const kpiHtml = (titulo, valor, color)=>{
     const num = (typeof valor === 'number' || /^[\d,. ]+%?$/.test(String(valor)));
@@ -10967,8 +10944,8 @@ function renderAnalisis(resultado, etiquetaAlcance, ranking){
     });
   }
 
-  // El top de faltantes y el aporte por guía ahora se leen en el mapa de calor
-  // y en la línea de tiempo; sus tablas se retiraron por duplicadas.
+  // El top de faltantes ahora se lee en el mapa de calor; su tabla se retiró
+  // por duplicada.
   renderTablaDetalleAnalisis();
 }
 
@@ -11190,32 +11167,6 @@ function renderAnHeatmap(){
   });
   html += '</tbody></table>';
   $('an-heat-wrap').innerHTML = html;
-}
-
-/* Línea de tiempo: carga del reparto, salida de cada guía y creación de vouchers. */
-async function renderAnTimeline(){
-  if(!anContexto){ return; }
-  const hitos = [];
-  const cab = campRegAllCache.find(r=>r.correlativo === anContexto.correlativo);
-  if(cab) hitos.push({f:cab.fecha_transaccion || '', clase:'reparto',
-    t:'Reparto cargado · ' + cab.correlativo,
-    d:(cab.campana||'') + ' · ' + anFmt(cab.total_filas) + ' filas · ' + cab.sku_distintos + ' ítems'});
-  anContexto.guias.forEach(g=> hitos.push({f:g.fecha_traslado || '', clase:'guia',
-    t:'Guía ' + (g.nro_guia||g.correlativo),
-    d:(g.participante||'') + ' · ' + anFmt(g.total_items) + ' ítems · ' + (g.bultos||0) + ' bultos' + (g.estado==='INVALIDADO' ? ' · INVALIDADA' : '')}));
-  try{
-    const snap = await vouchersAgenciaRef.where('campana_correlativo','==',anContexto.correlativo).limit(200).get();
-    snap.docs.map(d=>d.data()).forEach(v=> hitos.push({
-      f: v.creado_en && v.creado_en.toDate ? v.creado_en.toDate().toISOString().slice(0,10) : '',
-      clase:'voucher',
-      t:'Voucher ' + v.correlativo,
-      d:(v.cantidad_guias||0) + ' guías · creado por ' + (v.creado_por||'')}));
-  }catch(e){ console.warn('No se pudieron leer los vouchers para la línea de tiempo', e); }
-  hitos.sort((a,b)=> String(a.f).localeCompare(String(b.f)));
-  $('an-timeline').innerHTML = hitos.length
-    ? hitos.map((x,i)=> '<div class="an-hito ' + esc(x.clase) + '" style="animation-delay:' + (i*55) + 'ms">' +
-        '<div class="f">' + (esc(x.f || 'sin fecha')) + '</div><div class="t">' + esc(x.t) + '</div><div class="d">' + esc(x.d) + '</div></div>').join('')
-    : '<div class="empty-state">Sin hitos registrados para esta campaña.</div>';
 }
 
 /* Chips: los filtros activos se ven y se quitan de uno en uno. */
