@@ -399,6 +399,53 @@
   }
   .an-embudo .merma{font-size:11px; color:#A93B2C; padding-left:162px; font-family:var(--mono);}
 
+  /* Subpestañas de Campañas agrupadas (Cargar · Consultar · Gestionar) */
+  #view-campanas > .subtabs{display:flex; gap:0; flex-wrap:wrap; align-items:stretch; background:#fff; border:1px solid var(--line-strong); border-radius:10px; padding:8px 4px;}
+  #view-campanas .subgrupo{display:flex; flex-direction:column; gap:5px; padding:0 10px; flex:1 1 auto;}
+  #view-campanas .subgrupo + .subgrupo{border-left:1px solid var(--line-strong);}
+  #view-campanas .subgrupo-t{font-size:9.5px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-soft);}
+  #view-campanas .subgrupo-b{display:flex; gap:6px;}
+  #view-campanas .subgrupo-b button{flex:1; white-space:nowrap; transition:background .15s, color .15s, transform .15s;}
+  #view-campanas .subgrupo-b button:hover:not(.active){background:#f3f5f8; transform:translateY(-1px);}
+  @media (max-width: 900px){
+    #view-campanas > .subtabs{flex-wrap:nowrap; overflow-x:auto;}
+    #view-campanas .subgrupo{flex:0 0 auto;}
+  }
+
+  /* Registros y Detalle: indicadores + campañas y guías lado a lado */
+  .reg-kpis{display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:10px; margin-bottom:14px;}
+  .reg-kpi{background:#fff; border:1px solid var(--line-strong); border-radius:10px; padding:10px 14px; position:relative; overflow:hidden; animation:regEntra .45s both;}
+  .reg-kpi::before{content:''; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--k, var(--blue));}
+  .reg-kpi .t{font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft);}
+  .reg-kpi .v{font-family:var(--mono); font-size:24px; font-weight:700; margin-top:2px;}
+  .reg-kpi .d{font-size:11px; color:var(--ink-soft);}
+  .reg-kpi.click{cursor:pointer; transition:transform .15s, box-shadow .15s;}
+  .reg-kpi.click:hover{transform:translateY(-2px); box-shadow:0 6px 16px rgba(0,0,0,.08);}
+  .reg-kpi.activo{box-shadow:0 0 0 2px var(--k) inset;}
+  .reg-dos-col{display:grid; grid-template-columns:1fr; gap:14px; align-items:start;}
+  @media (min-width: 1250px){ .reg-dos-col{grid-template-columns:minmax(0, 1fr) minmax(0, 1.25fr);} }
+  .reg-dos-col > .panel{margin-bottom:0 !important; min-width:0;}
+  .reg-filtros{display:flex; gap:8px; align-items:end; flex-wrap:wrap; margin-bottom:10px;}
+  .reg-filtros .field{margin:0;}
+  .reg-filtros .field input, .reg-filtros .field select{min-width:0;}
+  table.reg-tabla td{vertical-align:middle;}
+  table.reg-tabla td.num, table.reg-tabla th.num{text-align:right; font-family:var(--mono);}
+  table.reg-tabla .reg-t{font-weight:600;} table.reg-tabla .reg-s{font-size:10.5px; color:var(--ink-soft); font-family:var(--mono);}
+  table.reg-tabla td.reg-llegada{max-width:230px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:11px;}
+  table.reg-tabla td.reg-acc{white-space:nowrap; text-align:right;}
+  table.reg-tabla td.reg-acc .btn{padding:3px 8px;}
+  table.reg-tabla tbody tr{animation:regEntra .35s both; transition:background .15s;}
+  #camp-reg-body tr[data-reg-corr]{cursor:pointer;}
+  #camp-reg-body tr[data-reg-corr]:hover td{background:#f5f8fc;}
+  #camp-reg-body tr.reg-sel td{background:var(--blue-bg) !important;}
+  #camp-reg-body tr.reg-sel td:first-child{box-shadow:inset 3px 0 0 var(--blue);}
+  .reg-badge{display:inline-block; min-width:24px; text-align:center; padding:1px 7px; border-radius:999px; background:#e3f1ee; color:#1f6f64; font-weight:700; font-size:11px;}
+  .reg-badge.cero{background:#fbeadf; color:#9a4a1c;}
+  .reg-chip{display:inline-flex; align-items:center; gap:8px; background:var(--blue-bg); color:var(--blue); border-radius:999px; padding:4px 6px 4px 12px; font-size:12px; font-weight:600; margin-bottom:10px; animation:regEntra .3s both;}
+  .reg-chip button{border:none; background:#fff; color:var(--blue); width:20px; height:20px; border-radius:50%; cursor:pointer; font-weight:700; line-height:1;}
+  @keyframes regEntra{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
+  @media (prefers-reduced-motion: reduce){ .reg-kpi, table.reg-tabla tbody tr, .reg-chip{animation:none;} }
+
   /* Maestro de participantes */
   .pm-zona{display:inline-block; font-size:10px; font-weight:700; padding:2px 8px; border-radius:999px; letter-spacing:.03em;}
   .pm-zona.lima{background:#e3f1ee; color:#1f6f64;} .pm-zona.provincia{background:#fbeadf; color:#9a4a1c;} .pm-zona.nd{background:#eef0f2; color:var(--ink-soft);}
@@ -1762,14 +1809,20 @@
 <!-- CAMPAÑAS (PDF) -->
 <div class="view" id="view-campanas">
   <div class="subtabs">
-    <button class="active" id="campsub-cargar-campana">📋 Cargar Campaña</button>
-    <button id="campsub-cargar-guia">🚚 Cargar Guía</button>
-    <button id="campsub-registros">🗂 Registros y Detalle</button>
-    <button id="campsub-buscar">🔍 Buscar</button>
-    <button id="campsub-analisis">📊 Análisis</button>
-    <button id="campsub-validadores">✅ Validadores</button>
-    <button id="campsub-vouchers">📦 Vouchers Agencia</button>
-    <button id="campsub-participantes">👥 Participantes</button>
+    <div class="subgrupo"><span class="subgrupo-t">Cargar</span><div class="subgrupo-b">
+      <button class="active" id="campsub-cargar-campana">📋 Campaña</button>
+      <button id="campsub-cargar-guia">🚚 Guía</button>
+    </div></div>
+    <div class="subgrupo"><span class="subgrupo-t">Consultar</span><div class="subgrupo-b">
+      <button id="campsub-registros">🗂 Registros y Detalle</button>
+      <button id="campsub-buscar">🔍 Buscar</button>
+      <button id="campsub-analisis">📊 Análisis</button>
+    </div></div>
+    <div class="subgrupo"><span class="subgrupo-t">Gestionar</span><div class="subgrupo-b">
+      <button id="campsub-validadores">✅ Validadores</button>
+      <button id="campsub-vouchers">📦 Vouchers Agencia</button>
+      <button id="campsub-participantes">👥 Participantes</button>
+    </div></div>
   </div>
 
   <div id="campsub-panel-cargar-campana">
@@ -1822,35 +1875,66 @@
   </div>
 
   <div id="campsub-panel-registros" style="display:none;">
-  <div class="panel" style="margin-bottom:14px;">
-    <h3>Registros de campañas cargadas</h3>
-    <p class="hint" style="margin-bottom:10px;">Cada carga guardada genera un correlativo. El detalle (todas las filas) solo se consulta cuando presionas "Ver detalle", para no gastar lecturas de más. Al eliminar un registro se borra su detalle y la cabecera queda marcada como INVALIDADA (no se borra el correlativo).</p>
-    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
-      <div class="field" style="margin:0; max-width:200px;">
-        <label>Mostrar</label>
-        <select id="camp-reg-filtro-estado"><option value="ACTIVO">Activos</option><option value="INVALIDADO">Invalidados</option></select>
-      </div>
-      <div class="field" style="margin:0; max-width:170px;"><label>Fecha de transacción</label><input type="date" id="camp-reg-filtro-fecha"></div>
-      <div class="field" style="margin:0; max-width:220px;"><label>Campaña (contiene)</label><input type="text" id="camp-reg-filtro-campana" class="upper" placeholder="EJ. CAMPAÑA 30-08"></div>
+  <div class="reg-kpis" id="reg-kpis"></div>
+  <div class="reg-dos-col">
+  <div class="panel">
+    <h3>Campañas cargadas</h3>
+    <p class="hint" style="margin-bottom:10px;">Clic en una campaña para ver solo sus guías a la derecha. "Ver" consulta sus filas (para no gastar lecturas de más). Al eliminar se borra su detalle y la cabecera queda INVALIDADA (no se borra el correlativo).</p>
+    <div class="reg-filtros">
+      <div class="field" style="max-width:130px;"><label>Mostrar</label><select id="camp-reg-filtro-estado"><option value="ACTIVO">Activos</option><option value="INVALIDADO">Invalidados</option></select></div>
+      <div class="field" style="max-width:150px;"><label>Fecha de transacción</label><input type="date" id="camp-reg-filtro-fecha"></div>
+      <div class="field" style="max-width:190px;"><label>Campaña (contiene)</label><input type="text" id="camp-reg-filtro-campana" class="upper" placeholder="EJ. CAMPAÑA 30-08"></div>
       <button class="btn btn-ghost btn-sm" id="btn-camp-reg-limpiar-filtros">Limpiar filtros</button>
-      <button class="btn btn-ghost" id="btn-limpiar-legacy" style="margin-left:auto;">🧹 Eliminar registros antiguos sin correlativo</button>
     </div>
-    <div class="hist-wrap" style="max-height:500px;">
-      <table><thead id="camp-reg-thead"><tr>
+    <div id="camp-reg-chip"></div>
+    <div class="hist-wrap" style="max-height:560px;">
+      <table class="reg-tabla"><thead id="camp-reg-thead"><tr>
         <th class="th-ordenable" data-key="correlativo">Correlativo</th>
         <th class="th-ordenable" data-key="campana">Campaña</th>
-        <th class="th-ordenable" data-key="codigo">Código</th>
-        <th class="th-ordenable" data-key="fecha_transaccion">Fecha transacción</th>
-        <th class="th-ordenable" data-key="sku_distintos">SKU distintos</th>
-        <th class="th-ordenable" data-key="total_filas">Total filas</th>
-        <th class="th-ordenable" data-key="usuario">Cargado por</th>
-        <th>Detalle</th><th>Acción</th>
+        <th class="th-ordenable" data-key="fecha_transaccion">Fecha</th>
+        <th class="th-ordenable num" data-key="sku_distintos">SKU</th>
+        <th class="th-ordenable num" data-key="total_filas">Filas</th>
+        <th class="th-ordenable num" data-key="_n_guias">Guías</th>
+        <th></th>
       </tr></thead><tbody id="camp-reg-body"></tbody></table>
       <div class="empty-state" id="camp-reg-empty">Aún no hay campañas guardadas.</div>
     </div>
-    <button class="btn" id="btn-reg-cargar-mas" style="margin-top:10px; display:none;">Cargar más registros</button>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+      <button class="btn" id="btn-reg-cargar-mas" style="display:none;">Cargar más registros</button>
+      <button class="btn btn-ghost btn-sm" id="btn-limpiar-legacy" style="margin-left:auto;">🧹 Eliminar registros antiguos sin correlativo</button>
+    </div>
   </div>
 
+  <div class="panel">
+    <h3>Guías de remisión cargadas</h3>
+    <p class="hint" style="margin-bottom:10px;">Cada guía queda asociada a una campaña (reparto). Una campaña puede tener varias guías.</p>
+    <div class="reg-filtros">
+      <div class="field" style="max-width:130px;"><label>Mostrar</label><select id="guia-reg-filtro-estado"><option value="ACTIVO">Activos</option><option value="INVALIDADO">Invalidados</option></select></div>
+      <div class="field" style="max-width:150px;"><label>Fecha de traslado</label><input type="date" id="guia-reg-filtro-fecha"></div>
+      <div class="field" style="max-width:130px;"><label>N° guía</label><input type="text" id="guia-reg-filtro-nroguia" class="upper" placeholder="EJ. TG02"></div>
+      <div class="field" style="max-width:160px;"><label>Participante</label><input type="text" id="guia-reg-filtro-participante" class="upper" placeholder="EJ. MAGDALENA"></div>
+      <div class="field" style="max-width:170px;"><label>Campaña</label><input type="text" id="guia-reg-filtro-campana" class="upper" placeholder="EJ. CAMPAÑA 30-08"></div>
+      <button class="btn btn-ghost btn-sm" id="btn-guia-reg-limpiar-filtros">Limpiar filtros</button>
+    </div>
+    <div id="guia-reg-chip"></div>
+    <div class="hist-wrap" style="max-height:560px;">
+      <table class="reg-tabla"><thead id="guia-reg-thead"><tr>
+        <th class="th-ordenable" data-key="nro_guia">Guía</th>
+        <th class="th-ordenable" data-key="campana_nombre">Campaña</th>
+        <th class="th-ordenable" data-key="participante">Participante</th>
+        <th class="th-ordenable" data-key="fecha_traslado">Fecha</th>
+        <th class="th-ordenable" data-key="punto_llegada">Llegada</th>
+        <th class="th-ordenable num" data-key="total_items">Ítems</th>
+        <th class="th-ordenable num" data-key="bultos">Bultos</th>
+        <th></th>
+      </tr></thead><tbody id="guia-reg-body"></tbody></table>
+      <div class="empty-state" id="guia-reg-empty">Aún no hay guías cargadas.</div>
+    </div>
+    <button class="btn" id="btn-guia-reg-cargar-mas" style="margin-top:10px; display:none;">Cargar más registros</button>
+  </div>
+  </div>
+
+  <div style="height:14px;"></div>
   <div class="panel" id="camp-detalle-panel" style="display:none; margin-bottom:14px;">
     <h3 id="camp-detalle-titulo" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
       <span id="camp-detalle-titulo-text">Detalle de campaña</span>
@@ -1868,38 +1952,6 @@
       <table><thead><tr><th>SKU</th><th>Producto</th><th>Área</th><th>Cantidad</th><th>Desglose</th></tr></thead><tbody id="camp-detalle-body"></tbody></table>
       <div class="empty-state" id="camp-detalle2-vacio">Elige un participante en "Detalle 1" para ver sus filas.</div>
     </div>
-  </div>
-
-  <div class="panel" style="margin-bottom:14px;">
-    <h3>Guías de remisión cargadas</h3>
-    <p class="hint" style="margin-bottom:10px;">Cada guía queda asociada a una campaña (reparto). Una campaña puede tener varias guías.</p>
-    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
-      <div class="field" style="margin:0; max-width:200px;">
-        <label>Mostrar</label>
-        <select id="guia-reg-filtro-estado"><option value="ACTIVO">Activos</option><option value="INVALIDADO">Invalidados</option></select>
-      </div>
-      <div class="field" style="margin:0; max-width:170px;"><label>Fecha de traslado</label><input type="date" id="guia-reg-filtro-fecha"></div>
-      <div class="field" style="margin:0; max-width:180px;"><label>N° guía (contiene)</label><input type="text" id="guia-reg-filtro-nroguia" class="upper" placeholder="EJ. TG02"></div>
-      <div class="field" style="margin:0; max-width:180px;"><label>Participante (contiene)</label><input type="text" id="guia-reg-filtro-participante" class="upper" placeholder="EJ. MAGDALENA"></div>
-      <div class="field" style="margin:0; max-width:220px;"><label>Campaña (contiene)</label><input type="text" id="guia-reg-filtro-campana" class="upper" placeholder="EJ. CAMPAÑA 30-08"></div>
-      <button class="btn btn-ghost btn-sm" id="btn-guia-reg-limpiar-filtros">Limpiar filtros</button>
-    </div>
-    <div class="hist-wrap" style="max-height:500px;">
-      <table><thead id="guia-reg-thead"><tr>
-        <th class="th-ordenable" data-key="correlativo">Correlativo guía</th>
-        <th class="th-ordenable" data-key="nro_guia">N° guía</th>
-        <th class="th-ordenable" data-key="campana_nombre">Campaña</th>
-        <th class="th-ordenable" data-key="participante">Participante</th>
-        <th class="th-ordenable" data-key="fecha_traslado">Fecha traslado</th>
-        <th class="th-ordenable" data-key="punto_partida">Partida → Llegada</th>
-        <th class="th-ordenable" data-key="total_items">Ítems</th>
-        <th class="th-ordenable" data-key="bultos">Bultos</th>
-        <th class="th-ordenable" data-key="usuario">Cargado por</th>
-        <th>Detalle</th><th>Acción</th>
-      </tr></thead><tbody id="guia-reg-body"></tbody></table>
-      <div class="empty-state" id="guia-reg-empty">Aún no hay guías cargadas.</div>
-    </div>
-    <button class="btn" id="btn-guia-reg-cargar-mas" style="margin-top:10px; display:none;">Cargar más registros</button>
   </div>
 
   <div class="panel" id="guia-detalle-panel" style="display:none; margin-bottom:14px;">
@@ -2836,8 +2888,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v152';
-const APP_UPDATED = '11/10/2026 17:00';
+const APP_VERSION = 'v153';
+const APP_UPDATED = '12/10/2026 11:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3259,7 +3311,7 @@ function setCampanasSubtab(name){
 }
 $('campsub-cargar-campana').addEventListener('click', ()=>setCampanasSubtab('cargar-campana'));
 $('campsub-cargar-guia').addEventListener('click', ()=>setCampanasSubtab('cargar-guia'));
-$('campsub-registros').addEventListener('click', ()=>setCampanasSubtab('registros'));
+$('campsub-registros').addEventListener('click', ()=>{ setCampanasSubtab('registros'); $('reg-kpis').dataset.pintado = ''; renderRegistrosCampana(); cargarTodasLasGuias(); });
 $('campsub-buscar').addEventListener('click', ()=>setCampanasSubtab('buscar'));
 $('campsub-analisis').addEventListener('click', ()=>{ setCampanasSubtab('analisis'); poblarSelectCampanasAnalisis(); });
 $('campsub-validadores').addEventListener('click', ()=>{ setCampanasSubtab('validadores'); poblarSelectCampanasValidadores(); calcularPendientesGlobalValidadores(); });
@@ -8573,8 +8625,49 @@ function actualizarFlechasOrden(theadId, ordenState, columnasMap){
 }
 
 let campRegOrden = { campo: null, dir: 1 };
-const CAMP_REG_COLUMNAS = { correlativo:'Correlativo', campana:'Campaña', codigo:'Código', fecha_transaccion:'Fecha transacción', sku_distintos:'SKU distintos', total_filas:'Total filas', usuario:'Cargado por' };
-const CAMP_REG_NUMERICOS = new Set(['sku_distintos','total_filas']);
+const CAMP_REG_COLUMNAS = { correlativo:'Correlativo', campana:'Campaña', fecha_transaccion:'Fecha', sku_distintos:'SKU', total_filas:'Filas', _n_guias:'Guías' };
+const CAMP_REG_NUMERICOS = new Set(['sku_distintos','total_filas','_n_guias']);
+let regCampSel = null;        // campaña elegida: la lista de guías muestra solo las suyas
+let regSoloSinGuias = false;  // filtro desde el indicador "Campañas sin guías"
+// Guías activas por campaña (de las guías ya leídas).
+function regGuiasPorCampana(){
+  const n = {};
+  guiaRegAllCache.forEach(g=>{ if((g.estado||'ACTIVO') === 'ACTIVO' && g.campana_correlativo) n[g.campana_correlativo] = (n[g.campana_correlativo]||0) + 1; });
+  return n;
+}
+// Indicadores de arriba: campañas, guías, bultos y campañas sin guías.
+function renderRegKpis(){
+  const cont = $('reg-kpis'); if(!cont) return;
+  const activas = campRegAllCache.filter(r=> (r.estado||'ACTIVO') === 'ACTIVO');
+  const guias = guiaRegAllCache.filter(g=> (g.estado||'ACTIVO') === 'ACTIVO');
+  const porCamp = regGuiasPorCampana();
+  const sinGuias = activas.filter(r=> !porCamp[r.correlativo]).length;
+  const bultos = guias.reduce((t, g)=> t + (Number(g.bultos)||0), 0);
+  const completo = guiaRegNoMore;
+  const tarjetas = [
+    { k:'#2a78d6', t:'Campañas activas', v: activas.length, d: `${anFmt(activas.reduce((t,r)=> t + (Number(r.total_filas)||0), 0))} filas` },
+    { k:'#2f9e8f', t:'Guías activas', v: guias.length, d: completo ? `${anFmt(guias.reduce((t,g)=> t + (Number(g.total_items)||0), 0))} ítems` : 'cargando todas…' },
+    { k:'#6250d6', t:'Bultos en guías', v: bultos, d: completo ? 'de las guías activas' : 'cargando…' },
+    { k:'#e0773f', t:'Campañas sin guías', v: sinGuias, d: regSoloSinGuias ? 'mostrando solo estas · clic para quitar' : 'clic para verlas', click: true }
+  ];
+  const ya = cont.dataset.pintado === '1';
+  cont.innerHTML = tarjetas.map((x, i)=> `<div class="reg-kpi${x.click ? ' click' : ''}${x.click && regSoloSinGuias ? ' activo' : ''}" style="--k:${esc(x.k)}; animation-delay:${ya ? 0 : i*70}ms" ${x.click ? 'data-reg-sin-guias="1"' : ''}>` +
+    `<div class="t">${esc(x.t)}</div><div class="v" data-n="${esc(x.v)}">${esc(ya ? anFmt(x.v) : 0)}</div><div class="d">${esc(x.d)}</div></div>`).join('');
+  if(!ya){ cont.dataset.pintado = '1'; cont.querySelectorAll('.v').forEach(el=> anContar(el, Number(el.dataset.n), '', 700)); }
+}
+$('reg-kpis').addEventListener('click', e=>{
+  if(!e.target.closest('[data-reg-sin-guias]')) return;
+  regSoloSinGuias = !regSoloSinGuias;
+  if(regSoloSinGuias) $('camp-reg-filtro-estado').value = 'ACTIVO';
+  renderRegistrosCampana();
+});
+// Lee todas las guías (de 200 en 200) para que los conteos por campaña sean exactos.
+let regCargandoGuias = false;
+async function cargarTodasLasGuias(){
+  if(regCargandoGuias) return; regCargandoGuias = true;
+  try{ while(!guiaRegNoMore){ const antes = guiaRegAllCache.length; await cargarRegistrosGuias(false); if(guiaRegAllCache.length === antes) break; } }
+  finally{ regCargandoGuias = false; renderRegistrosCampana(); }
+}
 
 function renderRegistrosCampana(){
   const estadoFiltro = $('camp-reg-filtro-estado').value;
@@ -8583,12 +8676,17 @@ function renderRegistrosCampana(){
   const hayFiltrosExtra = !!(fechaFiltro || campanaFiltro);
   // Los registros antiguos (guardados antes de existir el campo "estado") se
   // consideran ACTIVOS por defecto.
+  const porCamp = regGuiasPorCampana();
+  campRegAllCache.forEach(r=> r._n_guias = porCamp[r.correlativo] || 0);
   let filtrados = campRegAllCache.filter(r => {
     if((r.estado || 'ACTIVO') !== estadoFiltro) return false;
     if(fechaFiltro && r.fecha_transaccion !== fechaFiltro) return false;
     if(campanaFiltro && !(r.campana||'').toUpperCase().includes(campanaFiltro)) return false;
+    if(regSoloSinGuias && r._n_guias) return false;
     return true;
   });
+  $('camp-reg-chip').innerHTML = regSoloSinGuias ? `<span class="reg-chip">Solo campañas sin guías <button type="button" data-reg-quitar="singuias" title="Quitar">✕</button></span>` : '';
+  renderRegKpis();
   if(campRegOrden.campo){
     const campo = campRegOrden.campo, dir = campRegOrden.dir;
     const esNumerico = CAMP_REG_NUMERICOS.has(campo);
@@ -8609,12 +8707,17 @@ function renderRegistrosCampana(){
   }
   $('camp-reg-empty').style.display = 'none';
   const puedeEliminar = currentPermisos.admin || currentPermisos.eliminar;
-  $('camp-reg-body').innerHTML = filtrados.map(r=>{
+  $('camp-reg-body').innerHTML = filtrados.map((r, i)=>{
     const estado = r.estado || 'ACTIVO';
     const accionHtml = estado === 'ACTIVO'
-      ? (puedeEliminar ? `<button class="btn btn-sm btn-ghost btn-invalidar-campana" data-correlativo="${esc(r.correlativo)}">Eliminar</button>` : '')
-      : `<span class="hint">Invalidado${esc(r.invalidado_por ? ' por '+r.invalidado_por : '')}</span>`;
-    return `<tr><td>${esc(r.correlativo)}</td><td>${esc(r.campana||'')}</td><td>${esc(r.codigo||'')}</td><td>${fmtFechaCorta(r.fecha_transaccion)}</td><td>${esc(r.sku_distintos!=null?r.sku_distintos:'')}</td><td>${esc(r.total_filas!=null?r.total_filas:'')}</td><td>${esc(r.usuario||'')}</td><td><button class="btn btn-sm btn-ver-detalle-campana" data-correlativo="${esc(r.correlativo)}" data-campana="${(r.campana||'').replace(/"/g,'&quot;')}">Ver detalle</button></td><td>${accionHtml}</td></tr>`;
+      ? (puedeEliminar ? ` <button class="btn btn-sm btn-ghost btn-invalidar-campana" data-correlativo="${esc(r.correlativo)}" title="Eliminar campaña">🗑</button>` : '')
+      : `<div class="hint">Invalidado${esc(r.invalidado_por ? ' por '+r.invalidado_por : '')}</div>`;
+    const n = r._n_guias;
+    return `<tr data-reg-corr="${esc(r.correlativo)}" class="${regCampSel === r.correlativo ? 'reg-sel' : ''}" style="animation-delay:${Math.min(i, 20) * 18}ms">` +
+      `<td><b>${esc(r.correlativo)}</b></td><td><div class="reg-t">${esc(r.campana||'')}</div><div class="reg-s">${esc(r.codigo||'')}${esc(r.usuario ? ' · ' + r.usuario : '')}</div></td>` +
+      `<td>${esc(fmtFechaCorta(r.fecha_transaccion) || '')}</td><td class="num">${esc(r.sku_distintos!=null?r.sku_distintos:'')}</td><td class="num">${esc(r.total_filas!=null?anFmt(r.total_filas):'')}</td>` +
+      `<td class="num"><span class="reg-badge${n ? '' : ' cero'}">${esc(guiaRegNoMore || n ? n : '…')}</span></td>` +
+      `<td class="reg-acc"><button class="btn btn-sm btn-ver-detalle-campana" data-correlativo="${esc(r.correlativo)}" data-campana="${esc(r.campana||'')}">Ver</button>${accionHtml}</td></tr>`;
   }).join('');
   $('btn-reg-cargar-mas').style.display = !campRegNoMore ? 'inline-block' : 'none';
   actualizarFlechasOrden('camp-reg-thead', campRegOrden, CAMP_REG_COLUMNAS);
@@ -8680,9 +8783,22 @@ $('btn-ocultar-detalle').addEventListener('click', ()=>{
   $('camp-detalle-panel').style.display = 'none';
 });
 
+// Clic en una campaña (fuera de sus botones): la lista de guías muestra solo las suyas.
+function regElegirCampana(corr){
+  regCampSel = regCampSel === corr ? null : corr;
+  renderRegistrosCampana(); renderRegistrosGuias();
+  if(regCampSel && window.innerWidth < 1250) $('guia-reg-chip').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+document.addEventListener('click', e=>{
+  const q = e.target.closest('[data-reg-quitar]'); if(!q) return;
+  if(q.dataset.regQuitar === 'singuias'){ regSoloSinGuias = false; renderRegistrosCampana(); }
+  if(q.dataset.regQuitar === 'campana'){ regCampSel = null; renderRegistrosCampana(); renderRegistrosGuias(); }
+});
 $('camp-reg-body').addEventListener('click', async (ev)=>{
   const btnVer = ev.target.closest('.btn-ver-detalle-campana');
   const btnInv = ev.target.closest('.btn-invalidar-campana');
+  const fila = ev.target.closest('tr[data-reg-corr]');
+  if(fila && !btnVer && !btnInv && !ev.target.closest('button')){ regElegirCampana(fila.dataset.regCorr); return; }
 
   if(btnVer){
     const correlativo = btnVer.dataset.correlativo;
@@ -9767,7 +9883,7 @@ async function corregirParticipanteGuia(correlativoGuia, nuevoParticipante){
 }
 
 let guiaRegOrden = { campo: null, dir: 1 };
-const GUIA_REG_COLUMNAS = { correlativo:'Correlativo guía', nro_guia:'N° guía', campana_nombre:'Campaña', participante:'Participante', fecha_traslado:'Fecha traslado', punto_partida:'Partida → Llegada', total_items:'Ítems', bultos:'Bultos', usuario:'Cargado por' };
+const GUIA_REG_COLUMNAS = { nro_guia:'Guía', campana_nombre:'Campaña', participante:'Participante', fecha_traslado:'Fecha', punto_llegada:'Llegada', total_items:'Ítems', bultos:'Bultos' };
 const GUIA_REG_NUMERICOS = new Set(['total_items','bultos']);
 
 function renderRegistrosGuias(){
@@ -9777,14 +9893,18 @@ function renderRegistrosGuias(){
   const participanteFiltro = $('guia-reg-filtro-participante').value.trim().toUpperCase();
   const campanaFiltro = $('guia-reg-filtro-campana').value.trim().toUpperCase();
   const hayFiltrosExtra = !!(fechaFiltro || nroGuiaFiltro || participanteFiltro || campanaFiltro);
+  renderRegKpis();
   let filtrados = guiaRegAllCache.filter(r => {
     if((r.estado||'ACTIVO') !== estadoFiltro) return false;
     if(fechaFiltro && r.fecha_traslado !== fechaFiltro) return false;
     if(nroGuiaFiltro && !(r.nro_guia||'').toUpperCase().includes(nroGuiaFiltro)) return false;
     if(participanteFiltro && !(r.participante||'').toUpperCase().includes(participanteFiltro)) return false;
     if(campanaFiltro && !(r.campana_nombre||'').toUpperCase().includes(campanaFiltro)) return false;
+    if(regCampSel && r.campana_correlativo !== regCampSel) return false;
     return true;
   });
+  const cabSel = regCampSel ? campRegAllCache.find(c=> c.correlativo === regCampSel) : null;
+  $('guia-reg-chip').innerHTML = regCampSel ? `<span class="reg-chip">Guías de ${esc(regCampSel)}${esc(cabSel ? ' — ' + cabSel.campana : '')} · ${esc(filtrados.length)} <button type="button" data-reg-quitar="campana" title="Ver todas las guías">✕</button></span>` : '';
   if(guiaRegOrden.campo){
     const campo = guiaRegOrden.campo, dir = guiaRegOrden.dir;
     const esNumerico = GUIA_REG_NUMERICOS.has(campo);
@@ -9798,19 +9918,25 @@ function renderRegistrosGuias(){
     $('guia-reg-empty').style.display = 'block';
     $('guia-reg-empty').textContent = hayFiltrosExtra
       ? 'No hay guías que coincidan con los filtros.'
-      : (estadoFiltro==='ACTIVO' ? 'Aún no hay guías cargadas.' : 'No hay guías invalidadas.');
+      : regCampSel ? 'Esta campaña aún no tiene guías.' : (estadoFiltro==='ACTIVO' ? 'Aún no hay guías cargadas.' : 'No hay guías invalidadas.');
     $('btn-guia-reg-cargar-mas').style.display = 'none';
     actualizarFlechasOrden('guia-reg-thead', guiaRegOrden, GUIA_REG_COLUMNAS);
     return;
   }
   $('guia-reg-empty').style.display = 'none';
   const puedeEliminar = currentPermisos.admin || currentPermisos.eliminar;
-  $('guia-reg-body').innerHTML = filtrados.map(r=>{
+  $('guia-reg-body').innerHTML = filtrados.map((r, i)=>{
     const estado = r.estado || 'ACTIVO';
     const accionHtml = estado === 'ACTIVO'
-      ? (puedeEliminar ? `<button class="btn btn-sm btn-ghost btn-invalidar-guia" data-correlativo="${esc(r.correlativo)}">Eliminar</button> <button class="btn btn-sm btn-ghost btn-editar-participante-guia" data-correlativo="${esc(r.correlativo)}" title="Corregir el participante de esta guía">✏️ Participante</button>` : '')
-      : `<span class="hint">Invalidado${esc(r.invalidado_por ? ' por '+r.invalidado_por : '')}</span>`;
-    return `<tr><td>${esc(r.correlativo)}</td><td>${esc(r.nro_guia||'')}</td><td>${esc(r.campana_correlativo||'')} — ${esc(r.campana_nombre||'')}</td><td>${esc(r.participante||'')}</td><td>${esc(r.fecha_traslado||'')}</td><td>${esc(r.punto_partida||'')} → ${esc(r.punto_llegada||'')}</td><td>${esc(r.total_items??'')}</td><td>${esc(r.bultos??'')}</td><td>${esc(r.usuario||'')}</td><td><button class="btn btn-sm btn-ver-detalle-guia" data-correlativo="${esc(r.correlativo)}" data-nro="${(r.nro_guia||'').replace(/"/g,'&quot;')}">Ver detalle</button></td><td>${accionHtml}</td></tr>`;
+      ? (puedeEliminar ? ` <button class="btn btn-sm btn-ghost btn-editar-participante-guia" data-correlativo="${esc(r.correlativo)}" title="Corregir el participante de esta guía">✏️</button> <button class="btn btn-sm btn-ghost btn-invalidar-guia" data-correlativo="${esc(r.correlativo)}" title="Eliminar guía">🗑</button>` : '')
+      : `<div class="hint">Invalidado${esc(r.invalidado_por ? ' por '+r.invalidado_por : '')}</div>`;
+    return `<tr style="animation-delay:${Math.min(i, 20) * 18}ms" title="${esc('Cargada por ' + (r.usuario||'—'))}">` +
+      `<td><b>${esc(r.nro_guia||'')}</b><div class="reg-s">${esc(r.correlativo)}</div></td>` +
+      `<td><div class="reg-t">${esc(r.campana_nombre||'')}</div><div class="reg-s">${esc(r.campana_correlativo||'')}</div></td>` +
+      `<td>${esc(r.participante||'')}</td><td>${esc(r.fecha_traslado||'')}</td>` +
+      `<td class="reg-llegada" title="${esc((r.punto_partida||'') + ' → ' + (r.punto_llegada||''))}">${esc(r.punto_llegada||'')}</td>` +
+      `<td class="num">${esc(r.total_items??'')}</td><td class="num">${esc(r.bultos??'')}</td>` +
+      `<td class="reg-acc"><button class="btn btn-sm btn-ver-detalle-guia" data-correlativo="${esc(r.correlativo)}" data-nro="${esc(r.nro_guia||'')}">Ver</button>${accionHtml}</td></tr>`;
   }).join('');
   $('btn-guia-reg-cargar-mas').style.display = !guiaRegNoMore ? 'inline-block' : 'none';
   actualizarFlechasOrden('guia-reg-thead', guiaRegOrden, GUIA_REG_COLUMNAS);
