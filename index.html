@@ -2754,8 +2754,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v144';
-const APP_UPDATED = '09/10/2026 17:00';
+const APP_VERSION = 'v145';
+const APP_UPDATED = '10/10/2026 10:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -2897,6 +2897,16 @@ function msgProceso(id, text){
   const el = $(id); el.className = 'msg ok'; el.style.display='block';
   clearTimeout(el._ocultar);
   el.innerHTML = '<span class="giro"></span>' + esc(text);
+}
+// Aviso de avance con los segundos que lleva (se refresca cada segundo).
+// paso(texto) cambia el texto; fin() detiene el reloj; seg() da " · N s".
+function relojProceso(id){
+  const inicio = Date.now();
+  let texto = '';
+  const seg = ()=> { const s = Math.round((Date.now()-inicio)/1000); return s >= 2 ? ` · ${s} s` : ''; };
+  const paso = (t)=>{ texto = t; msgProceso(id, t + seg()); };
+  const reloj = setInterval(()=> paso(texto), 1000);
+  return { paso, seg, fin: ()=> clearInterval(reloj) };
 }
 document.addEventListener('input', (e)=>{
   if(e.target.classList && e.target.classList.contains('upper')){
@@ -7544,7 +7554,7 @@ function obtenerTiendasCampanas(onAvance){
   const oyentes = onAvance ? [onAvance] : [];
   const promesa = (async ()=>{
     // Si aún no se abrió "Campañas (PDF)", la caché está vacía: cargarla aquí.
-    if(!campRegAllCache.length) await cargarRegistrosCampana(true);
+    await esperarRegistrosCampana();
     const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
     const clave = activos.map(r=> r.correlativo).sort().join('|');
     if(rotcTiendasMemo.clave === clave) return { tiendas: rotcTiendasMemo.tiendas, activos };
@@ -8094,7 +8104,25 @@ function fmtFechaCorta(d){
   return d;
 }
 
-async function cargarRegistrosCampana(reset){
+// Carga en curso de las cabeceras de campañas: quien necesite la lista mientras
+// se está cargando (ej. abrir Análisis apenas se entra a la app) la espera.
+let campRegCargando = null;
+function cargarRegistrosCampana(reset){
+  const promesa = cargarRegistrosCampanaServidor(reset);
+  campRegCargando = promesa;
+  promesa.finally(()=>{
+    if(campRegCargando === promesa) campRegCargando = null;
+    refrescarSelectsCampanas();
+  });
+  return promesa;
+}
+// Devuelve la lista de cabeceras: espera la carga en curso o la inicia si no hay nada.
+async function esperarRegistrosCampana(){
+  if(campRegCargando) await campRegCargando;
+  if(!campRegAllCache.length) await cargarRegistrosCampana(true);
+  return campRegAllCache;
+}
+async function cargarRegistrosCampanaServidor(reset){
   if(reset){ campRegRawLastDoc = null; campRegAllCache = []; campRegNoMore = false; }
   if(!campRegNoMore){
     try{
@@ -8883,7 +8911,7 @@ async function guardarMapeoDestinoParticipante(puntoLlegada, participante){
 // Descarga (una sola vez por sesión) las filas de las campañas activas que aún
 // no están en memoria, todas a la vez. onAvance(listas, total) por cada una.
 async function cargarFilasCampanasActivas(onAvance){
-  if(!campRegAllCache.length) await cargarRegistrosCampana(true);
+  await esperarRegistrosCampana();
   const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
   let listas = activos.filter(c=> campRegCache[c.correlativo]).length;
   if(onAvance) onAvance(listas, activos.length);
@@ -8958,12 +8986,8 @@ $('btn-procesar-guia').addEventListener('click', async ()=>{
   $('guia-batch-wrap').style.display = 'none';
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-  const inicio = Date.now();
-  const seg = ()=> { const s = Math.round((Date.now()-inicio)/1000); return s >= 2 ? ` · ${s} s` : ''; };
-  // Aviso de avance que se queda visible hasta terminar (se refresca cada segundo).
-  let textoAvance = '';
-  const avance = (t)=>{ textoAvance = t; msgProceso('guia-msg', t + seg()); };
-  const reloj = setInterval(()=> avance(textoAvance), 1000);
+  // Aviso de avance que se queda visible hasta terminar.
+  const proc = relojProceso('guia-msg'), avance = proc.paso, seg = proc.seg;
   try{
   for(let i=0;i<files.length;i++){
     const file = files[i];
@@ -9029,7 +9053,7 @@ $('btn-procesar-guia').addEventListener('click', async ()=>{
   $('guia-batch-wrap').style.display = 'block';
   showMsg('guia-msg','ok', `Se procesaron ${guiaBatch.length} archivo(s)${seg()}.`);
   }finally{
-    clearInterval(reloj);
+    proc.fin();
     $('btn-procesar-guia').disabled = false;
   }
 });
@@ -9528,11 +9552,7 @@ $('btn-procesar-guia-merma').addEventListener('click', async ()=>{
   $('merma-batch-wrap').style.display = 'none';
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-  const inicio = Date.now();
-  const seg = ()=> { const s = Math.round((Date.now()-inicio)/1000); return s >= 2 ? ` · ${s} s` : ''; };
-  let textoAvance = '';
-  const avance = (t)=>{ textoAvance = t; msgProceso('merma-msg', t + seg()); };
-  const reloj = setInterval(()=> avance(textoAvance), 1000);
+  const proc = relojProceso('merma-msg'), avance = proc.paso, seg = proc.seg;
   try{
   for(let i=0;i<files.length;i++){
     const file = files[i];
@@ -9577,7 +9597,7 @@ $('btn-procesar-guia-merma').addEventListener('click', async ()=>{
   $('merma-batch-wrap').style.display = 'block';
   showMsg('merma-msg','ok', `Se procesaron ${mermaBatch.length} archivo(s)${seg()}.`);
   }finally{
-    clearInterval(reloj);
+    proc.fin();
     $('btn-procesar-guia-merma').disabled = false;
   }
 });
@@ -10672,19 +10692,54 @@ function abrirDetalleAuditoriaMerma(correlativo){
 let anGuiaPorCampanaCache = {};
 let anUltimoResultado = null;
 
-async function poblarSelectCampanasAnalisis(){
+// Desplegables de campañas activas (Análisis, Validadores, Vouchers). Si la
+// lista aún se está cargando, a los 50 ms muestran "Cargando campañas…" y se
+// llenan solos al terminar (antes se quedaban vacíos).
+const SELECTS_CAMPANAS = {
+  'an-campana-select': r=> `${r.correlativo} — ${r.campana} (${r.fecha_transaccion||''})`,
+  'val-campana-select': r=> `${r.correlativo} — ${r.campana}`,
+  'vch-campana-select': r=> `${r.correlativo} — ${r.campana}`
+};
+function llenarSelectCampanas(id){
+  const sel = $(id);
   const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
-  const valorActual = $('an-campana-select').value;
-  $('an-campana-select').innerHTML = '<option value="">— Selecciona una campaña —</option>' +
-    activos.map(r=>`<option value="${esc(r.correlativo)}">${esc(r.correlativo)} — ${esc(r.campana)} (${esc(r.fecha_transaccion||'')})</option>`).join('');
-  if(valorActual) $('an-campana-select').value = valorActual;
+  const valorActual = sel.value;
+  sel.innerHTML = '<option value="">' + (activos.length ? '— Selecciona una campaña —' : '— No hay campañas activas —') + '</option>' +
+    activos.map(r=>`<option value="${esc(r.correlativo)}">${esc(SELECTS_CAMPANAS[id](r))}</option>`).join('');
+  if(valorActual) sel.value = valorActual;
+  sel.disabled = false;
 }
+function refrescarSelectsCampanas(){
+  if(campRegCargando) return; // llegó otra carga: se refresca cuando termine
+  Object.keys(SELECTS_CAMPANAS).forEach(id=> llenarSelectCampanas(id));
+}
+async function poblarSelectCampanas(id){
+  const sel = $(id);
+  if(!campRegCargando && campRegAllCache.length){ llenarSelectCampanas(id); return; }
+  const aviso = setTimeout(()=>{
+    sel.innerHTML = '<option value="">⏳ Cargando campañas…</option>';
+    sel.disabled = true;
+  }, 50);
+  try{ await esperarRegistrosCampana(); }
+  finally{ clearTimeout(aviso); llenarSelectCampanas(id); }
+}
+function poblarSelectCampanasAnalisis(){ return poblarSelectCampanas('an-campana-select'); }
 
+let anParticipantesCargaId = 0;
 $('an-campana-select').addEventListener('change', async ()=>{
   const correlativo = $('an-campana-select').value;
-  $('an-participante-select').innerHTML = '<option value="">— Todos los participantes —</option>';
+  const selPart = $('an-participante-select');
+  const cargaId = ++anParticipantesCargaId;
+  selPart.innerHTML = '<option value="">— Todos los participantes —</option>';
+  selPart.disabled = false;
   $('an-resultados').style.display = 'none';
   if(!correlativo) return;
+  // Si tarda más de 50 ms, el desplegable de participantes avisa que está cargando.
+  const aviso = setTimeout(()=>{
+    if(cargaId !== anParticipantesCargaId) return;
+    selPart.innerHTML = '<option value="">⏳ Cargando participantes…</option>';
+    selPart.disabled = true;
+  }, 50);
   try{
     let filas = campRegCache[correlativo];
     if(!filas){
@@ -10692,12 +10747,17 @@ $('an-campana-select').addEventListener('change', async ()=>{
       filas = snap.docs.map(d=>d.data());
       campRegCache[correlativo] = filas;
     }
+    if(cargaId !== anParticipantesCargaId) return; // se eligió otra campaña mientras cargaba
     const participantes = [...new Set(filas.map(f=>f.participante).filter(Boolean))].sort();
-    $('an-participante-select').innerHTML = '<option value="">— Todos los participantes —</option>' +
+    selPart.innerHTML = '<option value="">— Todos los participantes —</option>' +
       participantes.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');
   }catch(err){
     console.error(err);
+    if(cargaId === anParticipantesCargaId) selPart.innerHTML = '<option value="">— Todos los participantes —</option>';
     showToast('Error al cargar participantes: '+err.message,'err');
+  }finally{
+    clearTimeout(aviso);
+    if(cargaId === anParticipantesCargaId) selPart.disabled = false;
   }
 });
 
@@ -10706,7 +10766,8 @@ $('btn-analizar').addEventListener('click', async ()=>{
   if(!correlativo){ showMsg('an-msg','err','Selecciona una campaña primero.'); return; }
   const participanteFiltro = $('an-participante-select').value;
   $('btn-analizar').disabled = true;
-  showMsg('an-msg','ok','Analizando…');
+  const proc = relojProceso('an-msg');
+  proc.paso('Analizando… descargando el reparto de la campaña');
   try{
     let filasRepartoCompleto = campRegCache[correlativo];
     if(!filasRepartoCompleto){
@@ -10714,6 +10775,7 @@ $('btn-analizar').addEventListener('click', async ()=>{
       filasRepartoCompleto = snap.docs.map(d=>d.data());
       campRegCache[correlativo] = filasRepartoCompleto;
     }
+    proc.paso('Analizando… descargando las guías de salida');
     let filasGuiaCompleto = anGuiaPorCampanaCache[correlativo];
     if(!filasGuiaCompleto){
       const snap = await guiaItemsRef.where('campana_correlativo','==',correlativo).limit(5000).get();
@@ -10722,6 +10784,7 @@ $('btn-analizar').addEventListener('click', async ()=>{
     }
     const filasReparto = participanteFiltro ? filasRepartoCompleto.filter(f=>f.participante===participanteFiltro) : filasRepartoCompleto;
     const filasGuia = participanteFiltro ? filasGuiaCompleto.filter(f=>f.participante===participanteFiltro) : filasGuiaCompleto;
+    proc.paso('Analizando… calculando cumplimiento y validadores');
     const resultado = calcularAnalisisCumplimiento(filasReparto, filasGuia);
     const ranking = calcularCumplimientoPorParticipante(filasRepartoCompleto, filasGuiaCompleto);
     anContexto = {
@@ -10738,6 +10801,7 @@ $('btn-analizar').addEventListener('click', async ()=>{
     console.error(err);
     showMsg('an-msg','err','Error al analizar: '+err.message);
   }finally{
+    proc.fin();
     $('btn-analizar').disabled = false;
   }
 });
@@ -11479,13 +11543,7 @@ $('vm-body').addEventListener('click', async (ev)=>{
 /* -------------------- Validadores por campaña / tienda -------------------- */
 let valUltimaCarga = null; // {correlativo, participantes, asignados} — última tabla cargada, para refrescarla sin recargar Firestore
 
-async function poblarSelectCampanasValidadores(){
-  const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
-  const valorActual = $('val-campana-select').value;
-  $('val-campana-select').innerHTML = '<option value="">— Selecciona una campaña —</option>' +
-    activos.map(r=>`<option value="${esc(r.correlativo)}">${esc(r.correlativo)} — ${esc(r.campana)}</option>`).join('');
-  if(valorActual) $('val-campana-select').value = valorActual;
-}
+function poblarSelectCampanasValidadores(){ return poblarSelectCampanas('val-campana-select'); }
 
 // Extrae hasta 3 DNIs de validadores ya asignados a una tienda, desde el nuevo formato
 // (arreglo "validadores") o desde el formato antiguo de un solo validador ("validador_dni").
@@ -13558,13 +13616,7 @@ async function generarCorrelativoVoucher(){
   return 'VOU-' + String(siguiente).padStart(5,'0');
 }
 
-async function poblarSelectCampanasVouchers(){
-  const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
-  const valorActual = $('vch-campana-select').value;
-  $('vch-campana-select').innerHTML = '<option value="">— Selecciona una campaña —</option>' +
-    activos.map(r=>`<option value="${esc(r.correlativo)}">${esc(r.correlativo)} — ${esc(r.campana)}</option>`).join('');
-  if(valorActual) $('vch-campana-select').value = valorActual;
-}
+function poblarSelectCampanasVouchers(){ return poblarSelectCampanas('vch-campana-select'); }
 
 async function cargarGuiasDisponiblesVoucher(correlativoCampana){
   const snap = await guiasRegistrosRef.where('campana_correlativo','==',correlativoCampana).where('estado','==','ACTIVO').get();
