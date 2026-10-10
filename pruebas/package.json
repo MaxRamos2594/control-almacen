@@ -7,7 +7,7 @@
     "humo": "node humo.js",
     "flujo": "node flujo.js",
     "xss": "node xss.js",
-    "todo": "node revisar.js && node humo.js && node flujo.js && node xss.js && node bloque_intermedio.js && node piso_filas.js && node pasillo.js && node columna_piso.js && node alinear_filas.js && node pdf_inventario.js && node costos_inventario.js && node guia_pdf.js && node guia_pdf.js --sunat && node inv_posiciones.js && node inv_interfaz.js && node rotulos_tiendas.js && node analisis.js && node reemplazar_campana.js",
+    "todo": "node revisar.js && node humo.js && node flujo.js && node xss.js && node bloque_intermedio.js && node piso_filas.js && node pasillo.js && node columna_piso.js && node alinear_filas.js && node pdf_inventario.js && node costos_inventario.js && node guia_pdf.js && node guia_pdf.js --sunat && node inv_posiciones.js && node inv_interfaz.js && node rotulos_tiendas.js && node analisis.js && node reemplazar_campana.js && node mapa_calor.js",
     "bloque": "node bloque_intermedio.js",
     "revisar": "node revisar.js",
     "piso": "node piso_filas.js",
@@ -21,7 +21,8 @@
     "interfaz": "node inv_interfaz.js",
     "rotulos": "node rotulos_tiendas.js",
     "analisis": "node analisis.js",
-    "reemplazar": "node reemplazar_campana.js"
+    "reemplazar": "node reemplazar_campana.js",
+    "mapa": "node mapa_calor.js"
   },
   "devDependencies": {
     "acorn": "^8.18.0",

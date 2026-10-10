@@ -399,21 +399,58 @@
   }
   .an-embudo .merma{font-size:11px; color:#A93B2C; padding-left:162px; font-family:var(--mono);}
 
-  /* Mapa de calor */
-  .an-heat-wrap{overflow:auto; max-height:460px; border:1px solid var(--line-strong); border-radius:8px; background:#fff;}
-  table.an-heat{border-collapse:separate; border-spacing:2px; font-size:10px; min-width:max-content;}
-  table.an-heat th{
-    position:sticky; top:0; background:#fff; z-index:2; font-size:9px; font-weight:600; color:var(--ink-soft);
-    writing-mode:vertical-rl; transform:rotate(180deg); padding:4px 2px; white-space:nowrap; height:86px; vertical-align:bottom;
+  /* Mapa de calor (cuadrícula: los cuadros se ajustan al ancho disponible) */
+  .an-heat-wrap{
+    --hm-ok:#2f9e8f; --hm-f1:#ec9560; --hm-f2:#e0773f; --hm-f3:#c95a26; --hm-f4:#a5441a; --hm-f5:#7a2f10;
+    --hm-exceso:#6250d6; --hm-na:#eef0f2;
+    position:relative; overflow:auto; max-height:560px; border:1px solid var(--line-strong); border-radius:10px; background:#fcfcfb;
   }
-  table.an-heat th.esquina{writing-mode:horizontal-tb; transform:none; left:0; z-index:3; text-align:left; height:auto; min-width:150px;}
-  table.an-heat td.fila-lbl{
-    position:sticky; left:0; background:#fff; z-index:1; font-size:11px; font-weight:600; white-space:nowrap;
-    padding:3px 8px 3px 4px; max-width:170px; overflow:hidden; text-overflow:ellipsis;
+  .an-hm-barra{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:0 0 8px;}
+  .an-hm-barra .hm-chip{font-size:11px; padding:4px 11px; border-radius:999px; border:1px solid var(--line-strong); background:#fff; color:var(--ink-soft); cursor:pointer; transition:all .2s;}
+  .an-hm-barra .hm-chip.activo{background:var(--ink); color:#fff; border-color:var(--ink);}
+  .an-hm-barra .hm-cuenta{font-size:11px; color:var(--ink-soft); margin-left:auto; font-family:var(--mono);}
+  .an-hm{display:grid; gap:2px; padding:0 8px 8px 0; width:max-content; min-width:100%;}
+  .an-hm .hm-esq{position:sticky; top:0; left:0; z-index:4; background:#fcfcfb; font-size:10px; color:var(--ink-soft); display:flex; align-items:flex-end; padding:0 6px 6px;}
+  .an-hm .hm-col{
+    position:sticky; top:0; z-index:2; background:#fcfcfb; font-size:9px; font-weight:600; color:var(--ink-soft);
+    writing-mode:vertical-rl; transform:rotate(180deg); white-space:nowrap; text-align:left; padding:6px 0 4px; height:92px;
+    overflow:hidden; text-overflow:ellipsis; transition:color .15s;
   }
-  table.an-heat td.celda{width:19px; height:19px; border-radius:3px; cursor:default; padding:0;}
-  .an-heat-escala{display:flex; align-items:center; gap:7px; font-size:11px; color:var(--ink-soft); margin:8px 0 0;}
-  .an-heat-escala i{width:22px; height:12px; border-radius:2px; display:inline-block;}
+  .an-hm .hm-fila{
+    position:sticky; left:0; z-index:1; background:#fcfcfb; display:flex; align-items:center; gap:6px; padding:0 6px;
+    font-size:11px; font-weight:600; white-space:nowrap; overflow:hidden; transition:color .15s;
+  }
+  .an-hm .hm-fila .n{overflow:hidden; text-overflow:ellipsis; flex:1;}
+  .an-hm .hm-fila .p{font-family:var(--mono); font-size:10px; font-weight:700; color:var(--ink-soft);}
+  .an-hm .hm-fila .p::before{content:''; display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:4px; background:var(--hm-c, var(--hm-na)); vertical-align:0;}
+  .an-hm .c{
+    border-radius:4px; cursor:pointer; background:var(--hm-na);
+    animation:hmEntra .55s cubic-bezier(.2,.9,.3,1.25) backwards; animation-delay:calc(var(--d, 0) * 1ms);
+    transition:opacity .18s, transform .18s, box-shadow .18s;
+  }
+  .an-hm .c.ok{background:var(--hm-ok);} .an-hm .c.f1{background:var(--hm-f1);} .an-hm .c.f2{background:var(--hm-f2);}
+  .an-hm .c.f3{background:var(--hm-f3);} .an-hm .c.f4{background:var(--hm-f4);} .an-hm .c.f5{background:var(--hm-f5);}
+  .an-hm .c.ex{background:var(--hm-exceso);}
+  .an-hm .c.na{background:var(--hm-na); cursor:default;}
+  .an-hm .c.f4, .an-hm .c.f5{animation-name:hmEntra, hmLatido; animation-duration:.55s, 2.4s; animation-iteration-count:1, 2; animation-fill-mode:backwards, none; animation-delay:calc(var(--d, 0) * 1ms), calc(var(--d, 0) * 1ms + 700ms);}
+  .an-hm .c:hover{transform:scale(1.45); box-shadow:0 0 0 2px #fcfcfb, 0 4px 14px rgba(0,0,0,.28); z-index:3; position:relative;}
+  @keyframes hmEntra{from{opacity:0; transform:scale(.25) rotate(-12deg);} to{opacity:1; transform:none;}}
+  @keyframes hmLatido{0%,100%{box-shadow:0 0 0 0 rgba(165,68,26,0);} 50%{box-shadow:0 0 0 3px rgba(165,68,26,.28);}}
+  @media (prefers-reduced-motion: reduce){ .an-hm .c{animation:none !important; transition:none;} }
+  #an-hm-tip{
+    position:fixed; z-index:9999; pointer-events:none; background:#1b1d22; color:#f3f3f1; border-radius:10px; padding:10px 12px;
+    font-size:12px; line-height:1.45; box-shadow:0 10px 30px rgba(0,0,0,.3); max-width:280px; opacity:0; transform:translateY(4px);
+    transition:opacity .12s, transform .12s;
+  }
+  #an-hm-tip.visible{opacity:1; transform:none;}
+  #an-hm-tip .t{font-weight:700;} #an-hm-tip .s{font-family:var(--mono); color:#c9c7bf; font-size:11px;}
+  #an-hm-tip .d{color:#c9c7bf; font-size:11px; margin-bottom:6px;}
+  #an-hm-tip .fila{display:flex; justify-content:space-between; gap:14px; font-family:var(--mono); font-size:11px;}
+  #an-hm-tip .estado{margin-top:6px; padding-top:6px; border-top:1px solid #3a3d44; display:flex; align-items:center; gap:6px; font-weight:700;}
+  #an-hm-tip .estado i{width:10px; height:10px; border-radius:3px; display:inline-block;}
+  .an-heat-escala{display:flex; align-items:center; gap:7px; flex-wrap:wrap; font-size:11px; color:var(--ink-soft); margin:8px 0 0;}
+  .an-heat-escala i{width:22px; height:12px; border-radius:3px; display:inline-block;}
+  .an-heat-escala .grupo{display:flex; align-items:center; gap:3px;}
 
   /* Barras dentro de tabla */
   .an-barra-celda{display:flex; align-items:center; gap:8px;}
@@ -1985,13 +2022,17 @@
       </div>
 
       <h4 style="font-size:12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; margin:24px 0 8px;">Mapa de calor: cumplimiento por tienda y SKU</h4>
+      <div class="an-hm-barra">
+        <button type="button" class="hm-chip activo" data-hm-filtro="todo">Todo</button>
+        <button type="button" class="hm-chip" data-hm-filtro="faltantes">Solo con faltantes</button>
+        <span class="hm-cuenta" id="an-hm-cuenta"></span>
+      </div>
       <div class="an-heat-wrap an-bloque" id="an-heat-wrap"></div>
       <div class="an-heat-escala">
-        <span>0%</span>
-        <i style="background:#A93B2C;"></i><i style="background:#CF6B4A;"></i><i style="background:#E2A458;"></i><i style="background:#B7CB84;"></i><i style="background:#2E7D46;"></i>
-        <span>100%</span>
-        <span style="margin-left:8px;"><i style="background:#7C5BA8;"></i> exceso enviado</span>
-        <span><i style="background:#EDF0F3;"></i> no aplica</span>
+        <span class="grupo"><span>Falta:</span> <span>0%</span><i style="background:#7a2f10;"></i><i style="background:#a5441a;"></i><i style="background:#c95a26;"></i><i style="background:#e0773f;"></i><i style="background:#ec9560;"></i><span>99%</span></span>
+        <span class="grupo" style="margin-left:10px;"><i style="background:#2f9e8f;"></i> completo</span>
+        <span class="grupo"><i style="background:#6250d6;"></i> exceso enviado</span>
+        <span class="grupo"><i style="background:#eef0f2; border:1px solid var(--line-strong);"></i> no aplica</span>
       </div>
 
       <h4 class="an-solo-edicion" style="font-size:12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; margin:24px 0 8px;">Detalle por SKU</h4>
@@ -2747,8 +2788,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v150';
-const APP_UPDATED = '11/10/2026 10:00';
+const APP_VERSION = 'v151';
+const APP_UPDATED = '11/10/2026 13:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -11262,12 +11303,27 @@ function renderAnValidadores(){
 
 /* Mapa de calor tienda × SKU: distingue de un vistazo un producto que falla en
    todas las tiendas (columna roja) de una tienda que falla en todo (fila roja). */
+let anHmFiltro = 'todo';
+// Clase de color de un cuadro según lo enviado vs. lo repartido.
+function anHmClase(r, g){
+  if(!r && !g) return 'na';
+  if(g > r) return 'ex';
+  const pct = (g / r) * 100;
+  if(pct >= 100) return 'ok';
+  if(pct >= 75) return 'f1';
+  if(pct >= 50) return 'f2';
+  if(pct >= 25) return 'f3';
+  if(pct > 0) return 'f4';
+  return 'f5';
+}
+const AN_HM_COLOR = { ok:'#2f9e8f', f1:'#ec9560', f2:'#e0773f', f3:'#c95a26', f4:'#a5441a', f5:'#7a2f10', ex:'#6250d6', na:'#eef0f2' };
 function renderAnHeatmap(){
   if(!anContexto){ return; }
-  const rep = {}, gui = {}, tiendas = {}, skus = {}, nombreSku = {};
+  const wrap = $('an-heat-wrap');
+  const rep = {}, gui = {}, tiendas = {}, skus = {}, nombreSku = {}, descSku = {};
   anContexto.filasReparto.forEach(f=>{
     const t = f.participante || '(SIN)', s = claveSku(f.sku); if(!s) return;
-    if(!nombreSku[s]) nombreSku[s] = f.sku;
+    if(!nombreSku[s]){ nombreSku[s] = f.sku; descSku[s] = f.producto || ''; }
     rep[t+'|'+s] = (rep[t+'|'+s]||0) + (Number(f.cantidad)||0);
     tiendas[t] = (tiendas[t]||0) + (Number(f.cantidad)||0);
     skus[s] = (skus[s]||0) + (Number(f.cantidad)||0);
@@ -11276,34 +11332,83 @@ function renderAnHeatmap(){
     const t = f.participante || '(SIN)', s = claveSku(f.codigo); if(!s) return;
     gui[t+'|'+s] = (gui[t+'|'+s]||0) + (Number(f.cantidad)||0);
   });
-  const listaT = Object.keys(tiendas).sort((a,b)=> tiendas[b]-tiendas[a]).slice(0,40);
-  const listaS = Object.keys(skus).sort((a,b)=> skus[b]-skus[a]).slice(0,45);
+  let listaT = Object.keys(tiendas).sort((a,b)=> tiendas[b]-tiendas[a]);
+  let listaS = Object.keys(skus).sort((a,b)=> skus[b]-skus[a]);
+  const totalT = listaT.length, totalS = listaS.length;
+  const falta = (t, s)=> (rep[t+'|'+s]||0) > (gui[t+'|'+s]||0);
+  if(anHmFiltro === 'faltantes'){
+    listaS = listaS.filter(s=> listaT.some(t=> falta(t, s)));
+    listaT = listaT.filter(t=> listaS.some(s=> falta(t, s)));
+  }
+  $('an-hm-cuenta').textContent = `${listaT.length} de ${totalT} tiendas · ${listaS.length} de ${totalS} SKU`;
   if(listaT.length === 0 || listaS.length === 0){
-    $('an-heat-wrap').innerHTML = '<div class="empty-state">Sin datos suficientes para el mapa.</div>';
+    wrap.innerHTML = '<div class="empty-state">' + (anHmFiltro === 'faltantes' && totalS ? '¡Sin faltantes! Todo lo repartido salió en guía.' : 'Sin datos suficientes para el mapa.') + '</div>';
     return;
   }
-  let html = '<table class="an-heat"><thead><tr><th class="esquina">Tienda \\ SKU</th>' +
-    listaS.map(s=>'<th>'+esc(nombreSku[s] || s)+'</th>').join('') + '</tr></thead><tbody>';
-  listaT.forEach(t=>{
-    html += '<tr><td class="fila-lbl" title="'+esc(t)+'">'+esc(t)+'</td>';
-    listaS.forEach(s=>{
-      const r = rep[t+'|'+s]||0, g = gui[t+'|'+s]||0;
-      let bg = '#EDF0F3', tip = t+' · '+(nombreSku[s]||s)+' · no aplica';
-      if(r > 0 || g > 0){
-        if(r === 0) { bg = '#7C5BA8'; tip = t+' · '+(nombreSku[s]||s)+' · '+g+' u enviadas sin estar en el reparto'; }
-        else {
-          const pct = Math.round((g/r)*100);
-          bg = g > r ? '#7C5BA8' : anColorPct(pct);
-          tip = t+' · '+(nombreSku[s]||s)+' · reparto '+r+' u, guía '+g+' u ('+pct+'%)';
-        }
-      }
-      html += '<td class="celda" style="background:'+esc(bg)+'" title="'+tip.replace(/"/g,'&quot;')+'"></td>';
+  // Tamaño de cada cuadro: se reparte el ancho disponible entre todos los SKU
+  // (entre 12 y 30 px). Si no alcanzan, el mapa se desplaza a los lados con la
+  // columna de tiendas fija.
+  const lbl = window.innerWidth < 700 ? 120 : 190;
+  const ancho = Math.max(320, wrap.clientWidth - lbl - 12);
+  const celda = Math.max(12, Math.min(30, Math.floor(ancho / listaS.length) - 2));
+  const pctTienda = t=>{ let r = 0, g = 0; listaS.forEach(s=>{ const rr = rep[t+'|'+s]||0; r += rr; g += Math.min(rr, gui[t+'|'+s]||0); }); return r ? Math.round(g/r*100) : 100; };
+  let html = `<div class="an-hm" style="grid-template-columns:${lbl}px repeat(${listaS.length}, ${celda}px); grid-template-rows:92px; grid-auto-rows:${celda}px;">` +
+    `<div class="hm-esq">Tienda \\ SKU</div>` +
+    listaS.map((s, c)=> `<div class="hm-col" data-c="${c}" title="${esc(nombreSku[s] + ' · ' + descSku[s])}">${esc(nombreSku[s])}</div>`).join('');
+  listaT.forEach((t, r)=>{
+    const p = pctTienda(t);
+    html += `<div class="hm-fila" data-r="${r}" title="${esc(t)}"><span class="n">${esc(t)}</span><span class="p" style="--hm-c:${esc(AN_HM_COLOR[anHmClase(100, p)])}">${esc(p)}%</span></div>`;
+    listaS.forEach((s, c)=>{
+      const cls = anHmClase(rep[t+'|'+s]||0, gui[t+'|'+s]||0);
+      // Entrada en ola diagonal (de arriba a la izquierda hacia abajo a la derecha).
+      const d = Math.min(1400, (r + c) * 14);
+      html += `<div class="c ${cls}" data-r="${r}" data-c="${c}" style="--d:${d}"></div>`;
     });
-    html += '</tr>';
   });
-  html += '</tbody></table>';
-  $('an-heat-wrap').innerHTML = html;
+  html += '</div>';
+  wrap.innerHTML = html;
+  wrap._hm = { listaT, listaS, rep, gui, nombreSku, descSku };
 }
+
+// Pasar el mouse: resalta la fila y la columna del cuadro (las demás se
+// atenúan) y muestra una tarjeta con el detalle.
+(function(){
+  const wrap = $('an-heat-wrap');
+  const foco = document.createElement('style'); document.head.appendChild(foco);
+  const tip = document.createElement('div'); tip.id = 'an-hm-tip'; document.body.appendChild(tip);
+  let actual = '';
+  const ocultar = ()=>{ foco.textContent = ''; tip.classList.remove('visible'); actual = ''; };
+  wrap.addEventListener('mousemove', e=>{
+    const el = e.target.closest('.an-hm .c');
+    if(!el || el.classList.contains('na') || !wrap._hm){ ocultar(); return; }
+    const r = el.dataset.r, c = el.dataset.c;
+    if(actual !== r+'|'+c){
+      actual = r+'|'+c;
+      foco.textContent = `#an-heat-wrap .an-hm .c:not([data-r="${r}"]):not([data-c="${c}"]){opacity:.22}` +
+        `#an-heat-wrap .hm-fila[data-r="${r}"], #an-heat-wrap .hm-col[data-c="${c}"]{color:var(--ink)}`;
+      const h = wrap._hm, t = h.listaT[r], s = h.listaS[c];
+      const rr = h.rep[t+'|'+s]||0, gg = h.gui[t+'|'+s]||0, cls = anHmClase(rr, gg);
+      const estado = cls === 'ok' ? 'Completo' : cls === 'ex' ? `Exceso: ${anFmt(gg - rr)} u de más` : `Faltan ${anFmt(rr - gg)} u`;
+      tip.innerHTML = `<div class="t">${esc(t)}</div><div class="s">${esc(h.nombreSku[s])}</div><div class="d">${esc(h.descSku[s])}</div>` +
+        `<div class="fila"><span>Reparto</span><b>${esc(anFmt(rr))} u</b></div><div class="fila"><span>En guía</span><b>${esc(anFmt(gg))} u</b></div>` +
+        `<div class="fila"><span>Cumplimiento</span><b>${esc(rr ? Math.round(gg/rr*100) + '%' : '—')}</b></div>` +
+        `<div class="estado"><i style="background:${esc(AN_HM_COLOR[cls])}"></i>${esc(estado)}</div>`;
+      tip.classList.add('visible');
+    }
+    const x = Math.min(e.clientX + 16, window.innerWidth - tip.offsetWidth - 8);
+    const y = e.clientY + tip.offsetHeight + 24 > window.innerHeight ? e.clientY - tip.offsetHeight - 14 : e.clientY + 18;
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  });
+  wrap.addEventListener('mouseleave', ocultar);
+  wrap.addEventListener('scroll', ocultar);
+  document.querySelectorAll('[data-hm-filtro]').forEach(b=> b.addEventListener('click', ()=>{
+    anHmFiltro = b.dataset.hmFiltro;
+    document.querySelectorAll('[data-hm-filtro]').forEach(x=> x.classList.toggle('activo', x === b));
+    renderAnHeatmap();
+  }));
+  // Al cambiar el ancho de la ventana, los cuadros se vuelven a ajustar.
+  let espera; window.addEventListener('resize', ()=>{ clearTimeout(espera); espera = setTimeout(()=>{ if(wrap._hm && wrap.offsetParent) renderAnHeatmap(); }, 250); });
+})();
 
 /* Chips: los filtros activos se ven y se quitan de uno en uno. */
 function renderAnChips(){
