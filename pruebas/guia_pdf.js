@@ -25,7 +25,10 @@ function guiaDePrueba(){
   doc.setFontSize(8);
   doc.text('Fecha Traslado:', 306, 200); doc.text('03/10/2026', 431, 200);
   doc.text('Punto de Partida:', 20, 213); doc.text('CALLE PRUEBA 123, LIMA', 110, 213);
-  doc.text('Punto de Llegada:', 306, 213); doc.text('URB. SOL DE VITARTE, ATE', 431, 213);
+  // Llegada en 3 líneas, la última sola (como las guías a Ventanilla)
+  doc.text('Punto de Llegada:', 306, 213); doc.text('CONDOMINIO DE FACILIDADES', 431, 213);
+  doc.text('Lima, Peru', 110, 222); doc.text('LOGISTICAS AV. NESTOR GAMBETTA', 431, 222);
+  doc.text('KM8, VENTANILLA, CALLAO, CALLAO, Peru', 431, 230);
   let y = 300; encabezado(y);
   items.forEach(([n, cod, desc, und, cant])=>{
     y += 13;
@@ -83,8 +86,11 @@ function guiaSunatDePrueba(){
     const hoy = firebase.firestore.Timestamp.now();
     for(const [corr, skus] of [['CAMP-0001',['99NS-3801','99NS-3802','021503']], ['CAMP-0002',['OTRO-1']], ['CAMP-0003',['OTRO-2']]]){
       await campanaRegistrosRef.doc(corr).set({ correlativo:corr, campana:'CAMP '+corr, estado:'ACTIVO', fecha_carga: hoy, total_filas: skus.length });
-      for(const sku of skus) await campanaItemsRef.doc().set({ correlativo: corr, participante:'ATE', sku, cantidad:1 });
+      for(const [k, sku] of skus.entries()) await campanaItemsRef.doc().set({ correlativo: corr, participante: ['ICA','VENTANILLA','ATE'][k], sku, cantidad:1 });
     }
+    // Una elección equivocada guardada antes para este destino (ICA): debe
+    // ganar la tienda escrita en la dirección (VENTANILLA).
+    await guardarMapeoDestinoParticipante('CONDOMINIO DE FACILIDADES LOGISTICAS AV. NESTOR GAMBETTA KM8, VENTANILLA, CALLAO, CALLAO, Peru', 'ICA');
     campRegAllCache = []; campRegCache = {};
     const whereOrig = campanaItemsRef.where.bind(campanaItemsRef);
     window.__tramos = [];
@@ -109,12 +115,17 @@ function guiaSunatDePrueba(){
   await page.waitForFunction(()=> !$('btn-procesar-guia').disabled && guiaBatch.length > 0, null, { timeout: 30000 });
   if(conAvance){
     const ms = Date.now() - t0;
-    const info = await page.evaluate(()=> ({ avisos: window.__avisos, tramos: window.__tramos, sug: guiaBatch[0].correlativoSugerido, fin: $('guia-msg').innerText }));
+    const info = await page.evaluate(()=> ({ avisos: window.__avisos, tramos: window.__tramos, sug: guiaBatch[0].correlativoSugerido, fin: $('guia-msg').innerText,
+      partida: guiaBatch[0].resultado.punto_partida, llegada: guiaBatch[0].resultado.punto_llegada, part: guiaBatch[0].participanteSugerido,
+      opcion: (document.querySelector('.guia-batch-participante[data-idx="0"]') || {}).selectedOptions?.[0]?.text }));
     verificar(info.avisos.some(t=> /página 1 de 3/.test(t)) && info.avisos.some(t=> /página 3 de 3/.test(t)), 'Muestra la página que está leyendo (1 de 3 … 3 de 3)');
     verificar(info.avisos.some(t=> /campañas activas: 0 de 3/.test(t)) && info.avisos.some(t=> /campañas activas: 3 de 3/.test(t)) && info.avisos.some(t=> /\d+ s$/.test(t)), 'Muestra el avance "X de 3 campañas" y los segundos que lleva');
     const ini = info.tramos.map(t=> t[0]).sort((x,y)=> x-y);
     verificar(info.tramos.length === 3 && ini[2] - ini[0] < 1000 && ms < 12000, `Descarga las 3 campañas en paralelo (total ${ms} ms en vez de 21 s+)`);
     verificar(info.sug === 'CAMP-0001' && /^Se procesaron 1 archivo/.test(info.fin), `Sugiere la campaña correcta (${info.sug}) y termina con "${info.fin}"`);
+    verificar(info.llegada === 'CONDOMINIO DE FACILIDADES LOGISTICAS AV. NESTOR GAMBETTA KM8, VENTANILLA, CALLAO, CALLAO, PERU' && info.partida === 'CALLE PRUEBA 123, LIMA LIMA, PERU',
+      `Dirección de llegada de 3 líneas completa ("${info.llegada}"); partida sin pedazos de la llegada ("${info.partida}")`);
+    verificar(info.part === 'VENTANILLA' && info.opcion === 'VENTANILLA (sugerido)', `Participante: la tienda escrita en la dirección gana a lo recordado (${info.part}, "${info.opcion}")`);
   }
   const r = await page.evaluate(()=> guiaBatch.map(g=> ({ error: g.error || null, nro: g.resultado && g.resultado.nro_guia, fecha: g.resultado && g.resultado.fecha_traslado,
     bultos: g.resultado && g.resultado.bultos, llegada: g.resultado && g.resultado.punto_llegada, n: g.resultado ? g.resultado.items.length : 0,
