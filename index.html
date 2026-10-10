@@ -399,6 +399,12 @@
   }
   .an-embudo .merma{font-size:11px; color:#A93B2C; padding-left:162px; font-family:var(--mono);}
 
+  /* Maestro de participantes */
+  .pm-zona{display:inline-block; font-size:10px; font-weight:700; padding:2px 8px; border-radius:999px; letter-spacing:.03em;}
+  .pm-zona.lima{background:#e3f1ee; color:#1f6f64;} .pm-zona.provincia{background:#fbeadf; color:#9a4a1c;} .pm-zona.nd{background:#eef0f2; color:var(--ink-soft);}
+  .pm-chips{display:flex; flex-wrap:wrap; gap:4px;} .pm-chips span{font-size:10px; background:#f1f2f4; border-radius:4px; padding:1px 6px; font-family:var(--mono);}
+  tr.pm-inactivo td{opacity:.5;}
+
   /* Mapa de calor (cuadrícula: los cuadros se ajustan al ancho disponible) */
   .an-heat-wrap{
     --hm-ok:#2f9e8f; --hm-f1:#ec9560; --hm-f2:#e0773f; --hm-f3:#c95a26; --hm-f4:#a5441a; --hm-f5:#7a2f10;
@@ -1763,6 +1769,7 @@
     <button id="campsub-analisis">📊 Análisis</button>
     <button id="campsub-validadores">✅ Validadores</button>
     <button id="campsub-vouchers">📦 Vouchers Agencia</button>
+    <button id="campsub-participantes">👥 Participantes</button>
   </div>
 
   <div id="campsub-panel-cargar-campana">
@@ -2152,6 +2159,47 @@
   </div>
 
   <input type="file" id="vch-pdf-input-global" accept="application/pdf" style="display:none;">
+  <div id="campsub-panel-participantes" style="display:none;">
+  <div class="panel" style="margin-bottom:14px;">
+    <h3>Maestro de participantes (tiendas)</h3>
+    <p class="hint" style="margin-bottom:10px;">Lista oficial de tiendas. Cada una tiene su nombre oficial, si es de Lima o Provincia, los otros nombres con los que aparece en los PDF y palabras de su dirección. Solo los administradores pueden crear, editar, unir o desactivar.</p>
+    <div id="pm-form" class="hidden-perm" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px; align-items:end; margin-bottom:10px;">
+      <div class="field" style="margin:0;"><label>Nombre oficial *</label><input type="text" id="pm-nombre" class="upper" placeholder="EJ. VENTANILLA"></div>
+      <div class="field" style="margin:0;"><label>Lima o Provincia *</label><select id="pm-zona"><option value="">— Elige —</option><option value="LIMA">Lima</option><option value="PROVINCIA">Provincia</option></select></div>
+      <div class="field" style="margin:0;"><label>Otros nombres (separados por coma)</label><input type="text" id="pm-alias" class="upper" placeholder="EJ. MALL PLAZA COMAS, MP COMAS"></div>
+      <div class="field" style="margin:0;"><label>Palabras de su dirección (separadas por coma)</label><input type="text" id="pm-palabras" class="upper" placeholder="EJ. VENTANILLA, NESTOR GAMBETTA"></div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-primary" id="btn-pm-guardar">Guardar participante</button>
+        <button class="btn btn-ghost" id="btn-pm-cancelar" style="display:none;">Cancelar edición</button>
+      </div>
+    </div>
+    <div class="msg" id="pm-msg"></div>
+    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin:6px 0 10px;">
+      <div class="field" style="margin:0; max-width:260px;"><label>Buscar</label><input type="text" id="pm-buscar" class="upper" placeholder="Nombre u otro nombre"></div>
+      <div class="field" style="margin:0; max-width:180px;"><label>Zona</label><select id="pm-filtro-zona"><option value="">Todas</option><option value="LIMA">Lima</option><option value="PROVINCIA">Provincia</option><option value="ND">Sin definir</option></select></div>
+      <div class="field" style="margin:0; max-width:180px;"><label>Estado</label><select id="pm-filtro-estado"><option value="ACTIVO">Activos</option><option value="INACTIVO">Inactivos</option><option value="">Todos</option></select></div>
+      <span class="hint" id="pm-resumen" style="margin-left:auto;"></span>
+    </div>
+    <div class="hist-wrap" style="max-height:480px;">
+      <table><thead><tr><th>Nombre oficial</th><th>Zona</th><th>Otros nombres</th><th>Palabras de dirección</th><th>Campañas</th><th>Guías</th><th>Estado</th><th></th></tr></thead><tbody id="pm-body"></tbody></table>
+      <div class="empty-state" id="pm-empty" style="display:none;">Aún no hay participantes en el maestro.</div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-bottom:14px;">
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <h3 style="margin:0;">Registrados en el módulo y aún no en el maestro</h3>
+      <button class="btn btn-ghost btn-sm" id="btn-pm-escanear" type="button">↻ Volver a buscar</button>
+      <button class="btn btn-primary btn-sm hidden-perm" id="btn-pm-agregar-todos" type="button" style="margin-left:auto;">Agregar todos</button>
+    </div>
+    <p class="hint" style="margin:6px 0 10px;">Participantes que aparecen en las campañas, guías, validadores o destinos recordados y que todavía no están en el maestro. "Agregar" lo crea con la zona sugerida por la dirección de llegada de sus guías; "Unir a…" lo guarda como otro nombre de una tienda existente.</p>
+    <div class="msg" id="pm-escaneo-msg"></div>
+    <div class="hist-wrap" style="max-height:420px;">
+      <table><thead><tr><th>Participante</th><th>Campañas</th><th>Guías</th><th>Zona sugerida</th><th></th></tr></thead><tbody id="pm-nuevos-body"></tbody></table>
+      <div class="empty-state" id="pm-nuevos-empty" style="display:none;">Todos los participantes del módulo ya están en el maestro.</div>
+    </div>
+  </div>
+  </div>
 </div>
 
 <!-- TOMA DE INVENTARIO -->
@@ -2788,8 +2836,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v151';
-const APP_UPDATED = '11/10/2026 13:00';
+const APP_VERSION = 'v152';
+const APP_UPDATED = '11/10/2026 17:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -2822,6 +2870,7 @@ const guiasRegistrosRef = db.collection('guias_registros');
 const guiaItemsRef = db.collection('guia_items');
 const mapeoDestinoParticipanteRef = db.collection('mapeo_destino_participante');
 const validadoresRef = db.collection('validadores_campana');
+const participantesMaestroRef = db.collection('participantes_maestro'); // maestro de tiendas (participantes)
 const validadoresMaestroRef = db.collection('validadores_maestro'); // maestro de personas validadoras (DNI, nombre, foto)
 const vouchersAgenciaRef = db.collection('vouchers_agencia');
 const vouchersAgenciaItemsRef = db.collection('vouchers_agencia_items');
@@ -2848,6 +2897,7 @@ let mezanineConfig = { filas: 6, columnas: 10, niveles_max: 4 };
 // dejó, igual que ya se hace con los paneles colapsables.
 let ocultarLadoDerecho = false;
 try{ ocultarLadoDerecho = localStorage.getItem('almacen_ocultar_lado_derecho') === '1'; }catch(e){}
+let participantesMaestroCache = {}; // maestro de participantes, keyed por clave del nombre oficial
 let validadoresMaestroCache = {}; // maestro de validadores, keyed por DNI
 let currentPermisos = {};
 let currentUserEmail = '';
@@ -3036,6 +3086,8 @@ function applyPermisosUI(){
   $('op-panel').classList.toggle('hidden-perm', !map.mov);
   $('prod-form-panel').classList.toggle('hidden-perm', !map.productos);
   $('fusion-panel').classList.toggle('hidden-perm', !(admin || !!p.eliminar));
+  $('pm-form').classList.toggle('hidden-perm', !admin);
+  $('btn-pm-agregar-todos').classList.toggle('hidden-perm', !admin);
   const activeBtn = document.querySelector('nav.tabs button.active');
   const activeTab = activeBtn ? activeBtn.dataset.tab : null;
   if(!activeTab || !map[activeTab]){
@@ -3200,7 +3252,7 @@ $('subtab-retirar-campana').addEventListener('click', ()=>setSubtab('retirar-cam
 $('subtab-unir').addEventListener('click', ()=>setSubtab('unir'));
 
 function setCampanasSubtab(name){
-  ['cargar-campana','cargar-guia','registros','buscar','analisis','validadores','vouchers'].forEach(n=>{
+  ['cargar-campana','cargar-guia','registros','buscar','analisis','validadores','vouchers','participantes'].forEach(n=>{
     $('campsub-'+n).classList.toggle('active', n===name);
     $('campsub-panel-'+n).style.display = (n===name) ? 'block' : 'none';
   });
@@ -3212,6 +3264,7 @@ $('campsub-buscar').addEventListener('click', ()=>setCampanasSubtab('buscar'));
 $('campsub-analisis').addEventListener('click', ()=>{ setCampanasSubtab('analisis'); poblarSelectCampanasAnalisis(); });
 $('campsub-validadores').addEventListener('click', ()=>{ setCampanasSubtab('validadores'); poblarSelectCampanasValidadores(); calcularPendientesGlobalValidadores(); });
 $('campsub-vouchers').addEventListener('click', ()=>{ setCampanasSubtab('vouchers'); poblarSelectCampanasVouchers(); });
+$('campsub-participantes').addEventListener('click', ()=>{ setCampanasSubtab('participantes'); renderParticipantesMaestro(); escanearParticipantesModulo(false); });
 
 /* -------------------- Utilidades -------------------- */
 function indexToLetter(n){ n=n+1; let s=''; while(n>0){ n--; s=String.fromCharCode(65+(n%26))+s; n=Math.floor(n/26);} return s; }
@@ -3325,6 +3378,12 @@ function startListeners(){
   // detalle visual adicional del layout, no una de las 5 colecciones núcleo.
   listenerUnsubs.push(rejasRef.onSnapshot(snap=>{ aplicarCambios(snap, rejas); renderAll(); }, onErr));
   listenerUnsubs.push(productosRef.onSnapshot(snap=>{ aplicarCambios(snap, productos, docIdACodigo); invalidarInventario(); checkReady(); renderProductosTabla(); renderInventario(); poblarProveedoresToma(); poblarDatalistsProductos(); }, onErr));
+  listenerUnsubs.push(participantesMaestroRef.onSnapshot(snap=>{
+    participantesMaestroCache = {};
+    snap.forEach(d=> participantesMaestroCache[d.id] = Object.assign({id:d.id}, d.data()));
+    renderParticipantesMaestro();
+    renderParticipantesNuevos();
+  }, onErr));
   listenerUnsubs.push(validadoresMaestroRef.onSnapshot(snap=>{
     validadoresMaestroCache = {};
     snap.forEach(d=> validadoresMaestroCache[d.id] = Object.assign({dni:d.id}, d.data()));
@@ -8241,6 +8300,221 @@ async function reemplazarCampana(fecha){
     $('btn-guardar-campana').disabled = false;
   }
 }
+
+// -------- Maestro de participantes --------
+// Clave para comparar nombres de tienda: mayúsculas, sin tildes y con un solo
+// espacio entre palabras ("Mall plaza  Comas" = "MALL PLAZA COMAS").
+function claveParticipante(s){ return normalizarTexto(s).replace(/\s+/g, ' ').replace(/\//g, '∕'); }
+function listaDeTexto(txt){ return [...new Set(String(txt||'').split(',').map(x=> x.trim().toUpperCase()).filter(Boolean))]; }
+// Devuelve el participante del maestro que corresponde a un nombre (por su
+// nombre oficial o por uno de sus otros nombres), o null.
+function participanteDelMaestro(nombre){
+  const k = claveParticipante(nombre);
+  if(!k) return null;
+  if(participantesMaestroCache[k]) return participantesMaestroCache[k];
+  return Object.values(participantesMaestroCache).find(p=> (p.alias||[]).some(a=> claveParticipante(a) === k)) || null;
+}
+const pmEsAdmin = ()=> !!currentPermisos.admin;
+let pmEditando = null;   // id del participante que se está editando
+let pmUso = {};          // clave -> { nombre, campanas:Set, guias:n, lima:n, provincia:n } (lo registrado en el módulo)
+let pmEscaneado = false;
+
+function pmZonaHtml(z){
+  return z === 'LIMA' ? '<span class="pm-zona lima">LIMA</span>' : z === 'PROVINCIA' ? '<span class="pm-zona provincia">PROVINCIA</span>' : '<span class="pm-zona nd">SIN DEFINIR</span>';
+}
+// Uso en el módulo de un participante del maestro: suma su nombre y sus otros nombres.
+function pmUsoDe(p){
+  const claves = [p.id, ...(p.alias||[]).map(claveParticipante)];
+  const camp = new Set(); let guias = 0;
+  claves.forEach(k=>{ const u = pmUso[k]; if(u){ u.campanas.forEach(c=> camp.add(c)); guias += u.guias; } });
+  return { campanas: camp.size, guias };
+}
+function renderParticipantesMaestro(){
+  if(!$('pm-body')) return;
+  const buscar = claveParticipante($('pm-buscar').value);
+  const zona = $('pm-filtro-zona').value, estado = $('pm-filtro-estado').value;
+  const todos = Object.values(participantesMaestroCache).sort((a,b)=> (a.nombre||'').localeCompare(b.nombre||''));
+  const lista = todos.filter(p=>{
+    if(estado === 'ACTIVO' && p.activo === false) return false;
+    if(estado === 'INACTIVO' && p.activo !== false) return false;
+    if(zona === 'ND' ? !!p.zona : (zona && p.zona !== zona)) return false;
+    if(buscar && !p.id.includes(buscar) && !(p.alias||[]).some(a=> claveParticipante(a).includes(buscar))) return false;
+    return true;
+  });
+  const lima = todos.filter(p=> p.activo !== false && p.zona === 'LIMA').length, prov = todos.filter(p=> p.activo !== false && p.zona === 'PROVINCIA').length;
+  $('pm-resumen').textContent = `${todos.filter(p=> p.activo !== false).length} activos · ${lima} Lima · ${prov} Provincia`;
+  $('pm-empty').style.display = lista.length ? 'none' : 'block';
+  const admin = pmEsAdmin();
+  $('pm-body').innerHTML = lista.map(p=>{
+    const uso = pmUsoDe(p);
+    const chips = arr=> (arr||[]).length ? `<div class="pm-chips">${arr.map(a=> `<span>${esc(a)}</span>`).join('')}</div>` : '<span class="hint">—</span>';
+    const acciones = admin ? `<button class="btn btn-sm btn-ghost" data-pm-editar="${esc(p.id)}">Editar</button> <button class="btn btn-sm btn-ghost" data-pm-activo="${esc(p.id)}">${p.activo === false ? 'Activar' : 'Desactivar'}</button>` : '';
+    return `<tr class="${p.activo === false ? 'pm-inactivo' : ''}"><td><b>${esc(p.nombre)}</b></td><td>${pmZonaHtml(p.zona)}</td><td>${chips(p.alias)}</td><td>${chips(p.palabras_direccion)}</td>` +
+      `<td>${esc(pmEscaneado ? uso.campanas : '…')}</td><td>${esc(pmEscaneado ? uso.guias : '…')}</td><td>${esc(p.activo === false ? 'Inactivo' : 'Activo')}</td><td style="white-space:nowrap;">${acciones}</td></tr>`;
+  }).join('');
+}
+['pm-buscar','pm-filtro-zona','pm-filtro-estado'].forEach(id=> $(id).addEventListener('input', renderParticipantesMaestro));
+
+function pmLimpiarForm(){
+  pmEditando = null;
+  ['pm-nombre','pm-alias','pm-palabras'].forEach(id=> $(id).value = '');
+  $('pm-zona').value = '';
+  $('btn-pm-guardar').textContent = 'Guardar participante';
+  $('btn-pm-cancelar').style.display = 'none';
+}
+$('btn-pm-cancelar').addEventListener('click', pmLimpiarForm);
+// Un nombre no puede pertenecer a dos tiendas: devuelve la tienda que ya lo usa.
+function pmNombreEnUso(nombre, exceptoId){
+  const k = claveParticipante(nombre);
+  return Object.values(participantesMaestroCache).find(p=> p.id !== exceptoId && (p.id === k || (p.alias||[]).some(a=> claveParticipante(a) === k))) || null;
+}
+$('btn-pm-guardar').addEventListener('click', async ()=>{
+  if(!pmEsAdmin()){ showMsg('pm-msg','err','Solo un administrador puede editar el maestro.'); return; }
+  const nombre = $('pm-nombre').value.trim().toUpperCase().replace(/\s+/g, ' ');
+  const zona = $('pm-zona').value;
+  const alias = listaDeTexto($('pm-alias').value).filter(a=> claveParticipante(a) !== claveParticipante(nombre));
+  const palabras = listaDeTexto($('pm-palabras').value);
+  if(!nombre){ showMsg('pm-msg','err','Escribe el nombre oficial.'); return; }
+  if(!zona){ showMsg('pm-msg','err','Elige si es de Lima o Provincia.'); return; }
+  for(const n of [nombre, ...alias]){
+    const otro = pmNombreEnUso(n, pmEditando);
+    if(otro){ showMsg('pm-msg','err',`"${n}" ya es un nombre de ${otro.nombre}.`); return; }
+  }
+  const id = pmEditando || claveParticipante(nombre);
+  try{
+    await participantesMaestroRef.doc(id).set(Object.assign({
+      nombre, zona, alias, palabras_direccion: palabras,
+      actualizado_por: currentUserAlias, actualizado_en: firebase.firestore.FieldValue.serverTimestamp()
+    }, pmEditando ? {} : { activo: true, creado_por: currentUserAlias, creado_en: firebase.firestore.FieldValue.serverTimestamp() }), { merge:true });
+    await logAccion(pmEditando ? 'participante_editado' : 'participante_creado', {detalle:`${nombre} (${zona})`});
+    showMsg('pm-msg','ok', pmEditando ? `Se actualizó ${nombre}.` : `Se agregó ${nombre}.`);
+    pmLimpiarForm();
+  }catch(err){ console.error(err); showMsg('pm-msg','err','No se pudo guardar: '+err.message); }
+});
+$('pm-body').addEventListener('click', async e=>{
+  const bEd = e.target.closest('[data-pm-editar]'), bAc = e.target.closest('[data-pm-activo]');
+  if(bEd){
+    const p = participantesMaestroCache[bEd.dataset.pmEditar]; if(!p) return;
+    pmEditando = p.id;
+    $('pm-nombre').value = p.nombre || ''; $('pm-zona').value = p.zona || '';
+    $('pm-alias').value = (p.alias||[]).join(', '); $('pm-palabras').value = (p.palabras_direccion||[]).join(', ');
+    $('btn-pm-guardar').textContent = 'Guardar cambios'; $('btn-pm-cancelar').style.display = '';
+    $('pm-form').scrollIntoView({ behavior:'smooth', block:'center' });
+  }
+  if(bAc && pmEsAdmin()){
+    const p = participantesMaestroCache[bAc.dataset.pmActivo]; if(!p) return;
+    const activo = p.activo === false;
+    try{
+      await participantesMaestroRef.doc(p.id).set({ activo, actualizado_por: currentUserAlias, actualizado_en: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true });
+      await logAccion(activo ? 'participante_activado' : 'participante_desactivado', {detalle: p.nombre});
+    }catch(err){ console.error(err); showToast('No se pudo cambiar el estado: '+err.message, 'err'); }
+  }
+});
+
+// Busca los participantes registrados en todo el módulo de Campañas: hojas de
+// reparto (lista guardada en cada campaña), guías, validadores y destinos
+// recordados. Se hace una vez por sesión (o con "Volver a buscar").
+async function escanearParticipantesModulo(forzar){
+  if(pmEscaneado && !forzar){ renderParticipantesNuevos(); return; }
+  const proc = relojProceso('pm-escaneo-msg');
+  $('btn-pm-escanear').disabled = true;
+  try{
+    const uso = {};
+    const sumar = (nombre)=>{ const k = claveParticipante(nombre); if(!k) return null; return uso[k] || (uso[k] = { nombre: String(nombre).trim().toUpperCase().replace(/\s+/g, ' '), campanas: new Set(), guias: 0, lima: 0, provincia: 0 }); };
+    proc.paso('Buscando participantes… campañas');
+    await esperarRegistrosCampana();
+    // Las campañas activas antiguas sin lista de tiendas la generan una sola vez.
+    try{ await obtenerTiendasCampanas(); }catch(e){ console.warn(e); }
+    campRegAllCache.forEach(c=> (c.participantes_lista||[]).forEach(t=>{ const u = sumar(t); if(u) u.campanas.add(c.correlativo); }));
+    proc.paso('Buscando participantes… guías');
+    const guias = await guiasRegistrosRef.limit(5000).get();
+    guias.forEach(d=>{
+      const g = d.data(); if(g.estado === 'INVALIDADO') return;
+      const u = sumar(g.participante); if(!u) return;
+      u.guias++;
+      const lleg = normalizarTexto(g.punto_llegada);
+      if(/\b(LIMA|CALLAO)\b/.test(lleg.replace(/PERU/g, ''))) u.lima++; else if(lleg) u.provincia++;
+    });
+    proc.paso('Buscando participantes… validadores y destinos recordados');
+    const [vals, mapeos] = await Promise.all([validadoresRef.limit(5000).get(), mapeoDestinoParticipanteRef.limit(2000).get()]);
+    vals.forEach(d=> sumar(d.data().participante));
+    mapeos.forEach(d=> sumar(d.data().participante));
+    pmUso = uso; pmEscaneado = true;
+    proc.fin();
+    $('pm-escaneo-msg').style.display = 'none';
+  }catch(err){
+    console.error(err); proc.fin();
+    showMsg('pm-escaneo-msg','err','No se pudo buscar los participantes: '+err.message);
+  }finally{
+    $('btn-pm-escanear').disabled = false;
+  }
+  renderParticipantesMaestro();
+  renderParticipantesNuevos();
+}
+$('btn-pm-escanear').addEventListener('click', ()=> escanearParticipantesModulo(true));
+function pmZonaSugerida(u){ return u.lima > u.provincia ? 'LIMA' : u.provincia > u.lima ? 'PROVINCIA' : ''; }
+function pmNuevos(){
+  return Object.entries(pmUso).filter(([k, u])=> !participanteDelMaestro(u.nombre)).map(([k, u])=> Object.assign({ clave:k }, u))
+    .sort((a,b)=> b.campanas.size - a.campanas.size || a.nombre.localeCompare(b.nombre));
+}
+function renderParticipantesNuevos(){
+  if(!$('pm-nuevos-body') || !pmEscaneado) return;
+  const nuevos = pmNuevos(), admin = pmEsAdmin();
+  const opciones = Object.values(participantesMaestroCache).filter(p=> p.activo !== false).sort((a,b)=> a.nombre.localeCompare(b.nombre))
+    .map(p=> `<option value="${esc(p.id)}">${esc(p.nombre)}</option>`).join('');
+  $('pm-nuevos-empty').style.display = nuevos.length ? 'none' : 'block';
+  $('btn-pm-agregar-todos').textContent = `Agregar todos (${nuevos.length})`;
+  $('btn-pm-agregar-todos').disabled = !nuevos.length;
+  $('pm-nuevos-body').innerHTML = nuevos.map(u=>{
+    const z = pmZonaSugerida(u);
+    const acciones = admin ? `<div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">` +
+      `<select data-pm-zona-nuevo="${esc(u.clave)}" style="width:auto; padding:2px 6px; font-size:12px;"><option value="">— Zona —</option><option value="LIMA" ${z==='LIMA'?'selected':''}>Lima</option><option value="PROVINCIA" ${z==='PROVINCIA'?'selected':''}>Provincia</option></select>` +
+      `<button class="btn btn-sm btn-primary" data-pm-agregar="${esc(u.clave)}">Agregar</button>` +
+      (opciones ? `<select data-pm-unir="${esc(u.clave)}" style="width:auto; padding:2px 6px; font-size:12px;"><option value="">Unir a…</option>${opciones}</select>` : '') + `</div>` : '';
+    return `<tr><td><b>${esc(u.nombre)}</b></td><td>${esc(u.campanas.size)}</td><td>${esc(u.guias)}</td><td>${pmZonaHtml(z)}</td><td>${acciones}</td></tr>`;
+  }).join('');
+}
+async function pmAgregar(lista){
+  const batch = db.batch();
+  lista.forEach(({ u, zona })=> batch.set(participantesMaestroRef.doc(claveParticipante(u.nombre)), {
+    nombre: u.nombre, zona: zona || '', alias: [], palabras_direccion: [], activo: true,
+    creado_por: currentUserAlias, creado_en: firebase.firestore.FieldValue.serverTimestamp(),
+    actualizado_por: currentUserAlias, actualizado_en: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge:true }));
+  await batch.commit();
+  await logAccion('participante_creado', {detalle: lista.length === 1 ? lista[0].u.nombre : `${lista.length} participantes agregados desde lo registrado en el módulo`});
+}
+$('pm-nuevos-body').addEventListener('click', async e=>{
+  const b = e.target.closest('[data-pm-agregar]'); if(!b || !pmEsAdmin()) return;
+  const u = pmUso[b.dataset.pmAgregar]; if(!u) return;
+  const zona = document.querySelector(`[data-pm-zona-nuevo="${CSS.escape(b.dataset.pmAgregar)}"]`).value;
+  b.disabled = true;
+  try{ await pmAgregar([{ u, zona }]); showToast(`Se agregó ${u.nombre}${zona ? '' : ' (zona sin definir)'}.`, 'ok'); }
+  catch(err){ console.error(err); b.disabled = false; showToast('No se pudo agregar: '+err.message, 'err'); }
+});
+$('pm-nuevos-body').addEventListener('change', async e=>{
+  const sel = e.target.closest('[data-pm-unir]'); if(!sel || !sel.value || !pmEsAdmin()) return;
+  const u = pmUso[sel.dataset.pmUnir], p = participantesMaestroCache[sel.value]; if(!u || !p) return;
+  if(!confirm(`¿Unir "${u.nombre}" a ${p.nombre}? Se guardará como otro nombre de ${p.nombre}.`)){ sel.value = ''; return; }
+  try{
+    await participantesMaestroRef.doc(p.id).set({ alias: firebase.firestore.FieldValue.arrayUnion(u.nombre), actualizado_por: currentUserAlias, actualizado_en: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true });
+    await logAccion('participante_unido', {detalle:`"${u.nombre}" se unió a ${p.nombre}`});
+    showToast(`"${u.nombre}" ahora es otro nombre de ${p.nombre}.`, 'ok');
+  }catch(err){ console.error(err); sel.value = ''; showToast('No se pudo unir: '+err.message, 'err'); }
+});
+$('btn-pm-agregar-todos').addEventListener('click', async ()=>{
+  if(!pmEsAdmin()) return;
+  const nuevos = pmNuevos(); if(!nuevos.length) return;
+  const sinZona = nuevos.filter(u=> !(document.querySelector(`[data-pm-zona-nuevo="${CSS.escape(u.clave)}"]`) || {}).value).length;
+  if(!confirm(`¿Agregar ${nuevos.length} participante(s) al maestro?${sinZona ? `\n\n${sinZona} quedarán con zona "sin definir" (podrás editarla después).` : ''}`)) return;
+  $('btn-pm-agregar-todos').disabled = true;
+  try{
+    const lista = nuevos.map(u=> ({ u, zona: (document.querySelector(`[data-pm-zona-nuevo="${CSS.escape(u.clave)}"]`) || {}).value || '' }));
+    for(let i=0; i<lista.length; i+=400) await pmAgregar(lista.slice(i, i+400));
+    showToast(`Se agregaron ${lista.length} participante(s).`, 'ok');
+  }catch(err){ console.error(err); showToast('No se pudo agregar: '+err.message, 'err'); }
+  finally{ $('btn-pm-agregar-todos').disabled = false; }
+});
 
 function fmtFechaCorta(d){
   if(!d) return '';
