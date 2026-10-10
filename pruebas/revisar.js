@@ -1,6 +1,7 @@
 // Revisión estática del escape de HTML en index.html (no necesita emuladores):
 //  1. Datos (campo de un objeto) insertados en HTML sin esc().
-//  2. esc() aplicado a HTML armado por el propio programa (se vería como texto).
+//  2. esc() aplicado a HTML armado por el propio programa (se vería como texto),
+//     incluidos atributos con comillas como data-num="…" (el atributo se rompe).
 const fs = require('fs'), path = require('path'), acorn = require('acorn'), walk = require('acorn-walk');
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const inicio = html.indexOf('<script>\nconst firebaseConfig') + '<script>'.length;
@@ -11,9 +12,10 @@ const ast = acorn.parse(js, { ecmaVersion: 'latest', locations: true });
 const ES_HTML = /<[a-zA-Z\/!]|&[a-z#0-9]+;/;
 const linea = n => n.loc.start.line + desfase;
 const texto = n => js.slice(n.start, n.end).replace(/\s+/g, ' ').slice(0, 90);
-const tieneHtml = e => { let r = false; walk.full(e, n => {
-  if(n.type === 'Literal' && typeof n.value === 'string' && ES_HTML.test(n.value)) r = true;
-  if(n.type === 'TemplateElement' && ES_HTML.test(n.value.raw)) r = true; }); return r; };
+const ES_ATRIB = /\b[a-z][a-z0-9-]*=["']/i;
+const tieneHtml = (e, re = ES_HTML) => { let r = false; walk.full(e, n => {
+  if(n.type === 'Literal' && typeof n.value === 'string' && re.test(n.value)) r = true;
+  if(n.type === 'TemplateElement' && re.test(n.value.raw)) r = true; }); return r; };
 const problemas = [];
 
 // 1. Campos de datos sin escapar
@@ -52,6 +54,7 @@ walk.full(ast, n => {
   if(n.type !== 'CallExpression' || n.callee.name !== 'esc') return;
   const a = n.arguments[0];
   if(tieneHtml(a)) return problemas.push(`Línea ${linea(n)}: esc() sobre HTML: ${texto(n)}`);
+  if(tieneHtml(a, ES_ATRIB)) return problemas.push(`Línea ${linea(n)}: esc() sobre atributos HTML: ${texto(n)}`);
   walk.full(a, m => {
     if(m.type === 'Identifier' && varsHtml.has(m.name) && !(a.type === 'MemberExpression' && !a.computed && /^(length|size)$/.test(a.property.name)) && !texto(a).includes('.length'))
       problemas.push(`Línea ${linea(n)}: esc() sobre variable con HTML (${m.name}): ${texto(n)}`);
