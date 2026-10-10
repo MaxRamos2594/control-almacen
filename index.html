@@ -2738,8 +2738,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v147';
-const APP_UPDATED = '10/10/2026 15:00';
+const APP_VERSION = 'v148';
+const APP_UPDATED = '10/10/2026 17:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -8791,13 +8791,20 @@ function parseGuiaPDF(paginas){
     const iL = g.items.findIndex(it=>/^Punto de Llegada:?$/i.test(txtItem(it)));
     punto_partida = (iP>=0 && g.items[iP+1]) ? txtItem(g.items[iP+1]) : '';
     punto_llegada = (iL>=0 && g.items[iL+1]) ? txtItem(g.items[iL+1]) : '';
+    // Las líneas siguientes continúan la dirección. Cada pedazo va al punto
+    // de su columna (por su posición), no por su orden: si la dirección de
+    // llegada es más larga, su última línea viene sola y antes se pegaba al
+    // punto de partida (ej. "KM8, VENTANILLA, CALLAO" se perdía de la llegada).
+    const xLlegada = iL>=0 ? g.items[iL].x - 5 : Infinity;
     let j = idxPartida+1;
     while(j < todasLineas.length){
       const gj = todasLineas[j];
       const esNuevaEtiqueta = gj.items.some(it => /:$/.test(txtItem(it)) && txtItem(it).length < 40);
       if(esNuevaEtiqueta || gj.items.length===0 || gj.items.length>2) break;
-      if(gj.items[0]) punto_partida += ' ' + txtItem(gj.items[0]);
-      if(gj.items[1]) punto_llegada += ' ' + txtItem(gj.items[1]);
+      gj.items.forEach(it=>{
+        if(it.x >= xLlegada) punto_llegada += ' ' + txtItem(it);
+        else punto_partida += ' ' + txtItem(it);
+      });
       j++;
     }
   }
@@ -8929,11 +8936,14 @@ async function sugerirCampanaYParticipante(resultado){
     porcentajesPorCampana[campania.correlativo] = pct;
     if(pct > mejor.pct) mejor = { correlativo: campania.correlativo, pct };
   }
-  // Primero se prueba con lo que el usuario ya enseñó antes para este mismo destino
-  // (más confiable que adivinar por texto); si no hay nada aprendido, se cae al
-  // texto del punto de llegada contra los participantes reales de la campaña.
-  const aprendido = await buscarParticipanteAprendido(resultado.punto_llegada);
-  const participanteSugerido = aprendido || (mejor.correlativo ? buscarParticipanteEnTexto(mejor.correlativo, resultado.punto_llegada) : '');
+  // Primero se busca si el nombre de un participante de la campaña aparece
+  // escrito en el punto de llegada (ej. "…VENTANILLA, CALLAO" → VENTANILLA).
+  // Si no aparece ninguno, se usa lo que el usuario ya enseñó antes para ese
+  // mismo destino. (Antes lo aprendido iba primero, y una elección equivocada
+  // guardada una vez se repetía siempre aunque la dirección dijera otra tienda.)
+  const porTexto = mejor.correlativo ? buscarParticipanteEnTexto(mejor.correlativo, resultado.punto_llegada) : '';
+  const aprendido = porTexto ? '' : await buscarParticipanteAprendido(resultado.punto_llegada);
+  const participanteSugerido = porTexto || aprendido;
   return { correlativo: mejor.correlativo, pct: mejor.pct, participante: participanteSugerido, porcentajesPorCampana, aprendido: !!aprendido };
 }
 
@@ -9061,13 +9071,14 @@ function actualizarFilaTrasCambioCampana(idx){
   }
 
   // Lista de participantes REALES de la campaña elegida (no texto libre).
-  // Si ya "aprendimos" el participante correcto para este mismo destino en una
-  // carga anterior, esa tiene prioridad sobre la búsqueda por texto.
+  // Primero el participante cuyo nombre aparece en el punto de llegada; si no
+  // aparece ninguno, el "aprendido" para este mismo destino en una carga anterior.
   if(selParticipante){
     const filas = correlativo ? (campRegCache[correlativo] || []) : [];
     const participantes = [...new Set(filas.map(f=>f.participante).filter(Boolean))].sort();
-    let sugerido = item.participanteAprendido || (correlativo ? buscarParticipanteEnTexto(correlativo, item.resultado.punto_llegada) : '');
-    const etiquetaSugerido = item.participanteAprendido ? ' (recordado)' : ' (sugerido)';
+    const porTexto = correlativo ? buscarParticipanteEnTexto(correlativo, item.resultado.punto_llegada) : '';
+    let sugerido = porTexto || item.participanteAprendido;
+    const etiquetaSugerido = porTexto ? ' (sugerido)' : ' (recordado)';
     if(sugerido && !participantes.includes(sugerido)) participantes.push(sugerido); // por si el aprendido no está en esta campaña
     selParticipante.innerHTML = '<option value="">— Elige un participante —</option>' +
       participantes.map(p=>`<option value="${esc(p)}" ${esc(p===sugerido?'selected':'')}>${esc(p)}${esc(p===sugerido?etiquetaSugerido:'')}</option>`).join('');
