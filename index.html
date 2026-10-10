@@ -2738,8 +2738,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v148';
-const APP_UPDATED = '10/10/2026 17:00';
+const APP_VERSION = 'v149';
+const APP_UPDATED = '10/10/2026 19:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -8605,12 +8605,12 @@ async function abrirDetalleCabeceraBusqueda(correlativo, participante){
     }
     const guiaPorClave = {}; // "participante|codigo" -> cantidad sumada en guía (dentro de esta campaña)
     (anGuiaPorCampanaCache[correlativo]||[]).forEach(g=>{
-      const clave = `${g.participante||''}|${g.codigo||''}`;
+      const clave = `${g.participante||''}|${claveSku(g.codigo)}`;
       guiaPorClave[clave] = (guiaPorClave[clave]||0) + (Number(g.cantidad)||0);
     });
 
     const filas = grupo.items.map(r=>{
-      const clave = `${r.participante||''}|${r.sku||''}`;
+      const clave = `${r.participante||''}|${claveSku(r.sku)}`;
       return Object.assign({}, r, { cantidad_guia: guiaPorClave[clave] || 0 });
     }).sort((a,b)=> (a.sku||'').localeCompare(b.sku||''));
 
@@ -8657,6 +8657,12 @@ async function generarCorrelativoGuia(){
 // cada celda de la tabla (etiqueta, valor, item de producto) es un solo
 // "item" de texto de pdf.js, así que no hace falta repartir por columnas X
 // como en las hojas de reparto — cada línea ya viene con sus celdas separadas.
+// Clave para cruzar el SKU de la hoja de reparto con el código de la guía:
+// mayúsculas y sin espacios. En la hoja un código largo puede venir partido en
+// dos líneas ("BK-" / "Amarillo" → "BK-AMARILLO") y en la guía en una sola con
+// espacio ("BK- Amarillo"); los dos son el mismo producto.
+function claveSku(s){ return String(s||'').toUpperCase().replace(/\s+/g, ''); }
+
 async function extractGuiaLineGroups(arrayBuffer, onPagina){
   const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
   const paginas = [];
@@ -8918,7 +8924,7 @@ async function cargarFilasCampanasActivas(onAvance){
 }
 
 async function sugerirCampanaYParticipante(resultado){
-  const codigosGuia = new Set(resultado.items.map(it=>it.codigo));
+  const codigosGuia = new Set(resultado.items.map(it=>claveSku(it.codigo)));
   const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
   let mejor = { correlativo:'', pct:0 };
   const porcentajesPorCampana = {};
@@ -8929,7 +8935,7 @@ async function sugerirCampanaYParticipante(resultado){
       filas = snap.docs.map(d=>d.data());
       campRegCache[campania.correlativo] = filas;
     }
-    const skusCampania = new Set(filas.map(r=>r.sku));
+    const skusCampania = new Set(filas.map(r=>claveSku(r.sku)));
     let coincidencias = 0;
     codigosGuia.forEach(c=>{ if(skusCampania.has(c)) coincidencias++; });
     const pct = codigosGuia.size ? Math.round((coincidencias/codigosGuia.size)*100) : 0;
@@ -10803,15 +10809,15 @@ $('btn-analizar').addEventListener('click', async ()=>{
 function calcularAnalisisCumplimiento(filasReparto, filasGuia){
   const porSku = {};
   filasReparto.forEach(f=>{
-    const key = f.sku;
+    const key = claveSku(f.sku);
     if(!key) return;
-    if(!porSku[key]) porSku[key] = {sku:key, descripcion:f.producto||'', repartido:0, guia:0};
+    if(!porSku[key]) porSku[key] = {sku:f.sku, descripcion:f.producto||'', repartido:0, guia:0};
     porSku[key].repartido += Number(f.cantidad)||0;
   });
   filasGuia.forEach(f=>{
-    const key = f.codigo;
+    const key = claveSku(f.codigo);
     if(!key) return;
-    if(!porSku[key]) porSku[key] = {sku:key, descripcion:f.descripcion||'', repartido:0, guia:0};
+    if(!porSku[key]) porSku[key] = {sku:f.codigo, descripcion:f.descripcion||'', repartido:0, guia:0};
     porSku[key].guia += Number(f.cantidad)||0;
     if(!porSku[key].descripcion) porSku[key].descripcion = f.descripcion||'';
   });
@@ -10926,7 +10932,7 @@ function renderAnalisis(resultado, etiquetaAlcance, ranking){
     const itemsPorTienda = {};
     if(anContexto) anContexto.filasReparto.forEach(f=>{
       const k = f.participante || '(SIN PARTICIPANTE)';
-      (itemsPorTienda[k] = itemsPorTienda[k] || new Set()).add(f.sku);
+      (itemsPorTienda[k] = itemsPorTienda[k] || new Set()).add(claveSku(f.sku));
     });
     const maxRep = Math.max(1, ...ranking.map(r=>r.repartido));
     $('an-ranking-participantes').innerHTML = ranking.slice().sort((a,b)=> b.repartido - a.repartido).map(r=>{
@@ -11109,7 +11115,7 @@ function renderAnValidadores(){
     const k = f.participante || '(SIN PARTICIPANTE)';
     const t = porTienda[k] || (porTienda[k] = {unidades:0, skus:new Set()});
     t.unidades += Number(f.cantidad)||0;
-    if(f.codigo) t.skus.add(f.codigo);
+    if(f.codigo) t.skus.add(claveSku(f.codigo));
   });
   const porValidador = {};
   anContexto.validadores.forEach(asig=>{
@@ -11140,15 +11146,16 @@ function renderAnValidadores(){
    todas las tiendas (columna roja) de una tienda que falla en todo (fila roja). */
 function renderAnHeatmap(){
   if(!anContexto){ return; }
-  const rep = {}, gui = {}, tiendas = {}, skus = {};
+  const rep = {}, gui = {}, tiendas = {}, skus = {}, nombreSku = {};
   anContexto.filasReparto.forEach(f=>{
-    const t = f.participante || '(SIN)', s = f.sku; if(!s) return;
+    const t = f.participante || '(SIN)', s = claveSku(f.sku); if(!s) return;
+    if(!nombreSku[s]) nombreSku[s] = f.sku;
     rep[t+'|'+s] = (rep[t+'|'+s]||0) + (Number(f.cantidad)||0);
     tiendas[t] = (tiendas[t]||0) + (Number(f.cantidad)||0);
     skus[s] = (skus[s]||0) + (Number(f.cantidad)||0);
   });
   anContexto.filasGuia.forEach(f=>{
-    const t = f.participante || '(SIN)', s = f.codigo; if(!s) return;
+    const t = f.participante || '(SIN)', s = claveSku(f.codigo); if(!s) return;
     gui[t+'|'+s] = (gui[t+'|'+s]||0) + (Number(f.cantidad)||0);
   });
   const listaT = Object.keys(tiendas).sort((a,b)=> tiendas[b]-tiendas[a]).slice(0,40);
@@ -11158,18 +11165,18 @@ function renderAnHeatmap(){
     return;
   }
   let html = '<table class="an-heat"><thead><tr><th class="esquina">Tienda \\ SKU</th>' +
-    listaS.map(s=>'<th>'+esc(s)+'</th>').join('') + '</tr></thead><tbody>';
+    listaS.map(s=>'<th>'+esc(nombreSku[s] || s)+'</th>').join('') + '</tr></thead><tbody>';
   listaT.forEach(t=>{
     html += '<tr><td class="fila-lbl" title="'+esc(t)+'">'+esc(t)+'</td>';
     listaS.forEach(s=>{
       const r = rep[t+'|'+s]||0, g = gui[t+'|'+s]||0;
-      let bg = '#EDF0F3', tip = t+' · '+s+' · no aplica';
+      let bg = '#EDF0F3', tip = t+' · '+(nombreSku[s]||s)+' · no aplica';
       if(r > 0 || g > 0){
-        if(r === 0) { bg = '#7C5BA8'; tip = t+' · '+s+' · '+g+' u enviadas sin estar en el reparto'; }
+        if(r === 0) { bg = '#7C5BA8'; tip = t+' · '+(nombreSku[s]||s)+' · '+g+' u enviadas sin estar en el reparto'; }
         else {
           const pct = Math.round((g/r)*100);
           bg = g > r ? '#7C5BA8' : anColorPct(pct);
-          tip = t+' · '+s+' · reparto '+r+' u, guía '+g+' u ('+pct+'%)';
+          tip = t+' · '+(nombreSku[s]||s)+' · reparto '+r+' u, guía '+g+' u ('+pct+'%)';
         }
       }
       html += '<td class="celda" style="background:'+esc(bg)+'" title="'+tip.replace(/"/g,'&quot;')+'"></td>';
