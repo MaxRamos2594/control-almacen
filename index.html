@@ -461,6 +461,8 @@
   table.cmp-grid td.n{color:var(--ink-soft); font-family:var(--mono); font-size:10px; text-align:right; min-width:34px; background:#fafbfc; position:sticky; left:0; z-index:1;}
   table.cmp-grid td.num{text-align:right; font-family:var(--mono);}
   table.cmp-grid td.err{background:#fde7e3 !important; box-shadow:inset 0 0 0 1px #d0503b;}
+  table.cmp-grid td.deriv{background:#f3f6f9; font-weight:700; font-family:var(--mono); color:var(--ink);}
+  table.cmp-grid th.deriv{background:#e8eef5;}
   table.cmp-grid td.x{min-width:30px; text-align:center; padding:0;}
   table.cmp-grid td.x button{border:none; background:none; color:var(--ink-soft); cursor:pointer; font-size:13px; width:100%; height:100%;}
   table.cmp-grid td.x button:hover{color:#a5441a;}
@@ -2940,8 +2942,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v157';
-const APP_UPDATED = '12/10/2026 18:00';
+const APP_VERSION = 'v158';
+const APP_UPDATED = '12/10/2026 19:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -8417,7 +8419,7 @@ const CMP_COLS = [
   { t:'ESTADO', k:'estado' },
   { t:'FECHA VALIDACION', k:'fecha_validacion', tipo:'fecha' },
   { t:'HORA VALIDACION', k:'hora_validacion', tipo:'hora' },
-  { t:'CORREL. / SKU', k:'sku', req:true },
+  { t:'CORREL. / SKU', k:'correl_sku', req:true },
   { t:'DESCRIPCION', k:'descripcion' },
   { t:'CODIGO DE BARRAS', k:'codigo_barras', tipo:'barras' },
   { t:'PESO (kg)', k:'peso_kg', tipo:'num' },
@@ -8434,9 +8436,16 @@ let cmpCargas = [];         // cabeceras de las cargas guardadas
 let cmpCambios = false;     // hay cambios sin guardar
 let cmpGuardadas = 0;       // filas que ya tenía guardadas esa campaña
 
-// Número escrito como en Excel: "S/ 1,234.50", "1.234,50", "12,5", "3". Vacío = null; inválido = NaN.
+// "#7392 - SST-5" → SKU "SST-5" (lo que va después del correlativo). Sin "#número -", es todo el texto.
+function cmpSkuDe(v){
+  const t = String(v||'').trim().toUpperCase();
+  const m = t.match(/^#?\s*\d+\s*[-–]\s*(.+)$/);
+  return m ? m[1].trim() : t;
+}
+function cmpCorrelDe(v){ const m = String(v||'').trim().match(/^#?\s*(\d+)\s*[-–]/); return m ? Number(m[1]) : null; }
+// Número escrito como en Excel: "S/ 1,234.50", "1.234,50", "12,5", "3", "50." Vacío = null; inválido = NaN.
 function cmpNumero(v){
-  let t = String(v||'').replace(/S\/|\s/gi, '');
+  let t = String(v||'').replace(/S\/|\s/gi, '').replace(/[.,]$/, '');
   if(!t) return null;
   if(t.includes(',') && t.includes('.')) t = t.lastIndexOf(',') > t.lastIndexOf('.') ? t.replace(/\./g, '').replace(',', '.') : t.replace(/,/g, '');
   else if(/^-?\d{1,3}(,\d{3})+$/.test(t)) t = t.replace(/,/g, '');
@@ -8482,10 +8491,10 @@ function renderCompras(){
   if(!$('cmp-head')) return;
   $('cmp-modo').textContent = cmpCarga ? `Editando ${cmpCarga}` : 'Carga nueva';
   $('btn-cmp-guardar').textContent = cmpCarga ? `💾 Guardar cambios en ${cmpCarga}` : '💾 Guardar';
-  $('cmp-head').innerHTML = '<tr><th>#</th>' + CMP_COLS.map(c=> `<th>${esc(c.t)}</th>`).join('') + '<th></th></tr>';
+  $('cmp-head').innerHTML = '<tr><th>#</th>' + CMP_COLS.map((c, i)=> `<th>${esc(c.t)}</th>` + (i === 3 ? '<th class="deriv" title="Se toma de CORREL. / SKU: lo que va después del guion">SKU</th>' : '')).join('') + '<th></th></tr>';
   $('cmp-vacio').style.display = cmpFilas.length ? 'none' : 'block';
   $('cmp-body').innerHTML = cmpFilas.map((f, r)=> `<tr data-r="${r}"><td class="n">${r + 1}</td>` +
-    CMP_COLS.map((col, c)=>{ const e = cmpErrorCelda(c, f[c]); return `<td contenteditable="true" spellcheck="false" data-c="${c}" class="${col.tipo === 'num' ? 'num' : ''}${e ? ' err' : ''}" title="${esc(e)}">${esc(f[c]||'')}</td>`; }).join('') +
+    CMP_COLS.map((col, c)=>{ const e = cmpErrorCelda(c, f[c]); return `<td contenteditable="true" spellcheck="false" data-c="${c}" class="${col.tipo === 'num' ? 'num' : ''}${e ? ' err' : ''}" title="${esc(e)}">${esc(f[c]||'')}</td>` + (c === 3 ? `<td class="deriv">${esc(cmpSkuDe(f[c]))}</td>` : ''); }).join('') +
     `<td class="x"><button type="button" data-cmp-quitar="${r}" title="Quitar fila">✕</button></td></tr>`).join('');
   cmpResumen();
 }
@@ -8536,6 +8545,7 @@ $('cmp-body').addEventListener('input', e=>{
   const td = e.target.closest('td[data-c]'); if(!td) return;
   const r = Number(td.closest('tr').dataset.r), c = Number(td.dataset.c);
   cmpFilas[r][c] = td.textContent;
+  if(c === 3) td.parentElement.querySelector('td.deriv').textContent = cmpSkuDe(td.textContent);
   const err = cmpErrorCelda(c, td.textContent);
   td.classList.toggle('err', !!err); td.title = err;
   cmpCambios = true; cmpResumen();
@@ -8575,7 +8585,9 @@ async function generarCorrelativoCompras(){
 }
 const cmpDoc = (f, orden)=>{
   const doc = { orden, guardado_por: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp() };
-  CMP_COLS.forEach((col, c)=>{ const v = String(f[c]||'').trim(); doc[col.k] = col.tipo === 'num' ? cmpNumero(v) : (col.k === 'sku' ? v.toUpperCase() : v); });
+  CMP_COLS.forEach((col, c)=>{ const v = String(f[c]||'').trim(); doc[col.k] = col.tipo === 'num' ? cmpNumero(v) : (col.k === 'correl_sku' ? v.toUpperCase() : v); });
+  doc.sku = cmpSkuDe(f[3]);           // "#7392 - SST-5" → "SST-5"
+  doc.correlativo = cmpCorrelDe(f[3]); // → 7392
   return doc;
 };
 // Las compras guardadas por campaña (versión anterior) pasan a ser cargas.
@@ -8625,7 +8637,7 @@ async function abrirCargaCompras(corr){
   try{
     const snap = await comprasItemsRef.where('carga_correlativo','==',corr).limit(5000).get();
     if(cmpCarga !== corr) return;
-    cmpFilas = snap.docs.map(d=> d.data()).sort((a,b)=> (a.orden||0) - (b.orden||0)).map(d=> CMP_COLS.map(col=> d[col.k] == null ? '' : String(d[col.k])));
+    cmpFilas = snap.docs.map(d=> d.data()).sort((a,b)=> (a.orden||0) - (b.orden||0)).map(d=> CMP_COLS.map(col=>{ const v = col.k === 'correl_sku' ? (d.correl_sku ?? d.sku) : d[col.k]; return v == null ? '' : String(v); }));
     cmpGuardadas = cmpFilas.length;
     renderCompras();
     showMsg('cmp-msg','ok', `${corr}: ${cmpGuardadas} compra(s). Puedes corregirlas y guardar los cambios.`);
@@ -8685,7 +8697,7 @@ $('btn-cmp-guardar').addEventListener('click', async ()=>{
     await logAccion(editando ? 'compras_carga_editada' : 'compras_carga_guardada', {detalle:`${corr}: ${filas.length} compra(s)${editando ? ` (reemplazan ${viejas.size})` : ''}${nota ? ' · ' + nota : ''}`});
     proc.fin();
     // La cuadrícula muestra lo que quedó guardado (números convertidos, SKU en mayúsculas).
-    cmpFilas = filas.map(f=> CMP_COLS.map((col, c)=>{ const v = String(f[c]||'').trim(); if(col.tipo === 'num'){ const n = cmpNumero(v); return n == null ? '' : String(n); } return col.k === 'sku' ? v.toUpperCase() : v; }));
+    cmpFilas = filas.map(f=> CMP_COLS.map((col, c)=>{ const v = String(f[c]||'').trim(); if(col.tipo === 'num'){ const n = cmpNumero(v); return n == null ? '' : String(n); } return col.k === 'correl_sku' ? v.toUpperCase() : v; }));
     cmpCarga = corr; cmpGuardadas = filas.length; cmpCambios = false;
     renderCompras();
     showMsg('cmp-msg','ok', `¡Guardado! ${corr} — ${filas.length} compra(s).`);

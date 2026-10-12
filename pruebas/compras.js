@@ -76,7 +76,7 @@ const tsv = filas=> filas.map(f=> f.map(c=> /[\t\n"]/.test(c) ? '"' + c.replace(
     return { n: it.length, p: it[0], s3: it[2].sku, peso2: it[1].peso_kg, cab: (await comprasCargasRef.doc('COM-00002').get()).data(),
       modo: $('cmp-modo').textContent, celda: document.querySelector('#cmp-body tr[data-r="0"] td[data-c="7"]').innerText };
   });
-  verificar(bd.n === 4 && bd.p.costo_unit === 12.5 && bd.p.cant_preliminar === 1200 && bd.p.codigo_barras === '7750000000012' && bd.peso2 === 1.5 && bd.s3 === 'X-10110',
+  verificar(bd.n === 4 && bd.p.costo_unit === 12.5 && bd.p.cant_preliminar === 1200 && bd.p.codigo_barras === '7750000000012' && bd.peso2 === 1.5 && bd.s3 === 'X-10110' && bd.p.correl_sku === '06X-1919',
     'Guarda 4 filas con números convertidos (S/ 12.50 → 12.5, 1,200 → 1200, 1,5 → 1.5) y SKU en mayúsculas');
   verificar(bd.cab.filas === 4 && bd.cab.unidades_validadas === 1266 && bd.cab.costo_total === 14958 && bd.cab.nota === 'COMPRAS SEMANA 41' && bd.cab.estado === 'ACTIVO', `Carga COM-00002: ${bd.cab.filas} filas, ${bd.cab.unidades_validadas} unidades, S/ ${bd.cab.costo_total}, nota "${bd.cab.nota}"`);
   verificar(bd.modo === 'Editando COM-00002' && bd.celda === '12.5', `Tras guardar queda abierta ("${bd.modo}") mostrando lo guardado (12.5)`);
@@ -85,9 +85,18 @@ const tsv = filas=> filas.map(f=> f.map(c=> /[\t\n"]/.test(c) ? '"' + c.replace(
 
   // 5. Carga nueva → COM-00003 (no pisa COM-00002)
   await page.click('#btn-cmp-nueva');
-  await pegar(tsv([['VALIDADO','10/10/2026','08:00','F0668','RESALTADOR','','','5','10','10','UND','1','ANA']]));
+  await pegar(tsv([['VALIDADO','10/10/2026','08:00','#7392 - SST-5','RESALTADOR','','','5','10','10','UND','50.','ANA']]));
+  const d = await page.evaluate(()=> ({ th: [...document.querySelectorAll('#cmp-head th')].map(t=> t.innerText).slice(4, 6).join(' | '), sku: document.querySelector('#cmp-body tr td.deriv').innerText, err: document.querySelectorAll('#cmp-body td.err').length }));
+  verificar(d.th === 'CORREL. / SKU | SKU' && d.sku === 'SST-5' && d.err === 0, `Columna SKU junto a CORREL. / SKU: "#7392 - SST-5" → ${d.sku}; factor "50." sin error`);
+  await page.click('#cmp-body tr[data-r="0"] td[data-c="3"]');
+  await page.keyboard.press('End'); await page.keyboard.type('X');
+  verificar(await page.evaluate(()=> document.querySelector('#cmp-body tr td.deriv').innerText) === 'SST-5X', 'Al corregir CORREL. / SKU, el SKU se actualiza solo');
+  await page.keyboard.press('Backspace');
   await page.click('#btn-cmp-guardar');
   await page.waitForFunction(()=> /Guardado! COM-00003/.test($('cmp-msg').textContent), null, { timeout: 20000 });
+  const it3 = await page.evaluate(async ()=> (await comprasItemsRef.where('carga_correlativo','==','COM-00003').get()).docs[0].data());
+  verificar(it3.correl_sku === '#7392 - SST-5' && it3.sku === 'SST-5' && it3.correlativo === 7392 && it3.factor_presentacion === 50, `Guardado: correl_sku "${it3.correl_sku}", sku "${it3.sku}", correlativo ${it3.correlativo}, factor ${it3.factor_presentacion}`);
+  verificar(await page.evaluate(()=> document.querySelector('#cmp-body tr td[data-c="11"]').innerText) === '50', 'Tras guardar, el factor se muestra como 50');
   const lista = await page.evaluate(async ()=>{ await new Promise(r=> setTimeout(r, 500)); return [...document.querySelectorAll('#cmp-cargas-body tr')].map(r=> r.cells[0].innerText + ':' + r.cells[3].innerText).join(' '); });
   verificar(lista === 'COM-00003:1 COM-00002:4 COM-00001:1', `Cada guardado nuevo es otra carga: ${lista}`);
 
