@@ -446,6 +446,28 @@
   @keyframes regEntra{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
   @media (prefers-reduced-motion: reduce){ .reg-kpi, table.reg-tabla tbody tr, .reg-chip{animation:none;} }
 
+  /* Compras de campaña: cuadrícula para pegar desde Excel */
+  .cmp-barra{display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;}
+  .cmp-barra .field{margin:0;}
+  .cmp-resumen{margin-left:auto; display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--ink-soft);}
+  .cmp-resumen b{font-family:var(--mono); color:var(--ink);}
+  .cmp-resumen .pendiente{color:#9a4a1c; font-weight:700;}
+  .cmp-wrap{overflow:auto; max-height:580px; border:1px solid var(--line-strong); border-radius:8px; background:#fff; outline:none;}
+  .cmp-wrap:focus-within{border-color:var(--blue);}
+  table.cmp-grid{border-collapse:collapse; font-size:12px; width:max-content; min-width:100%;}
+  table.cmp-grid th{position:sticky; top:0; z-index:2; background:#f3f5f8; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:var(--ink-soft); padding:7px 6px; border:1px solid var(--line-strong); white-space:nowrap; text-align:left;}
+  table.cmp-grid td{border:1px solid var(--line); padding:4px 6px; min-width:70px; max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; outline:none;}
+  table.cmp-grid td[contenteditable]:focus{box-shadow:inset 0 0 0 2px var(--blue); background:#f5f9ff; white-space:normal; overflow:visible;}
+  table.cmp-grid td.n{color:var(--ink-soft); font-family:var(--mono); font-size:10px; text-align:right; min-width:34px; background:#fafbfc; position:sticky; left:0; z-index:1;}
+  table.cmp-grid td.num{text-align:right; font-family:var(--mono);}
+  table.cmp-grid td.err{background:#fde7e3 !important; box-shadow:inset 0 0 0 1px #d0503b;}
+  table.cmp-grid td.x{min-width:30px; text-align:center; padding:0;}
+  table.cmp-grid td.x button{border:none; background:none; color:var(--ink-soft); cursor:pointer; font-size:13px; width:100%; height:100%;}
+  table.cmp-grid td.x button:hover{color:#a5441a;}
+  .cmp-vacio{padding:42px 16px; text-align:center; color:var(--ink-soft); border:2px dashed var(--line-strong); border-radius:8px; margin:10px; font-size:13px;}
+  .cmp-vacio b{display:block; font-size:16px; color:var(--ink); margin-bottom:4px;}
+  .cmp-errores{font-size:12px; color:#8A332A; background:#fdf0ed; border-radius:6px; padding:7px 10px; margin-bottom:8px; display:none;}
+
   /* Maestro de participantes */
   .pm-zona{display:inline-block; font-size:10px; font-weight:700; padding:2px 8px; border-radius:999px; letter-spacing:.03em;}
   .pm-zona.lima{background:#e3f1ee; color:#1f6f64;} .pm-zona.provincia{background:#fbeadf; color:#9a4a1c;} .pm-zona.nd{background:#eef0f2; color:var(--ink-soft);}
@@ -1812,6 +1834,7 @@
     <div class="subgrupo"><span class="subgrupo-t">Cargar</span><div class="subgrupo-b">
       <button class="active" id="campsub-cargar-campana">📋 Campaña</button>
       <button id="campsub-cargar-guia">🚚 Guía</button>
+      <button id="campsub-compras">🛒 Compras</button>
     </div></div>
     <div class="subgrupo"><span class="subgrupo-t">Consultar</span><div class="subgrupo-b">
       <button id="campsub-registros">🗂 Registros y Detalle</button>
@@ -1870,6 +1893,26 @@
         <table><thead><tr><th>Archivo</th><th>N° guía</th><th>Fecha traslado</th><th>Bultos</th><th>Ítems</th><th>Campaña (sugerida, editable)</th><th>Participante</th><th>Estado</th></tr></thead><tbody id="guia-batch-body"></tbody></table>
       </div>
       <button class="btn btn-primary" id="btn-guardar-guias-lote" style="margin-top:12px;">Guardar todas las guías válidas</button>
+    </div>
+  </div>
+  </div>
+
+  <div id="campsub-panel-compras" style="display:none;">
+  <div class="panel" style="margin-bottom:14px;">
+    <h3>Compras de la campaña</h3>
+    <p class="hint" style="margin-bottom:10px;">Elige la campaña, copia las filas en Excel (con o sin la fila de títulos) y pégalas aquí con <b>Ctrl+V</b>. Puedes corregir cualquier celda o pegar a partir de una celda, como en Excel. Al guardar se reemplazan las compras guardadas de esa campaña.</p>
+    <div class="cmp-barra">
+      <div class="field" style="max-width:360px; min-width:240px;"><label>Campaña</label><select id="cmp-campana-select"><option value="">— Selecciona una campaña —</option></select></div>
+      <button class="btn btn-primary" id="btn-cmp-guardar">💾 Guardar</button>
+      <button class="btn btn-ghost" id="btn-cmp-fila" type="button">+ Fila</button>
+      <button class="btn btn-ghost" id="btn-cmp-limpiar" type="button">Limpiar</button>
+      <div class="cmp-resumen" id="cmp-resumen"></div>
+    </div>
+    <div class="msg" id="cmp-msg"></div>
+    <div class="cmp-errores" id="cmp-errores"></div>
+    <div class="cmp-wrap" id="cmp-wrap" tabindex="0">
+      <table class="cmp-grid"><thead id="cmp-head"></thead><tbody id="cmp-body"></tbody></table>
+      <div class="cmp-vacio" id="cmp-vacio"><b>Pega aquí tus compras (Ctrl+V)</b>Haz clic en este recuadro y pega las filas copiadas de Excel.</div>
     </div>
   </div>
   </div>
@@ -2889,8 +2932,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v155';
-const APP_UPDATED = '12/10/2026 12:00';
+const APP_VERSION = 'v156';
+const APP_UPDATED = '12/10/2026 16:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3305,13 +3348,14 @@ $('subtab-retirar-campana').addEventListener('click', ()=>setSubtab('retirar-cam
 $('subtab-unir').addEventListener('click', ()=>setSubtab('unir'));
 
 function setCampanasSubtab(name){
-  ['cargar-campana','cargar-guia','registros','buscar','analisis','validadores','vouchers','participantes'].forEach(n=>{
+  ['cargar-campana','cargar-guia','compras','registros','buscar','analisis','validadores','vouchers','participantes'].forEach(n=>{
     $('campsub-'+n).classList.toggle('active', n===name);
     $('campsub-panel-'+n).style.display = (n===name) ? 'block' : 'none';
   });
 }
 $('campsub-cargar-campana').addEventListener('click', ()=>setCampanasSubtab('cargar-campana'));
 $('campsub-cargar-guia').addEventListener('click', ()=>setCampanasSubtab('cargar-guia'));
+$('campsub-compras').addEventListener('click', ()=>{ setCampanasSubtab('compras'); poblarSelectCampanas('cmp-campana-select'); renderCompras(); });
 $('campsub-registros').addEventListener('click', ()=>{ setCampanasSubtab('registros'); $('reg-kpis').dataset.pintado = ''; renderRegistrosCampana(); cargarTodasLasGuias(); });
 $('campsub-buscar').addEventListener('click', ()=>setCampanasSubtab('buscar'));
 $('campsub-analisis').addEventListener('click', ()=>{ setCampanasSubtab('analisis'); poblarSelectCampanasAnalisis(); });
@@ -8354,6 +8398,228 @@ async function reemplazarCampana(fecha){
   }
 }
 
+// -------- Compras de la campaña (pegar desde Excel) --------
+const comprasCampanaRef = db.collection('compras_campana');            // cabecera por campaña (id = correlativo)
+const comprasCampanaItemsRef = db.collection('compras_campana_items');  // una fila por compra
+// Columnas en el orden de la hoja de Excel. tipo: texto | num | fecha | hora | barras; req = obligatorio.
+const CMP_COLS = [
+  { t:'ESTADO', k:'estado' },
+  { t:'FECHA VALIDACION', k:'fecha_validacion', tipo:'fecha' },
+  { t:'HORA VALIDACION', k:'hora_validacion', tipo:'hora' },
+  { t:'CORREL. / SKU', k:'sku', req:true },
+  { t:'DESCRIPCION', k:'descripcion' },
+  { t:'CODIGO DE BARRAS', k:'codigo_barras', tipo:'barras' },
+  { t:'PESO (kg)', k:'peso_kg', tipo:'num' },
+  { t:'COSTO UNIT. (S/)', k:'costo_unit', tipo:'num' },
+  { t:'CANT. PRELIMINAR', k:'cant_preliminar', tipo:'num' },
+  { t:'CANT. VALIDADA', k:'cant_validada', tipo:'num' },
+  { t:'PRESENTACION', k:'presentacion' },
+  { t:'FACTOR PRESENTACION', k:'factor_presentacion', tipo:'num' },
+  { t:'VALIDADO POR', k:'validado_por' }
+];
+let cmpFilas = [];          // filas de la cuadrícula: arreglos de 13 textos
+let cmpCampana = '';        // campaña cuyas compras están en la cuadrícula
+let cmpCambios = false;     // hay cambios sin guardar
+let cmpGuardadas = 0;       // filas que ya tenía guardadas esa campaña
+
+// Número escrito como en Excel: "S/ 1,234.50", "1.234,50", "12,5", "3". Vacío = null; inválido = NaN.
+function cmpNumero(v){
+  let t = String(v||'').replace(/S\/|\s/gi, '');
+  if(!t) return null;
+  if(t.includes(',') && t.includes('.')) t = t.lastIndexOf(',') > t.lastIndexOf('.') ? t.replace(/\./g, '').replace(',', '.') : t.replace(/,/g, '');
+  else if(/^-?\d{1,3}(,\d{3})+$/.test(t)) t = t.replace(/,/g, '');
+  else t = t.replace(',', '.');
+  return /^-?\d+(\.\d+)?$/.test(t) ? Number(t) : NaN;
+}
+// Mensaje de error de una celda, o '' si está bien.
+function cmpErrorCelda(c, v){
+  const col = CMP_COLS[c], t = String(v||'').trim();
+  if(!t) return col.req ? `falta ${col.t}` : '';
+  if(col.tipo === 'num' && Number.isNaN(cmpNumero(t))) return `${col.t} no es un número`;
+  if(col.tipo === 'fecha' && !/^\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}$/.test(t) && !/^\d{4}-\d{2}-\d{2}$/.test(t)) return `${col.t} no es una fecha`;
+  if(col.tipo === 'hora' && !/^\d{1,2}:\d{2}(:\d{2})?(\s*[ap]\.?\s*m\.?)?$/i.test(t)) return `${col.t} no es una hora`;
+  if(col.tipo === 'barras' && /e\+?\d+$/i.test(t)) return 'código de barras en formato científico (en Excel, ponle formato Número sin decimales antes de copiar)';
+  return '';
+}
+const cmpFilaVacia = f=> f.every(v=> !String(v||'').trim());
+// Texto copiado de Excel → filas de celdas (tabulador entre columnas; las
+// celdas con saltos de línea vienen entre comillas).
+function cmpLeerPegado(txt){
+  const filas = []; let fila = [], celda = '', comillas = false;
+  txt = String(txt).replace(/\r\n?/g, '\n');
+  for(let i = 0; i < txt.length; i++){
+    const ch = txt[i];
+    if(comillas){
+      if(ch === '"' && txt[i+1] === '"'){ celda += '"'; i++; }
+      else if(ch === '"') comillas = false;
+      else celda += ch;
+    }else if(ch === '"' && celda === '') comillas = true;
+    else if(ch === '\t'){ fila.push(celda); celda = ''; }
+    else if(ch === '\n'){ fila.push(celda); filas.push(fila); fila = []; celda = ''; }
+    else celda += ch;
+  }
+  if(celda !== '' || fila.length) { fila.push(celda); filas.push(fila); }
+  return filas.map(f=> f.map(c=> c.replace(/\n/g, ' ').trim()));
+}
+// ¿La fila es la de títulos de la hoja? (se descarta al pegar)
+function cmpEsTitulo(f){
+  const titulos = CMP_COLS.map(c=> normalizarTexto(c.t));
+  return f.filter(v=> titulos.includes(normalizarTexto(v))).length >= 4;
+}
+function renderCompras(){
+  if(!$('cmp-head')) return;
+  $('cmp-head').innerHTML = '<tr><th>#</th>' + CMP_COLS.map(c=> `<th>${esc(c.t)}</th>`).join('') + '<th></th></tr>';
+  $('cmp-vacio').style.display = cmpFilas.length ? 'none' : 'block';
+  $('cmp-body').innerHTML = cmpFilas.map((f, r)=> `<tr data-r="${r}"><td class="n">${r + 1}</td>` +
+    CMP_COLS.map((col, c)=>{ const e = cmpErrorCelda(c, f[c]); return `<td contenteditable="true" spellcheck="false" data-c="${c}" class="${col.tipo === 'num' ? 'num' : ''}${e ? ' err' : ''}" title="${esc(e)}">${esc(f[c]||'')}</td>`; }).join('') +
+    `<td class="x"><button type="button" data-cmp-quitar="${r}" title="Quitar fila">✕</button></td></tr>`).join('');
+  cmpResumen();
+}
+// Totales, errores y aviso de cambios sin guardar.
+function cmpResumen(){
+  const filas = cmpFilas.filter(f=> !cmpFilaVacia(f));
+  let unidades = 0, costo = 0; const errores = [];
+  cmpFilas.forEach((f, r)=>{
+    if(cmpFilaVacia(f)) return;
+    CMP_COLS.forEach((col, c)=>{ const e = cmpErrorCelda(c, f[c]); if(e) errores.push(`Fila ${r + 1}: ${e}`); });
+    const cv = cmpNumero(f[9]) || 0, cu = cmpNumero(f[7]) || 0;
+    if(!Number.isNaN(cv)) unidades += cv;
+    if(!Number.isNaN(cv) && !Number.isNaN(cu)) costo += cv * cu;
+  });
+  $('cmp-resumen').innerHTML = `<span><b>${esc(anFmt(filas.length))}</b> filas</span><span><b>${esc(anFmt(unidades))}</b> unid. validadas</span>` +
+    `<span>Costo <b>S/ ${esc(costo.toLocaleString('es-PE', { minimumFractionDigits:2, maximumFractionDigits:2 }))}</b></span>` +
+    (cmpCambios ? '<span class="pendiente">● Cambios sin guardar</span>' : (cmpCampana && cmpGuardadas ? '<span>✓ Guardado</span>' : ''));
+  const box = $('cmp-errores');
+  box.style.display = errores.length ? 'block' : 'none';
+  box.textContent = errores.length ? `⚠ ${errores.length} celda(s) por corregir (en rojo): ${errores.slice(0, 4).join(' · ')}${errores.length > 4 ? ' …' : ''}` : '';
+  return { filas, errores, unidades, costo };
+}
+// Pegar: si es una sola celda, va como texto; si son varias, se reparten
+// desde la celda donde estás (o al final, si pegas en el recuadro vacío).
+$('cmp-wrap').addEventListener('paste', e=>{
+  const txt = (e.clipboardData || window.clipboardData).getData('text/plain');
+  if(!txt) return;
+  e.preventDefault();
+  let filas = cmpLeerPegado(txt);
+  const td = e.target.closest && e.target.closest('td[data-c]');
+  if(td && filas.length === 1 && filas[0].length === 1){ document.execCommand('insertText', false, filas[0][0]); return; }
+  if(filas.length && cmpEsTitulo(filas[0])) filas = filas.slice(1);
+  filas = filas.filter(f=> f.some(v=> v));
+  if(!filas.length) return;
+  const r0 = td ? Number(td.closest('tr').dataset.r) : cmpFilas.filter(f=> !cmpFilaVacia(f)).length;
+  const c0 = td ? Number(td.dataset.c) : 0;
+  if(!td) cmpFilas = cmpFilas.filter(f=> !cmpFilaVacia(f));
+  filas.forEach((f, i)=>{
+    const fila = cmpFilas[r0 + i] || (cmpFilas[r0 + i] = CMP_COLS.map(()=> ''));
+    f.forEach((v, j)=>{ if(c0 + j < CMP_COLS.length) fila[c0 + j] = v; });
+  });
+  cmpCambios = true;
+  renderCompras();
+  showMsg('cmp-msg','ok', `Se pegaron ${filas.length} fila(s). Revisa y presiona "Guardar".`);
+});
+// Editar una celda a mano
+$('cmp-body').addEventListener('input', e=>{
+  const td = e.target.closest('td[data-c]'); if(!td) return;
+  const r = Number(td.closest('tr').dataset.r), c = Number(td.dataset.c);
+  cmpFilas[r][c] = td.textContent;
+  const err = cmpErrorCelda(c, td.textContent);
+  td.classList.toggle('err', !!err); td.title = err;
+  cmpCambios = true; cmpResumen();
+});
+// Enter baja a la celda de abajo (como en Excel)
+$('cmp-body').addEventListener('keydown', e=>{
+  if(e.key !== 'Enter') return;
+  const td = e.target.closest('td[data-c]'); if(!td) return;
+  e.preventDefault();
+  const tr = td.closest('tr').nextElementSibling;
+  const sig = tr && tr.querySelector(`td[data-c="${td.dataset.c}"]`);
+  if(sig) sig.focus();
+});
+$('cmp-body').addEventListener('click', e=>{
+  const b = e.target.closest('[data-cmp-quitar]'); if(!b) return;
+  cmpFilas.splice(Number(b.dataset.cmpQuitar), 1);
+  cmpCambios = true; renderCompras();
+});
+$('btn-cmp-fila').addEventListener('click', ()=>{
+  cmpFilas.push(CMP_COLS.map(()=> ''));
+  renderCompras();
+  const ult = $('cmp-body').lastElementChild; if(ult) ult.querySelector('td[data-c="0"]').focus();
+});
+$('btn-cmp-limpiar').addEventListener('click', ()=>{
+  if(cmpFilas.some(f=> !cmpFilaVacia(f)) && !confirm('¿Vaciar la cuadrícula? (Lo ya guardado no se borra hasta que presiones "Guardar".)')) return;
+  cmpFilas = []; cmpCambios = cmpGuardadas > 0; renderCompras();
+});
+// Al elegir una campaña se cargan sus compras guardadas.
+async function cargarComprasCampana(corr){
+  cmpCampana = corr; cmpFilas = []; cmpCambios = false; cmpGuardadas = 0;
+  renderCompras();
+  if(!corr) return;
+  showMsg('cmp-msg','ok','Cargando compras guardadas…');
+  try{
+    const snap = await comprasCampanaItemsRef.where('campana_correlativo','==',corr).limit(5000).get();
+    if(cmpCampana !== corr) return;
+    cmpFilas = snap.docs.map(d=> d.data()).sort((a,b)=> (a.orden||0) - (b.orden||0))
+      .map(d=> CMP_COLS.map(col=> d[col.k] == null ? '' : String(d[col.k])));
+    cmpGuardadas = cmpFilas.length;
+    renderCompras();
+    showMsg('cmp-msg','ok', cmpGuardadas ? `Esta campaña tiene ${cmpGuardadas} compra(s) guardadas.` : 'Esta campaña aún no tiene compras. Pega las filas de Excel.');
+  }catch(err){ console.error(err); showMsg('cmp-msg','err','No se pudieron cargar las compras: '+err.message); }
+}
+$('cmp-campana-select').addEventListener('change', e=>{
+  const nueva = e.target.value;
+  if(cmpCambios && !confirm('Hay cambios sin guardar en la cuadrícula. ¿Cambiar de campaña y descartarlos?')){ e.target.value = cmpCampana; return; }
+  cargarComprasCampana(nueva);
+});
+$('btn-cmp-guardar').addEventListener('click', async ()=>{
+  const corr = $('cmp-campana-select').value;
+  if(!corr){ showMsg('cmp-msg','err','Elige la campaña de estas compras.'); $('cmp-campana-select').focus(); return; }
+  const { filas, errores, unidades, costo } = cmpResumen();
+  if(!filas.length && !cmpGuardadas){ showMsg('cmp-msg','err','No hay filas para guardar. Pega las compras desde Excel.'); return; }
+  if(errores.length){ showMsg('cmp-msg','err', `Corrige las ${errores.length} celda(s) en rojo antes de guardar.`); const td = $('cmp-body').querySelector('td.err'); if(td) td.focus(); return; }
+  if(cmpGuardadas && !confirm(`Se reemplazarán las ${cmpGuardadas} compra(s) guardadas de ${corr} por estas ${filas.length}. ¿Continuar?`)) return;
+  const cab = campRegAllCache.find(c=> c.correlativo === corr) || {};
+  $('btn-cmp-guardar').disabled = true;
+  const proc = relojProceso('cmp-msg');
+  try{
+    proc.paso('Guardando compras… leyendo las anteriores');
+    const viejas = await comprasCampanaItemsRef.where('campana_correlativo','==',corr).limit(5000).get();
+    // Primero las nuevas y luego se borran las anteriores (nunca queda vacío a mitad).
+    for(let i = 0; i < filas.length; i += 400){
+      proc.paso(`Guardando compras… ${Math.min(i + 400, filas.length)} de ${filas.length}`);
+      const batch = db.batch();
+      filas.slice(i, i + 400).forEach((f, j)=>{
+        const doc = { campana_correlativo: corr, orden: i + j + 1, guardado_por: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp() };
+        CMP_COLS.forEach((col, c)=>{ const v = String(f[c]||'').trim(); doc[col.k] = col.tipo === 'num' ? cmpNumero(v) : (col.k === 'sku' ? v.toUpperCase() : v); });
+        batch.set(comprasCampanaItemsRef.doc(), doc);
+      });
+      await batch.commit();
+    }
+    for(let i = 0; i < viejas.docs.length; i += 400){
+      const batch = db.batch();
+      viejas.docs.slice(i, i + 400).forEach(d=> batch.delete(d.ref));
+      await batch.commit();
+    }
+    await comprasCampanaRef.doc(corr).set({
+      campana_correlativo: corr, campana_nombre: cab.campana || '', filas: filas.length,
+      unidades_validadas: unidades, costo_total: Math.round(costo * 100) / 100,
+      guardado_por: currentUserAlias, guardado_en: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    await logAccion('compras_campana_guardadas', {detalle:`${corr}: ${filas.length} compra(s) guardadas${viejas.size ? ` (reemplazan ${viejas.size})` : ''}`});
+    proc.fin();
+    // La cuadrícula muestra lo que quedó guardado (números convertidos, SKU en mayúsculas).
+    cmpFilas = filas.map(f=> CMP_COLS.map((col, c)=>{ const v = String(f[c]||'').trim(); if(col.tipo === 'num'){ const n = cmpNumero(v); return n == null ? '' : String(n); } return col.k === 'sku' ? v.toUpperCase() : v; }));
+    cmpGuardadas = filas.length; cmpCambios = false;
+    renderCompras();
+    showMsg('cmp-msg','ok', `¡Guardado! ${filas.length} compra(s) de ${corr}.`);
+    showToast(`Compras guardadas: ${corr}`, 'ok');
+  }catch(err){
+    console.error(err); proc.fin();
+    showMsg('cmp-msg','err','No se pudo guardar: '+err.message);
+  }finally{ $('btn-cmp-guardar').disabled = false; }
+});
+// Aviso al cerrar o recargar la página con compras sin guardar.
+window.addEventListener('beforeunload', e=>{ if(cmpCambios){ e.preventDefault(); e.returnValue = ''; } });
+
 // -------- Maestro de participantes --------
 // Clave para comparar nombres de tienda: mayúsculas, sin tildes y con un solo
 // espacio entre palabras ("Mall plaza  Comas" = "MALL PLAZA COMAS").
@@ -11263,7 +11529,8 @@ let anUltimoResultado = null;
 const SELECTS_CAMPANAS = {
   'an-campana-select': r=> `${r.correlativo} — ${r.campana} (${r.fecha_transaccion||''})`,
   'val-campana-select': r=> `${r.correlativo} — ${r.campana}`,
-  'vch-campana-select': r=> `${r.correlativo} — ${r.campana}`
+  'vch-campana-select': r=> `${r.correlativo} — ${r.campana}`,
+  'cmp-campana-select': r=> `${r.correlativo} — ${r.campana} (${r.fecha_transaccion||''})`
 };
 function llenarSelectCampanas(id){
   const sel = $(id);
