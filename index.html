@@ -2889,8 +2889,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v154';
-const APP_UPDATED = '12/10/2026 13:00';
+const APP_VERSION = 'v155';
+const APP_UPDATED = '12/10/2026 12:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -9655,7 +9655,11 @@ function renderGuiaBatch(){
       // No se permite forzar: un N° de guía solo puede existir una vez mientras esa
       // carga original siga activa. Si de verdad hace falta volver a subirla, primero
       // hay que eliminar (invalidar) el registro original desde "Registros y Detalle".
-      dupHtml = `<span style="color:#8A332A; font-weight:700;">Ya existe (${esc(item.duplicado.correlativo)}) — no se guardará</span>`;
+      const d = item.duplicado;
+      const cuando = d.fecha_carga && d.fecha_carga.toDate ? d.fecha_carga.toDate().toLocaleString('es-PE') : 'fecha desconocida';
+      const camp = [d.campana_nombre, d.campana_correlativo].filter(Boolean).join(' — ') || 'campaña desconocida';
+      dupHtml = `<span style="color:#8A332A; font-weight:700;">Ya existe (${esc(d.correlativo)}) — no se guardará</span>` +
+        `<div class="hint" style="margin-top:2px;">Cargada en: ${esc(camp)}<br>Por: ${esc(d.usuario||'desconocido')}<br>El: ${esc(cuando)}</div>`;
     }else if(item.duplicadoEnLote){
       dupHtml = `<span style="color:#8A332A; font-weight:700;">Repetida en este lote (igual que "${esc(item.duplicadoEnLote)}") — no se guardará</span>`;
     }else{
