@@ -32,6 +32,10 @@ const tsv = filas=> filas.map(f=> f.map(c=> /[\t\n"]/.test(c) ? '"' + c.replace(
   const mig = await page.evaluate(async ()=> ({ fila: $('cmp-cargas-body').innerText.replace(/\s+/g,' '), items: (await comprasItemsRef.where('carga_correlativo','==','COM-00001').get()).size, campana: !!$('cmp-campana-select') }));
   verificar(/COM-00001 CAMPAÑA REG-00045 — CAMPAÑA 06-10/.test(mig.fila) && mig.items === 1 && !mig.campana, `Sin elegir campaña; lo guardado por campaña pasó a ser la carga COM-00001 (${mig.fila.slice(0, 60)}…)`);
   verificar(await page.textContent('#cmp-modo') === 'Carga nueva', 'Empieza como "Carga nueva"');
+  const tabs0 = await page.evaluate(()=> ({ visibles: [...document.querySelectorAll('#campsub-panel-compras > .panel')].filter(p=> getComputedStyle(p).display !== 'none').map(p=> p.id), activo: document.querySelector('#cmp-tabs .activo').innerText }));
+  verificar(tabs0.visibles.join() === 'cmp-cargas-panel' && /Cargas guardadas\s*1/.test(tabs0.activo), `Pestañas: se ve una sección a la vez (${tabs0.visibles.join()}, "${tabs0.activo.replace(/\s+/g,' ')}")`);
+  const tab = t=> page.click(`#cmp-tabs [data-cmp-tab="${t}"]`);
+  await tab('detalle');
 
   const pegar = (texto, selector)=> page.evaluate(([texto, selector])=>{
     const dt = new DataTransfer(); dt.setData('text/plain', texto);
@@ -85,16 +89,21 @@ const tsv = filas=> filas.map(f=> f.map(c=> /[\t\n"]/.test(c) ? '"' + c.replace(
   verificar(!bloq.editables && !bloq.quitar && bloq.guardar === 'none' && bloq.habilitar !== 'none' && bloq.fila && bloq.nota, 'Bloqueada: sin celdas editables, sin ✕, sin Guardar; aparece "✏️ Habilitar edición"');
   await pegar(tsv([['X','01/01/2026','10:00','ZZ-1','PRUEBA','','','1','1','1','U','1','A']]));
   verificar(/está guardada y bloqueada/.test(await page.textContent('#cmp-msg')) && (await grilla()).filas.length === 4, 'Pegar sobre una carga bloqueada no cambia nada y avisa');
+  await tab('totales');
   const tot = await page.evaluate(async ()=> ({ panel: getComputedStyle($('cmp-tot-panel')).display, filas: document.querySelectorAll('#cmp-tot-body tr').length, estado: $('cmp-tot-estado').innerText,
     head: [...document.querySelectorAll('#cmp-tot-head th')].map(t=> t.innerText).join('|'), bd: (await comprasTotalesRef.where('carga_correlativo','==','COM-00002').get()).size,
-    orden: [...document.querySelectorAll('#campsub-panel-compras > .panel')].map(p=> p.querySelector('h3').innerText.split('\n')[0]).join(' > ') }));
+    orden: [...document.querySelectorAll('#campsub-panel-compras > .panel')].map(p=> p.querySelector('h3').firstChild.textContent.trim().toUpperCase()).join(' > ') }));
   verificar(tot.panel === 'block' && tot.filas === 5 && tot.bd === 4 && /COM-00002 · guardado/i.test(tot.estado) && !/ESTADO|FECHA VALIDACION|HORA VALIDACION|VALIDADO POR/.test(tot.head), `Totales por SKU guardados (${tot.bd} SKU + fila TOTAL), sin estado/fecha/hora/validador`);
   verificar(/^CARGAS DE COMPRAS GUARDADAS > TOTALES POR SKU.* > DETALLE CARGADO/.test(tot.orden), `Orden: ${tot.orden}`);
   await page.waitForFunction(()=> document.querySelectorAll('#cmp-cargas-body tr').length === 2, null, { timeout: 10000 });
+  const cnt = await page.evaluate(()=> ['cargas','totales','detalle'].map(t=> $('cmp-tab-n-' + t).textContent).join('/') + ' ' + $('cmp-tab-abierta').innerText);
+  verificar(cnt === '2/4/4 Carga abierta: COM-00002 🔒', `Contadores en las pestañas: ${cnt}`);
   await page.locator('#campsub-panel-compras').screenshot({ path: path.join(__dirname, 'salida', 'compras.png') });
 
   // 5. Carga nueva → COM-00003 (no pisa COM-00002)
+  await tab('cargas');
   await page.click('#btn-cmp-nueva');
+  verificar(await page.evaluate(()=> getComputedStyle($('cmp-det-panel')).display !== 'none'), '"Nueva carga" lleva a la pestaña Detalle');
   await pegar(tsv([['VALIDADO','10/10/2026','08:00','#7392 - SST-5','RESALTADOR','','','5','10','10','UND','50.','ANA'], ['VALIDADO','10/10/2026','09:30','#7392 - SST-5','RESALTADOR','','','5','10','15','UND','50','LUIS']]));
   const d = await page.evaluate(()=> ({ th: [...document.querySelectorAll('#cmp-head th')].map(t=> t.innerText).slice(4, 6).join(' | '), sku: document.querySelector('#cmp-body tr td.deriv').innerText, err: document.querySelectorAll('#cmp-body td.err').length, factor: document.querySelector('#cmp-body tr td[data-c="11"]').innerText }));
   verificar(d.th === 'CORREL. / SKU | SKU' && d.sku === 'SST-5' && d.err === 0, `Columna SKU junto a CORREL. / SKU: "#7392 - SST-5" → ${d.sku}; factor "50." sin error`);
@@ -112,6 +121,7 @@ const tsv = filas=> filas.map(f=> f.map(c=> /[\t\n"]/.test(c) ? '"' + c.replace(
   const it3 = await page.evaluate(async ()=> (await comprasItemsRef.where('carga_correlativo','==','COM-00003').get()).docs[0].data());
   verificar(it3.correl_sku === '#7392 - SST-5' && it3.sku === 'SST-5' && it3.correlativo === 7392 && it3.factor_presentacion === 50, `Guardado: correl_sku "${it3.correl_sku}", sku "${it3.sku}", correlativo ${it3.correlativo}, factor ${it3.factor_presentacion}`);
   verificar(await page.evaluate(()=> document.querySelector('#cmp-body tr td[data-c="11"]').innerText) === '50', 'Tras guardar, el factor se muestra como 50');
+  await tab('totales');
   const t3 = await page.evaluate(async ()=> ({ pant: [...document.querySelectorAll('#cmp-tot-body tr')].map(r=> r.innerText.replace(/\s+/g,' ').trim()), bd: (await comprasTotalesRef.where('carga_correlativo','==','COM-00003').get()).docs.map(d=> d.data()) }));
   verificar(t3.bd.length === 1 && t3.bd[0].cant_validada === 25 && t3.bd[0].filas === 2 && t3.bd[0].sku === 'SST-5' && t3.bd[0].factor_presentacion === 50 && /^1 #7392 - SST-5 SST-5 RESALTADOR 5 10 25 UND 50 2$/.test(t3.pant[0]),
     `Totales: dos validaciones de #7392 - SST-5 (10 + 15) → una fila con CANT. VALIDADA 25 ("${t3.pant[0]}")`);
@@ -119,9 +129,12 @@ const tsv = filas=> filas.map(f=> f.map(c=> /[\t\n"]/.test(c) ? '"' + c.replace(
   verificar(lista === 'COM-00003:2 COM-00002:4 COM-00001:1', `Cada guardado nuevo es otra carga: ${lista}`);
 
   // 6. Abrir COM-00002, quitar una fila y guardar cambios (reemplaza, no duplica)
+  await tab('cargas');
   await page.click('#cmp-cargas-body [data-cmp-abrir="COM-00002"]');
   await page.waitForFunction(()=> /COM-00002: 4 compra/.test($('cmp-msg').textContent), null, { timeout: 10000 });
   verificar(await page.inputValue('#cmp-nota') === 'COMPRAS SEMANA 41' && (await grilla()).filas[1].split('|')[3] === 'ZJ-7193' && await page.textContent('#cmp-modo') === '🔒 COM-00002 guardada', 'Abrir carga: trae su nota y sus filas en orden, bloqueada');
+  verificar(await page.evaluate(()=> getComputedStyle($('cmp-tot-panel')).display !== 'none'), '"Abrir" lleva a la pestaña Totales por SKU');
+  await tab('detalle');
   await page.click('#btn-cmp-habilitar');
   verificar(await page.textContent('#cmp-modo') === '✏️ Editando COM-00002' && await page.evaluate(()=> document.querySelectorAll('#cmp-body td[contenteditable]').length === 52), '"✏️ Habilitar edición" vuelve editable la carga');
   await page.click('#cmp-body [data-cmp-quitar="0"]');
@@ -131,6 +144,7 @@ const tsv = filas=> filas.map(f=> f.map(c=> /[\t\n"]/.test(c) ? '"' + c.replace(
   verificar(n2 === 3 && await page.textContent('#cmp-modo') === '🔒 COM-00002 guardada', `Guardar cambios reemplaza las filas de esa carga (quedan ${n2}) y se vuelve a bloquear`);
 
   // 7. Eliminar una carga
+  await tab('cargas');
   await page.click('#cmp-cargas-body [data-cmp-eliminar="COM-00003"]');
   await page.waitForFunction(()=> document.querySelectorAll('#cmp-cargas-body tr').length === 2, null, { timeout: 10000 });
   const el = await page.evaluate(async ()=> ({ items: (await comprasItemsRef.where('carga_correlativo','==','COM-00003').get()).size, estado: (await comprasCargasRef.doc('COM-00003').get()).data().estado }));
@@ -156,6 +170,10 @@ const tsv = filas=> filas.map(f=> f.map(c=> /[\t\n"]/.test(c) ? '"' + c.replace(
   await page.keyboard.press('Control+A'); await page.keyboard.type('5');
   await page.click('#btn-cmp-guardar');
   await page.waitForFunction(()=> /Guardado! COM-00004 — 23/.test($('cmp-msg').textContent), null, { timeout: 20000 });
+  await tab('totales');
+  const tp = await page.evaluate(()=> ({ filas: document.querySelectorAll('#cmp-tot-body tr').length, pager: $('cmp-tot-pag').innerText.replace(/\s+/g,' ') }));
+  verificar(tp.filas === 11 && /1–10 de 23/.test(tp.pager), `Totales también de 10 en 10 (+ fila TOTAL): ${tp.pager}`);
+  await tab('cargas');
 
   // 8b. "Nueva carga" está en el panel de cargas guardadas y la lista no parpadea al volver a Compras
   const ubic = await page.evaluate(()=> ({ panel: $('btn-cmp-nueva').closest('.panel').id, texto: $('btn-cmp-nueva').innerText }));
