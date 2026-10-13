@@ -481,6 +481,9 @@
   #campsub-panel-compras[data-tab="cargas"] > #cmp-cargas-panel,
   #campsub-panel-compras[data-tab="totales"] > #cmp-tot-panel,
   #campsub-panel-compras[data-tab="detalle"] > #cmp-det-panel{display:block; animation:regEntra .25s both;}
+  #cmp-cargas-head th[data-cmp-orden]{cursor:pointer; user-select:none; white-space:nowrap;}
+  #cmp-cargas-head th[data-cmp-orden]:hover{color:var(--ink);}
+  #cmp-cargas-head th.activo{color:var(--blue);}
   .cmp-pager{display:flex; align-items:center; gap:10px; justify-content:flex-end; flex-wrap:wrap; margin-top:8px; font-size:12px; color:var(--ink-soft);}
   .cmp-pager b{font-family:var(--mono); color:var(--ink);}
   .cmp-pager button{padding:4px 10px;}
@@ -1929,7 +1932,7 @@
   <div class="panel" id="cmp-cargas-panel" style="margin-bottom:14px;">
     <h3><span>Cargas de compras guardadas</span><button class="btn btn-primary btn-sm" id="btn-cmp-nueva" type="button" style="margin-left:auto; margin-right:8px; text-transform:none; letter-spacing:0;">🛒 ＋ Nueva carga</button></h3>
     <div class="hist-wrap">
-      <table class="reg-tabla sin-anim"><thead><tr><th>Carga</th><th>Nota</th><th>Guardada</th><th class="num">Filas</th><th class="num">Unid. validadas</th><th class="num">Costo (S/)</th><th></th></tr></thead><tbody id="cmp-cargas-body"></tbody></table>
+      <table class="reg-tabla sin-anim"><thead id="cmp-cargas-head"></thead><tbody id="cmp-cargas-body"></tbody></table>
       <div class="empty-state" id="cmp-cargas-vacio" style="display:none;">Aún no hay cargas de compras guardadas.</div>
     </div>
     <div id="cmp-cargas-pag"></div>
@@ -2982,8 +2985,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v163';
-const APP_UPDATED = '13/10/2026 17:00';
+const APP_VERSION = 'v164';
+const APP_UPDATED = '13/10/2026 19:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -8761,7 +8764,29 @@ async function cargarListaCompras(){
   }catch(err){ console.error(err); showMsg('cmp-msg','err','No se pudieron leer las cargas: '+err.message); }
   renderListaCompras();
 }
+// Columnas de la lista de cargas; clic en el título ordena (otro clic invierte).
+const CMP_CARGAS_COLS = [
+  { k:'correlativo', t:'Carga' },
+  { k:'nota', t:'Nota' },
+  { k:'fecha', t:'Fecha y hora', v: c=> c.guardado_en && c.guardado_en.seconds || 0 },
+  { k:'guardado_por', t:'Usuario' },
+  { k:'filas', t:'Filas', num:true },
+  { k:'unidades_validadas', t:'Unid. validadas', num:true },
+  { k:'costo_total', t:'Costo (S/)', num:true }
+];
+let cmpCargasOrden = { k:'correlativo', dir:-1 };
+$('cmp-cargas-head').addEventListener('click', e=>{
+  const th = e.target.closest('[data-cmp-orden]'); if(!th) return;
+  const k = th.dataset.cmpOrden;
+  cmpCargasOrden = cmpCargasOrden.k === k ? { k, dir: -cmpCargasOrden.dir } : { k, dir: CMP_CARGAS_COLS.find(c=> c.k === k).num || k === 'fecha' ? -1 : 1 };
+  cmpCargasPag = 0; renderListaCompras();
+});
 function renderListaCompras(){
+  $('cmp-cargas-head').innerHTML = '<tr>' + CMP_CARGAS_COLS.map(c=>{ const act = cmpCargasOrden.k === c.k;
+    return `<th data-cmp-orden="${esc(c.k)}" class="${c.num ? 'num' : ''}${act ? ' activo' : ''}" title="Ordenar por ${esc(c.t)}">${esc(c.t)} ${act ? (cmpCargasOrden.dir > 0 ? '▲' : '▼') : '↕'}</th>`; }).join('') + '<th></th></tr>';
+  const col = CMP_CARGAS_COLS.find(c=> c.k === cmpCargasOrden.k) || CMP_CARGAS_COLS[0];
+  const val = c=> col.v ? col.v(c) : (col.num ? Number(c[col.k]) || 0 : String(c[col.k] || ''));
+  const ordenadas = cmpCargas.slice().sort((a, b)=>{ const x = val(a), y = val(b); return (typeof x === 'number' ? x - y : x.localeCompare(y)) * cmpCargasOrden.dir || b.correlativo.localeCompare(a.correlativo); });
   $('cmp-cargas-vacio').style.display = cmpCargas.length || !cmpCargasLeidas ? 'none' : 'block';
   const puedeEliminar = currentPermisos.admin || currentPermisos.eliminar;
   const paginas = Math.max(1, Math.ceil(cmpCargas.length / CMP_CARGAS_POR_PAG));
@@ -8769,10 +8794,10 @@ function renderListaCompras(){
   const desde = cmpCargasPag * CMP_CARGAS_POR_PAG;
   $('cmp-cargas-pag').innerHTML = cmpPagerHtml('data-cmp-cargas-pag', cmpCargasPag, cmpCargas.length, CMP_CARGAS_POR_PAG);
   cmpContadores();
-  $('cmp-cargas-body').innerHTML = cmpCargas.slice(desde, desde + CMP_CARGAS_POR_PAG).map((c, i)=>{
+  $('cmp-cargas-body').innerHTML = ordenadas.slice(desde, desde + CMP_CARGAS_POR_PAG).map((c, i)=>{
     const f = c.guardado_en && c.guardado_en.toDate ? c.guardado_en.toDate().toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }) : '';
     return `<tr class="${cmpCarga === c.correlativo ? 'reg-sel' : ''}"><td><b>${esc(c.correlativo)}</b></td><td>${esc(c.nota || '—')}</td>` +
-      `<td>${esc(f)}<div class="reg-s">${esc(c.guardado_por || '')}</div></td><td class="num">${esc(anFmt(c.filas))}</td><td class="num">${esc(anFmt(c.unidades_validadas))}</td>` +
+      `<td>${esc(f)}</td><td>${esc(c.guardado_por || '')}</td><td class="num">${esc(anFmt(c.filas))}</td><td class="num">${esc(anFmt(c.unidades_validadas))}</td>` +
       `<td class="num">${esc(Number(c.costo_total||0).toLocaleString('es-PE', { minimumFractionDigits:2, maximumFractionDigits:2 }))}</td>` +
       `<td class="reg-acc"><button class="btn btn-sm" data-cmp-abrir="${esc(c.correlativo)}">Abrir</button>${puedeEliminar ? ` <button class="btn btn-sm btn-ghost" data-cmp-eliminar="${esc(c.correlativo)}" title="Eliminar carga">🗑</button>` : ''}</td></tr>`;
   }).join('');
