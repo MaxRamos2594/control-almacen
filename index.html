@@ -469,6 +469,18 @@
   .cmp-vacio{padding:42px 16px; text-align:center; color:var(--ink-soft); border:2px dashed var(--line-strong); border-radius:8px; margin:10px; font-size:13px;}
   .cmp-vacio b{display:block; font-size:16px; color:var(--ink); margin-bottom:4px;}
   table.reg-tabla.sin-anim tbody tr{animation:none;}
+  /* Compras en pestañas: una sección a la vez */
+  .cmp-tabs{display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:12px;}
+  .cmp-tabs button{display:flex; align-items:center; gap:7px; padding:9px 16px; border:1px solid var(--line-strong); background:#fff; border-radius:999px; font-size:13px; font-weight:600; color:var(--ink-soft); cursor:pointer; transition:background .15s, color .15s;}
+  .cmp-tabs button .c{font-family:var(--mono); font-size:11px; background:#eef1f5; color:var(--ink); border-radius:999px; padding:1px 8px;}
+  .cmp-tabs button.activo{background:var(--blue); border-color:var(--blue); color:#fff;}
+  .cmp-tabs button.activo .c{background:rgba(255,255,255,.22); color:#fff;}
+  .cmp-tabs .abierta{margin-left:auto; font-size:12px; color:var(--ink-soft);}
+  .cmp-tabs .abierta b{font-family:var(--mono); color:var(--ink);}
+  #campsub-panel-compras > .panel{display:none;}
+  #campsub-panel-compras[data-tab="cargas"] > #cmp-cargas-panel,
+  #campsub-panel-compras[data-tab="totales"] > #cmp-tot-panel,
+  #campsub-panel-compras[data-tab="detalle"] > #cmp-det-panel{display:block; animation:regEntra .25s both;}
   .cmp-pager{display:flex; align-items:center; gap:10px; justify-content:flex-end; flex-wrap:wrap; margin-top:8px; font-size:12px; color:var(--ink-soft);}
   .cmp-pager b{font-family:var(--mono); color:var(--ink);}
   .cmp-pager button{padding:4px 10px;}
@@ -1907,7 +1919,13 @@
   </div>
   </div>
 
-  <div id="campsub-panel-compras" style="display:none;">
+  <div id="campsub-panel-compras" style="display:none;" data-tab="cargas">
+  <div class="cmp-tabs" id="cmp-tabs">
+    <button type="button" data-cmp-tab="cargas">📋 Cargas guardadas <span class="c" id="cmp-tab-n-cargas">0</span></button>
+    <button type="button" data-cmp-tab="totales">📊 Totales por SKU <span class="c" id="cmp-tab-n-totales">0</span></button>
+    <button type="button" data-cmp-tab="detalle">🧾 Detalle cargado <span class="c" id="cmp-tab-n-detalle">0</span></button>
+    <span class="abierta" id="cmp-tab-abierta"></span>
+  </div>
   <div class="panel" id="cmp-cargas-panel" style="margin-bottom:14px;">
     <h3><span>Cargas de compras guardadas</span><button class="btn btn-primary btn-sm" id="btn-cmp-nueva" type="button" style="margin-left:auto; margin-right:8px; text-transform:none; letter-spacing:0;">🛒 ＋ Nueva carga</button></h3>
     <div class="hist-wrap">
@@ -1917,15 +1935,17 @@
     <div id="cmp-cargas-pag"></div>
   </div>
 
-  <div class="panel" id="cmp-tot-panel" style="margin-bottom:14px; display:none;">
+  <div class="panel" id="cmp-tot-panel" style="margin-bottom:14px;">
     <h3>Totales por SKU <span id="cmp-tot-estado" class="reg-chip" style="margin:0 0 0 8px; vertical-align:middle;"></span></h3>
     <p class="hint" style="margin-bottom:8px;">Una fila por CORREL. / SKU con la CANT. VALIDADA sumada; sin estado, fecha, hora ni validador. Se guarda junto con la carga.</p>
-    <div class="cmp-wrap" style="max-height:420px;">
+    <div class="cmp-wrap">
       <table class="cmp-grid cmp-tot"><thead id="cmp-tot-head"></thead><tbody id="cmp-tot-body"></tbody></table>
+      <div class="empty-state" id="cmp-tot-vacio">Abre una carga guardada o pega compras en "Detalle cargado" para ver sus totales.</div>
     </div>
+    <div id="cmp-tot-pag"></div>
   </div>
 
-  <div class="panel" style="margin-bottom:14px;">
+  <div class="panel" id="cmp-det-panel" style="margin-bottom:14px;">
     <h3>Detalle cargado <span id="cmp-modo" class="reg-chip" style="margin:0 0 0 8px; vertical-align:middle;"></span></h3>
     <p class="hint" style="margin-bottom:10px;">Copia las filas en Excel (con o sin la fila de títulos) y pégalas aquí con <b>Ctrl+V</b>. Puedes corregir cualquier celda o pegar a partir de una celda, como en Excel. Al guardar, la carga recibe su número (COM-00001…) y queda <b>bloqueada</b>; para modificarla usa "✏️ Habilitar edición".</p>
     <div class="cmp-barra">
@@ -2962,8 +2982,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v161';
-const APP_UPDATED = '13/10/2026 12:00';
+const APP_VERSION = 'v162';
+const APP_UPDATED = '13/10/2026 15:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3385,7 +3405,7 @@ function setCampanasSubtab(name){
 }
 $('campsub-cargar-campana').addEventListener('click', ()=>setCampanasSubtab('cargar-campana'));
 $('campsub-cargar-guia').addEventListener('click', ()=>setCampanasSubtab('cargar-guia'));
-$('campsub-compras').addEventListener('click', ()=>{ setCampanasSubtab('compras'); renderCompras(); renderListaCompras(); cargarListaCompras(); });
+$('campsub-compras').addEventListener('click', ()=>{ setCampanasSubtab('compras'); cmpIrA(cmpTab); renderCompras(); renderListaCompras(); cargarListaCompras(); });
 $('campsub-registros').addEventListener('click', ()=>{ setCampanasSubtab('registros'); $('reg-kpis').dataset.pintado = ''; renderRegistrosCampana(); cargarTodasLasGuias(); });
 $('campsub-buscar').addEventListener('click', ()=>setCampanasSubtab('buscar'));
 $('campsub-analisis').addEventListener('click', ()=>{ setCampanasSubtab('analisis'); poblarSelectCampanasAnalisis(); });
@@ -8482,15 +8502,35 @@ function cmpTotales(filas){
   });
   return [...grupos.values()];
 }
+// Pestañas de Compras: Cargas guardadas · Totales por SKU · Detalle cargado.
+let cmpTab = 'cargas', cmpTotPag = 0;
+function cmpIrA(tab){
+  cmpTab = tab;
+  $('campsub-panel-compras').dataset.tab = tab;
+  document.querySelectorAll('#cmp-tabs [data-cmp-tab]').forEach(b=> b.classList.toggle('activo', b.dataset.cmpTab === tab));
+}
+$('cmp-tabs').addEventListener('click', e=>{ const b = e.target.closest('[data-cmp-tab]'); if(b) cmpIrA(b.dataset.cmpTab); });
+function cmpContadores(){
+  $('cmp-tab-n-cargas').textContent = cmpCargas.length;
+  $('cmp-tab-n-totales').textContent = cmpTotales(cmpFilas).length;
+  $('cmp-tab-n-detalle').textContent = cmpFilas.filter(f=> !cmpFilaVacia(f)).length;
+  $('cmp-tab-abierta').innerHTML = cmpCarga ? `Carga abierta: <b>${esc(cmpCarga)}</b>${esc(cmpBloqueado ? ' 🔒' : ' ✏️')}` : (cmpFilas.length ? 'Carga nueva (sin guardar)' : '');
+}
+$('cmp-tot-pag').addEventListener('click', e=>{ const b = e.target.closest('[data-cmp-tot-pag]'); if(!b || b.disabled) return; cmpTotPag = Number(b.dataset.cmpTotPag); renderTotalesCompras(); });
 function renderTotalesCompras(){
   const tot = cmpTotales(cmpFilas);
-  $('cmp-tot-panel').style.display = tot.length ? 'block' : 'none';
-  if(!tot.length) return;
+  $('cmp-tot-vacio').style.display = tot.length ? 'none' : 'block';
+  $('cmp-tot-estado').style.display = tot.length ? '' : 'none';
+  if(!tot.length){ $('cmp-tot-head').innerHTML = ''; $('cmp-tot-body').innerHTML = ''; $('cmp-tot-pag').innerHTML = ''; return; }
+  const paginas = Math.max(1, Math.ceil(tot.length / CMP_POR_PAG));
+  cmpTotPag = Math.min(Math.max(0, cmpTotPag), paginas - 1);
+  const desde = cmpTotPag * CMP_POR_PAG;
   $('cmp-tot-estado').textContent = cmpCarga && !cmpCambios ? `${cmpCarga} · guardado` : 'vista previa (sin guardar)';
   const num = v=> v == null || Number.isNaN(v) ? '' : anFmt(v);
   $('cmp-tot-head').innerHTML = '<tr><th>#</th><th>CORREL. / SKU</th><th class="deriv">SKU</th><th>DESCRIPCION</th><th>CODIGO DE BARRAS</th><th>PESO (kg)</th><th>COSTO UNIT. (S/)</th><th>CANT. PRELIMINAR</th><th>CANT. VALIDADA (total)</th><th>PRESENTACION</th><th>FACTOR PRESENTACION</th><th title="Filas del detalle que se sumaron">Filas</th></tr>';
   const sumaV = tot.reduce((t, g)=> t + g.cant_validada, 0);
-  $('cmp-tot-body').innerHTML = tot.map((g, i)=> `<tr><td class="n">${i + 1}</td><td>${esc(g.correl_sku)}</td><td class="deriv">${esc(g.sku)}</td><td>${esc(g.descripcion)}</td><td>${esc(g.codigo_barras)}</td>` +
+  $('cmp-tot-pag').innerHTML = cmpPagerHtml('data-cmp-tot-pag', cmpTotPag, tot.length, CMP_POR_PAG);
+  $('cmp-tot-body').innerHTML = tot.slice(desde, desde + CMP_POR_PAG).map((g, i)=> `<tr><td class="n">${desde + i + 1}</td><td>${esc(g.correl_sku)}</td><td class="deriv">${esc(g.sku)}</td><td>${esc(g.descripcion)}</td><td>${esc(g.codigo_barras)}</td>` +
     `<td class="num">${esc(num(g.peso_kg))}</td><td class="num">${esc(num(g.costo_unit))}</td><td class="num">${esc(num(g.cant_preliminar))}</td><td class="num total">${esc(anFmt(g.cant_validada))}</td>` +
     `<td>${esc(g.presentacion)}</td><td class="num">${esc(num(g.factor_presentacion))}</td><td class="num">${esc(g.filas)}</td></tr>`).join('') +
     `<tr class="fila-total"><td></td><td colspan="7">TOTAL · ${esc(tot.length)} SKU</td><td class="num">${esc(anFmt(sumaV))}</td><td colspan="3"></td></tr>`;
@@ -8573,6 +8613,7 @@ function renderCompras(){
   $('cmp-pag').innerHTML = cmpPagerHtml('data-cmp-pag', cmpPag, cmpFilas.length, CMP_POR_PAG);
   cmpResumen();
   renderTotalesCompras();
+  cmpContadores();
 }
 $('cmp-pag').addEventListener('click', e=>{ const b = e.target.closest('[data-cmp-pag]'); if(!b || b.disabled) return; cmpPag = Number(b.dataset.cmpPag); renderCompras(); });
 $('cmp-cargas-pag').addEventListener('click', e=>{ const b = e.target.closest('[data-cmp-cargas-pag]'); if(!b || b.disabled) return; cmpCargasPag = Number(b.dataset.cmpCargasPag); renderListaCompras(); });
@@ -8726,6 +8767,7 @@ function renderListaCompras(){
   cmpCargasPag = Math.min(Math.max(0, cmpCargasPag), paginas - 1);
   const desde = cmpCargasPag * CMP_CARGAS_POR_PAG;
   $('cmp-cargas-pag').innerHTML = cmpPagerHtml('data-cmp-cargas-pag', cmpCargasPag, cmpCargas.length, CMP_CARGAS_POR_PAG);
+  cmpContadores();
   $('cmp-cargas-body').innerHTML = cmpCargas.slice(desde, desde + CMP_CARGAS_POR_PAG).map((c, i)=>{
     const f = c.guardado_en && c.guardado_en.toDate ? c.guardado_en.toDate().toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }) : '';
     return `<tr class="${cmpCarga === c.correlativo ? 'reg-sel' : ''}"><td><b>${esc(c.correlativo)}</b></td><td>${esc(c.nota || '—')}</td>` +
@@ -8737,7 +8779,8 @@ function renderListaCompras(){
 // Abrir una carga guardada en la cuadrícula para verla o corregirla.
 async function abrirCargaCompras(corr){
   if(cmpCambios && !confirm('Hay cambios sin guardar en la cuadrícula. ¿Descartarlos?')) return;
-  cmpCarga = corr; cmpFilas = []; cmpCambios = false; cmpGuardadas = 0; cmpBloqueado = true; cmpPag = 0;
+  cmpCarga = corr; cmpFilas = []; cmpCambios = false; cmpGuardadas = 0; cmpBloqueado = true; cmpPag = 0; cmpTotPag = 0;
+  cmpIrA('totales');
   const cab = cmpCargas.find(c=> c.correlativo === corr) || {};
   $('cmp-nota').value = cab.nota || '';
   renderCompras(); renderListaCompras();
@@ -8753,8 +8796,9 @@ async function abrirCargaCompras(corr){
 }
 $('btn-cmp-nueva').addEventListener('click', ()=>{
   if(cmpCambios && !confirm('Hay cambios sin guardar en la cuadrícula. ¿Descartarlos y empezar una carga nueva?')) return;
-  cmpCarga = null; cmpFilas = []; cmpCambios = false; cmpGuardadas = 0; cmpBloqueado = false; cmpPag = 0; $('cmp-nota').value = '';
+  cmpCarga = null; cmpFilas = []; cmpCambios = false; cmpGuardadas = 0; cmpBloqueado = false; cmpPag = 0; cmpTotPag = 0; $('cmp-nota').value = '';
   renderCompras(); renderListaCompras();
+  cmpIrA('detalle');
 });
 $('cmp-nota').addEventListener('input', ()=>{ if(cmpBloqueado) return; cmpCambios = true; cmpResumen(); });
 $('cmp-cargas-body').addEventListener('click', async e=>{
