@@ -468,6 +468,13 @@
   table.cmp-grid td.x button:hover{color:#a5441a;}
   .cmp-vacio{padding:42px 16px; text-align:center; color:var(--ink-soft); border:2px dashed var(--line-strong); border-radius:8px; margin:10px; font-size:13px;}
   .cmp-vacio b{display:block; font-size:16px; color:var(--ink); margin-bottom:4px;}
+  .cmp-pager{display:flex; align-items:center; gap:10px; justify-content:flex-end; flex-wrap:wrap; margin-top:8px; font-size:12px; color:var(--ink-soft);}
+  .cmp-pager b{font-family:var(--mono); color:var(--ink);}
+  .cmp-pager button{padding:4px 10px;}
+  .cmp-wrap.bloqueado{background:#fafbfc;}
+  .cmp-wrap.bloqueado table.cmp-grid td{color:#3b4250;}
+  table.cmp-tot td.total, table.cmp-tot tr.fila-total td{font-weight:700;}
+  table.cmp-tot tr.fila-total td{background:#f3f6f9; border-top:2px solid var(--line-strong);}
   .cmp-errores{font-size:12px; color:#8A332A; background:#fdf0ed; border-radius:6px; padding:7px 10px; margin-bottom:8px; display:none;}
 
   /* Maestro de participantes */
@@ -1901,11 +1908,30 @@
 
   <div id="campsub-panel-compras" style="display:none;">
   <div class="panel" style="margin-bottom:14px;">
-    <h3>Compras <span id="cmp-modo" class="reg-chip" style="margin:0 0 0 8px; vertical-align:middle;"></span></h3>
-    <p class="hint" style="margin-bottom:10px;">Copia las filas en Excel (con o sin la fila de títulos) y pégalas aquí con <b>Ctrl+V</b>. Puedes corregir cualquier celda o pegar a partir de una celda, como en Excel. Cada vez que guardas una carga nueva recibe su número (COM-00001, COM-00002…); abajo están las cargas guardadas para abrirlas o corregirlas.</p>
+    <h3>Cargas de compras guardadas</h3>
+    <div class="hist-wrap">
+      <table class="reg-tabla"><thead><tr><th>Carga</th><th>Nota</th><th>Guardada</th><th class="num">Filas</th><th class="num">Unid. validadas</th><th class="num">Costo (S/)</th><th></th></tr></thead><tbody id="cmp-cargas-body"></tbody></table>
+      <div class="empty-state" id="cmp-cargas-vacio">Aún no hay cargas de compras guardadas.</div>
+    </div>
+    <div id="cmp-cargas-pag"></div>
+  </div>
+
+  <div class="panel" id="cmp-tot-panel" style="margin-bottom:14px; display:none;">
+    <h3>Totales por SKU <span id="cmp-tot-estado" class="reg-chip" style="margin:0 0 0 8px; vertical-align:middle;"></span></h3>
+    <p class="hint" style="margin-bottom:8px;">Una fila por CORREL. / SKU con la CANT. VALIDADA sumada; sin estado, fecha, hora ni validador. Se guarda junto con la carga.</p>
+    <div class="cmp-wrap" style="max-height:420px;">
+      <table class="cmp-grid cmp-tot"><thead id="cmp-tot-head"></thead><tbody id="cmp-tot-body"></tbody></table>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-bottom:14px;">
+    <h3>Detalle cargado <span id="cmp-modo" class="reg-chip" style="margin:0 0 0 8px; vertical-align:middle;"></span></h3>
+    <p class="hint" style="margin-bottom:10px;">Copia las filas en Excel (con o sin la fila de títulos) y pégalas aquí con <b>Ctrl+V</b>. Puedes corregir cualquier celda o pegar a partir de una celda, como en Excel. Al guardar, la carga recibe su número (COM-00001…) y queda <b>bloqueada</b>; para modificarla usa "✏️ Habilitar edición".</p>
     <div class="cmp-barra">
       <div class="field" style="max-width:320px; min-width:220px;"><label>Nota (opcional)</label><input type="text" id="cmp-nota" class="upper" placeholder="EJ. COMPRAS SEMANA 41"></div>
       <button class="btn btn-primary" id="btn-cmp-guardar">💾 Guardar</button>
+      <button class="btn btn-primary" id="btn-cmp-habilitar" type="button" style="display:none;">✏️ Habilitar edición</button>
+      <button class="btn btn-ghost" id="btn-cmp-cancelar" type="button" style="display:none;">Cancelar edición</button>
       <button class="btn btn-ghost" id="btn-cmp-nueva" type="button">＋ Nueva carga</button>
       <button class="btn btn-ghost" id="btn-cmp-fila" type="button">+ Fila</button>
       <button class="btn btn-ghost" id="btn-cmp-limpiar" type="button">Limpiar</button>
@@ -1917,13 +1943,7 @@
       <table class="cmp-grid"><thead id="cmp-head"></thead><tbody id="cmp-body"></tbody></table>
       <div class="cmp-vacio" id="cmp-vacio"><b>Pega aquí tus compras (Ctrl+V)</b>Haz clic en este recuadro y pega las filas copiadas de Excel.</div>
     </div>
-  </div>
-  <div class="panel" style="margin-bottom:14px;">
-    <h3>Cargas de compras guardadas</h3>
-    <div class="hist-wrap" style="max-height:380px;">
-      <table class="reg-tabla"><thead><tr><th>Carga</th><th>Nota</th><th>Guardada</th><th class="num">Filas</th><th class="num">Unid. validadas</th><th class="num">Costo (S/)</th><th></th></tr></thead><tbody id="cmp-cargas-body"></tbody></table>
-      <div class="empty-state" id="cmp-cargas-vacio">Aún no hay cargas de compras guardadas.</div>
-    </div>
+    <div id="cmp-pag"></div>
   </div>
   </div>
 
@@ -2942,8 +2962,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v159';
-const APP_UPDATED = '12/10/2026 20:00';
+const APP_VERSION = 'v160';
+const APP_UPDATED = '13/10/2026 10:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -8433,6 +8453,48 @@ const CMP_COLS = [
 let cmpFilas = [];          // filas de la cuadrícula: arreglos de 13 textos
 let cmpCarga = null;        // carga abierta en la cuadrícula (null = carga nueva)
 let cmpCargas = [];         // cabeceras de las cargas guardadas
+let cmpBloqueado = false;   // carga guardada: solo lectura hasta "Habilitar edición"
+let cmpPag = 0, cmpCargasPag = 0;
+const CMP_POR_PAG = 10, CMP_CARGAS_POR_PAG = 5;
+const comprasTotalesRef = db.collection('compras_totales');  // totales por SKU de cada carga
+// Paginador: « ‹ Página X de Y › »
+function cmpPagerHtml(attr, pag, n, porPag){
+  const total = Math.max(1, Math.ceil(n / porPag));
+  if(n <= porPag) return n ? `<div class="cmp-pager"><span><b>${esc(n)}</b> en total</span></div>` : '';
+  const a = pag * porPag + 1, b = Math.min(n, (pag + 1) * porPag);
+  return `<div class="cmp-pager"><span><b>${esc(a)}–${esc(b)}</b> de <b>${esc(n)}</b></span>` +
+    `<button type="button" class="btn btn-sm btn-ghost" ${attr}="0" ${pag === 0 ? 'disabled' : ''} title="Primera">«</button>` +
+    `<button type="button" class="btn btn-sm btn-ghost" ${attr}="${pag - 1}" ${pag === 0 ? 'disabled' : ''}>‹ Anterior</button>` +
+    `<span>Página <b>${esc(pag + 1)}</b> de <b>${esc(total)}</b></span>` +
+    `<button type="button" class="btn btn-sm btn-ghost" ${attr}="${pag + 1}" ${pag >= total - 1 ? 'disabled' : ''}>Siguiente ›</button>` +
+    `<button type="button" class="btn btn-sm btn-ghost" ${attr}="${total - 1}" ${pag >= total - 1 ? 'disabled' : ''} title="Última">»</button></div>`;
+}
+// Totales por CORREL. / SKU: suma la CANT. VALIDADA; el resto se toma de la primera fila.
+function cmpTotales(filas){
+  const grupos = new Map();
+  filas.filter(f=> !cmpFilaVacia(f)).forEach(f=>{
+    const k = String(f[3]||'').trim().toUpperCase();
+    let g = grupos.get(k);
+    if(!g){ g = { correl_sku: k, sku: cmpSkuDe(f[3]), descripcion: f[4]||'', codigo_barras: f[5]||'', peso_kg: cmpNumero(f[6]), costo_unit: cmpNumero(f[7]),
+      cant_preliminar: cmpNumero(f[8]), cant_validada: 0, presentacion: f[10]||'', factor_presentacion: cmpNumero(f[11]), filas: 0 }; grupos.set(k, g); }
+    const v = cmpNumero(f[9]); if(v && !Number.isNaN(v)) g.cant_validada += v;
+    g.filas++;
+  });
+  return [...grupos.values()];
+}
+function renderTotalesCompras(){
+  const tot = cmpTotales(cmpFilas);
+  $('cmp-tot-panel').style.display = tot.length ? 'block' : 'none';
+  if(!tot.length) return;
+  $('cmp-tot-estado').textContent = cmpCarga && !cmpCambios ? `${cmpCarga} · guardado` : 'vista previa (sin guardar)';
+  const num = v=> v == null || Number.isNaN(v) ? '' : anFmt(v);
+  $('cmp-tot-head').innerHTML = '<tr><th>#</th><th>CORREL. / SKU</th><th class="deriv">SKU</th><th>DESCRIPCION</th><th>CODIGO DE BARRAS</th><th>PESO (kg)</th><th>COSTO UNIT. (S/)</th><th>CANT. PRELIMINAR</th><th>CANT. VALIDADA (total)</th><th>PRESENTACION</th><th>FACTOR PRESENTACION</th><th title="Filas del detalle que se sumaron">Filas</th></tr>';
+  const sumaV = tot.reduce((t, g)=> t + g.cant_validada, 0);
+  $('cmp-tot-body').innerHTML = tot.map((g, i)=> `<tr><td class="n">${i + 1}</td><td>${esc(g.correl_sku)}</td><td class="deriv">${esc(g.sku)}</td><td>${esc(g.descripcion)}</td><td>${esc(g.codigo_barras)}</td>` +
+    `<td class="num">${esc(num(g.peso_kg))}</td><td class="num">${esc(num(g.costo_unit))}</td><td class="num">${esc(num(g.cant_preliminar))}</td><td class="num total">${esc(anFmt(g.cant_validada))}</td>` +
+    `<td>${esc(g.presentacion)}</td><td class="num">${esc(num(g.factor_presentacion))}</td><td class="num">${esc(g.filas)}</td></tr>`).join('') +
+    `<tr class="fila-total"><td></td><td colspan="7">TOTAL · ${esc(tot.length)} SKU</td><td class="num">${esc(anFmt(sumaV))}</td><td colspan="3"></td></tr>`;
+}
 let cmpCambios = false;     // hay cambios sin guardar
 let cmpGuardadas = 0;       // filas que ya tenía guardadas esa campaña
 
@@ -8491,15 +8553,37 @@ function cmpEsTitulo(f){
 }
 function renderCompras(){
   if(!$('cmp-head')) return;
-  $('cmp-modo').textContent = cmpCarga ? `Editando ${cmpCarga}` : 'Carga nueva';
+  const bloq = cmpBloqueado;
+  $('cmp-modo').textContent = !cmpCarga ? 'Carga nueva' : bloq ? `🔒 ${cmpCarga} guardada` : `✏️ Editando ${cmpCarga}`;
   $('btn-cmp-guardar').textContent = cmpCarga ? `💾 Guardar cambios en ${cmpCarga}` : '💾 Guardar';
-  $('cmp-head').innerHTML = '<tr><th>#</th>' + CMP_COLS.map((c, i)=> `<th>${esc(c.t)}</th>` + (i === 3 ? '<th class="deriv" title="Se toma de CORREL. / SKU: lo que va después del guion">SKU</th>' : '')).join('') + '<th></th></tr>';
-  $('cmp-vacio').style.display = cmpFilas.length ? 'none' : 'block';
-  $('cmp-body').innerHTML = cmpFilas.map((f, r)=> `<tr data-r="${r}"><td class="n">${r + 1}</td>` +
-    CMP_COLS.map((col, c)=>{ const e = cmpErrorCelda(c, f[c]); return `<td contenteditable="true" spellcheck="false" data-c="${c}" class="${col.tipo === 'num' ? 'num' : ''}${e ? ' err' : ''}" title="${esc(e)}">${esc(f[c]||'')}</td>` + (c === 3 ? `<td class="deriv">${esc(cmpSkuDe(f[c]))}</td>` : ''); }).join('') +
-    `<td class="x"><button type="button" data-cmp-quitar="${r}" title="Quitar fila">✕</button></td></tr>`).join('');
+  $('btn-cmp-guardar').style.display = bloq ? 'none' : '';
+  $('btn-cmp-habilitar').style.display = bloq ? '' : 'none';
+  $('btn-cmp-cancelar').style.display = cmpCarga && !bloq ? '' : 'none';
+  $('btn-cmp-fila').disabled = bloq; $('btn-cmp-limpiar').disabled = bloq;
+  $('cmp-nota').readOnly = bloq;
+  $('cmp-wrap').classList.toggle('bloqueado', bloq);
+  $('cmp-head').innerHTML = '<tr><th>#</th>' + CMP_COLS.map((c, i)=> `<th>${esc(c.t)}</th>` + (i === 3 ? '<th class="deriv" title="Se toma de CORREL. / SKU: lo que va después del guion">SKU</th>' : '')).join('') + (bloq ? '' : '<th></th>') + '</tr>';
+  $('cmp-vacio').style.display = cmpFilas.length || bloq ? 'none' : 'block';
+  const paginas = Math.max(1, Math.ceil(cmpFilas.length / CMP_POR_PAG));
+  cmpPag = Math.min(Math.max(0, cmpPag), paginas - 1);
+  const desde = cmpPag * CMP_POR_PAG;
+  $('cmp-body').innerHTML = cmpFilas.slice(desde, desde + CMP_POR_PAG).map((f, i)=>{ const r = desde + i; return `<tr data-r="${r}"><td class="n">${r + 1}</td>` +
+    CMP_COLS.map((col, c)=>{ const e = bloq ? '' : cmpErrorCelda(c, f[c]); return `<td ${bloq ? '' : 'contenteditable="true" spellcheck="false"'} data-c="${c}" class="${col.tipo === 'num' ? 'num' : ''}${e ? ' err' : ''}" title="${esc(e)}">${esc(f[c]||'')}</td>` + (c === 3 ? `<td class="deriv">${esc(cmpSkuDe(f[c]))}</td>` : ''); }).join('') +
+    (bloq ? '' : `<td class="x"><button type="button" data-cmp-quitar="${r}" title="Quitar fila">✕</button></td>`) + '</tr>'; }).join('');
+  $('cmp-pag').innerHTML = cmpPagerHtml('data-cmp-pag', cmpPag, cmpFilas.length, CMP_POR_PAG);
   cmpResumen();
+  renderTotalesCompras();
 }
+$('cmp-pag').addEventListener('click', e=>{ const b = e.target.closest('[data-cmp-pag]'); if(!b || b.disabled) return; cmpPag = Number(b.dataset.cmpPag); renderCompras(); });
+$('cmp-cargas-pag').addEventListener('click', e=>{ const b = e.target.closest('[data-cmp-cargas-pag]'); if(!b || b.disabled) return; cmpCargasPag = Number(b.dataset.cmpCargasPag); renderListaCompras(); });
+$('btn-cmp-habilitar').addEventListener('click', ()=>{
+  cmpBloqueado = false; renderCompras();
+  showMsg('cmp-msg','ok', `${cmpCarga} habilitada para editar. Corrige y presiona "Guardar cambios"; al guardar se vuelve a bloquear.`);
+});
+$('btn-cmp-cancelar').addEventListener('click', ()=>{
+  if(cmpCambios && !confirm('¿Descartar los cambios y volver a lo guardado?')) return;
+  cmpCambios = false; abrirCargaCompras(cmpCarga);
+});
 // Totales, errores y aviso de cambios sin guardar.
 function cmpResumen(){
   const filas = cmpFilas.filter(f=> !cmpFilaVacia(f));
@@ -8525,6 +8609,7 @@ $('cmp-wrap').addEventListener('paste', e=>{
   const txt = (e.clipboardData || window.clipboardData).getData('text/plain');
   if(!txt) return;
   e.preventDefault();
+  if(cmpBloqueado){ showMsg('cmp-msg','err', `${cmpCarga} está guardada y bloqueada. Presiona "✏️ Habilitar edición" para modificarla.`); return; }
   let filas = cmpLeerPegado(txt);
   const td = e.target.closest && e.target.closest('td[data-c]');
   if(td && filas.length === 1 && filas[0].length === 1){ document.execCommand('insertText', false, filas[0][0]); return; }
@@ -8539,6 +8624,7 @@ $('cmp-wrap').addEventListener('paste', e=>{
     f.forEach((v, j)=>{ if(c0 + j < CMP_COLS.length) fila[c0 + j] = cmpLimpiar(c0 + j, v); });
   });
   cmpCambios = true;
+  if(!td) cmpPag = Math.floor(r0 / CMP_POR_PAG);
   renderCompras();
   showMsg('cmp-msg','ok', `Se pegaron ${filas.length} fila(s). Revisa y presiona "Guardar".`);
 });
@@ -8575,12 +8661,13 @@ $('cmp-body').addEventListener('click', e=>{
 });
 $('btn-cmp-fila').addEventListener('click', ()=>{
   cmpFilas.push(CMP_COLS.map(()=> ''));
+  cmpPag = Math.floor((cmpFilas.length - 1) / CMP_POR_PAG);
   renderCompras();
   const ult = $('cmp-body').lastElementChild; if(ult) ult.querySelector('td[data-c="0"]').focus();
 });
 $('btn-cmp-limpiar').addEventListener('click', ()=>{
   if(cmpFilas.some(f=> !cmpFilaVacia(f)) && !confirm('¿Vaciar la cuadrícula? (Lo ya guardado no se borra hasta que presiones "Guardar".)')) return;
-  cmpFilas = []; cmpCambios = cmpGuardadas > 0; renderCompras();
+  cmpFilas = []; cmpPag = 0; cmpCambios = cmpGuardadas > 0; renderCompras();
 });
 async function generarCorrelativoCompras(){
   const ref = contadoresRef.doc('compras');
@@ -8627,7 +8714,11 @@ async function cargarListaCompras(){
 function renderListaCompras(){
   $('cmp-cargas-vacio').style.display = cmpCargas.length ? 'none' : 'block';
   const puedeEliminar = currentPermisos.admin || currentPermisos.eliminar;
-  $('cmp-cargas-body').innerHTML = cmpCargas.map((c, i)=>{
+  const paginas = Math.max(1, Math.ceil(cmpCargas.length / CMP_CARGAS_POR_PAG));
+  cmpCargasPag = Math.min(Math.max(0, cmpCargasPag), paginas - 1);
+  const desde = cmpCargasPag * CMP_CARGAS_POR_PAG;
+  $('cmp-cargas-pag').innerHTML = cmpPagerHtml('data-cmp-cargas-pag', cmpCargasPag, cmpCargas.length, CMP_CARGAS_POR_PAG);
+  $('cmp-cargas-body').innerHTML = cmpCargas.slice(desde, desde + CMP_CARGAS_POR_PAG).map((c, i)=>{
     const f = c.guardado_en && c.guardado_en.toDate ? c.guardado_en.toDate().toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }) : '';
     return `<tr class="${cmpCarga === c.correlativo ? 'reg-sel' : ''}" style="animation-delay:${Math.min(i, 20) * 18}ms"><td><b>${esc(c.correlativo)}</b></td><td>${esc(c.nota || '—')}</td>` +
       `<td>${esc(f)}<div class="reg-s">${esc(c.guardado_por || '')}</div></td><td class="num">${esc(anFmt(c.filas))}</td><td class="num">${esc(anFmt(c.unidades_validadas))}</td>` +
@@ -8638,7 +8729,7 @@ function renderListaCompras(){
 // Abrir una carga guardada en la cuadrícula para verla o corregirla.
 async function abrirCargaCompras(corr){
   if(cmpCambios && !confirm('Hay cambios sin guardar en la cuadrícula. ¿Descartarlos?')) return;
-  cmpCarga = corr; cmpFilas = []; cmpCambios = false; cmpGuardadas = 0;
+  cmpCarga = corr; cmpFilas = []; cmpCambios = false; cmpGuardadas = 0; cmpBloqueado = true; cmpPag = 0;
   const cab = cmpCargas.find(c=> c.correlativo === corr) || {};
   $('cmp-nota').value = cab.nota || '';
   renderCompras(); renderListaCompras();
@@ -8649,15 +8740,15 @@ async function abrirCargaCompras(corr){
     cmpFilas = snap.docs.map(d=> d.data()).sort((a,b)=> (a.orden||0) - (b.orden||0)).map(d=> CMP_COLS.map(col=>{ const v = col.k === 'correl_sku' ? (d.correl_sku ?? d.sku) : d[col.k]; return v == null ? '' : String(v); }));
     cmpGuardadas = cmpFilas.length;
     renderCompras();
-    showMsg('cmp-msg','ok', `${corr}: ${cmpGuardadas} compra(s). Puedes corregirlas y guardar los cambios.`);
+    showMsg('cmp-msg','ok', `${corr}: ${cmpGuardadas} compra(s). Está bloqueada; para modificarla presiona "✏️ Habilitar edición".`);
   }catch(err){ console.error(err); showMsg('cmp-msg','err','No se pudo abrir la carga: '+err.message); }
 }
 $('btn-cmp-nueva').addEventListener('click', ()=>{
   if(cmpCambios && !confirm('Hay cambios sin guardar en la cuadrícula. ¿Descartarlos y empezar una carga nueva?')) return;
-  cmpCarga = null; cmpFilas = []; cmpCambios = false; cmpGuardadas = 0; $('cmp-nota').value = '';
+  cmpCarga = null; cmpFilas = []; cmpCambios = false; cmpGuardadas = 0; cmpBloqueado = false; cmpPag = 0; $('cmp-nota').value = '';
   renderCompras(); renderListaCompras();
 });
-$('cmp-nota').addEventListener('input', ()=>{ cmpCambios = true; cmpResumen(); });
+$('cmp-nota').addEventListener('input', ()=>{ if(cmpBloqueado) return; cmpCambios = true; cmpResumen(); });
 $('cmp-cargas-body').addEventListener('click', async e=>{
   const ab = e.target.closest('[data-cmp-abrir]'), el = e.target.closest('[data-cmp-eliminar]');
   if(ab) return abrirCargaCompras(ab.dataset.cmpAbrir);
@@ -8668,9 +8759,11 @@ $('cmp-cargas-body').addEventListener('click', async e=>{
   try{
     const items = await comprasItemsRef.where('carga_correlativo','==',corr).limit(5000).get();
     for(let i = 0; i < items.docs.length; i += 400){ const b = db.batch(); items.docs.slice(i, i + 400).forEach(d=> b.delete(d.ref)); await b.commit(); }
+    const tots = await comprasTotalesRef.where('carga_correlativo','==',corr).limit(5000).get();
+    for(let i = 0; i < tots.docs.length; i += 400){ const b = db.batch(); tots.docs.slice(i, i + 400).forEach(d=> b.delete(d.ref)); await b.commit(); }
     await comprasCargasRef.doc(corr).set({ estado:'ANULADO', anulado_por: currentUserAlias, anulado_en: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true });
     await logAccion('compras_carga_eliminada', {detalle:`${corr}: ${items.size} compra(s) eliminadas`});
-    if(cmpCarga === corr){ cmpCarga = null; cmpFilas = []; cmpCambios = false; cmpGuardadas = 0; $('cmp-nota').value = ''; renderCompras(); }
+    if(cmpCarga === corr){ cmpCarga = null; cmpFilas = []; cmpCambios = false; cmpGuardadas = 0; cmpBloqueado = false; cmpPag = 0; $('cmp-nota').value = ''; renderCompras(); }
     showToast(`${corr} eliminada.`, 'ok');
     cargarListaCompras();
   }catch(err){ console.error(err); showToast('No se pudo eliminar: '+err.message, 'err'); }
@@ -8678,7 +8771,13 @@ $('cmp-cargas-body').addEventListener('click', async e=>{
 $('btn-cmp-guardar').addEventListener('click', async ()=>{
   const { filas, errores, unidades, costo } = cmpResumen();
   if(!filas.length){ showMsg('cmp-msg','err','No hay filas para guardar. Pega las compras desde Excel.'); return; }
-  if(errores.length){ showMsg('cmp-msg','err', `Corrige las ${errores.length} celda(s) en rojo antes de guardar.`); const td = $('cmp-body').querySelector('td.err'); if(td) td.focus(); return; }
+  if(cmpBloqueado) return;
+  if(errores.length){
+    showMsg('cmp-msg','err', `Corrige las ${errores.length} celda(s) en rojo antes de guardar.`);
+    const r = cmpFilas.findIndex(f=> !cmpFilaVacia(f) && CMP_COLS.some((col, c)=> cmpErrorCelda(c, f[c])));
+    if(r >= 0){ cmpPag = Math.floor(r / CMP_POR_PAG); renderCompras(); const td = $('cmp-body').querySelector('td.err'); if(td) td.focus(); }
+    return;
+  }
   const editando = cmpCarga;
   if(editando && !confirm(`Se reemplazarán las ${cmpGuardadas} compra(s) de ${editando} por estas ${filas.length}. ¿Continuar?`)) return;
   const nota = $('cmp-nota').value.trim().toUpperCase();
@@ -8699,7 +8798,21 @@ $('btn-cmp-guardar').addEventListener('click', async ()=>{
       viejas.docs.slice(i, i + 400).forEach(d=> batch.delete(d.ref));
       await batch.commit();
     }
-    await comprasCargasRef.doc(corr).set(Object.assign({
+    // Registro de totales por CORREL. / SKU (reemplaza el anterior de esta carga).
+    proc.paso(`Guardando ${corr}… totales por SKU`);
+    const totales = cmpTotales(filas);
+    const totViejos = editando ? await comprasTotalesRef.where('carga_correlativo','==',corr).limit(5000).get() : { docs: [] };
+    for(let i = 0; i < totales.length; i += 400){
+      const batch = db.batch();
+      totales.slice(i, i + 400).forEach((t, j)=> batch.set(comprasTotalesRef.doc(), Object.assign({}, t, { carga_correlativo: corr, orden: i + j + 1, guardado_por: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp() })));
+      await batch.commit();
+    }
+    for(let i = 0; i < totViejos.docs.length; i += 400){
+      const batch = db.batch();
+      totViejos.docs.slice(i, i + 400).forEach(d=> batch.delete(d.ref));
+      await batch.commit();
+    }
+    await comprasCargasRef.doc(corr).set(Object.assign({ skus: totales.length,
       correlativo: corr, nota, filas: filas.length, unidades_validadas: unidades, costo_total: Math.round(costo * 100) / 100, estado:'ACTIVO'
     }, editando ? { editado_por: currentUserAlias, editado_en: firebase.firestore.FieldValue.serverTimestamp() }
                 : { guardado_por: currentUserAlias, guardado_en: firebase.firestore.FieldValue.serverTimestamp() }), { merge:true });
@@ -8707,9 +8820,10 @@ $('btn-cmp-guardar').addEventListener('click', async ()=>{
     proc.fin();
     // La cuadrícula muestra lo que quedó guardado (números convertidos, SKU en mayúsculas).
     cmpFilas = filas.map(f=> CMP_COLS.map((col, c)=>{ const v = String(f[c]||'').trim(); if(col.tipo === 'num'){ const n = cmpNumero(v); return n == null ? '' : String(n); } return col.k === 'correl_sku' ? v.toUpperCase() : v; }));
-    cmpCarga = corr; cmpGuardadas = filas.length; cmpCambios = false;
+    cmpCarga = corr; cmpGuardadas = filas.length; cmpCambios = false; cmpBloqueado = true;
+    if(!editando) cmpCargasPag = 0;
     renderCompras();
-    showMsg('cmp-msg','ok', `¡Guardado! ${corr} — ${filas.length} compra(s).`);
+    showMsg('cmp-msg','ok', `¡Guardado! ${corr} — ${filas.length} compra(s), ${totales.length} SKU. Quedó bloqueada; para modificarla usa "✏️ Habilitar edición".`);
     showToast(`Compras guardadas: ${corr}`, 'ok');
     cargarListaCompras();
   }catch(err){
