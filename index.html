@@ -2982,8 +2982,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v162';
-const APP_UPDATED = '13/10/2026 15:00';
+const APP_VERSION = 'v163';
+const APP_UPDATED = '13/10/2026 17:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -8475,7 +8475,7 @@ let cmpCarga = null;        // carga abierta en la cuadrícula (null = carga nue
 let cmpCargas = [];         // cabeceras de las cargas guardadas
 let cmpBloqueado = false;   // carga guardada: solo lectura hasta "Habilitar edición"
 let cmpPag = 0, cmpCargasPag = 0;
-const CMP_POR_PAG = 10, CMP_CARGAS_POR_PAG = 5;
+const CMP_POR_PAG = 20, CMP_CARGAS_POR_PAG = 5;
 const comprasTotalesRef = db.collection('compras_totales');  // totales por SKU de cada carga
 // Paginador: « ‹ Página X de Y › »
 function cmpPagerHtml(attr, pag, n, porPag){
@@ -8561,7 +8561,8 @@ function cmpErrorCelda(c, v){
   if(col.tipo === 'num' && Number.isNaN(cmpNumero(t))) return `${col.t} no es un número`;
   if(col.tipo === 'fecha' && !/^\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}$/.test(t) && !/^\d{4}-\d{2}-\d{2}$/.test(t)) return `${col.t} no es una fecha`;
   if(col.tipo === 'hora' && !/^\d{1,2}:\d{2}(:\d{2})?(\s*[ap]\.?\s*m\.?)?$/i.test(t)) return `${col.t} no es una hora`;
-  if(col.tipo === 'barras' && /e\+?\d+$/i.test(t)) return 'código de barras en formato científico (en Excel, ponle formato Número sin decimales antes de copiar)';
+  // Solo un número en notación científica ("7.75E+12", "7,75E12"); los códigos alfanuméricos (ME399) pasan.
+  if(col.tipo === 'barras' && /^\d+([.,]\d+)?e\+?\d+$/i.test(t)) return 'código de barras en formato científico (en Excel, ponle formato Número sin decimales antes de copiar)';
   return '';
 }
 const cmpFilaVacia = f=> f.every(v=> !String(v||'').trim());
