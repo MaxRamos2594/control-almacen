@@ -498,16 +498,56 @@
   #cmp-cargas-tabla th, #cmp-cargas-tabla td{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   #cmp-cargas-tabla input[type=checkbox]{width:auto; margin:0; cursor:pointer;}
   #cmp-cargas-tabla td.cmp-camps{white-space:normal;}
-  /* Campañas de las compras: filtro, selección y etiquetas */
-  .cmp-camp-barra{display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:10px; font-size:12.5px;}
-  .cmp-camp-barra label{display:flex; gap:6px; align-items:center; font-weight:600; margin:0;}
-  .cmp-camp-barra select{width:auto; max-width:420px;}
-  #cmp-camp-resumen{color:var(--ink-soft);} #cmp-camp-resumen b{font-family:var(--mono); color:var(--ink);}
-  .cmp-asignar{display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:9px 12px; margin-bottom:10px; background:#eaf1fb; border:1px solid var(--blue); border-radius:8px; font-size:13px; animation:regEntra .2s both;}
-  .cmp-asignar select{width:auto; max-width:380px;}
-  .cmp-camp-chip{display:inline-flex; align-items:center; gap:3px; margin:1px 3px 1px 0; padding:1px 4px 1px 8px; border-radius:999px; background:#e9f6ee; border:1px solid #9fd0b2; font-family:var(--mono); font-size:11px;}
-  .cmp-camp-chip button{border:none; background:none; cursor:pointer; color:var(--ink-soft); font-size:11px; padding:0 3px;}
-  .cmp-camp-chip button:hover{color:#a5441a;}
+  /* Campañas de las compras: cada campaña tiene su color (--c) */
+  .cmp-neutro{--c:#4A5568;} .cmp-c0{--c:#2E5F8A;} .cmp-c1{--c:#2E8B57;} .cmp-c2{--c:#B5651D;} .cmp-c3{--c:#7B4FA0;}
+  .cmp-c4{--c:#B03A48;} .cmp-c5{--c:#1F8A8A;} .cmp-c6{--c:#8A6D1F;} .cmp-c7{--c:#4F6D8F;}
+  .cmp-grupos{display:flex; gap:8px; overflow-x:auto; padding:2px 2px 10px; margin-bottom:4px; scrollbar-width:thin;}
+  .cmp-grupo{flex:0 0 auto; display:flex; flex-direction:column; align-items:flex-start; gap:2px; min-width:118px; max-width:220px; padding:8px 12px 8px 14px; border:1px solid var(--line); border-radius:10px; background:#fff; cursor:pointer; text-align:left; position:relative; overflow:hidden; transition:transform .15s, box-shadow .15s, border-color .15s, background .15s; font:inherit; color:var(--ink);}
+  .cmp-grupo::before{content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--c);}
+  .cmp-grupo:hover{transform:translateY(-2px); box-shadow:0 4px 12px rgba(27,36,48,.1);}
+  .cmp-grupo .k{font-family:var(--mono); font-size:12px; font-weight:700; color:var(--c);}
+  .cmp-grupo .nom{font-size:11px; color:var(--ink-soft); max-width:190px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .cmp-grupo .cnt{font-size:11px; color:var(--ink-soft);} .cmp-grupo .cnt b{font-family:var(--mono); color:var(--ink); font-size:13px;}
+  .cmp-grupo.sin{border-style:dashed;}
+  .cmp-grupo.activo{border-color:var(--c); background:color-mix(in srgb, var(--c) 9%, #fff); box-shadow:0 0 0 2px color-mix(in srgb, var(--c) 30%, transparent);}
+  .cmp-camp-resumen{display:flex; gap:10px; flex-wrap:wrap; align-items:stretch; margin-bottom:12px; padding:12px 14px; border-radius:10px; background:linear-gradient(110deg, color-mix(in srgb, var(--c) 14%, #fff), #fff 70%); border:1px solid color-mix(in srgb, var(--c) 35%, #fff); animation:regEntra .25s both;}
+  .cmp-camp-resumen .tit{flex:1 1 220px;} .cmp-camp-resumen .tit b{display:block; font-family:var(--mono); color:var(--c); font-size:15px;} .cmp-camp-resumen .tit span{font-size:12px; color:var(--ink-soft);}
+  .cmp-camp-resumen .st{min-width:110px; padding:4px 12px; border-left:1px solid color-mix(in srgb, var(--c) 25%, #fff);}
+  .cmp-camp-resumen .st b{display:block; font-family:var(--mono); font-size:17px; color:var(--ink);} .cmp-camp-resumen .st span{font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft);}
+  .cmp-asignar{display:flex; gap:14px; align-items:center; flex-wrap:wrap; padding:12px 14px; margin-bottom:12px; border-radius:12px; color:#fff; background:linear-gradient(120deg, #2E5F8A, #23496b); box-shadow:0 6px 18px rgba(35,73,107,.25); animation:cmpBaja .25s both;}
+  @keyframes cmpBaja{from{opacity:0; transform:translateY(-8px);} to{opacity:1; transform:none;}}
+  .cmp-asig-cuenta{display:flex; gap:10px; align-items:center; min-width:0; flex:1 1 230px;}
+  .cmp-asig-cuenta .n{flex:0 0 auto; display:grid; place-items:center; width:38px; height:38px; border-radius:50%; background:#fff; color:#2E5F8A; font-family:var(--mono); font-weight:700; font-size:16px; animation:cmpLatido .3s;}
+  @keyframes cmpLatido{50%{transform:scale(1.15);}}
+  .cmp-asig-cuenta b{font-size:12.5px;}
+  .cmp-asig-lista{display:flex; flex-wrap:wrap; gap:4px; margin-top:4px;}
+  .cmp-asig-lista span{font-family:var(--mono); font-size:10.5px; padding:1px 7px; border-radius:999px; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.25);}
+  .cmp-asig-flecha{font-size:20px; opacity:.6;}
+  .cmp-asig-destino{display:flex; flex-direction:column; gap:5px; flex:2 1 320px; min-width:0;}
+  .cmp-asig-destino .t{font-size:10.5px; text-transform:uppercase; letter-spacing:.07em; opacity:.8;}
+  .cmp-asig-recientes{display:flex; flex-wrap:wrap; gap:6px;}
+  .cmp-asig-recientes button{display:flex; align-items:center; gap:6px; padding:5px 10px; border-radius:8px; border:1px solid rgba(255,255,255,.35); background:rgba(255,255,255,.1); color:#fff; cursor:pointer; font:inherit; font-size:11.5px; transition:background .15s;}
+  .cmp-asig-recientes button::before{content:""; width:8px; height:8px; border-radius:50%; background:var(--c); box-shadow:0 0 0 2px #fff;}
+  .cmp-asig-recientes button b{font-family:var(--mono);}
+  .cmp-asig-recientes button:hover{background:rgba(255,255,255,.22);}
+  .cmp-asig-recientes button.elegida{background:#fff; color:#1B2430; border-color:#fff;}
+  .cmp-asignar select{width:auto; max-width:100%; padding:5px 8px; border-radius:8px; border:1px solid rgba(255,255,255,.4); background:rgba(255,255,255,.95); color:#1B2430; font-size:12px;}
+  .cmp-asig-acc{display:flex; gap:8px; align-items:center; margin-left:auto;}
+  .cmp-asig-btn{padding:9px 18px; border:none; border-radius:8px; background:#fff; color:#2E5F8A; font-weight:700; font-size:13px; cursor:pointer; transition:transform .12s, box-shadow .12s; white-space:nowrap;}
+  .cmp-asig-btn:not(:disabled):hover{transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.2);}
+  .cmp-asig-btn:disabled{opacity:.5; cursor:not-allowed;}
+  .cmp-asig-x{width:30px; height:30px; border-radius:50%; border:1px solid rgba(255,255,255,.4); background:transparent; color:#fff; cursor:pointer;}
+  .cmp-asig-x:hover{background:rgba(255,255,255,.15);}
+  #cmp-cargas-tabla input[type=checkbox]{accent-color:var(--blue); width:16px; height:16px;}
+  #cmp-cargas-body tr.cmp-marcada td{background:#eef4fb;}
+  #cmp-cargas-body tr.cmp-marcada td:first-child{box-shadow:inset 3px 0 0 var(--blue);}
+  .cmp-camp-chip{display:inline-flex; align-items:center; gap:4px; margin:1px 4px 1px 0; padding:1px 3px 1px 7px; border-radius:999px; background:color-mix(in srgb, var(--c) 11%, #fff); border:1px solid color-mix(in srgb, var(--c) 45%, #fff); color:var(--c); font-family:var(--mono); font-size:11px; font-weight:600;}
+  .cmp-camp-chip::before{content:""; width:6px; height:6px; border-radius:50%; background:var(--c);}
+  .cmp-camp-chip.nuevo{animation:cmpPop .6s;}
+  @keyframes cmpPop{0%{transform:scale(.4); opacity:0;} 60%{transform:scale(1.15);} 100%{transform:none;}}
+  .cmp-camp-chip button{border:none; background:none; cursor:pointer; color:inherit; opacity:.55; font-size:10px; padding:0 4px;}
+  .cmp-camp-chip button:hover{opacity:1; color:#a5441a;}
+  .cmp-sin-camp{font-size:11px; color:var(--ink-soft); font-style:italic;}
   #cmp-cargas-head .flecha{display:inline-block; width:1em; text-align:center;}
   .cmp-pager{display:flex; align-items:center; gap:10px; justify-content:flex-end; flex-wrap:wrap; margin-top:8px; font-size:12px; color:var(--ink-soft);}
   .cmp-pager b{font-family:var(--mono); color:var(--ink);}
@@ -1957,15 +1997,20 @@
   </div>
   <div class="panel" id="cmp-cargas-panel" style="margin-bottom:14px;">
     <h3><span>Cargas de compras guardadas</span><button class="btn btn-primary btn-sm" id="btn-cmp-nueva" type="button" style="margin-left:auto; margin-right:8px; text-transform:none; letter-spacing:0;">🛒 ＋ Nueva carga</button></h3>
-    <div class="cmp-camp-barra">
-      <label>Ver <select id="cmp-filtro-camp"><option value="">Todas las cargas</option></select></label>
-      <span id="cmp-camp-resumen"></span>
-    </div>
+    <div class="cmp-grupos" id="cmp-grupos" role="tablist" aria-label="Ver cargas por campaña"></div>
+    <div class="cmp-camp-resumen" id="cmp-camp-resumen" style="display:none;"></div>
     <div class="cmp-asignar" id="cmp-asignar" style="display:none;">
-      <span id="cmp-sel-n"></span>
-      <select id="cmp-asignar-camp"><option value="">— Elige la campaña —</option></select>
-      <button type="button" class="btn btn-primary btn-sm" id="btn-cmp-asignar">🔗 Asignar a campaña</button>
-      <button type="button" class="btn btn-sm btn-ghost" id="btn-cmp-sel-limpiar">Quitar selección</button>
+      <div class="cmp-asig-cuenta"><span class="n" id="cmp-sel-cuenta">0</span><div><b>carga(s) seleccionada(s)</b><div class="cmp-asig-lista" id="cmp-sel-n"></div></div></div>
+      <div class="cmp-asig-flecha" aria-hidden="true">➜</div>
+      <div class="cmp-asig-destino">
+        <span class="t">Asignar a la campaña</span>
+        <div class="cmp-asig-recientes" id="cmp-asig-recientes"></div>
+        <select id="cmp-asignar-camp"><option value="">Otra campaña…</option></select>
+      </div>
+      <div class="cmp-asig-acc">
+        <button type="button" class="cmp-asig-btn" id="btn-cmp-asignar" disabled>🔗 Asignar</button>
+        <button type="button" class="cmp-asig-x" id="btn-cmp-sel-limpiar" title="Quitar selección">✕</button>
+      </div>
     </div>
     <div class="hist-wrap">
       <table class="reg-tabla sin-anim" id="cmp-cargas-tabla"><colgroup><col style="width:4%"><col style="width:9%"><col style="width:16%"><col style="width:16%"><col style="width:12%"><col style="width:10%"><col style="width:6%"><col style="width:8%"><col style="width:9%"><col style="width:10%"></colgroup><thead id="cmp-cargas-head"></thead><tbody id="cmp-cargas-body"></tbody></table>
@@ -3021,8 +3066,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v167';
-const APP_UPDATED = '14/10/2026 12:00';
+const APP_VERSION = 'v168';
+const APP_UPDATED = '14/10/2026 13:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -8960,29 +9005,60 @@ function cmpCargasFiltradas(){
   if(cmpFiltroCamp === '__SIN') return cmpCargas.filter(c=> !(c.campanas || []).length);
   return cmpCargas.filter(c=> (c.campanas || []).includes(cmpFiltroCamp));
 }
+// Color fijo por campaña (el mismo en tarjetas, etiquetas y accesos rápidos).
+function cmpColorCamp(k){ let h = 0; for(const ch of String(k)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return 'cmp-c' + (h % 8); }
+const cmpSoles = n=> (Number(n) || 0).toLocaleString('es-PE', { minimumFractionDigits:2, maximumFractionDigits:2 });
+let cmpRecien = null;          // { camp, cargas, hasta }: etiquetas recién asignadas (animación)
 function cmpRenderCampanas(filtradas){
   const activas = campRegAllCache.filter(r=> (r.estado || 'ACTIVO') === 'ACTIVO');
-  const usadas = new Map();
-  cmpCargas.forEach(c=> (c.campanas || []).forEach(k=> usadas.set(k, (usadas.get(k) || 0) + 1)));
-  const nombre = k=>{ const r = campRegAllCache.find(x=> x.correlativo === k); return r ? `${k} — ${r.campana || ''}` : k; };
+  const grupos = new Map();
+  cmpCargas.forEach(c=> (c.campanas || []).forEach(k=>{ const g = grupos.get(k) || { n:0, costo:0 }; g.n++; g.costo += Number(c.costo_total) || 0; grupos.set(k, g); }));
+  const reg = k=> campRegAllCache.find(x=> x.correlativo === k);
   const sin = cmpCargas.filter(c=> !(c.campanas || []).length).length;
-  const f = $('cmp-filtro-camp');
-  const claves = [...new Set([...usadas.keys(), ...(cmpFiltroCamp && cmpFiltroCamp !== '__SIN' ? [cmpFiltroCamp] : [])])].sort().reverse();
-  f.innerHTML = `<option value="">Todas las cargas (${esc(cmpCargas.length)})</option><option value="__SIN">Sin campaña (${esc(sin)})</option>` +
-    claves.map(k=> `<option value="${esc(k)}">${esc(nombre(k))} (${esc(usadas.get(k) || 0)})</option>`).join('');
-  f.value = cmpFiltroCamp;
-  const a = $('cmp-asignar-camp'), prev = a.value;
-  a.innerHTML = '<option value="">— Elige la campaña —</option>' + activas.map(r=> `<option value="${esc(r.correlativo)}">${esc(r.correlativo)} — ${esc(r.campana || '')}</option>`).join('');
-  a.value = activas.some(r=> r.correlativo === prev) ? prev : '';
+  if(cmpFiltroCamp && cmpFiltroCamp !== '__SIN' && !grupos.has(cmpFiltroCamp)) grupos.set(cmpFiltroCamp, { n:0, costo:0 });
+  // Tarjetas para ver por campaña
+  const tarjeta = (val, cls, html, titulo)=> `<button type="button" role="tab" class="cmp-grupo ${cls}${cmpFiltroCamp === val ? ' activo' : ''}" data-cmp-filtro="${esc(val)}" aria-selected="${cmpFiltroCamp === val}" title="${esc(titulo)}">${html}</button>`;
+  $('cmp-grupos').innerHTML =
+    tarjeta('', 'cmp-neutro', `<span class="k">🛒 Todas</span><span class="cnt"><b>${esc(cmpCargas.length)}</b> carga(s)</span>`, 'Ver todas las cargas') +
+    tarjeta('__SIN', 'cmp-neutro sin', `<span class="k">◌ Sin campaña</span><span class="cnt"><b>${esc(sin)}</b> carga(s)</span>`, 'Cargas que aún no tienen campaña') +
+    [...grupos.keys()].sort().reverse().map(k=>{ const g = grupos.get(k), r = reg(k);
+      return tarjeta(k, cmpColorCamp(k), `<span class="k">${esc(k)}</span><span class="nom">${esc(r ? r.campana || '' : 'Campaña')}</span><span class="cnt"><b>${esc(g.n)}</b> carga(s) · S/ ${esc(cmpSoles(g.costo))}</span>`, `Ver las cargas de ${k}`); }).join('');
+  // Resumen de la campaña elegida
+  const res = $('cmp-camp-resumen');
   if(cmpFiltroCamp && cmpFiltroCamp !== '__SIN'){
+    const r = reg(cmpFiltroCamp);
     const u = filtradas.reduce((t, c)=> t + (Number(c.unidades_validadas) || 0), 0), costo = filtradas.reduce((t, c)=> t + (Number(c.costo_total) || 0), 0);
-    $('cmp-camp-resumen').innerHTML = `<b>${esc(cmpFiltroCamp)}</b>: <b>${esc(filtradas.length)}</b> carga(s) · <b>${esc(anFmt(u))}</b> unid. validadas · S/ <b>${esc(costo.toLocaleString('es-PE', { minimumFractionDigits:2, maximumFractionDigits:2 }))}</b>`;
-  }else $('cmp-camp-resumen').innerHTML = '';
+    res.className = 'cmp-camp-resumen ' + cmpColorCamp(cmpFiltroCamp);
+    res.innerHTML = `<div class="tit"><b>${esc(cmpFiltroCamp)}</b><span>${esc(r ? `${r.campana || ''}${r.fecha_transaccion ? ' · ' + r.fecha_transaccion.split('-').reverse().join('/') : ''}` : '')}</span></div>` +
+      `<div class="st"><b>${esc(filtradas.length)}</b><span>Cargas</span></div><div class="st"><b>${esc(anFmt(u))}</b><span>Unid. validadas</span></div><div class="st"><b>S/ ${esc(cmpSoles(costo))}</b><span>Costo</span></div>`;
+    res.style.display = 'flex';
+  }else{ res.style.display = 'none'; res.innerHTML = ''; }
+  // Barra para asignar
   [...cmpSel].forEach(k=> { if(!cmpCargas.some(c=> c.correlativo === k)) cmpSel.delete(k); });
-  $('cmp-asignar').style.display = cmpSel.size ? 'flex' : 'none';
-  $('cmp-sel-n').innerHTML = `<b>${esc(cmpSel.size)}</b> carga(s) seleccionada(s): ${esc([...cmpSel].sort().join(', '))}`;
+  const barra = $('cmp-asignar'), mostrar = cmpSel.size > 0;
+  if(mostrar && barra.style.display === 'none') barra.style.animation = 'none', barra.offsetWidth, barra.style.animation = '';
+  barra.style.display = mostrar ? 'flex' : 'none';
+  if(!mostrar) return;
+  const nSel = $('cmp-sel-cuenta');
+  if(nSel.textContent !== String(cmpSel.size)){ nSel.textContent = cmpSel.size; nSel.style.animation = 'none'; nSel.offsetWidth; nSel.style.animation = ''; }
+  const sel = [...cmpSel].sort();
+  $('cmp-sel-n').innerHTML = sel.slice(0, 8).map(k=> `<span>${esc(k)}</span>`).join('') + (sel.length > 8 ? `<span>+${esc(sel.length - 8)}</span>` : '');
+  const a = $('cmp-asignar-camp'), prev = a.value;
+  const recientes = activas.slice().sort((x, y)=> String(y.correlativo).localeCompare(String(x.correlativo))).slice(0, 4);
+  $('cmp-asig-recientes').innerHTML = recientes.map(r=> `<button type="button" class="${cmpColorCamp(r.correlativo)}${prev === r.correlativo ? ' elegida' : ''}" data-cmp-asig-pick="${esc(r.correlativo)}" title="${esc(r.correlativo)} — ${esc(r.campana || '')}"><b>${esc(r.correlativo)}</b> ${esc(r.campana || '')}</button>`).join('');
+  a.innerHTML = '<option value="">Otra campaña…</option>' + activas.map(r=> `<option value="${esc(r.correlativo)}">${esc(r.correlativo)} — ${esc(r.campana || '')}</option>`).join('');
+  a.value = activas.some(r=> r.correlativo === prev) ? prev : '';
+  cmpBotonAsignar();
 }
-$('cmp-filtro-camp').addEventListener('change', e=>{ cmpFiltroCamp = e.target.value; cmpCargasPag = 0; renderListaCompras(); });
+function cmpBotonAsignar(){
+  const camp = $('cmp-asignar-camp').value, b = $('btn-cmp-asignar');
+  b.disabled = !camp;
+  b.textContent = camp ? `🔗 Asignar ${cmpSel.size} a ${camp}` : '🔗 Elige una campaña';
+  document.querySelectorAll('#cmp-asig-recientes [data-cmp-asig-pick]').forEach(x=> x.classList.toggle('elegida', x.dataset.cmpAsigPick === camp));
+}
+$('cmp-grupos').addEventListener('click', e=>{ const g = e.target.closest('[data-cmp-filtro]'); if(!g) return; cmpFiltroCamp = g.dataset.cmpFiltro; cmpCargasPag = 0; renderListaCompras(); });
+$('cmp-asig-recientes').addEventListener('click', e=>{ const b = e.target.closest('[data-cmp-asig-pick]'); if(!b) return; $('cmp-asignar-camp').value = b.dataset.cmpAsigPick; cmpBotonAsignar(); });
+$('cmp-asignar-camp').addEventListener('change', cmpBotonAsignar);
 $('cmp-cargas-head').addEventListener('change', e=>{
   if(e.target.id !== 'cmp-sel-todas') return;
   cmpCargasFiltradas().forEach(c=> e.target.checked ? cmpSel.add(c.correlativo) : cmpSel.delete(c.correlativo));
@@ -9005,7 +9081,8 @@ $('btn-cmp-asignar').addEventListener('click', async ()=>{
     await batch.commit();
     cargas.forEach(k=>{ const c = cmpCargas.find(x=> x.correlativo === k); if(c && !(c.campanas || []).includes(camp)) c.campanas = (c.campanas || []).concat(camp); });
     await logAccion('compras_campana_asignada', {detalle:`${cargas.join(', ')} → ${camp}`});
-    cmpSel.clear();
+    cmpSel.clear(); $('cmp-asignar-camp').value = '';
+    cmpRecien = { camp, cargas: new Set(cargas), hasta: Date.now() + 1500 };
     showMsg('cmp-msg','ok', `${cargas.length} carga(s) asignada(s) a ${camp}: ${cargas.join(', ')}.`);
     showToast(`Asignadas a ${camp}`, 'ok');
     renderListaCompras();
@@ -9027,12 +9104,15 @@ async function cmpQuitarCampana(carga, camp){
 function renderListaCompras(){
   const filtradas = cmpCargasFiltradas();
   const todasSel = filtradas.length > 0 && filtradas.every(c=> cmpSel.has(c.correlativo));
+  const algunaSel = filtradas.some(c=> cmpSel.has(c.correlativo));
   $('cmp-cargas-head').innerHTML = `<tr><th><input type="checkbox" id="cmp-sel-todas" title="Seleccionar todas las cargas de la lista" ${todasSel ? 'checked' : ''}></th>` + CMP_CARGAS_COLS.map(c=>{ const act = cmpCargasOrden.k === c.k;
     return `<th data-cmp-orden="${esc(c.k)}" class="${c.num ? 'num' : ''}${act ? ' activo' : ''}" title="Ordenar por ${esc(c.t)}">${esc(c.t)} <span class="flecha">${act ? (cmpCargasOrden.dir > 0 ? '▲' : '▼') : '↕'}</span></th>`; }).join('') + '<th></th></tr>';
   const col = CMP_CARGAS_COLS.find(c=> c.k === cmpCargasOrden.k) || CMP_CARGAS_COLS[0];
   const val = c=> col.v ? col.v(c) : (col.num ? Number(c[col.k]) || 0 : String(c[col.k] || ''));
   const ordenadas = filtradas.slice().sort((a, b)=>{ const x = val(a), y = val(b); return (typeof x === 'number' ? x - y : x.localeCompare(y)) * cmpCargasOrden.dir || b.correlativo.localeCompare(a.correlativo); });
-  $('cmp-cargas-vacio').style.display = cmpCargas.length || !cmpCargasLeidas ? 'none' : 'block';
+  $('cmp-cargas-vacio').style.display = filtradas.length || !cmpCargasLeidas ? 'none' : 'block';
+  $('cmp-cargas-vacio').textContent = !cmpCargas.length ? 'Aún no hay cargas de compras guardadas.' : (cmpFiltroCamp === '__SIN' ? '🎉 Todas las cargas ya tienen campaña.' : 'Esta campaña aún no tiene cargas asignadas.');
+  $('cmp-sel-todas').indeterminate = algunaSel && !todasSel;
   const puedeEliminar = currentPermisos.admin || currentPermisos.eliminar;
   const paginas = Math.max(1, Math.ceil(filtradas.length / CMP_CARGAS_POR_PAG));
   cmpCargasPag = Math.min(Math.max(0, cmpCargasPag), paginas - 1);
@@ -9043,9 +9123,10 @@ function renderListaCompras(){
   const nombreCamp = corr=>{ const r = campRegAllCache.find(x=> x.correlativo === corr); return r ? `${corr} — ${r.campana || ''}` : corr; };
   $('cmp-cargas-body').innerHTML = ordenadas.slice(desde, desde + CMP_CARGAS_POR_PAG).map((c, i)=>{
     const f = c.guardado_en && c.guardado_en.toDate ? c.guardado_en.toDate().toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }) : '';
-    const camps = (c.campanas || []).slice().sort().map(k=> `<span class="cmp-camp-chip" title="${esc(nombreCamp(k))}">${esc(k)}<button type="button" data-cmp-quitar-camp="${esc(k)}" data-cmp-carga="${esc(c.correlativo)}" title="Quitar ${esc(c.correlativo)} de ${esc(k)}">✕</button></span>`).join('');
-    return `<tr class="${cmpCarga === c.correlativo ? 'reg-sel' : ''}"><td><input type="checkbox" data-cmp-sel="${esc(c.correlativo)}" ${cmpSel.has(c.correlativo) ? 'checked' : ''}></td><td><b>${esc(c.correlativo)}</b></td><td title="${esc(c.nota || '')}">${esc(c.nota || '—')}</td>` +
-      `<td class="cmp-camps">${camps || '<span style="color:var(--ink-soft);">—</span>'}</td>` +
+    const recien = cmpRecien && cmpRecien.hasta > Date.now() && cmpRecien.cargas.has(c.correlativo) ? cmpRecien.camp : '';
+    const camps = (c.campanas || []).slice().sort().map(k=> `<span class="cmp-camp-chip ${cmpColorCamp(k)}${k === recien ? ' nuevo' : ''}" title="${esc(nombreCamp(k))}">${esc(k)}<button type="button" data-cmp-quitar-camp="${esc(k)}" data-cmp-carga="${esc(c.correlativo)}" title="Quitar ${esc(c.correlativo)} de ${esc(k)}">✕</button></span>`).join('');
+    return `<tr class="${cmpCarga === c.correlativo ? 'reg-sel' : ''}${cmpSel.has(c.correlativo) ? ' cmp-marcada' : ''}"><td><input type="checkbox" data-cmp-sel="${esc(c.correlativo)}" ${cmpSel.has(c.correlativo) ? 'checked' : ''}></td><td><b>${esc(c.correlativo)}</b></td><td title="${esc(c.nota || '')}">${esc(c.nota || '—')}</td>` +
+      `<td class="cmp-camps">${camps || '<span class="cmp-sin-camp">Sin campaña</span>'}</td>` +
       `<td>${esc(f)}</td><td title="${esc(c.guardado_por || '')}">${esc(c.guardado_por || '')}</td><td class="num">${esc(anFmt(c.filas))}</td><td class="num">${esc(anFmt(c.unidades_validadas))}</td>` +
       `<td class="num">${esc(Number(c.costo_total||0).toLocaleString('es-PE', { minimumFractionDigits:2, maximumFractionDigits:2 }))}</td>` +
       `<td class="reg-acc"><button class="btn btn-sm" data-cmp-abrir="${esc(c.correlativo)}">Abrir</button>${puedeEliminar ? ` <button class="btn btn-sm btn-ghost" data-cmp-eliminar="${esc(c.correlativo)}" title="Eliminar carga">🗑</button>` : ''}</td></tr>`;
