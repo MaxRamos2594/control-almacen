@@ -157,6 +157,17 @@ const tsv = filas=> filas.map(f=> f.map(c=> /[\t\n"]/.test(c) ? '"' + c.replace(
   await page.click('#btn-cmp-guardar');
   await page.waitForFunction(()=> /Guardado! COM-00004 — 23/.test($('cmp-msg').textContent), null, { timeout: 20000 });
 
+  // 8b. "Nueva carga" está en el panel de cargas guardadas y la lista no parpadea al volver a Compras
+  const ubic = await page.evaluate(()=> ({ panel: $('btn-cmp-nueva').closest('.panel').id, texto: $('btn-cmp-nueva').innerText }));
+  verificar(ubic.panel === 'cmp-cargas-panel' && /🛒/.test(ubic.texto) && /Nueva carga/.test(ubic.texto), `"Nueva carga" con ícono en "Cargas de compras guardadas" (${ubic.texto})`);
+  await page.click('#campsub-cargar-guia');
+  await page.evaluate(()=>{ window.__mut = 0; window.__vacio = false; const b = $('cmp-cargas-body');
+    new MutationObserver(()=>{ window.__mut++; if(!b.children.length || getComputedStyle($('cmp-cargas-vacio')).display !== 'none') window.__vacio = true; }).observe(b, { childList: true }); });
+  await page.click('#campsub-compras');
+  await page.waitForTimeout(1500);
+  const fl = await page.evaluate(()=> ({ mut: window.__mut, vacio: window.__vacio, anim: getComputedStyle(document.querySelector('#cmp-cargas-body tr')).animationName, filas: document.querySelectorAll('#cmp-cargas-body tr').length }));
+  verificar(fl.mut <= 1 && !fl.vacio && fl.anim === 'none' && fl.filas > 0, `Al volver de Guía a Compras la lista no parpadea (${fl.mut} redibujo, sin animación ni lista vacía)`);
+
   // 9. Lista de cargas de 5 en 5, las últimas primero
   await page.evaluate(async ()=>{
     for(const c of ['COM-00010','COM-00011','COM-00012']) await comprasCargasRef.doc(c).set({ correlativo:c, nota:'X', filas:1, unidades_validadas:1, costo_total:1, estado:'ACTIVO' });
