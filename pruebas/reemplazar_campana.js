@@ -30,14 +30,39 @@ function verificar(condicion, texto){
     campParsedRows = filas.map(([participante, sku, cantidad])=> ({ codigo, campana:'CAMPAÑA 08-10 V2', participante, sku, producto:'P '+sku, area:'1-P-1', cantidad, desglose:'' }));
     $('camp-preview-wrap').style.display = 'block';
     await prepararModoCampana(codigo);
+    for(let i = 0; i < 50 && /^Comparando/.test($('camp-reemplazar-hint').textContent); i++) await new Promise(r=> setTimeout(r, 100));
     return { modo: modoCampana(), sel: $('camp-reemplazar-select').value, boton: $('btn-guardar-campana').textContent, hint: $('camp-reemplazar-hint').textContent,
       msg: $('camp-msg').textContent, opciones: $('camp-reemplazar-select').options.length - 1 };
   }, [codigo, filas]);
 
-  // 1. Mismo código ya cargado: se sugiere reemplazar esa campaña
-  let r = await leerPdf('CAMP-1', [['ATE','S1',50],['PIURA','S3',7]]);
-  verificar(r.modo === 'reemplazar' && r.sel === 'REG-00046' && r.boton === 'Reemplazar REG-00046', `Mismo código CAMP-1: queda elegido "Reemplazar REG-00046" (${r.modo}, ${r.boton})`);
-  verificar(/ya hay una campaña activa con el código CAMP-1/i.test(r.msg) && /3 filas de REG-00046 por las 2/.test(r.hint) && /siguen asociados/.test(r.hint), `Avisa y explica: "${r.hint}"`);
+  // A. Cargar por partes: mismo código → "Adicionar" (solo lo nuevo)
+  let r = await leerPdf('CAMP-1', [['ATE','S1',10],['ATE','S2',5],['COMAS','S1',8]]);
+  verificar(r.modo === 'adicionar' && r.sel === 'REG-00046' && /No hay nada nuevo/.test(r.hint) && r.boton === 'Nada que adicionar', `Mismo código y mismas filas: "Adicionar" elegido y avisa "${r.hint}"`);
+  const nada = await page.evaluate(async ()=>{ $('camp-fecha-transaccion').value = '2026-10-09'; $('btn-guardar-campana').click(); await new Promise(r=> setTimeout(r, 800));
+    return { msg: $('camp-msg').textContent, filas: (await campanaItemsRef.where('correlativo','==','REG-00046').get()).size }; });
+  verificar(/No se adicionó nada/.test(nada.msg) && nada.filas === 3, `Sin códigos nuevos no carga nada: "${nada.msg}" (${nada.filas} filas)`);
+  r = await leerPdf('CAMP-1', [['ATE','S1',10],['ATE','S2',5],['Comas','S1',9],['PIURA','S3',7],['ATE','S4',2],['ATE','S4',2]]);
+  verificar(r.modo === 'adicionar' && /Se agregarán 2 fila\(s\) nueva\(s\) a REG-00046/.test(r.hint) && /3 ya estaban/.test(r.hint) && /1 con otra cantidad/.test(r.hint) && r.boton === 'Adicionar 2 fila(s) a REG-00046',
+    `Con filas nuevas: "${r.hint}"`);
+  await page.evaluate(()=>{ $('camp-fecha-transaccion').value = '2026-10-09'; $('btn-guardar-campana').click(); });
+  await page.waitForFunction(()=> /Adicionado|Error/.test($('camp-msg').textContent), null, { timeout: 30000 });
+  const ad = await page.evaluate(async ()=>{
+    const filas = (await campanaItemsRef.where('correlativo','==','REG-00046').get()).docs.map(d=> d.data()).map(f=> `${f.participante}/${f.sku}:${f.cantidad}`).sort();
+    const cab = (await campanaRegistrosRef.doc('REG-00046').get()).data();
+    const log = (await movimientosRef.get()).docs.map(d=> d.data()).some(m=> m.tipo === 'campana_pdf_adicionada');
+    return { msg: $('camp-msg').textContent, filas, cab, log, cabeceras: (await campanaRegistrosRef.get()).size };
+  });
+  verificar(/Adicionado! REG-00046 — 2 fila\(s\) nueva\(s\); 3 ya estaban/.test(ad.msg) && ad.filas.join(',') === 'ATE/S1:10,ATE/S2:5,ATE/S4:2,COMAS/S1:8,PIURA/S3:7',
+    `Se agregan solo las nuevas a la misma campaña, sin tocar las que ya estaban: ${ad.filas.join(', ')}`);
+  verificar(ad.cab.total_filas === 5 && ad.cab.participantes_lista.join(',') === 'ATE,COMAS,PIURA' && ad.cab.adiciones === 1 && ad.cabeceras === 1 && ad.log,
+    `Cabecera actualizada (${ad.cab.total_filas} filas, tiendas ${ad.cab.participantes_lista.join(', ')}), sin crear otra campaña; bitácora`);
+
+  // 1. Mismo código ya cargado y se elige "Reemplazar"
+  r = await leerPdf('CAMP-1', [['ATE','S1',50],['PIURA','S3',7]]);
+  r = await page.evaluate(()=>{ document.querySelector('input[name="camp-modo"][value="reemplazar"]').checked = true; actualizarModoCampana();
+    return { modo: modoCampana(), sel: $('camp-reemplazar-select').value, boton: $('btn-guardar-campana').textContent, hint: $('camp-reemplazar-hint').textContent }; });
+  verificar(r.modo === 'reemplazar' && r.sel === 'REG-00046' && r.boton === 'Reemplazar REG-00046', `Eligiendo "Reemplazar": "Reemplazar REG-00046" (${r.modo}, ${r.boton})`);
+  verificar(/5 filas de REG-00046 por las 2/.test(r.hint) && /siguen asociados/.test(r.hint), `Explica: "${r.hint}"`);
 
   // 2. Sin permiso de eliminar: no deja reemplazar
   const sinPermiso = await page.evaluate(async ()=>{
@@ -50,7 +75,7 @@ function verificar(condicion, texto){
     currentPermisos = antes; actualizarModoCampana();
     return res;
   });
-  verificar(/permiso de eliminar/.test(sinPermiso.hint) && /permiso de eliminar/.test(sinPermiso.msg) && sinPermiso.filas === 3, `Sin permiso de eliminar no reemplaza (${sinPermiso.filas} filas intactas)`);
+  verificar(/permiso de eliminar/.test(sinPermiso.hint) && /permiso de eliminar/.test(sinPermiso.msg) && sinPermiso.filas === 5, `Sin permiso de eliminar no reemplaza (${sinPermiso.filas} filas intactas)`);
 
   // 3. Reemplazar
   await page.evaluate(()=> $('btn-guardar-campana').click());
@@ -63,7 +88,7 @@ function verificar(condicion, texto){
     const log = (await movimientosRef.get()).docs.map(d=> d.data()).find(m=> m.tipo === 'campana_pdf_reemplazada' || m.accion === 'campana_pdf_reemplazada');
     return { msg: $('camp-msg').textContent, filas, cab, cabeceras, guia, log: !!log, preview: $('camp-preview-wrap').style.display };
   });
-  verificar(/Reemplazada! REG-00046 — 3 filas anteriores reemplazadas por 2/.test(fin.msg), `Mensaje: "${fin.msg}"`);
+  verificar(/Reemplazada! REG-00046 — 5 filas anteriores reemplazadas por 2/.test(fin.msg), `Mensaje: "${fin.msg}"`);
   verificar(fin.filas.join(',') === 'ATE/S1:50,PIURA/S3:7', `Quedan solo las filas del PDF nuevo: ${fin.filas.join(', ')}`);
   verificar(fin.cab.estado === 'ACTIVO' && fin.cab.total_filas === 2 && fin.cab.participantes_lista.join(',') === 'ATE,PIURA' && fin.cab.campana === 'CAMPAÑA 08-10 V2' && fin.cab.fecha_transaccion === '2026-10-09' && fin.cab.reemplazos === 1,
     `Cabecera actualizada con el mismo correlativo (${fin.cab.total_filas} filas, tiendas ${fin.cab.participantes_lista.join(', ')}, reemplazos ${fin.cab.reemplazos})`);

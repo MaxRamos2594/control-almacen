@@ -1890,6 +1890,7 @@
         <label>Guardar como</label>
         <div style="display:flex; gap:16px; flex-wrap:wrap; margin:4px 0 6px;">
           <label style="display:flex; align-items:center; gap:5px; font-weight:400;"><input type="radio" name="camp-modo" value="nueva" checked style="width:auto;"> Campaña nueva</label>
+          <label style="display:flex; align-items:center; gap:5px; font-weight:400;"><input type="radio" name="camp-modo" value="adicionar" style="width:auto;"> Adicionar a una campaña ya cargada (solo lo nuevo)</label>
           <label style="display:flex; align-items:center; gap:5px; font-weight:400;"><input type="radio" name="camp-modo" value="reemplazar" style="width:auto;"> Reemplazar una campaña ya cargada</label>
         </div>
         <select id="camp-reemplazar-select" style="display:none;"><option value="">— Elige la campaña a reemplazar —</option></select>
@@ -2985,8 +2986,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v164';
-const APP_UPDATED = '13/10/2026 19:00';
+const APP_VERSION = 'v165';
+const APP_UPDATED = '14/10/2026 10:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -8290,6 +8291,7 @@ $('btn-guardar-campana').addEventListener('click', async ()=>{
   const fecha = $('camp-fecha-transaccion').value;
   if(!fecha){ showMsg('camp-msg','err','Ingresa la fecha de transacción — es obligatoria.'); $('camp-fecha-transaccion').focus(); return; }
   if(modoCampana() === 'reemplazar'){ await reemplazarCampana(fecha); return; }
+  if(modoCampana() === 'adicionar'){ await adicionarACampana(fecha); return; }
   $('btn-guardar-campana').disabled = true;
   showMsg('camp-msg','ok','Guardando en la base de datos…');
   try{
@@ -8350,8 +8352,55 @@ $('btn-guardar-campana').addEventListener('click', async ()=>{
 // ella siguen asociados. Requiere permiso de eliminar (se borran sus filas).
 function modoCampana(){ const r = document.querySelector('input[name="camp-modo"]:checked'); return r ? r.value : 'nueva'; }
 function puedeReemplazarCampana(){ return !!(currentPermisos.admin || currentPermisos.eliminar); }
+// -------- Adicionar por partes --------
+// Compara el PDF con lo ya guardado en la campaña por participante + SKU y
+// devuelve solo las filas nuevas (las que ya estaban no se tocan).
+const claveRepartoFila = r=> claveParticipante(r.participante) + '|' + claveSku(r.sku);
+let campAdicion = { corr:null, filas:null, cargando:false };
+async function compararConCampana(corr){
+  let existentes = campRegCache[corr];
+  if(!existentes){
+    const snap = await campanaItemsRef.where('correlativo','==',corr).limit(5000).get();
+    existentes = snap.docs.map(d=> d.data());
+    campRegCache[corr] = existentes;
+  }
+  const yaGuardadas = new Map(existentes.map(r=> [claveRepartoFila(r), r]));
+  const vistas = new Set(), nuevas = [];
+  let yaEstaban = 0, distintas = 0;
+  campParsedRows.forEach(r=>{
+    const k = claveRepartoFila(r);
+    const prev = yaGuardadas.get(k);
+    if(prev){ yaEstaban++; if(Number(prev.cantidad) !== Number(r.cantidad)) distintas++; return; }
+    if(vistas.has(k)) return;
+    vistas.add(k); nuevas.push(r);
+  });
+  return { nuevas, yaEstaban, distintas, existentes };
+}
+async function previsualizarAdicion(){
+  const corr = $('camp-reemplazar-select').value;
+  if(modoCampana() !== 'adicionar' || !corr) return;
+  campAdicion = { corr, filas:null, cargando:true };
+  $('camp-reemplazar-hint').textContent = `Comparando con ${corr}…`;
+  try{
+    const r = await compararConCampana(corr);
+    if(campAdicion.corr !== corr || modoCampana() !== 'adicionar') return;
+    campAdicion = { corr, filas: r, cargando:false };
+    $('camp-reemplazar-hint').textContent = r.nuevas.length
+      ? `Se agregarán ${anFmt(r.nuevas.length)} fila(s) nueva(s) a ${corr} (participante + SKU que aún no estaban). ${anFmt(r.yaEstaban)} ya estaban y no se tocan${r.distintas ? ` (${anFmt(r.distintas)} con otra cantidad: no se cambian)` : ''}.`
+      : `No hay nada nuevo: las ${anFmt(r.yaEstaban)} filas de este PDF ya están en ${corr}. No se cargará nada.`;
+    $('btn-guardar-campana').textContent = r.nuevas.length ? `Adicionar ${anFmt(r.nuevas.length)} fila(s) a ${corr}` : 'Nada que adicionar';
+  }catch(err){ console.error(err); $('camp-reemplazar-hint').textContent = 'No se pudo comparar: ' + err.message; }
+}
 function actualizarModoCampana(){
-  const reemplazar = modoCampana() === 'reemplazar';
+  const modo = modoCampana();
+  if(modo === 'adicionar'){
+    const sel = $('camp-reemplazar-select');
+    sel.style.display = 'block';
+    if(!sel.value){ $('camp-reemplazar-hint').textContent = 'Elige la campaña a la que se adicionan las filas nuevas.'; $('btn-guardar-campana').textContent = 'Adicionar a campaña'; return; }
+    previsualizarAdicion();
+    return;
+  }
+  const reemplazar = modo === 'reemplazar';
   const sel = $('camp-reemplazar-select');
   sel.style.display = reemplazar ? 'block' : 'none';
   const cab = reemplazar && sel.value ? campRegAllCache.find(r=> r.correlativo === sel.value) : null;
@@ -8369,17 +8418,80 @@ async function prepararModoCampana(codigoPdf){
   sel.innerHTML = '<option value="">— Elige la campaña a reemplazar —</option>' +
     activos.map(r=>`<option value="${esc(r.correlativo)}">${esc(r.correlativo)} — ${esc(r.campana||'')} · ${esc(r.codigo||'')} · ${esc(anFmt(r.total_filas))} filas (${esc(r.fecha_transaccion||'')})</option>`).join('');
   // Si ya hay una campaña activa con el mismo código, lo más probable es que
-  // este PDF la reemplace: se deja elegida y se avisa (el usuario decide).
+  // este PDF sea otra parte del mismo reparto: se elige "Adicionar" (solo lo
+  // nuevo) y se avisa; el usuario puede cambiar a Reemplazar o Campaña nueva.
   const mismo = activos.find(r=> codigoPdf && r.codigo === codigoPdf);
   if(mismo){
     sel.value = mismo.correlativo;
-    document.querySelector('input[name="camp-modo"][value="reemplazar"]').checked = true;
-    showMsg('camp-msg','err', `Ya hay una campaña activa con el código ${codigoPdf} (${mismo.correlativo}). Se eligió "Reemplazar"; si es una campaña distinta, marca "Campaña nueva".`);
+    document.querySelector('input[name="camp-modo"][value="adicionar"]').checked = true;
+    showMsg('camp-msg','ok', `Ya hay una campaña activa con el código ${codigoPdf} (${mismo.correlativo}). Se eligió "Adicionar": solo se agregan las filas nuevas.`);
   }
   actualizarModoCampana();
 }
 document.querySelectorAll('input[name="camp-modo"]').forEach(r=> r.addEventListener('change', actualizarModoCampana));
 $('camp-reemplazar-select').addEventListener('change', actualizarModoCampana);
+
+async function adicionarACampana(fecha){
+  const correlativo = $('camp-reemplazar-select').value;
+  if(!correlativo){ showMsg('camp-msg','err','Elige la campaña a la que se adicionan las filas.'); $('camp-reemplazar-select').focus(); return; }
+  $('btn-guardar-campana').disabled = true;
+  const proc = relojProceso('camp-msg');
+  try{
+    proc.paso(`Comparando con ${correlativo}…`);
+    delete campRegCache[correlativo];   // se compara contra lo último guardado
+    const { nuevas, yaEstaban, existentes } = await compararConCampana(correlativo);
+    proc.fin();
+    if(!nuevas.length){
+      showMsg('camp-msg','err', `No se adicionó nada: las ${yaEstaban} fila(s) de este PDF ya están en ${correlativo}.`);
+      showToast('Sin códigos nuevos: no se cargó nada.', 'err');
+      return;
+    }
+    const cab = campRegAllCache.find(r=> r.correlativo === correlativo) || {};
+    if(!confirm(`¿Adicionar ${nuevas.length} fila(s) nueva(s) a ${correlativo} (${cab.campana||''})?\n\n${yaEstaban} fila(s) del PDF ya estaban y no se tocan.`)) return;
+    const proc2 = relojProceso('camp-msg');
+    try{
+      for(let i = 0; i < nuevas.length; i += 400){
+        proc2.paso(`Adicionando… ${Math.min(i + 400, nuevas.length)} de ${nuevas.length}`);
+        const batch = db.batch();
+        nuevas.slice(i, i + 400).forEach(r=> batch.set(campanaItemsRef.doc(), {
+          correlativo, codigo: r.codigo, campana: r.campana, participante: r.participante,
+          sku: r.sku, producto: r.producto, area: r.area, cantidad: r.cantidad, desglose: r.desglose,
+          fecha_transaccion: fecha, adicion: true,
+          usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        }));
+        await batch.commit();
+      }
+      const todas = existentes.concat(nuevas);
+      const participantes = [...new Set(todas.map(r=> r.participante).filter(Boolean))].sort();
+      await campanaRegistrosRef.doc(correlativo).set({
+        total_filas: todas.length,
+        sku_distintos: new Set(todas.map(r=> r.sku)).size,
+        participantes: participantes.length,
+        participantes_lista: participantes,
+        adiciones: firebase.firestore.FieldValue.increment(1),
+        ultima_adicion_por: currentUserAlias,
+        ultima_adicion_en: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge:true });
+      await logAccion('campana_pdf_adicionada', {detalle:`Correlativo ${correlativo}: se adicionaron ${nuevas.length} fila(s) nuevas (${yaEstaban} ya estaban)`});
+      delete campRegCache[correlativo];
+      rotcTiendasMemo = { clave: null, tiendas: [] };
+      if(anContexto && anContexto.correlativo === correlativo){ anContexto = null; $('an-resultados').style.display = 'none'; }
+      proc2.fin();
+      showMsg('camp-msg','ok', `¡Adicionado! ${correlativo} — ${nuevas.length} fila(s) nueva(s); ${yaEstaban} ya estaban.`);
+      showToast(`Campaña ${correlativo}: +${nuevas.length} fila(s)`, 'ok');
+      campParsedRows = [];
+      $('camp-preview-wrap').style.display = 'none';
+      $('camp-pdf-input').value = '';
+      $('camp-reg-filtro-estado').value = 'ACTIVO';
+      cargarRegistrosCampana(true);
+    }catch(err){ proc2.fin(); throw err; }
+  }catch(err){
+    console.error(err); proc.fin();
+    showMsg('camp-msg','err','Error al adicionar: '+err.message);
+  }finally{
+    $('btn-guardar-campana').disabled = false;
+  }
+}
 
 async function reemplazarCampana(fecha){
   const correlativo = $('camp-reemplazar-select').value;
