@@ -484,6 +484,10 @@
   #cmp-cargas-head th[data-cmp-orden]{cursor:pointer; user-select:none; white-space:nowrap;}
   #cmp-cargas-head th[data-cmp-orden]:hover{color:var(--ink);}
   #cmp-cargas-head th.activo{color:var(--blue);}
+  /* Anchos fijos: ordenar o cambiar de página no mueve las columnas */
+  #cmp-cargas-tabla{table-layout:fixed; width:100%; min-width:820px;}
+  #cmp-cargas-tabla th, #cmp-cargas-tabla td{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  #cmp-cargas-head .flecha{display:inline-block; width:1em; text-align:center;}
   .cmp-pager{display:flex; align-items:center; gap:10px; justify-content:flex-end; flex-wrap:wrap; margin-top:8px; font-size:12px; color:var(--ink-soft);}
   .cmp-pager b{font-family:var(--mono); color:var(--ink);}
   .cmp-pager button{padding:4px 10px;}
@@ -1933,7 +1937,7 @@
   <div class="panel" id="cmp-cargas-panel" style="margin-bottom:14px;">
     <h3><span>Cargas de compras guardadas</span><button class="btn btn-primary btn-sm" id="btn-cmp-nueva" type="button" style="margin-left:auto; margin-right:8px; text-transform:none; letter-spacing:0;">🛒 ＋ Nueva carga</button></h3>
     <div class="hist-wrap">
-      <table class="reg-tabla sin-anim"><thead id="cmp-cargas-head"></thead><tbody id="cmp-cargas-body"></tbody></table>
+      <table class="reg-tabla sin-anim" id="cmp-cargas-tabla"><colgroup><col style="width:10%"><col style="width:22%"><col style="width:15%"><col style="width:13%"><col style="width:7%"><col style="width:10%"><col style="width:11%"><col style="width:12%"></colgroup><thead id="cmp-cargas-head"></thead><tbody id="cmp-cargas-body"></tbody></table>
       <div class="empty-state" id="cmp-cargas-vacio" style="display:none;">Aún no hay cargas de compras guardadas.</div>
     </div>
     <div id="cmp-cargas-pag"></div>
@@ -2986,8 +2990,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v165';
-const APP_UPDATED = '14/10/2026 10:00';
+const APP_VERSION = 'v166';
+const APP_UPDATED = '14/10/2026 11:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -8895,7 +8899,7 @@ $('cmp-cargas-head').addEventListener('click', e=>{
 });
 function renderListaCompras(){
   $('cmp-cargas-head').innerHTML = '<tr>' + CMP_CARGAS_COLS.map(c=>{ const act = cmpCargasOrden.k === c.k;
-    return `<th data-cmp-orden="${esc(c.k)}" class="${c.num ? 'num' : ''}${act ? ' activo' : ''}" title="Ordenar por ${esc(c.t)}">${esc(c.t)} ${act ? (cmpCargasOrden.dir > 0 ? '▲' : '▼') : '↕'}</th>`; }).join('') + '<th></th></tr>';
+    return `<th data-cmp-orden="${esc(c.k)}" class="${c.num ? 'num' : ''}${act ? ' activo' : ''}" title="Ordenar por ${esc(c.t)}">${esc(c.t)} <span class="flecha">${act ? (cmpCargasOrden.dir > 0 ? '▲' : '▼') : '↕'}</span></th>`; }).join('') + '<th></th></tr>';
   const col = CMP_CARGAS_COLS.find(c=> c.k === cmpCargasOrden.k) || CMP_CARGAS_COLS[0];
   const val = c=> col.v ? col.v(c) : (col.num ? Number(c[col.k]) || 0 : String(c[col.k] || ''));
   const ordenadas = cmpCargas.slice().sort((a, b)=>{ const x = val(a), y = val(b); return (typeof x === 'number' ? x - y : x.localeCompare(y)) * cmpCargasOrden.dir || b.correlativo.localeCompare(a.correlativo); });
@@ -8908,8 +8912,8 @@ function renderListaCompras(){
   cmpContadores();
   $('cmp-cargas-body').innerHTML = ordenadas.slice(desde, desde + CMP_CARGAS_POR_PAG).map((c, i)=>{
     const f = c.guardado_en && c.guardado_en.toDate ? c.guardado_en.toDate().toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }) : '';
-    return `<tr class="${cmpCarga === c.correlativo ? 'reg-sel' : ''}"><td><b>${esc(c.correlativo)}</b></td><td>${esc(c.nota || '—')}</td>` +
-      `<td>${esc(f)}</td><td>${esc(c.guardado_por || '')}</td><td class="num">${esc(anFmt(c.filas))}</td><td class="num">${esc(anFmt(c.unidades_validadas))}</td>` +
+    return `<tr class="${cmpCarga === c.correlativo ? 'reg-sel' : ''}"><td><b>${esc(c.correlativo)}</b></td><td title="${esc(c.nota || '')}">${esc(c.nota || '—')}</td>` +
+      `<td>${esc(f)}</td><td title="${esc(c.guardado_por || '')}">${esc(c.guardado_por || '')}</td><td class="num">${esc(anFmt(c.filas))}</td><td class="num">${esc(anFmt(c.unidades_validadas))}</td>` +
       `<td class="num">${esc(Number(c.costo_total||0).toLocaleString('es-PE', { minimumFractionDigits:2, maximumFractionDigits:2 }))}</td>` +
       `<td class="reg-acc"><button class="btn btn-sm" data-cmp-abrir="${esc(c.correlativo)}">Abrir</button>${puedeEliminar ? ` <button class="btn btn-sm btn-ghost" data-cmp-eliminar="${esc(c.correlativo)}" title="Eliminar carga">🗑</button>` : ''}</td></tr>`;
   }).join('');

@@ -204,6 +204,8 @@ const tsv = filas=> filas.map(f=> f.map(c=> /[\t\n"]/.test(c) ? '"' + c.replace(
   verificar(cab === 'CARGA|NOTA|FECHA Y HORA|USUARIO|FILAS|UNID. VALIDADAS|COSTO (S/)|', `Fecha y hora y Usuario en columnas separadas: ${cab}`);
   const usuario = await page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-body tr')][0].cells[3].innerText);
   verificar(usuario === 'VICTOR', `Columna Usuario con quien guardó la carga: "${usuario}"`);
+  const anchos = ()=> page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-head th')].map(t=> Math.round(t.getBoundingClientRect().width)).join(','));
+  const anchosAntes = await anchos();
   await page.click('#cmp-cargas-head [data-cmp-orden="filas"]');
   let ord = await page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-body tr')].map(r=> r.cells[0].innerText + ':' + r.cells[4].innerText).join(' '));
   verificar(/^COM-00004:45 COM-00002:3 /.test(ord) && /▼/.test(await page.textContent('#cmp-cargas-head [data-cmp-orden="filas"]')), `Clic en "Filas": de mayor a menor (${ord})`);
@@ -214,6 +216,10 @@ const tsv = filas=> filas.map(f=> f.map(c=> /[\t\n"]/.test(c) ? '"' + c.replace(
   ord = await page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-body tr')].map(r=> r.cells[1].innerText).join(','));
   const notas = ord.split(',').map(n=> n === '—' ? '' : n);
   verificar(notas.every((n, i)=> !i || notas[i-1].localeCompare(n) <= 0), `Clic en "Nota": orden alfabético, sin nota primero (${ord})`);
+  const anchosOrden = await anchos();
+  await page.click('#cmp-cargas-pag [data-cmp-cargas-pag="1"]');
+  const anchosPag = await anchos();
+  verificar(anchosOrden === anchosAntes && anchosPag === anchosAntes, `Las columnas mantienen su ancho al ordenar y al cambiar de página (${anchosAntes})`);
 
   if(errores.length) console.log('\nErrores de JavaScript:\n' + [...new Set(errores)].join('\n'));
   console.log(fallas || errores.length ? `\n${fallas} verificación(es) fallida(s).` : '\nTodo correcto.');
