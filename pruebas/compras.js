@@ -125,7 +125,7 @@ const tsv = filas=> filas.map(f=> f.map(c=> /[\t\n"]/.test(c) ? '"' + c.replace(
   const t3 = await page.evaluate(async ()=> ({ pant: [...document.querySelectorAll('#cmp-tot-body tr')].map(r=> r.innerText.replace(/\s+/g,' ').trim()), bd: (await comprasTotalesRef.where('carga_correlativo','==','COM-00003').get()).docs.map(d=> d.data()) }));
   verificar(t3.bd.length === 1 && t3.bd[0].cant_validada === 25 && t3.bd[0].filas === 2 && t3.bd[0].sku === 'SST-5' && t3.bd[0].factor_presentacion === 50 && /^1 #7392 - SST-5 SST-5 RESALTADOR 5 10 25 UND 50 2$/.test(t3.pant[0]),
     `Totales: dos validaciones de #7392 - SST-5 (10 + 15) → una fila con CANT. VALIDADA 25 ("${t3.pant[0]}")`);
-  const lista = await page.evaluate(async ()=>{ await new Promise(r=> setTimeout(r, 500)); return [...document.querySelectorAll('#cmp-cargas-body tr')].map(r=> r.cells[0].innerText + ':' + r.cells[4].innerText).join(' '); });
+  const lista = await page.evaluate(async ()=>{ await new Promise(r=> setTimeout(r, 500)); return [...document.querySelectorAll('#cmp-cargas-body tr')].map(r=> r.cells[1].innerText + ':' + r.cells[6].innerText).join(' '); });
   verificar(lista === 'COM-00003:2 COM-00002:4 COM-00001:1', `Cada guardado nuevo es otra carga: ${lista}`);
 
   // 6. Abrir COM-00002, quitar una fila y guardar cambios (reemplaza, no duplica)
@@ -193,33 +193,83 @@ const tsv = filas=> filas.map(f=> f.map(c=> /[\t\n"]/.test(c) ? '"' + c.replace(
     for(const c of ['COM-00010','COM-00011','COM-00012']) await comprasCargasRef.doc(c).set({ correlativo:c, nota:'X', filas:1, unidades_validadas:1, costo_total:1, estado:'ACTIVO' });
     await cargarListaCompras();
   });
-  let cl = await page.evaluate(()=> ({ filas: [...document.querySelectorAll('#cmp-cargas-body tr')].map(r=> r.cells[0].innerText).join(','), pager: $('cmp-cargas-pag').innerText.replace(/\s+/g,' ') }));
+  let cl = await page.evaluate(()=> ({ filas: [...document.querySelectorAll('#cmp-cargas-body tr')].map(r=> r.cells[1].innerText).join(','), pager: $('cmp-cargas-pag').innerText.replace(/\s+/g,' ') }));
   verificar(cl.filas === 'COM-00012,COM-00011,COM-00010,COM-00004,COM-00002' && /1–5 de 6/.test(cl.pager), `Cargas de 5 en 5, las últimas primero: ${cl.filas} (${cl.pager})`);
   await page.click('#cmp-cargas-pag [data-cmp-cargas-pag="1"]');
-  cl = await page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-body tr')].map(r=> r.cells[0].innerText).join(','));
+  cl = await page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-body tr')].map(r=> r.cells[1].innerText).join(','));
   verificar(cl === 'COM-00001', `Página 2 de cargas: ${cl}`);
 
   // 10. Columnas separadas y orden por columna
   const cab = await page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-head th')].map(t=> t.innerText.replace(/\s*[▲▼↕]\s*$/, '')).join('|'));
-  verificar(cab === 'CARGA|NOTA|FECHA Y HORA|USUARIO|FILAS|UNID. VALIDADAS|COSTO (S/)|', `Fecha y hora y Usuario en columnas separadas: ${cab}`);
-  const usuario = await page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-body tr')][0].cells[3].innerText);
+  verificar(cab === '|CARGA|NOTA|CAMPAÑA(S)|FECHA Y HORA|USUARIO|FILAS|UNID. VALIDADAS|COSTO (S/)|', `Fecha y hora y Usuario en columnas separadas: ${cab}`);
+  const usuario = await page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-body tr')][0].cells[5].innerText);
   verificar(usuario === 'VICTOR', `Columna Usuario con quien guardó la carga: "${usuario}"`);
   const anchos = ()=> page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-head th')].map(t=> Math.round(t.getBoundingClientRect().width)).join(','));
   const anchosAntes = await anchos();
   await page.click('#cmp-cargas-head [data-cmp-orden="filas"]');
-  let ord = await page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-body tr')].map(r=> r.cells[0].innerText + ':' + r.cells[4].innerText).join(' '));
+  let ord = await page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-body tr')].map(r=> r.cells[1].innerText + ':' + r.cells[6].innerText).join(' '));
   verificar(/^COM-00004:45 COM-00002:3 /.test(ord) && /▼/.test(await page.textContent('#cmp-cargas-head [data-cmp-orden="filas"]')), `Clic en "Filas": de mayor a menor (${ord})`);
   await page.click('#cmp-cargas-head [data-cmp-orden="filas"]');
-  ord = await page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-body tr')].map(r=> r.cells[4].innerText).join(','));
+  ord = await page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-body tr')].map(r=> r.cells[6].innerText).join(','));
   verificar(ord.split(',')[0] === '1' && /▲/.test(await page.textContent('#cmp-cargas-head [data-cmp-orden="filas"]')), `Otro clic: de menor a mayor (${ord})`);
   await page.click('#cmp-cargas-head [data-cmp-orden="nota"]');
-  ord = await page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-body tr')].map(r=> r.cells[1].innerText).join(','));
+  ord = await page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-body tr')].map(r=> r.cells[2].innerText).join(','));
   const notas = ord.split(',').map(n=> n === '—' ? '' : n);
   verificar(notas.every((n, i)=> !i || notas[i-1].localeCompare(n) <= 0), `Clic en "Nota": orden alfabético, sin nota primero (${ord})`);
   const anchosOrden = await anchos();
   await page.click('#cmp-cargas-pag [data-cmp-cargas-pag="1"]');
   const anchosPag = await anchos();
   verificar(anchosOrden === anchosAntes && anchosPag === anchosAntes, `Las columnas mantienen su ancho al ordenar y al cambiar de página (${anchosAntes})`);
+
+  // 11. Asignar campaña a varias cargas (y una carga a varias campañas)
+  await page.evaluate(async ()=>{
+    const hoy = firebase.firestore.Timestamp.now();
+    await campanaRegistrosRef.doc('REG-00050').set({ correlativo:'REG-00050', campana:'CAMPAÑA 14-10', estado:'ACTIVO', fecha_carga: hoy });
+    await campanaRegistrosRef.doc('REG-00051').set({ correlativo:'REG-00051', campana:'CAMPAÑA 15-10', estado:'ACTIVO', fecha_carga: hoy });
+    await cargarRegistrosCampana(true);
+    cmpCargasOrden = { k:'correlativo', dir:-1 }; cmpCargasPag = 0;
+    await cargarListaCompras(); renderListaCompras();
+  });
+  const visibles = ()=> page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-body tr')].map(r=> r.cells[1].innerText).join(','));
+  const asignar = async (cargas, camp)=>{
+    for(const c of cargas) await page.check(`#cmp-cargas-body [data-cmp-sel="${c}"]`);
+    const barra = await page.evaluate(()=> getComputedStyle($('cmp-asignar')).display !== 'none' ? $('cmp-sel-n').innerText : '');
+    await page.selectOption('#cmp-asignar-camp', camp);
+    await page.click('#btn-cmp-asignar');
+    await page.waitForFunction(([cargas, camp])=> /asignada/.test($('cmp-msg').textContent) && cargas.every(c=> (cmpCargas.find(x=> x.correlativo === c).campanas || []).includes(camp)), [cargas, camp], { timeout: 10000 });
+    await page.waitForTimeout(400);
+    return barra;
+  };
+  let barra = await asignar(['COM-00012','COM-00011'], 'REG-00050');
+  verificar(/^2 carga\(s\) seleccionada\(s\): COM-00011, COM-00012/.test(barra), `Al marcar cargas aparece la barra para asignar: "${barra}"`);
+  await asignar(['COM-00011','COM-00010'], 'REG-00051');
+  const bdc = await page.evaluate(async ()=> (await comprasCargasRef.get()).docs.map(d=> d.data()).filter(c=> (c.campanas||[]).length).map(c=> c.correlativo + ':' + c.campanas.slice().sort().join('+')).sort().join(' '));
+  verificar(bdc === 'COM-00010:REG-00051 COM-00011:REG-00050+REG-00051 COM-00012:REG-00050', `Guardado: varias cargas por campaña y una carga en dos campañas (${bdc})`);
+  const chips = await page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-body tr')].find(r=> r.cells[1].innerText === 'COM-00011').cells[3].innerText.replace(/[✕\s]+/g, ' ').trim());
+  verificar(chips === 'REG-00050 REG-00051', `Columna Campaña(s) de COM-00011: ${chips}`);
+  await page.selectOption('#cmp-filtro-camp', 'REG-00050');
+  let v = await visibles();
+  const res = await page.textContent('#cmp-camp-resumen');
+  verificar(v === 'COM-00012,COM-00011' && /REG-00050: 2 carga\(s\)/.test(res), `Ver REG-00050: ${v} · "${res}"`);
+  await page.selectOption('#cmp-filtro-camp', 'REG-00051');
+  v = await visibles();
+  verificar(v === 'COM-00011,COM-00010', `Ver REG-00051: ${v}`);
+  await page.selectOption('#cmp-filtro-camp', '__SIN');
+  v = await visibles();
+  verificar(v === 'COM-00004,COM-00002,COM-00001', `Ver "Sin campaña": ${v}`);
+  await page.check('#cmp-sel-todas');
+  verificar(/^3 carga\(s\)/.test(await page.textContent('#cmp-sel-n')), `Marcar todas: "${await page.textContent('#cmp-sel-n')}"`);
+  await page.click('#btn-cmp-sel-limpiar');
+  await page.selectOption('#cmp-filtro-camp', 'REG-00050');
+  await page.click('#cmp-cargas-body [data-cmp-carga="COM-00011"][data-cmp-quitar-camp="REG-00050"]');
+  await page.waitForFunction(()=> !(cmpCargas.find(x=> x.correlativo === 'COM-00011').campanas || []).includes('REG-00050'), null, { timeout: 10000 });
+  await page.waitForTimeout(400);
+  v = await visibles();
+  const quedan = await page.evaluate(async ()=> (await comprasCargasRef.doc('COM-00011').get()).data().campanas.join(','));
+  verificar(v === 'COM-00012' && quedan === 'REG-00051', `✕ quita COM-00011 de REG-00050 (sigue en ${quedan}); REG-00050 muestra ${v}`);
+  const anchosCamp = await anchos();
+  verificar(anchosCamp === anchosAntes, `Las columnas mantienen su ancho al filtrar por campaña (${anchosCamp})`);
+  await page.locator('#cmp-cargas-panel').screenshot({ path: require('path').join(__dirname, 'salida', 'compras_campanas.png') });
 
   if(errores.length) console.log('\nErrores de JavaScript:\n' + [...new Set(errores)].join('\n'));
   console.log(fallas || errores.length ? `\n${fallas} verificación(es) fallida(s).` : '\nTodo correcto.');

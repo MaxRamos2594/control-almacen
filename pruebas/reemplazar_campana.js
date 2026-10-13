@@ -32,35 +32,43 @@ function verificar(condicion, texto){
     await prepararModoCampana(codigo);
     for(let i = 0; i < 50 && /^Comparando/.test($('camp-reemplazar-hint').textContent); i++) await new Promise(r=> setTimeout(r, 100));
     return { modo: modoCampana(), sel: $('camp-reemplazar-select').value, boton: $('btn-guardar-campana').textContent, hint: $('camp-reemplazar-hint').textContent,
-      msg: $('camp-msg').textContent, opciones: $('camp-reemplazar-select').options.length - 1 };
+      aviso: $('camp-reemplazar-hint').className, fecha: $('camp-fecha-transaccion').value, soloLectura: $('camp-fecha-transaccion').readOnly, msg: $('camp-msg').textContent, opciones: $('camp-reemplazar-select').options.length - 1 };
   }, [codigo, filas]);
 
   // A. Cargar por partes: mismo código → "Adicionar" (solo lo nuevo)
   let r = await leerPdf('CAMP-1', [['ATE','S1',10],['ATE','S2',5],['COMAS','S1',8]]);
   verificar(r.modo === 'adicionar' && r.sel === 'REG-00046' && /No hay nada nuevo/.test(r.hint) && r.boton === 'Nada que adicionar', `Mismo código y mismas filas: "Adicionar" elegido y avisa "${r.hint}"`);
-  const nada = await page.evaluate(async ()=>{ $('camp-fecha-transaccion').value = '2026-10-09'; $('btn-guardar-campana').click(); await new Promise(r=> setTimeout(r, 800));
+  verificar(/camp-aviso-nada/.test(r.aviso), `Aviso destacado en ámbar cuando no hay nada nuevo (${r.aviso})`);
+  verificar(r.fecha === '2026-10-08' && r.soloLectura && /fecha de transacción de REG-00046 \(08\/10\/2026\)/.test(await page.textContent('#camp-fecha-hint')),
+    `Adicionar trae la fecha de transacción de la campaña (${r.fecha}, sin editar): "${await page.textContent('#camp-fecha-hint')}"`);
+  const nada = await page.evaluate(async ()=>{ $('btn-guardar-campana').click(); await new Promise(r=> setTimeout(r, 800));
     return { msg: $('camp-msg').textContent, filas: (await campanaItemsRef.where('correlativo','==','REG-00046').get()).size }; });
   verificar(/No se adicionó nada/.test(nada.msg) && nada.filas === 3, `Sin códigos nuevos no carga nada: "${nada.msg}" (${nada.filas} filas)`);
   r = await leerPdf('CAMP-1', [['ATE','S1',10],['ATE','S2',5],['Comas','S1',9],['PIURA','S3',7],['ATE','S4',2],['ATE','S4',2]]);
   verificar(r.modo === 'adicionar' && /Se agregarán 2 fila\(s\) nueva\(s\) a REG-00046/.test(r.hint) && /3 ya estaban/.test(r.hint) && /1 con otra cantidad/.test(r.hint) && r.boton === 'Adicionar 2 fila(s) a REG-00046',
     `Con filas nuevas: "${r.hint}"`);
-  await page.evaluate(()=>{ $('camp-fecha-transaccion').value = '2026-10-09'; $('btn-guardar-campana').click(); });
+  verificar(/camp-aviso-nuevo/.test(r.aviso) && r.fecha === '2026-10-08', 'Aviso destacado en verde con las filas nuevas');
+  await page.evaluate(()=>{ $('btn-guardar-campana').click(); });
   await page.waitForFunction(()=> /Adicionado|Error/.test($('camp-msg').textContent), null, { timeout: 30000 });
   const ad = await page.evaluate(async ()=>{
     const filas = (await campanaItemsRef.where('correlativo','==','REG-00046').get()).docs.map(d=> d.data()).map(f=> `${f.participante}/${f.sku}:${f.cantidad}`).sort();
+    const fechas = [...new Set((await campanaItemsRef.where('adicion','==',true).get()).docs.map(d=> d.data().fecha_transaccion))].join(',');
     const cab = (await campanaRegistrosRef.doc('REG-00046').get()).data();
     const log = (await movimientosRef.get()).docs.map(d=> d.data()).some(m=> m.tipo === 'campana_pdf_adicionada');
-    return { msg: $('camp-msg').textContent, filas, cab, log, cabeceras: (await campanaRegistrosRef.get()).size };
+    return { msg: $('camp-msg').textContent, filas, fechas, cab, log, cabeceras: (await campanaRegistrosRef.get()).size };
   });
   verificar(/Adicionado! REG-00046 — 2 fila\(s\) nueva\(s\); 3 ya estaban/.test(ad.msg) && ad.filas.join(',') === 'ATE/S1:10,ATE/S2:5,ATE/S4:2,COMAS/S1:8,PIURA/S3:7',
     `Se agregan solo las nuevas a la misma campaña, sin tocar las que ya estaban: ${ad.filas.join(', ')}`);
+  verificar(ad.fechas === '2026-10-08', `Las filas adicionadas llevan la fecha de la campaña (${ad.fechas})`);
   verificar(ad.cab.total_filas === 5 && ad.cab.participantes_lista.join(',') === 'ATE,COMAS,PIURA' && ad.cab.adiciones === 1 && ad.cabeceras === 1 && ad.log,
     `Cabecera actualizada (${ad.cab.total_filas} filas, tiendas ${ad.cab.participantes_lista.join(', ')}), sin crear otra campaña; bitácora`);
 
   // 1. Mismo código ya cargado y se elige "Reemplazar"
   r = await leerPdf('CAMP-1', [['ATE','S1',50],['PIURA','S3',7]]);
   r = await page.evaluate(()=>{ document.querySelector('input[name="camp-modo"][value="reemplazar"]').checked = true; actualizarModoCampana();
-    return { modo: modoCampana(), sel: $('camp-reemplazar-select').value, boton: $('btn-guardar-campana').textContent, hint: $('camp-reemplazar-hint').textContent }; });
+    return { modo: modoCampana(), sel: $('camp-reemplazar-select').value, boton: $('btn-guardar-campana').textContent, hint: $('camp-reemplazar-hint').textContent,
+      fecha: $('camp-fecha-transaccion').value, soloLectura: $('camp-fecha-transaccion').readOnly }; });
+  verificar(r.fecha === '' && !r.soloLectura, 'Al pasar a "Reemplazar" la fecha vuelve a quedar vacía y editable');
   verificar(r.modo === 'reemplazar' && r.sel === 'REG-00046' && r.boton === 'Reemplazar REG-00046', `Eligiendo "Reemplazar": "Reemplazar REG-00046" (${r.modo}, ${r.boton})`);
   verificar(/5 filas de REG-00046 por las 2/.test(r.hint) && /siguen asociados/.test(r.hint), `Explica: "${r.hint}"`);
 

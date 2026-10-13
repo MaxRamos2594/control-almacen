@@ -469,6 +469,15 @@
   .cmp-vacio{padding:42px 16px; text-align:center; color:var(--ink-soft); border:2px dashed var(--line-strong); border-radius:8px; margin:10px; font-size:13px;}
   .cmp-vacio b{display:block; font-size:16px; color:var(--ink); margin-bottom:4px;}
   table.reg-tabla.sin-anim tbody tr{animation:none;}
+  /* Aviso de "Guardar como" (Adicionar / Reemplazar) bien visible */
+  .camp-aviso{display:flex; gap:10px; align-items:flex-start; padding:11px 14px; border-radius:8px; border:1px solid; border-left-width:5px; font-size:13.5px; line-height:1.45; color:var(--ink); animation:regEntra .25s both;}
+  .camp-aviso::before{font-size:18px; line-height:1.1;}
+  .camp-aviso b{font-family:var(--mono);}
+  .camp-aviso-nuevo{background:#e9f6ee; border-color:#2e8b57;} .camp-aviso-nuevo::before{content:"➕";}
+  .camp-aviso-nada{background:#fff5e0; border-color:#d08a12;} .camp-aviso-nada::before{content:"⚠️";}
+  .camp-aviso-info{background:#eaf1fb; border-color:var(--blue);} .camp-aviso-info::before{content:"ℹ️";}
+  .camp-aviso-err{background:#fdecea; border-color:#b3402f;} .camp-aviso-err::before{content:"⛔";}
+  #camp-fecha-transaccion[readonly]{background:#eef1f5; color:var(--ink-soft); cursor:not-allowed;}
   /* Compras en pestañas: una sección a la vez */
   .cmp-tabs{display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:12px;}
   .cmp-tabs button{display:flex; align-items:center; gap:7px; padding:9px 16px; border:1px solid var(--line-strong); background:#fff; border-radius:999px; font-size:13px; font-weight:600; color:var(--ink-soft); cursor:pointer; transition:background .15s, color .15s;}
@@ -485,8 +494,20 @@
   #cmp-cargas-head th[data-cmp-orden]:hover{color:var(--ink);}
   #cmp-cargas-head th.activo{color:var(--blue);}
   /* Anchos fijos: ordenar o cambiar de página no mueve las columnas */
-  #cmp-cargas-tabla{table-layout:fixed; width:100%; min-width:820px;}
+  #cmp-cargas-tabla{table-layout:fixed; width:100%; min-width:1000px;}
   #cmp-cargas-tabla th, #cmp-cargas-tabla td{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  #cmp-cargas-tabla input[type=checkbox]{width:auto; margin:0; cursor:pointer;}
+  #cmp-cargas-tabla td.cmp-camps{white-space:normal;}
+  /* Campañas de las compras: filtro, selección y etiquetas */
+  .cmp-camp-barra{display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:10px; font-size:12.5px;}
+  .cmp-camp-barra label{display:flex; gap:6px; align-items:center; font-weight:600; margin:0;}
+  .cmp-camp-barra select{width:auto; max-width:420px;}
+  #cmp-camp-resumen{color:var(--ink-soft);} #cmp-camp-resumen b{font-family:var(--mono); color:var(--ink);}
+  .cmp-asignar{display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:9px 12px; margin-bottom:10px; background:#eaf1fb; border:1px solid var(--blue); border-radius:8px; font-size:13px; animation:regEntra .2s both;}
+  .cmp-asignar select{width:auto; max-width:380px;}
+  .cmp-camp-chip{display:inline-flex; align-items:center; gap:3px; margin:1px 3px 1px 0; padding:1px 4px 1px 8px; border-radius:999px; background:#e9f6ee; border:1px solid #9fd0b2; font-family:var(--mono); font-size:11px;}
+  .cmp-camp-chip button{border:none; background:none; cursor:pointer; color:var(--ink-soft); font-size:11px; padding:0 3px;}
+  .cmp-camp-chip button:hover{color:#a5441a;}
   #cmp-cargas-head .flecha{display:inline-block; width:1em; text-align:center;}
   .cmp-pager{display:flex; align-items:center; gap:10px; justify-content:flex-end; flex-wrap:wrap; margin-top:8px; font-size:12px; color:var(--ink-soft);}
   .cmp-pager b{font-family:var(--mono); color:var(--ink);}
@@ -1889,7 +1910,7 @@
     <div id="camp-preview-wrap" style="display:none; margin-top:14px;">
       <p class="hint" id="camp-preview-resumen" style="margin-bottom:8px;"></p>
       <div class="field" style="max-width:220px;"><label>Fecha de transacción *</label><input type="date" id="camp-fecha-transaccion" required></div>
-      <p class="hint" style="margin-bottom:8px; color:var(--red, #8A332A);">* Obligatorio. Debes ingresarla tú antes de guardar.</p>
+      <p class="hint" id="camp-fecha-hint" style="margin-bottom:8px; color:var(--red, #8A332A);">* Obligatorio. Debes ingresarla tú antes de guardar.</p>
       <div class="field" id="camp-modo-wrap" style="max-width:640px;">
         <label>Guardar como</label>
         <div style="display:flex; gap:16px; flex-wrap:wrap; margin:4px 0 6px;">
@@ -1936,8 +1957,18 @@
   </div>
   <div class="panel" id="cmp-cargas-panel" style="margin-bottom:14px;">
     <h3><span>Cargas de compras guardadas</span><button class="btn btn-primary btn-sm" id="btn-cmp-nueva" type="button" style="margin-left:auto; margin-right:8px; text-transform:none; letter-spacing:0;">🛒 ＋ Nueva carga</button></h3>
+    <div class="cmp-camp-barra">
+      <label>Ver <select id="cmp-filtro-camp"><option value="">Todas las cargas</option></select></label>
+      <span id="cmp-camp-resumen"></span>
+    </div>
+    <div class="cmp-asignar" id="cmp-asignar" style="display:none;">
+      <span id="cmp-sel-n"></span>
+      <select id="cmp-asignar-camp"><option value="">— Elige la campaña —</option></select>
+      <button type="button" class="btn btn-primary btn-sm" id="btn-cmp-asignar">🔗 Asignar a campaña</button>
+      <button type="button" class="btn btn-sm btn-ghost" id="btn-cmp-sel-limpiar">Quitar selección</button>
+    </div>
     <div class="hist-wrap">
-      <table class="reg-tabla sin-anim" id="cmp-cargas-tabla"><colgroup><col style="width:10%"><col style="width:22%"><col style="width:15%"><col style="width:13%"><col style="width:7%"><col style="width:10%"><col style="width:11%"><col style="width:12%"></colgroup><thead id="cmp-cargas-head"></thead><tbody id="cmp-cargas-body"></tbody></table>
+      <table class="reg-tabla sin-anim" id="cmp-cargas-tabla"><colgroup><col style="width:4%"><col style="width:9%"><col style="width:16%"><col style="width:16%"><col style="width:12%"><col style="width:10%"><col style="width:6%"><col style="width:8%"><col style="width:9%"><col style="width:10%"></colgroup><thead id="cmp-cargas-head"></thead><tbody id="cmp-cargas-body"></tbody></table>
       <div class="empty-state" id="cmp-cargas-vacio" style="display:none;">Aún no hay cargas de compras guardadas.</div>
     </div>
     <div id="cmp-cargas-pag"></div>
@@ -2990,8 +3021,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v166';
-const APP_UPDATED = '14/10/2026 11:00';
+const APP_VERSION = 'v167';
+const APP_UPDATED = '14/10/2026 12:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -8275,7 +8306,7 @@ $('btn-procesar-pdf').addEventListener('click', async ()=>{
     const participantes = new Set(rows.map(r=>r.participante)).size;
     const skuDistintos = new Set(rows.map(r=>r.sku)).size;
     $('camp-preview-resumen').textContent = `${rows.length} filas encontradas · ${skuDistintos} SKU distintos · ${participantes} participante(s). El PDF no se guarda — solo esta información, al presionar "Guardar en base de datos".`;
-    $('camp-fecha-transaccion').value = '';
+    campFechaAuto = true; campFechaDeCampana(null);   // fecha vacía y editable
     $('camp-preview-body').innerHTML = rows.slice(0,300).map(r=>
       `<tr><td>${esc(r.codigo)}</td><td>${esc(r.campana)}</td><td>${esc(r.participante)}</td><td>${esc(r.sku)}</td><td>${esc(r.producto)}</td><td>${esc(r.area)}</td><td>${esc(r.cantidad)}</td><td>${esc(r.desglose)}</td></tr>`
     ).join('') + (rows.length>300 ? `<tr><td colspan="8" style="text-align:center; color:var(--ink-soft);">… y ${rows.length-300} filas más (se guardarán todas)</td></tr>` : '');
@@ -8380,39 +8411,60 @@ async function compararConCampana(corr){
   });
   return { nuevas, yaEstaban, distintas, existentes };
 }
+// Aviso de "Guardar como": tipo nuevo | nada | info | err; html ya escapado.
+function campAviso(tipo, html){
+  const h = $('camp-reemplazar-hint');
+  h.innerHTML = html || '';
+  h.className = 'hint' + (html ? ` camp-aviso camp-aviso-${tipo}` : '');
+}
+// Al adicionar se usa la fecha de transacción de la campaña ya cargada (no se edita).
+let campFechaAuto = false;
+function campFechaDeCampana(cab){
+  const inp = $('camp-fecha-transaccion'), hint = $('camp-fecha-hint');
+  const f = cab && /^\d{4}-\d{2}-\d{2}$/.test(cab.fecha_transaccion || '') ? cab.fecha_transaccion : '';
+  if(f){
+    inp.value = f; inp.readOnly = true; campFechaAuto = true;
+    hint.style.color = 'var(--ink-soft)';
+    hint.textContent = `Se usa la fecha de transacción de ${cab.correlativo} (${f.split('-').reverse().join('/')}).`;
+  }else if(campFechaAuto){
+    inp.value = ''; inp.readOnly = false; campFechaAuto = false;
+    hint.style.color = 'var(--red, #8A332A)';
+    hint.textContent = '* Obligatorio. Debes ingresarla tú antes de guardar.';
+  }
+}
 async function previsualizarAdicion(){
   const corr = $('camp-reemplazar-select').value;
   if(modoCampana() !== 'adicionar' || !corr) return;
   campAdicion = { corr, filas:null, cargando:true };
-  $('camp-reemplazar-hint').textContent = `Comparando con ${corr}…`;
+  campAviso('info', `Comparando con <b>${esc(corr)}</b>…`);
   try{
     const r = await compararConCampana(corr);
     if(campAdicion.corr !== corr || modoCampana() !== 'adicionar') return;
     campAdicion = { corr, filas: r, cargando:false };
-    $('camp-reemplazar-hint').textContent = r.nuevas.length
-      ? `Se agregarán ${anFmt(r.nuevas.length)} fila(s) nueva(s) a ${corr} (participante + SKU que aún no estaban). ${anFmt(r.yaEstaban)} ya estaban y no se tocan${r.distintas ? ` (${anFmt(r.distintas)} con otra cantidad: no se cambian)` : ''}.`
-      : `No hay nada nuevo: las ${anFmt(r.yaEstaban)} filas de este PDF ya están en ${corr}. No se cargará nada.`;
+    if(r.nuevas.length) campAviso('nuevo', `Se agregarán <b>${esc(anFmt(r.nuevas.length))} fila(s) nueva(s)</b> a <b>${esc(corr)}</b> (participante + SKU que aún no estaban). ${esc(anFmt(r.yaEstaban))} ya estaban y no se tocan${r.distintas ? ` (${esc(anFmt(r.distintas))} con otra cantidad: no se cambian)` : ''}.`);
+    else campAviso('nada', `No hay nada nuevo: las <b>${esc(anFmt(r.yaEstaban))}</b> filas de este PDF ya están en <b>${esc(corr)}</b>. No se cargará nada.`);
     $('btn-guardar-campana').textContent = r.nuevas.length ? `Adicionar ${anFmt(r.nuevas.length)} fila(s) a ${corr}` : 'Nada que adicionar';
-  }catch(err){ console.error(err); $('camp-reemplazar-hint').textContent = 'No se pudo comparar: ' + err.message; }
+  }catch(err){ console.error(err); campAviso('err', 'No se pudo comparar: ' + esc(err.message)); }
 }
 function actualizarModoCampana(){
   const modo = modoCampana();
   if(modo === 'adicionar'){
     const sel = $('camp-reemplazar-select');
     sel.style.display = 'block';
-    if(!sel.value){ $('camp-reemplazar-hint').textContent = 'Elige la campaña a la que se adicionan las filas nuevas.'; $('btn-guardar-campana').textContent = 'Adicionar a campaña'; return; }
+    campFechaDeCampana(sel.value ? campRegAllCache.find(r=> r.correlativo === sel.value) : null);
+    if(!sel.value){ campAviso('info', 'Elige la campaña a la que se adicionan las filas nuevas.'); $('btn-guardar-campana').textContent = 'Adicionar a campaña'; return; }
     previsualizarAdicion();
     return;
   }
+  campFechaDeCampana(null);
   const reemplazar = modo === 'reemplazar';
   const sel = $('camp-reemplazar-select');
   sel.style.display = reemplazar ? 'block' : 'none';
   const cab = reemplazar && sel.value ? campRegAllCache.find(r=> r.correlativo === sel.value) : null;
-  let hint = '';
-  if(reemplazar && !puedeReemplazarCampana()) hint = '⚠ Necesitas permiso de eliminar para reemplazar una campaña.';
-  else if(cab) hint = `Se reemplazarán las ${anFmt(cab.total_filas)} filas de ${cab.correlativo} por las ${anFmt(campParsedRows.length)} de este PDF. Se conserva el correlativo ${cab.correlativo}: sus guías, validadores y vouchers siguen asociados.`;
-  else if(reemplazar) hint = 'Elige la campaña que este PDF reemplaza.';
-  $('camp-reemplazar-hint').textContent = hint;
+  if(reemplazar && !puedeReemplazarCampana()) campAviso('err', 'Necesitas permiso de eliminar para reemplazar una campaña.');
+  else if(cab) campAviso('nada', `Se reemplazarán las <b>${esc(anFmt(cab.total_filas))}</b> filas de <b>${esc(cab.correlativo)}</b> por las <b>${esc(anFmt(campParsedRows.length))}</b> de este PDF. Se conserva el correlativo ${esc(cab.correlativo)}: sus guías, validadores y vouchers siguen asociados.`);
+  else if(reemplazar) campAviso('info', 'Elige la campaña que este PDF reemplaza.');
+  else campAviso('', '');
   $('btn-guardar-campana').textContent = cab ? `Reemplazar ${cab.correlativo}` : (reemplazar ? 'Reemplazar campaña' : 'Guardar en base de datos');
 }
 async function prepararModoCampana(codigoPdf){
@@ -8871,8 +8923,9 @@ async function cargarListaCompras(){
   try{
     if(!cmpMigrado){ try{ await migrarComprasPorCampana(); cmpMigrado = true; }catch(e){ console.warn('Migración de compras:', e); } }
     const snap = await comprasCargasRef.where('estado','==','ACTIVO').get();
+    try{ await esperarRegistrosCampana(); }catch(e){ console.warn('Campañas para compras:', e); }   // nombres para "Asignar a campaña"
     const nuevas = snap.docs.map(d=> d.data()).sort((a,b)=> b.correlativo.localeCompare(a.correlativo));
-    const firma = JSON.stringify(nuevas.map(c=> [c.correlativo, c.nota, c.filas, c.unidades_validadas, c.costo_total, c.guardado_por, c.guardado_en && c.guardado_en.seconds]));
+    const firma = JSON.stringify(nuevas.map(c=> [c.correlativo, c.nota, c.campanas, c.filas, c.unidades_validadas, c.costo_total, c.guardado_por, c.guardado_en && c.guardado_en.seconds]));
     const primera = !cmpCargasLeidas;
     cmpCargas = nuevas; cmpCargasLeidas = true;
     if(firma === cmpCargasFirma && !primera) return;
@@ -8884,6 +8937,7 @@ async function cargarListaCompras(){
 const CMP_CARGAS_COLS = [
   { k:'correlativo', t:'Carga' },
   { k:'nota', t:'Nota' },
+  { k:'campanas', t:'Campaña(s)', v: c=> (c.campanas || []).slice().sort().join(',') },
   { k:'fecha', t:'Fecha y hora', v: c=> c.guardado_en && c.guardado_en.seconds || 0 },
   { k:'guardado_por', t:'Usuario' },
   { k:'filas', t:'Filas', num:true },
@@ -8897,22 +8951,101 @@ $('cmp-cargas-head').addEventListener('click', e=>{
   cmpCargasOrden = cmpCargasOrden.k === k ? { k, dir: -cmpCargasOrden.dir } : { k, dir: CMP_CARGAS_COLS.find(c=> c.k === k).num || k === 'fecha' ? -1 : 1 };
   cmpCargasPag = 0; renderListaCompras();
 });
+// Campañas de las compras: varias cargas pueden ir a una campaña y una carga a
+// varias campañas (campo "campanas" de la cabecera). Filtro "Ver" para agruparlas.
+const cmpSel = new Set();      // cargas marcadas para asignar
+let cmpFiltroCamp = '';        // '' = todas · '__SIN' = sin campaña · REG-… = esa campaña
+function cmpCargasFiltradas(){
+  if(!cmpFiltroCamp) return cmpCargas;
+  if(cmpFiltroCamp === '__SIN') return cmpCargas.filter(c=> !(c.campanas || []).length);
+  return cmpCargas.filter(c=> (c.campanas || []).includes(cmpFiltroCamp));
+}
+function cmpRenderCampanas(filtradas){
+  const activas = campRegAllCache.filter(r=> (r.estado || 'ACTIVO') === 'ACTIVO');
+  const usadas = new Map();
+  cmpCargas.forEach(c=> (c.campanas || []).forEach(k=> usadas.set(k, (usadas.get(k) || 0) + 1)));
+  const nombre = k=>{ const r = campRegAllCache.find(x=> x.correlativo === k); return r ? `${k} — ${r.campana || ''}` : k; };
+  const sin = cmpCargas.filter(c=> !(c.campanas || []).length).length;
+  const f = $('cmp-filtro-camp');
+  const claves = [...new Set([...usadas.keys(), ...(cmpFiltroCamp && cmpFiltroCamp !== '__SIN' ? [cmpFiltroCamp] : [])])].sort().reverse();
+  f.innerHTML = `<option value="">Todas las cargas (${esc(cmpCargas.length)})</option><option value="__SIN">Sin campaña (${esc(sin)})</option>` +
+    claves.map(k=> `<option value="${esc(k)}">${esc(nombre(k))} (${esc(usadas.get(k) || 0)})</option>`).join('');
+  f.value = cmpFiltroCamp;
+  const a = $('cmp-asignar-camp'), prev = a.value;
+  a.innerHTML = '<option value="">— Elige la campaña —</option>' + activas.map(r=> `<option value="${esc(r.correlativo)}">${esc(r.correlativo)} — ${esc(r.campana || '')}</option>`).join('');
+  a.value = activas.some(r=> r.correlativo === prev) ? prev : '';
+  if(cmpFiltroCamp && cmpFiltroCamp !== '__SIN'){
+    const u = filtradas.reduce((t, c)=> t + (Number(c.unidades_validadas) || 0), 0), costo = filtradas.reduce((t, c)=> t + (Number(c.costo_total) || 0), 0);
+    $('cmp-camp-resumen').innerHTML = `<b>${esc(cmpFiltroCamp)}</b>: <b>${esc(filtradas.length)}</b> carga(s) · <b>${esc(anFmt(u))}</b> unid. validadas · S/ <b>${esc(costo.toLocaleString('es-PE', { minimumFractionDigits:2, maximumFractionDigits:2 }))}</b>`;
+  }else $('cmp-camp-resumen').innerHTML = '';
+  [...cmpSel].forEach(k=> { if(!cmpCargas.some(c=> c.correlativo === k)) cmpSel.delete(k); });
+  $('cmp-asignar').style.display = cmpSel.size ? 'flex' : 'none';
+  $('cmp-sel-n').innerHTML = `<b>${esc(cmpSel.size)}</b> carga(s) seleccionada(s): ${esc([...cmpSel].sort().join(', '))}`;
+}
+$('cmp-filtro-camp').addEventListener('change', e=>{ cmpFiltroCamp = e.target.value; cmpCargasPag = 0; renderListaCompras(); });
+$('cmp-cargas-head').addEventListener('change', e=>{
+  if(e.target.id !== 'cmp-sel-todas') return;
+  cmpCargasFiltradas().forEach(c=> e.target.checked ? cmpSel.add(c.correlativo) : cmpSel.delete(c.correlativo));
+  renderListaCompras();
+});
+$('cmp-cargas-body').addEventListener('change', e=>{
+  const k = e.target.dataset && e.target.dataset.cmpSel; if(!k) return;
+  e.target.checked ? cmpSel.add(k) : cmpSel.delete(k);
+  renderListaCompras();
+});
+$('btn-cmp-sel-limpiar').addEventListener('click', ()=>{ cmpSel.clear(); renderListaCompras(); });
+$('btn-cmp-asignar').addEventListener('click', async ()=>{
+  const camp = $('cmp-asignar-camp').value, cargas = [...cmpSel].sort();
+  if(!camp){ showMsg('cmp-msg','err','Elige la campaña a la que se asignan las cargas.'); $('cmp-asignar-camp').focus(); return; }
+  if(!cargas.length) return;
+  $('btn-cmp-asignar').disabled = true;
+  try{
+    const batch = db.batch();
+    cargas.forEach(k=> batch.set(comprasCargasRef.doc(k), { campanas: firebase.firestore.FieldValue.arrayUnion(camp) }, { merge:true }));
+    await batch.commit();
+    cargas.forEach(k=>{ const c = cmpCargas.find(x=> x.correlativo === k); if(c && !(c.campanas || []).includes(camp)) c.campanas = (c.campanas || []).concat(camp); });
+    await logAccion('compras_campana_asignada', {detalle:`${cargas.join(', ')} → ${camp}`});
+    cmpSel.clear();
+    showMsg('cmp-msg','ok', `${cargas.length} carga(s) asignada(s) a ${camp}: ${cargas.join(', ')}.`);
+    showToast(`Asignadas a ${camp}`, 'ok');
+    renderListaCompras();
+    cargarListaCompras();
+  }catch(err){ console.error(err); showMsg('cmp-msg','err','No se pudo asignar: '+err.message); }
+  finally{ $('btn-cmp-asignar').disabled = false; }
+});
+async function cmpQuitarCampana(carga, camp){
+  if(!confirm(`¿Quitar la carga ${carga} de la campaña ${camp}?`)) return;
+  try{
+    await comprasCargasRef.doc(carga).set({ campanas: firebase.firestore.FieldValue.arrayRemove(camp) }, { merge:true });
+    const c = cmpCargas.find(x=> x.correlativo === carga); if(c) c.campanas = (c.campanas || []).filter(k=> k !== camp);
+    await logAccion('compras_campana_quitada', {detalle:`${carga} ✕ ${camp}`});
+    showToast(`${carga} ya no está en ${camp}`, 'ok');
+    renderListaCompras();
+    cargarListaCompras();
+  }catch(err){ console.error(err); showToast('No se pudo quitar: '+err.message, 'err'); }
+}
 function renderListaCompras(){
-  $('cmp-cargas-head').innerHTML = '<tr>' + CMP_CARGAS_COLS.map(c=>{ const act = cmpCargasOrden.k === c.k;
+  const filtradas = cmpCargasFiltradas();
+  const todasSel = filtradas.length > 0 && filtradas.every(c=> cmpSel.has(c.correlativo));
+  $('cmp-cargas-head').innerHTML = `<tr><th><input type="checkbox" id="cmp-sel-todas" title="Seleccionar todas las cargas de la lista" ${todasSel ? 'checked' : ''}></th>` + CMP_CARGAS_COLS.map(c=>{ const act = cmpCargasOrden.k === c.k;
     return `<th data-cmp-orden="${esc(c.k)}" class="${c.num ? 'num' : ''}${act ? ' activo' : ''}" title="Ordenar por ${esc(c.t)}">${esc(c.t)} <span class="flecha">${act ? (cmpCargasOrden.dir > 0 ? '▲' : '▼') : '↕'}</span></th>`; }).join('') + '<th></th></tr>';
   const col = CMP_CARGAS_COLS.find(c=> c.k === cmpCargasOrden.k) || CMP_CARGAS_COLS[0];
   const val = c=> col.v ? col.v(c) : (col.num ? Number(c[col.k]) || 0 : String(c[col.k] || ''));
-  const ordenadas = cmpCargas.slice().sort((a, b)=>{ const x = val(a), y = val(b); return (typeof x === 'number' ? x - y : x.localeCompare(y)) * cmpCargasOrden.dir || b.correlativo.localeCompare(a.correlativo); });
+  const ordenadas = filtradas.slice().sort((a, b)=>{ const x = val(a), y = val(b); return (typeof x === 'number' ? x - y : x.localeCompare(y)) * cmpCargasOrden.dir || b.correlativo.localeCompare(a.correlativo); });
   $('cmp-cargas-vacio').style.display = cmpCargas.length || !cmpCargasLeidas ? 'none' : 'block';
   const puedeEliminar = currentPermisos.admin || currentPermisos.eliminar;
-  const paginas = Math.max(1, Math.ceil(cmpCargas.length / CMP_CARGAS_POR_PAG));
+  const paginas = Math.max(1, Math.ceil(filtradas.length / CMP_CARGAS_POR_PAG));
   cmpCargasPag = Math.min(Math.max(0, cmpCargasPag), paginas - 1);
   const desde = cmpCargasPag * CMP_CARGAS_POR_PAG;
-  $('cmp-cargas-pag').innerHTML = cmpPagerHtml('data-cmp-cargas-pag', cmpCargasPag, cmpCargas.length, CMP_CARGAS_POR_PAG);
+  $('cmp-cargas-pag').innerHTML = cmpPagerHtml('data-cmp-cargas-pag', cmpCargasPag, filtradas.length, CMP_CARGAS_POR_PAG);
   cmpContadores();
+  cmpRenderCampanas(filtradas);
+  const nombreCamp = corr=>{ const r = campRegAllCache.find(x=> x.correlativo === corr); return r ? `${corr} — ${r.campana || ''}` : corr; };
   $('cmp-cargas-body').innerHTML = ordenadas.slice(desde, desde + CMP_CARGAS_POR_PAG).map((c, i)=>{
     const f = c.guardado_en && c.guardado_en.toDate ? c.guardado_en.toDate().toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }) : '';
-    return `<tr class="${cmpCarga === c.correlativo ? 'reg-sel' : ''}"><td><b>${esc(c.correlativo)}</b></td><td title="${esc(c.nota || '')}">${esc(c.nota || '—')}</td>` +
+    const camps = (c.campanas || []).slice().sort().map(k=> `<span class="cmp-camp-chip" title="${esc(nombreCamp(k))}">${esc(k)}<button type="button" data-cmp-quitar-camp="${esc(k)}" data-cmp-carga="${esc(c.correlativo)}" title="Quitar ${esc(c.correlativo)} de ${esc(k)}">✕</button></span>`).join('');
+    return `<tr class="${cmpCarga === c.correlativo ? 'reg-sel' : ''}"><td><input type="checkbox" data-cmp-sel="${esc(c.correlativo)}" ${cmpSel.has(c.correlativo) ? 'checked' : ''}></td><td><b>${esc(c.correlativo)}</b></td><td title="${esc(c.nota || '')}">${esc(c.nota || '—')}</td>` +
+      `<td class="cmp-camps">${camps || '<span style="color:var(--ink-soft);">—</span>'}</td>` +
       `<td>${esc(f)}</td><td title="${esc(c.guardado_por || '')}">${esc(c.guardado_por || '')}</td><td class="num">${esc(anFmt(c.filas))}</td><td class="num">${esc(anFmt(c.unidades_validadas))}</td>` +
       `<td class="num">${esc(Number(c.costo_total||0).toLocaleString('es-PE', { minimumFractionDigits:2, maximumFractionDigits:2 }))}</td>` +
       `<td class="reg-acc"><button class="btn btn-sm" data-cmp-abrir="${esc(c.correlativo)}">Abrir</button>${puedeEliminar ? ` <button class="btn btn-sm btn-ghost" data-cmp-eliminar="${esc(c.correlativo)}" title="Eliminar carga">🗑</button>` : ''}</td></tr>`;
@@ -8944,8 +9077,9 @@ $('btn-cmp-nueva').addEventListener('click', ()=>{
 });
 $('cmp-nota').addEventListener('input', ()=>{ if(cmpBloqueado) return; cmpCambios = true; cmpResumen(); });
 $('cmp-cargas-body').addEventListener('click', async e=>{
-  const ab = e.target.closest('[data-cmp-abrir]'), el = e.target.closest('[data-cmp-eliminar]');
+  const ab = e.target.closest('[data-cmp-abrir]'), el = e.target.closest('[data-cmp-eliminar]'), qc = e.target.closest('[data-cmp-quitar-camp]');
   if(ab) return abrirCargaCompras(ab.dataset.cmpAbrir);
+  if(qc) return cmpQuitarCampana(qc.dataset.cmpCarga, qc.dataset.cmpQuitarCamp);
   if(!el) return;
   const corr = el.dataset.cmpEliminar;
   if(!(currentPermisos.admin || currentPermisos.eliminar)){ showToast('No tienes permiso para eliminar.', 'err'); return; }
