@@ -154,25 +154,27 @@ const tsv = filas=> filas.map(f=> f.map(c=> /[\t\n"]/.test(c) ? '"' + c.replace(
   const totEl = await page.evaluate(async ()=> (await comprasTotalesRef.where('carga_correlativo','==','COM-00003').get()).size);
   verificar(totEl === 0, 'Eliminar también borra sus totales');
 
-  // 8. Detalle paginado de 10 en 10; con un error en otra página, Guardar lleva a esa página
+  // 8. Detalle paginado de 20 en 20; con un error en otra página, Guardar lleva a esa página
   await page.click('#btn-cmp-nueva');
-  const muchas = Array.from({ length: 23 }, (_, i)=> ['VALIDADO','11/10/2026','10:00','#' + (500 + i) + ' - P-' + i, 'PRODUCTO ' + i, '', '0.1', '1', '5', i === 14 ? 'abc' : '5', 'UND', '1', 'ANA']);
+  const muchas = Array.from({ length: 45 }, (_, i)=> ['VALIDADO','11/10/2026','10:00','#' + (500 + i) + ' - P-' + i, 'PRODUCTO ' + i, i === 3 ? 'ME399' : i === 4 ? 'HS136' : '', '0.1', '1', '5', i === 24 ? 'abc' : '5', 'UND', '1', 'ANA']);
   await pegar(tsv(muchas));
   let pg = await page.evaluate(()=> ({ filas: document.querySelectorAll('#cmp-body tr').length, pager: $('cmp-pag').innerText.replace(/\s+/g,' ') }));
-  verificar(pg.filas === 10 && /1–10 de 23/.test(pg.pager) && /Página 1 de 3/.test(pg.pager), `Detalle de 10 en 10: ${pg.pager}`);
+  verificar(pg.filas === 20 && /1–20 de 45/.test(pg.pager) && /Página 1 de 3/.test(pg.pager), `Detalle de 20 en 20: ${pg.pager}`);
+  const barras = await page.evaluate(()=> [3, 4].map(r=> document.querySelector(`#cmp-body tr[data-r="${r}"] td[data-c="5"]`)).map(td=> td.innerText + ':' + td.classList.contains('err')).join(' '));
+  verificar(barras === 'ME399:false HS136:false', `Códigos de barras alfanuméricos pasan sin error (${barras})`);
   await page.click('#cmp-pag [data-cmp-pag="2"]');
   pg = await page.evaluate(()=> ({ filas: [...document.querySelectorAll('#cmp-body tr')].map(r=> r.cells[0].innerText).join(','), pager: $('cmp-pag').innerText }));
-  verificar(pg.filas === '21,22,23' && /Página 3 de 3/.test(pg.pager), `Última página: filas ${pg.filas}`);
+  verificar(pg.filas === '41,42,43,44,45' && /Página 3 de 3/.test(pg.pager), `Última página: filas ${pg.filas}`);
   await page.click('#btn-cmp-guardar');
   await page.waitForTimeout(300);
   pg = await page.evaluate(()=> ({ pagina: /Página 2 de 3/.test($('cmp-pag').innerText), foco: document.activeElement && document.activeElement.closest('tr') && document.activeElement.closest('tr').dataset.r }));
-  verificar(pg.pagina && pg.foco === '14', 'Con un error en la fila 15, "Guardar" lleva a la página 2 y a esa celda');
+  verificar(pg.pagina && pg.foco === '24', 'Con un error en la fila 25, "Guardar" lleva a la página 2 y a esa celda');
   await page.keyboard.press('Control+A'); await page.keyboard.type('5');
   await page.click('#btn-cmp-guardar');
-  await page.waitForFunction(()=> /Guardado! COM-00004 — 23/.test($('cmp-msg').textContent), null, { timeout: 20000 });
+  await page.waitForFunction(()=> /Guardado! COM-00004 — 45/.test($('cmp-msg').textContent), null, { timeout: 20000 });
   await tab('totales');
   const tp = await page.evaluate(()=> ({ filas: document.querySelectorAll('#cmp-tot-body tr').length, pager: $('cmp-tot-pag').innerText.replace(/\s+/g,' ') }));
-  verificar(tp.filas === 11 && /1–10 de 23/.test(tp.pager), `Totales también de 10 en 10 (+ fila TOTAL): ${tp.pager}`);
+  verificar(tp.filas === 21 && /1–20 de 45/.test(tp.pager), `Totales también de 20 en 20 (+ fila TOTAL): ${tp.pager}`);
   await tab('cargas');
 
   // 8b. "Nueva carga" está en el panel de cargas guardadas y la lista no parpadea al volver a Compras
