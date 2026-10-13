@@ -86,8 +86,13 @@ const tsv = filas=> filas.map(f=> f.map(c=> /[\t\n"]/.test(c) ? '"' + c.replace(
   // 5. Carga nueva → COM-00003 (no pisa COM-00002)
   await page.click('#btn-cmp-nueva');
   await pegar(tsv([['VALIDADO','10/10/2026','08:00','#7392 - SST-5','RESALTADOR','','','5','10','10','UND','50.','ANA']]));
-  const d = await page.evaluate(()=> ({ th: [...document.querySelectorAll('#cmp-head th')].map(t=> t.innerText).slice(4, 6).join(' | '), sku: document.querySelector('#cmp-body tr td.deriv').innerText, err: document.querySelectorAll('#cmp-body td.err').length }));
+  const d = await page.evaluate(()=> ({ th: [...document.querySelectorAll('#cmp-head th')].map(t=> t.innerText).slice(4, 6).join(' | '), sku: document.querySelector('#cmp-body tr td.deriv').innerText, err: document.querySelectorAll('#cmp-body td.err').length, factor: document.querySelector('#cmp-body tr td[data-c="11"]').innerText }));
   verificar(d.th === 'CORREL. / SKU | SKU' && d.sku === 'SST-5' && d.err === 0, `Columna SKU junto a CORREL. / SKU: "#7392 - SST-5" → ${d.sku}; factor "50." sin error`);
+  verificar(d.factor === '50', `Apenas se pega, el factor "50." se muestra como ${d.factor} (sin esperar a guardar)`);
+  await page.click('#cmp-body tr[data-r="0"] td[data-c="8"]');
+  await page.keyboard.press('End'); await page.keyboard.type('.');
+  await page.click('#cmp-nota');
+  verificar(await page.evaluate(()=> document.querySelector('#cmp-body tr td[data-c="8"]').innerText) === '10', 'Si se escribe "10." a mano, al salir de la celda queda 10');
   await page.click('#cmp-body tr[data-r="0"] td[data-c="3"]');
   await page.keyboard.press('End'); await page.keyboard.type('X');
   verificar(await page.evaluate(()=> document.querySelector('#cmp-body tr td.deriv').innerText) === 'SST-5X', 'Al corregir CORREL. / SKU, el SKU se actualiza solo');

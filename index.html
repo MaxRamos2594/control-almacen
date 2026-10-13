@@ -2942,8 +2942,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v158';
-const APP_UPDATED = '12/10/2026 19:00';
+const APP_VERSION = 'v159';
+const APP_UPDATED = '12/10/2026 20:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -8463,6 +8463,8 @@ function cmpErrorCelda(c, v){
   return '';
 }
 const cmpFilaVacia = f=> f.every(v=> !String(v||'').trim());
+// En columnas de número se quita el punto o la coma que Excel deja al final ("12." → "12").
+const cmpLimpiar = (c, v)=> CMP_COLS[c] && CMP_COLS[c].tipo === 'num' ? String(v||'').trim().replace(/[.,]$/, '') : v;
 // Texto copiado de Excel → filas de celdas (tabulador entre columnas; las
 // celdas con saltos de línea vienen entre comillas).
 function cmpLeerPegado(txt){
@@ -8534,7 +8536,7 @@ $('cmp-wrap').addEventListener('paste', e=>{
   if(!td) cmpFilas = cmpFilas.filter(f=> !cmpFilaVacia(f));
   filas.forEach((f, i)=>{
     const fila = cmpFilas[r0 + i] || (cmpFilas[r0 + i] = CMP_COLS.map(()=> ''));
-    f.forEach((v, j)=>{ if(c0 + j < CMP_COLS.length) fila[c0 + j] = v; });
+    f.forEach((v, j)=>{ if(c0 + j < CMP_COLS.length) fila[c0 + j] = cmpLimpiar(c0 + j, v); });
   });
   cmpCambios = true;
   renderCompras();
@@ -8549,6 +8551,13 @@ $('cmp-body').addEventListener('input', e=>{
   const err = cmpErrorCelda(c, td.textContent);
   td.classList.toggle('err', !!err); td.title = err;
   cmpCambios = true; cmpResumen();
+});
+// Al salir de una celda de número se limpia el punto final.
+$('cmp-body').addEventListener('focusout', e=>{
+  const td = e.target.closest && e.target.closest('td[data-c]'); if(!td) return;
+  const r = Number(td.closest('tr').dataset.r), c = Number(td.dataset.c);
+  const limpio = cmpLimpiar(c, td.textContent);
+  if(limpio !== td.textContent){ td.textContent = limpio; cmpFilas[r][c] = limpio; }
 });
 // Enter baja a la celda de abajo (como en Excel)
 $('cmp-body').addEventListener('keydown', e=>{
