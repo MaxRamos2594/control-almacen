@@ -120,6 +120,13 @@ const tsv = filas=> filas.map(f=> f.map(c=> /[\t\n"]/.test(c) ? '"' + c.replace(
   await page.keyboard.press('Backspace');
   await page.fill('#cmp-numero', 'OC-101');
   await page.click('#btn-cmp-guardar');
+  await page.waitForTimeout(300);
+  const prov = await page.evaluate(()=> ({ msg: $('cmp-msg').textContent, foco: document.activeElement.id, label: $('cmp-nota').closest('.field').querySelector('label').innerText,
+    sug: [...document.querySelectorAll('#cmp-proveedores option')].map(o=> o.value) }));
+  verificar(/proveedor — es obligatorio/.test(prov.msg) && prov.foco === 'cmp-nota' && /PROVEEDOR \*/i.test(prov.label), `Sin proveedor no guarda: "${prov.msg}"`);
+  verificar(prov.sug.includes('COMPRAS SEMANA 41') && prov.sug.length === 2, `Sugiere los proveedores de las cargas activas: ${prov.sug.join(' · ')}`);
+  await page.fill('#cmp-nota', 'boris');
+  await page.click('#btn-cmp-guardar');
   await page.waitForFunction(()=> /Guardado! COM-00003/.test($('cmp-msg').textContent), null, { timeout: 20000 });
   const it3 = await page.evaluate(async ()=> (await comprasItemsRef.where('carga_correlativo','==','COM-00003').get()).docs[0].data());
   verificar(it3.correl_sku === '#7392 - SST-5' && it3.sku === 'SST-5' && it3.correlativo === 7392 && it3.factor_presentacion === 50, `Guardado: correl_sku "${it3.correl_sku}", sku "${it3.sku}", correlativo ${it3.correlativo}, factor ${it3.factor_presentacion}`);
@@ -161,7 +168,7 @@ const tsv = filas=> filas.map(f=> f.map(c=> /[\t\n"]/.test(c) ? '"' + c.replace(
   await page.click('#btn-cmp-nueva');
   const muchas = Array.from({ length: 45 }, (_, i)=> ['VALIDADO','11/10/2026','10:00','#' + (500 + i) + ' - P-' + i, 'PRODUCTO ' + i, i === 3 ? 'ME399' : i === 4 ? 'HS136' : '', '0.1', '1', '5', i === 24 ? 'abc' : '5', 'UND', '1', 'ANA']);
   await pegar(tsv(muchas));
-  await page.fill('#cmp-numero', 'OC-102');
+  await page.fill('#cmp-numero', 'OC-102'); await page.fill('#cmp-nota', 'HAOQUI');
   let pg = await page.evaluate(()=> ({ filas: document.querySelectorAll('#cmp-body tr').length, pager: $('cmp-pag').innerText.replace(/\s+/g,' ') }));
   verificar(pg.filas === 20 && /1–20 de 45/.test(pg.pager) && /Página 1 de 3/.test(pg.pager), `Detalle de 20 en 20: ${pg.pager}`);
   const barras = await page.evaluate(()=> [3, 4].map(r=> document.querySelector(`#cmp-body tr[data-r="${r}"] td[data-c="5"]`)).map(td=> td.innerText + ':' + td.classList.contains('err')).join(' '));
@@ -205,7 +212,7 @@ const tsv = filas=> filas.map(f=> f.map(c=> /[\t\n"]/.test(c) ? '"' + c.replace(
 
   // 10. Columnas separadas y orden por columna
   const cab = await page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-head th')].map(t=> t.innerText.replace(/\s*[▲▼↕]\s*$/, '')).join('|'));
-  verificar(cab === '|CARGA|N° COMPRA|NOTA|CAMPAÑA(S)|FECHA Y HORA|USUARIO|FILAS|UNID. VALIDADAS|COSTO (S/)|', `Fecha y hora y Usuario en columnas separadas: ${cab}`);
+  verificar(cab === '|CARGA|N° COMPRA|PROVEEDOR|CAMPAÑA(S)|FECHA Y HORA|USUARIO|FILAS|UNID. VALIDADAS|COSTO (S/)|', `Fecha y hora y Usuario en columnas separadas: ${cab}`);
   const usuario = await page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-body tr')][0].cells[6].innerText);
   verificar(usuario === 'VICTOR', `Columna Usuario con quien guardó la carga: "${usuario}"`);
   const anchos = ()=> page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-head th')].map(t=> Math.round(t.getBoundingClientRect().width)).join(','));
@@ -306,6 +313,7 @@ const tsv = filas=> filas.map(f=> f.map(c=> /[\t\n"]/.test(c) ? '"' + c.replace(
   await page.click('#cmp-body tr[data-r="1"] td[data-c="0"]');
   await page.keyboard.press('Control+A'); await page.keyboard.type('PRELIMINAR');
   // N° de compra repetido: avisa al escribir y no deja guardar
+  await page.fill('#cmp-nota', 'BORIS');
   await page.fill('#cmp-numero', ' oc-100 ');
   const aviso = await page.evaluate(()=> ({ t: $('cmp-numero-aviso').textContent, dup: $('cmp-numero').classList.contains('dup') }));
   verificar(aviso.dup && /Ya existe en COM-00002 \(COMPRAS SEMANA 41\)/.test(aviso.t), `Al escribir un N° ya cargado avisa: "${aviso.t}"`);
