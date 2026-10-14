@@ -2067,11 +2067,11 @@
 
   <div class="panel" id="cmp-det-panel" style="margin-bottom:14px;">
     <h3>Detalle cargado <span id="cmp-modo" class="reg-chip" style="margin:0 0 0 8px; vertical-align:middle;"></span></h3>
-    <p class="hint" style="margin-bottom:6px;">Solo se guardan las filas con ESTADO <b>VALIDADO</b> o <b>EN VALIDACIÓN</b> y CANT. VALIDADA <b>mayor a 0</b>; las demás (por ejemplo PRELIMINAR) se quitan solas.</p>
+    <p class="hint" style="margin-bottom:6px;">Solo se guardan las filas con ESTADO <b>VALIDADO</b> o <b>EN VALIDACIÓN</b> (también sus variantes, como VALIDADO 1/2) y CANT. VALIDADA <b>mayor a 0</b>; las demás (por ejemplo PRELIMINAR) se quitan solas.</p>
     <p class="hint" style="margin-bottom:10px;">Copia las filas en Excel (con o sin la fila de títulos) y pégalas aquí con <b>Ctrl+V</b>. Puedes corregir cualquier celda o pegar a partir de una celda, como en Excel. Al guardar, la carga recibe su número (COM-00001…) y queda <b>bloqueada</b>; para modificarla usa "✏️ Habilitar edición".</p>
     <div class="cmp-barra">
       <div class="field" style="max-width:200px; min-width:160px;"><label>N° de compra *</label><input type="text" id="cmp-numero" class="upper" placeholder="EJ. OC-1520" autocomplete="off"><div class="cmp-num-aviso" id="cmp-numero-aviso"></div></div>
-      <div class="field" style="max-width:320px; min-width:220px;"><label>Nota (opcional)</label><input type="text" id="cmp-nota" class="upper" placeholder="EJ. COMPRAS SEMANA 41"></div>
+      <div class="field" style="max-width:320px; min-width:220px;"><label>Proveedor *</label><input type="text" id="cmp-nota" class="upper" list="cmp-proveedores" placeholder="Escribe o elige un proveedor" autocomplete="off"><datalist id="cmp-proveedores"></datalist></div>
       <button class="btn btn-primary" id="btn-cmp-guardar">💾 Guardar</button>
       <button class="btn btn-primary" id="btn-cmp-habilitar" type="button" style="display:none;">✏️ Habilitar edición</button>
       <button class="btn btn-ghost" id="btn-cmp-cancelar" type="button" style="display:none;">Cancelar edición</button>
@@ -3127,8 +3127,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v170';
-const APP_UPDATED = '14/10/2026 17:00';
+const APP_VERSION = 'v171';
+const APP_UPDATED = '14/10/2026 18:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -8846,9 +8846,10 @@ function cmpErrorCelda(c, v){
 const cmpFilaVacia = f=> f.every(v=> !String(v||'').trim());
 // Solo valen ESTADO "VALIDADO" o "EN VALIDACIÓN" y CANT. VALIDADA > 0.
 // Devuelve el motivo por el que la fila se descarta ('' = la fila vale).
-const CMP_ESTADOS_OK = ['VALIDADO', 'EN VALIDACION'];
+// También sus variantes: "VALIDADO 1/2", "VALIDADO 2/2", "VALIDADO (1/2)", "EN VALIDACIÓN 1/3"…
+const CMP_ESTADO_OK = /^(VALIDADO|EN VALIDACION)(?![A-Z])/;
 function cmpMotivoDescarte(f){
-  if(!CMP_ESTADOS_OK.includes(normalizarTexto(f[0]).replace(/\s+/g, ' '))) return 'estado';
+  if(!CMP_ESTADO_OK.test(normalizarTexto(f[0]).replace(/\s+/g, ' '))) return 'estado';
   const cv = cmpNumero(f[9]);
   if(Number.isNaN(cv)) return '';            // no es número: se marca en rojo para corregir
   return cv == null || cv <= 0 ? 'cantidad' : '';
@@ -9066,6 +9067,7 @@ async function cargarListaCompras(){
     const firma = JSON.stringify(nuevas.map(c=> [c.correlativo, c.numero_compra, c.nota, c.campanas, c.filas, c.unidades_validadas, c.costo_total, c.guardado_por, c.guardado_en && c.guardado_en.seconds]));
     const primera = !cmpCargasLeidas;
     cmpCargas = nuevas; cmpCargasLeidas = true;
+    cmpSugerirProveedores();
     if(firma === cmpCargasFirma && !primera) return;
     cmpCargasFirma = firma;
   }catch(err){ console.error(err); showMsg('cmp-msg','err','No se pudieron leer las cargas: '+err.message); }
@@ -9075,7 +9077,7 @@ async function cargarListaCompras(){
 const CMP_CARGAS_COLS = [
   { k:'correlativo', t:'Carga' },
   { k:'numero_compra', t:'N° compra' },
-  { k:'nota', t:'Nota' },
+  { k:'nota', t:'Proveedor' },
   { k:'campanas', t:'Campaña(s)', v: c=> (c.campanas || []).slice().sort().join(',') },
   { k:'fecha', t:'Fecha y hora', v: c=> c.guardado_en && c.guardado_en.seconds || 0 },
   { k:'guardado_por', t:'Usuario' },
@@ -9271,6 +9273,11 @@ $('cmp-cargas-body').addEventListener('click', async e=>{
     cargarListaCompras();
   }catch(err){ console.error(err); showToast('No se pudo eliminar: '+err.message, 'err'); }
 });
+// Proveedor (se guarda en "nota"): obligatorio; sugiere los de las cargas activas.
+function cmpSugerirProveedores(){
+  const lista = [...new Set(cmpCargas.map(c=> String(c.nota || '').trim().toUpperCase()).filter(Boolean))].sort((a, b)=> a.localeCompare(b));
+  $('cmp-proveedores').innerHTML = lista.map(p=> `<option value="${esc(p)}"></option>`).join('');
+}
 // N° de compra: obligatorio y sin repetir entre las cargas activas.
 function cmpNormNumero(v){ return String(v || '').toUpperCase().replace(/\s+/g, ' ').trim(); }
 function cmpNumeroRepetido(num){ return num ? cmpCargas.find(c=> c.correlativo !== cmpCarga && cmpNormNumero(c.numero_compra) === num) : null; }
@@ -9297,6 +9304,7 @@ $('btn-cmp-guardar').addEventListener('click', async ()=>{
     return;
   }
   if(!numero){ showMsg('cmp-msg','err','Ingresa el N° de compra — es obligatorio.'); $('cmp-numero').focus(); return; }
+  if(!$('cmp-nota').value.trim()){ showMsg('cmp-msg','err','Ingresa el proveedor — es obligatorio.'); $('cmp-nota').focus(); return; }
   const editando = cmpCarga;
   // Se revisa contra lo guardado (no solo la lista en pantalla) para no duplicar la compra.
   try{

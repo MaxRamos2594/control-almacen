@@ -120,6 +120,13 @@ const tsv = filas=> filas.map(f=> f.map(c=> /[\t\n"]/.test(c) ? '"' + c.replace(
   await page.keyboard.press('Backspace');
   await page.fill('#cmp-numero', 'OC-101');
   await page.click('#btn-cmp-guardar');
+  await page.waitForTimeout(300);
+  const prov = await page.evaluate(()=> ({ msg: $('cmp-msg').textContent, foco: document.activeElement.id, label: $('cmp-nota').closest('.field').querySelector('label').innerText,
+    sug: [...document.querySelectorAll('#cmp-proveedores option')].map(o=> o.value) }));
+  verificar(/proveedor — es obligatorio/.test(prov.msg) && prov.foco === 'cmp-nota' && /PROVEEDOR \*/i.test(prov.label), `Sin proveedor no guarda: "${prov.msg}"`);
+  verificar(prov.sug.includes('COMPRAS SEMANA 41') && prov.sug.length === 2, `Sugiere los proveedores de las cargas activas: ${prov.sug.join(' · ')}`);
+  await page.fill('#cmp-nota', 'boris');
+  await page.click('#btn-cmp-guardar');
   await page.waitForFunction(()=> /Guardado! COM-00003/.test($('cmp-msg').textContent), null, { timeout: 20000 });
   const it3 = await page.evaluate(async ()=> (await comprasItemsRef.where('carga_correlativo','==','COM-00003').get()).docs[0].data());
   verificar(it3.correl_sku === '#7392 - SST-5' && it3.sku === 'SST-5' && it3.correlativo === 7392 && it3.factor_presentacion === 50, `Guardado: correl_sku "${it3.correl_sku}", sku "${it3.sku}", correlativo ${it3.correlativo}, factor ${it3.factor_presentacion}`);
@@ -161,7 +168,7 @@ const tsv = filas=> filas.map(f=> f.map(c=> /[\t\n"]/.test(c) ? '"' + c.replace(
   await page.click('#btn-cmp-nueva');
   const muchas = Array.from({ length: 45 }, (_, i)=> ['VALIDADO','11/10/2026','10:00','#' + (500 + i) + ' - P-' + i, 'PRODUCTO ' + i, i === 3 ? 'ME399' : i === 4 ? 'HS136' : '', '0.1', '1', '5', i === 24 ? 'abc' : '5', 'UND', '1', 'ANA']);
   await pegar(tsv(muchas));
-  await page.fill('#cmp-numero', 'OC-102');
+  await page.fill('#cmp-numero', 'OC-102'); await page.fill('#cmp-nota', 'HAOQUI');
   let pg = await page.evaluate(()=> ({ filas: document.querySelectorAll('#cmp-body tr').length, pager: $('cmp-pag').innerText.replace(/\s+/g,' ') }));
   verificar(pg.filas === 20 && /1–20 de 45/.test(pg.pager) && /Página 1 de 3/.test(pg.pager), `Detalle de 20 en 20: ${pg.pager}`);
   const barras = await page.evaluate(()=> [3, 4].map(r=> document.querySelector(`#cmp-body tr[data-r="${r}"] td[data-c="5"]`)).map(td=> td.innerText + ':' + td.classList.contains('err')).join(' '));
@@ -205,7 +212,7 @@ const tsv = filas=> filas.map(f=> f.map(c=> /[\t\n"]/.test(c) ? '"' + c.replace(
 
   // 10. Columnas separadas y orden por columna
   const cab = await page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-head th')].map(t=> t.innerText.replace(/\s*[▲▼↕]\s*$/, '')).join('|'));
-  verificar(cab === '|CARGA|N° COMPRA|NOTA|CAMPAÑA(S)|FECHA Y HORA|USUARIO|FILAS|UNID. VALIDADAS|COSTO (S/)|', `Fecha y hora y Usuario en columnas separadas: ${cab}`);
+  verificar(cab === '|CARGA|N° COMPRA|PROVEEDOR|CAMPAÑA(S)|FECHA Y HORA|USUARIO|FILAS|UNID. VALIDADAS|COSTO (S/)|', `Fecha y hora y Usuario en columnas separadas: ${cab}`);
   const usuario = await page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-body tr')][0].cells[6].innerText);
   verificar(usuario === 'VICTOR', `Columna Usuario con quien guardó la carga: "${usuario}"`);
   const anchos = ()=> page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-head th')].map(t=> Math.round(t.getBoundingClientRect().width)).join(','));
@@ -296,16 +303,21 @@ const tsv = filas=> filas.map(f=> f.map(c=> /[\t\n"]/.test(c) ? '"' + c.replace(
     ['VALIDADO','12/10/2026','10:00','A-5','CINCO','','','2','5','','UND','1','ANA'],
     ['Preliminar','12/10/2026','10:00','A-6','SEIS','','','2','5','4','UND','1','ANA'],
     ['Validado','12/10/2026','10:00','A-7','SIETE','','','2','5','-2','UND','1','ANA'],
-    ['VALIDADO','12/10/2026','10:00','A-8','OCHO','','','2','5','2.','UND','1','ANA']
+    ['VALIDADO','12/10/2026','10:00','A-8','OCHO','','','2','5','2.','UND','1','ANA'],
+    ['VALIDADO 1/2','12/10/2026','10:00','A-9','NUEVE','','','2','5','1','UND','1','ANA'],
+    ['Validado (2/2)','12/10/2026','10:00','A-10','DIEZ','','','2','5','1','UND','1','ANA'],
+    ['VALIDADO 2/2','12/10/2026','10:00','A-11','ONCE','','','2','5','0','UND','1','ANA'],
+    ['VALIDADOR','12/10/2026','10:00','A-12','DOCE','','','2','5','1','UND','1','ANA']
   ]));
   g = await grilla();
   const desc = await page.textContent('#cmp-descartes');
-  verificar(g.filas.map(f=> f.split('|')[3]).join(',') === 'A-1,A-3,A-8', `Al pegar quedan solo las que valen: ${g.filas.map(f=> f.split('|')[3]).join(', ')}`);
-  verificar(/Se quitaron 5 fila\(s\) que no se guardan: 2 en PRELIMINAR, 3 con CANT\. VALIDADA 0 o vacía/.test(desc), `Aviso: "${desc}"`);
+  verificar(g.filas.map(f=> f.split('|')[3]).join(',') === 'A-1,A-3,A-8,A-9,A-10', `Al pegar quedan solo las que valen (también VALIDADO 1/2 y 2/2): ${g.filas.map(f=> f.split('|')[3]).join(', ')}`);
+  verificar(/Se quitaron 7 fila\(s\) que no se guardan: 2 en PRELIMINAR, 1 en VALIDADOR, 4 con CANT\. VALIDADA 0 o vacía/.test(desc), `Aviso: "${desc}"`);
   // A mano se cambia una fila a PRELIMINAR: al guardar también se quita
   await page.click('#cmp-body tr[data-r="1"] td[data-c="0"]');
   await page.keyboard.press('Control+A'); await page.keyboard.type('PRELIMINAR');
   // N° de compra repetido: avisa al escribir y no deja guardar
+  await page.fill('#cmp-nota', 'BORIS');
   await page.fill('#cmp-numero', ' oc-100 ');
   const aviso = await page.evaluate(()=> ({ t: $('cmp-numero-aviso').textContent, dup: $('cmp-numero').classList.contains('dup') }));
   verificar(aviso.dup && /Ya existe en COM-00002 \(COMPRAS SEMANA 41\)/.test(aviso.t), `Al escribir un N° ya cargado avisa: "${aviso.t}"`);
@@ -316,7 +328,7 @@ const tsv = filas=> filas.map(f=> f.map(c=> /[\t\n"]/.test(c) ? '"' + c.replace(
   await page.waitForFunction(()=> /ya está cargada/.test($('cmp-msg').textContent), null, { timeout: 10000 });
   page.off('dialog', alDialogo);
   const quitada = await page.textContent('#cmp-descartes');
-  verificar(/Se quitaron 1 fila\(s\) que no se guardan: 1 en PRELIMINAR/.test(quitada) && (await grilla()).filas.length === 2, `Al guardar, la fila cambiada a mano a PRELIMINAR también se quita: "${quitada}"`);
+  verificar(/Se quitaron 1 fila\(s\) que no se guardan: 1 en PRELIMINAR/.test(quitada) && (await grilla()).filas.length === 4, `Al guardar, la fila cambiada a mano a PRELIMINAR también se quita: "${quitada}"`);
   const nCargas = await page.evaluate(async ()=> (await comprasCargasRef.where('numero_compra','==','OC-100').get()).size);
   verificar(/Compra duplicada/.test(dialogo) && /OC-100 ya está cargado en COM-00002/.test(dialogo) && nCargas === 1, `Al guardar con N° repetido alerta y no guarda: "${dialogo.split('\n').filter(Boolean).slice(0, 2).join(' / ')}"`);
   await page.fill('#cmp-numero', 'OC-103');
@@ -325,7 +337,7 @@ const tsv = filas=> filas.map(f=> f.map(c=> /[\t\n"]/.test(c) ? '"' + c.replace(
   await page.waitForFunction(()=> /Guardado! COM-00005/.test($('cmp-msg').textContent), null, { timeout: 20000 });
   const g5 = await page.evaluate(async ()=> ({ msg: $('cmp-msg').textContent, items: (await comprasItemsRef.where('carga_correlativo','==','COM-00005').get()).docs.map(d=> d.data().sku).sort().join(','),
     cab: (await comprasCargasRef.doc('COM-00005').get()).data() }));
-  verificar(g5.items === 'A-1,A-8' && g5.cab.numero_compra === 'OC-103' && g5.cab.unidades_validadas === 7, `Guardado COM-00005 (N° ${g5.cab.numero_compra}, ${g5.cab.unidades_validadas} unid.) solo con las filas que valen: ${g5.items}`);
+  verificar(g5.items === 'A-1,A-10,A-8,A-9' && g5.cab.numero_compra === 'OC-103' && g5.cab.unidades_validadas === 9, `Guardado COM-00005 (N° ${g5.cab.numero_compra}, ${g5.cab.unidades_validadas} unid.) solo con las filas que valen: ${g5.items}`);
   await tab('cargas');
   const colN = await page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-body tr')].map(r=> r.cells[1].innerText + ':' + r.cells[2].innerText).join(' '));
   verificar(/COM-00005:OC-103/.test(colN) && /COM-00004:OC-102/.test(colN), `Columna N° compra en la lista: ${colN}`);
