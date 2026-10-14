@@ -412,6 +412,36 @@
     #view-campanas .subgrupo{flex:0 0 auto;}
   }
 
+  /* Reparto vs Compra: tabla como la hoja de Excel */
+  .rvc-leyenda{background:#f8d4cf; color:#8f2a1d; padding:0 5px; border-radius:3px; font-weight:600;}
+  .rvc-filtros{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:10px;}
+  .rvc-filtros input{max-width:280px;}
+  .rvc-chips{display:flex; gap:6px; flex-wrap:wrap;}
+  .rvc-chips button{padding:5px 12px; border-radius:999px; border:1px solid var(--line-strong); background:#fff; font-size:12px; cursor:pointer; color:var(--ink-soft); font-weight:600;}
+  .rvc-chips button b{font-family:var(--mono); margin-left:4px; color:var(--ink);}
+  .rvc-chips button.activo{background:var(--blue); border-color:var(--blue); color:#fff;} .rvc-chips button.activo b{color:#fff;}
+  .rvc-wrap{overflow:auto; max-height:70vh; border:1px solid var(--line); border-radius:8px;}
+  table.rvc-tabla{border-collapse:separate; border-spacing:0; width:max-content; min-width:100%; font-size:12px;}
+  table.rvc-tabla th, table.rvc-tabla td{padding:5px 9px; border-bottom:1px solid var(--line); border-right:1px solid #eef0f3; white-space:nowrap; background:#fff;}
+  table.rvc-tabla thead th{position:sticky; z-index:2; background:#f6c6ab; color:#3b2416; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; text-align:left;}
+  table.rvc-tabla thead tr:first-child th{top:0; height:26px;} table.rvc-tabla thead tr:nth-child(2) th{top:26px;}
+  table.rvc-tabla thead th.grupo{text-align:center; background:#f3b48f; letter-spacing:.12em;}
+  table.rvc-tabla thead th.vacio{background:#fff;}
+  table.rvc-tabla thead th.guia::after{content:" 🚚"; font-size:10px;}
+  table.rvc-tabla td.num, table.rvc-tabla th.num{text-align:right; font-family:var(--mono);}
+  table.rvc-tabla .fijo{position:sticky; left:0; z-index:1;} table.rvc-tabla thead .fijo{z-index:3;}
+  table.rvc-tabla td.sku{font-family:var(--mono); font-weight:700;}
+  table.rvc-tabla td.desc{max-width:260px; overflow:hidden; text-overflow:ellipsis;}
+  table.rvc-tabla td.compra{background:#f3f7fb; font-weight:700;}
+  table.rvc-tabla td.cero{color:#c3c8cf;}
+  table.rvc-tabla td.mod{background:#f8d4cf; color:#8f2a1d; font-weight:700; box-shadow:inset 0 0 0 1px #e59a8f;}
+  table.rvc-tabla td.saldo{font-weight:700; background:#fafbfc;}
+  table.rvc-tabla td.saldo.neg{color:#b3402f; background:#fdecea;} table.rvc-tabla td.saldo.pos{color:#1f7a4a; background:#e9f6ee;}
+  table.rvc-tabla td.sin-compra{color:#b3402f; font-style:italic;}
+  table.rvc-tabla tbody tr:hover td{background:#f2f6fb;} table.rvc-tabla tbody tr:hover td.mod{background:#f4c3bc;}
+  table.rvc-tabla tfoot td{position:sticky; bottom:0; background:#1B2430; color:#fff; font-weight:700; font-family:var(--mono); border-right-color:#2b3644;}
+  table.rvc-tabla tfoot td.saldo.neg{color:#ffb4a8; background:#1B2430;} table.rvc-tabla tfoot td.saldo.pos{color:#9fe0b8; background:#1B2430;}
+
   /* Registros y Detalle: indicadores + campañas y guías lado a lado */
   .reg-kpis{display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:10px; margin-bottom:14px;}
   .reg-kpi{background:#fff; border:1px solid var(--line-strong); border-radius:10px; padding:10px 14px; position:relative; overflow:hidden; animation:regEntra .45s both;}
@@ -1935,6 +1965,7 @@
       <button id="campsub-registros">🗂 Registros y Detalle</button>
       <button id="campsub-buscar">🔍 Buscar</button>
       <button id="campsub-analisis">📊 Análisis</button>
+      <button id="campsub-repcmp">⚖️ Reparto vs Compra</button>
     </div></div>
     <div class="subgrupo"><span class="subgrupo-t">Gestionar</span><div class="subgrupo-b">
       <button id="campsub-validadores">✅ Validadores</button>
@@ -2295,6 +2326,28 @@
       <div class="hist-wrap an-solo-edicion" style="max-height:500px;">
         <table><thead><tr><th>SKU</th><th>Descripción</th><th>Repartido</th><th>En guía</th><th>Diferencia</th><th style="min-width:150px;">Cumplimiento</th></tr></thead><tbody id="an-detalle-body"></tbody></table>
       </div>
+    </div>
+  </div>
+  </div>
+
+  <div id="campsub-panel-repcmp" style="display:none;">
+  <div class="panel">
+    <h3><span>Reparto vs Compra</span></h3>
+    <p class="hint" style="margin-bottom:10px;">La base son todos los códigos del reparto de la campaña. <b>COMPRA</b> y <b>COSTO</b> salen de las cargas de compras asignadas a la campaña (Compras → Cargas guardadas → Asignar a campaña). Si una tienda ya tiene guía y la cantidad difiere del reparto, vale la de la guía y la celda se pinta de <span class="rvc-leyenda">rojo</span>. <b>SALDO</b> = COMPRA − total repartido.</p>
+    <div style="display:flex; gap:12px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
+      <div class="field" style="margin:0; max-width:360px; min-width:260px;"><label>Campaña</label><select id="rvc-campana-select"><option value="">— Selecciona una campaña —</option></select></div>
+      <button class="btn btn-primary" id="btn-rvc-analizar" type="button">⚖️ Analizar</button>
+      <button class="btn btn-ghost" id="btn-rvc-excel" type="button" style="display:none;">⬇ Excel</button>
+    </div>
+    <div class="msg" id="rvc-msg"></div>
+    <div id="rvc-resultado" style="display:none;">
+      <div class="reg-kpis" id="rvc-kpis"></div>
+      <div class="rvc-filtros">
+        <input type="search" id="rvc-buscar" placeholder="Buscar SKU o descripción…" autocomplete="off">
+        <div class="rvc-chips" id="rvc-chips"></div>
+      </div>
+      <div class="rvc-wrap"><table class="rvc-tabla" id="rvc-tabla"><thead id="rvc-head"></thead><tbody id="rvc-body"></tbody><tfoot id="rvc-foot"></tfoot></table></div>
+      <div class="empty-state" id="rvc-vacio" style="display:none;">Ningún SKU coincide con el filtro.</div>
     </div>
   </div>
   </div>
@@ -3074,8 +3127,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v169';
-const APP_UPDATED = '14/10/2026 15:00';
+const APP_VERSION = 'v170';
+const APP_UPDATED = '14/10/2026 17:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3490,7 +3543,7 @@ $('subtab-retirar-campana').addEventListener('click', ()=>setSubtab('retirar-cam
 $('subtab-unir').addEventListener('click', ()=>setSubtab('unir'));
 
 function setCampanasSubtab(name){
-  ['cargar-campana','cargar-guia','compras','registros','buscar','analisis','validadores','vouchers','participantes'].forEach(n=>{
+  ['cargar-campana','cargar-guia','compras','registros','buscar','analisis','repcmp','validadores','vouchers','participantes'].forEach(n=>{
     $('campsub-'+n).classList.toggle('active', n===name);
     $('campsub-panel-'+n).style.display = (n===name) ? 'block' : 'none';
   });
@@ -3501,6 +3554,7 @@ $('campsub-compras').addEventListener('click', ()=>{ setCampanasSubtab('compras'
 $('campsub-registros').addEventListener('click', ()=>{ setCampanasSubtab('registros'); $('reg-kpis').dataset.pintado = ''; renderRegistrosCampana(); cargarTodasLasGuias(); });
 $('campsub-buscar').addEventListener('click', ()=>setCampanasSubtab('buscar'));
 $('campsub-analisis').addEventListener('click', ()=>{ setCampanasSubtab('analisis'); poblarSelectCampanasAnalisis(); });
+$('campsub-repcmp').addEventListener('click', ()=>{ setCampanasSubtab('repcmp'); poblarSelectCampanas('rvc-campana-select'); });
 $('campsub-validadores').addEventListener('click', ()=>{ setCampanasSubtab('validadores'); poblarSelectCampanasValidadores(); calcularPendientesGlobalValidadores(); });
 $('campsub-vouchers').addEventListener('click', ()=>{ setCampanasSubtab('vouchers'); poblarSelectCampanasVouchers(); });
 $('campsub-participantes').addEventListener('click', ()=>{ setCampanasSubtab('participantes'); renderParticipantesMaestro(); escanearParticipantesModulo(false); });
@@ -12220,7 +12274,8 @@ let anUltimoResultado = null;
 const SELECTS_CAMPANAS = {
   'an-campana-select': r=> `${r.correlativo} — ${r.campana} (${r.fecha_transaccion||''})`,
   'val-campana-select': r=> `${r.correlativo} — ${r.campana}`,
-  'vch-campana-select': r=> `${r.correlativo} — ${r.campana}`
+  'vch-campana-select': r=> `${r.correlativo} — ${r.campana}`,
+  'rvc-campana-select': r=> `${r.correlativo} — ${r.campana} (${r.fecha_transaccion||''})`
 };
 function llenarSelectCampanas(id){
   const sel = $(id);
@@ -12325,6 +12380,131 @@ $('btn-analizar').addEventListener('click', async ()=>{
     proc.fin();
     $('btn-analizar').disabled = false;
   }
+});
+
+// -------- Reparto vs Compra --------
+// Filas = códigos del reparto de la campaña; columnas = tiendas del reparto.
+// COMPRA y COSTO salen de las cargas de compras asignadas a la campaña. Si la
+// tienda ya tiene guía (activa), vale la cantidad de la guía; si difiere del
+// reparto la celda se marca. SALDO = COMPRA − total repartido.
+let rvcDatos = null, rvcFiltro = 'todos';
+const rvcTienda = n=>{ const m = participanteDelMaestro(n); return claveParticipante(m ? m.nombre : n); };
+async function rvcCalcular(corr){
+  const proc = relojProceso('rvc-msg');
+  try{
+    proc.paso('Leyendo el reparto de la campaña…');
+    let reparto = campRegCache[corr];
+    if(!reparto){ reparto = (await campanaItemsRef.where('correlativo','==',corr).limit(5000).get()).docs.map(d=> d.data()); campRegCache[corr] = reparto; }
+    proc.paso('Leyendo las guías de la campaña…');
+    const activas = new Set((await guiasRegistrosRef.where('campana_correlativo','==',corr).get()).docs.map(d=> d.data()).filter(g=> (g.estado || 'ACTIVO') === 'ACTIVO').map(g=> g.correlativo));
+    const guiaItems = (await guiaItemsRef.where('campana_correlativo','==',corr).limit(10000).get()).docs.map(d=> d.data()).filter(i=> activas.has(i.correlativo_guia));
+    proc.paso('Leyendo las compras asignadas a la campaña…');
+    const cargas = (await comprasCargasRef.where('campanas','array-contains',corr).get()).docs.map(d=> d.data()).filter(c=> c.estado === 'ACTIVO');
+    const totales = [];
+    for(let i = 0; i < cargas.length; i += 10){
+      const s = await comprasTotalesRef.where('carga_correlativo','in', cargas.slice(i, i + 10).map(c=> c.correlativo)).get();
+      s.docs.forEach(d=> totales.push(d.data()));
+    }
+    proc.fin();
+    // Tiendas (columnas) en el orden alfabético de su nombre en el reparto
+    const tiendas = new Map();
+    reparto.forEach(r=>{ const k = rvcTienda(r.participante); if(k && !tiendas.has(k)) tiendas.set(k, { k, nombre: String(r.participante || '').toUpperCase(), guia:false }); });
+    const cols = [...tiendas.values()].sort((a, b)=> a.nombre.localeCompare(b.nombre));
+    // Guías: cantidad por tienda + SKU
+    const guia = new Map();
+    guiaItems.forEach(i=>{ const t = rvcTienda(i.participante); if(!tiendas.has(t)) return; tiendas.get(t).guia = true; const k = t + '|' + claveSku(i.codigo); guia.set(k, (guia.get(k) || 0) + (Number(i.cantidad) || 0)); });
+    // Compras: suma de CANT. VALIDADA y costo promedio ponderado por SKU
+    const compra = new Map();
+    totales.forEach(t=>{ const k = claveSku(t.sku || t.correl_sku); if(!k) return; const c = compra.get(k) || { cant:0, valor:0, costo:null, desc:'' };
+      const q = Number(t.cant_validada) || 0, cu = Number(t.costo_unit); c.cant += q; if(!Number.isNaN(cu) && t.costo_unit != null){ c.valor += q * cu; c.costo = cu; } if(!c.desc) c.desc = t.descripcion || ''; compra.set(k, c); });
+    // Filas por SKU del reparto
+    const filas = new Map();
+    reparto.forEach(r=>{ const k = claveSku(r.sku); if(!k) return; const f = filas.get(k) || { k, sku: String(r.sku || '').toUpperCase(), desc: r.producto || '', rep: new Map() };
+      const t = rvcTienda(r.participante); f.rep.set(t, (f.rep.get(t) || 0) + (Number(r.cantidad) || 0)); if(!f.desc) f.desc = r.producto || ''; filas.set(k, f); });
+    const lista = [...filas.values()].sort((a, b)=> a.sku.localeCompare(b.sku)).map(f=>{
+      const c = compra.get(f.k);
+      const celdas = cols.map(t=>{ const rep = f.rep.get(t.k) || 0;
+        if(!t.guia) return { v: rep, rep, mod:false };
+        const g = guia.get(t.k + '|' + f.k) || 0;
+        return { v: g, rep, guia: g, mod: g !== rep }; });
+      const repartido = celdas.reduce((s, x)=> s + x.v, 0);
+      const cant = c ? c.cant : null;
+      const costo = c ? (c.cant ? c.valor / c.cant : c.costo) : null;
+      return { sku: f.sku, desc: f.desc || (c && c.desc) || '', compra: cant, costo, celdas, repartido, saldo: (cant || 0) - repartido, mods: celdas.filter(x=> x.mod).length };
+    });
+    return { corr, cols, lista, cargas: cargas.map(c=> c.correlativo).sort(), guias: activas.size };
+  }catch(err){ proc.fin(); throw err; }
+}
+const rvcN = v=> v == null ? '' : anFmt(Math.round(v * 100) / 100);
+function rvcFiltrar(){
+  const q = normalizarTexto($('rvc-buscar').value);
+  return rvcDatos.lista.filter(f=>{
+    if(q && !normalizarTexto(f.sku + ' ' + f.desc).includes(q)) return false;
+    if(rvcFiltro === 'mod') return f.mods > 0;
+    if(rvcFiltro === 'neg') return f.saldo < 0;
+    if(rvcFiltro === 'pos') return f.saldo > 0;
+    if(rvcFiltro === 'sin') return f.compra == null;
+    return true;
+  });
+}
+function rvcRender(){
+  const d = rvcDatos; if(!d) return;
+  const L = d.lista;
+  const tot = { compra: L.reduce((s, f)=> s + (f.compra || 0), 0), rep: L.reduce((s, f)=> s + f.repartido, 0) };
+  const mods = L.reduce((s, f)=> s + f.mods, 0), sinCompra = L.filter(f=> f.compra == null).length;
+  const valor = L.reduce((s, f)=> s + (f.compra || 0) * (f.costo || 0), 0);
+  const kpi = (t, v, det, color)=> `<div class="reg-kpi" style="--k:${color}"><div class="t">${esc(t)}</div><div class="v">${esc(v)}</div><div class="d">${esc(det)}</div></div>`;
+  $('rvc-kpis').innerHTML = kpi('SKU del reparto', anFmt(L.length), `${d.cols.length} tienda(s) · ${d.guias} guía(s)`, 'var(--blue)') +
+    kpi('Unid. compradas', anFmt(tot.compra), d.cargas.length ? `${d.cargas.length} carga(s): ${d.cargas.join(', ')}` : 'Sin compras asignadas', '#2E8B57') +
+    kpi('Unid. repartidas', anFmt(tot.rep), 'reparto, o guía donde ya hay', '#B5651D') +
+    kpi('Saldo', anFmt(tot.compra - tot.rep), tot.compra - tot.rep < 0 ? 'falta comprar' : 'sobra de la compra', tot.compra - tot.rep < 0 ? '#B03A48' : '#1F8A8A') +
+    kpi('Cambiadas por guía', anFmt(mods), 'celdas en rojo', '#B03A48') +
+    kpi('Valor de la compra', 'S/ ' + valor.toLocaleString('es-PE', { minimumFractionDigits:2, maximumFractionDigits:2 }), sinCompra ? `${sinCompra} SKU sin compra` : 'todos los SKU con compra', '#7B4FA0');
+  const n = { todos: L.length, mod: L.filter(f=> f.mods).length, neg: L.filter(f=> f.saldo < 0).length, pos: L.filter(f=> f.saldo > 0).length, sin: sinCompra };
+  $('rvc-chips').innerHTML = [['todos','Todos'],['mod','🟥 Cambiados por guía'],['neg','Saldo negativo'],['pos','Saldo positivo'],['sin','Sin compra']]
+    .map(([k, t])=> `<button type="button" data-rvc-filtro="${k}" class="${rvcFiltro === k ? 'activo' : ''}">${esc(t)}<b>${esc(n[k])}</b></button>`).join('');
+  $('rvc-head').innerHTML = `<tr><th class="vacio fijo" colspan="1"></th><th class="vacio" colspan="3"></th><th class="grupo" colspan="${d.cols.length}">Reparto</th><th class="vacio"></th></tr>` +
+    `<tr><th class="fijo">SKU</th><th>Descripción</th><th class="num">Compra</th><th class="num">Costo</th>` + d.cols.map(t=> `<th class="num${t.guia ? ' guia' : ''}" title="${esc(t.nombre)}${t.guia ? ' — ya tiene guía' : ''}">${esc(t.nombre)}</th>`).join('') + '<th class="num">Saldo</th></tr>';
+  const filas = rvcFiltrar();
+  $('rvc-vacio').style.display = filas.length ? 'none' : 'block';
+  $('rvc-body').innerHTML = filas.map(f=> `<tr><td class="fijo sku">${esc(f.sku)}</td><td class="desc" title="${esc(f.desc)}">${esc(f.desc)}</td>` +
+    (f.compra == null ? '<td class="num compra sin-compra" title="Sin compra asignada a la campaña">sin compra</td><td class="num"></td>' : `<td class="num compra">${esc(rvcN(f.compra))}</td><td class="num">${esc(f.costo == null ? '' : f.costo.toFixed(2))}</td>`) +
+    f.celdas.map((c, i)=> c.mod ? `<td class="num mod" title="${esc(d.cols[i].nombre)}: reparto ${esc(rvcN(c.rep))} → guía ${esc(rvcN(c.guia))}">${esc(rvcN(c.v))}</td>` : `<td class="num${c.v ? '' : ' cero'}">${c.v ? esc(rvcN(c.v)) : '·'}</td>`).join('') +
+    `<td class="num saldo ${f.saldo < 0 ? 'neg' : f.saldo > 0 ? 'pos' : ''}">${esc(rvcN(f.saldo))}</td></tr>`).join('');
+  const sumCol = i=> filas.reduce((s, f)=> s + f.celdas[i].v, 0);
+  const sCompra = filas.reduce((s, f)=> s + (f.compra || 0), 0), sRep = filas.reduce((s, f)=> s + f.repartido, 0);
+  $('rvc-foot').innerHTML = `<tr><td class="fijo">TOTAL</td><td>${esc(filas.length)} SKU</td><td class="num">${esc(rvcN(sCompra))}</td><td></td>` + d.cols.map((t, i)=> `<td class="num">${esc(rvcN(sumCol(i)))}</td>`).join('') +
+    `<td class="num saldo ${sCompra - sRep < 0 ? 'neg' : sCompra - sRep > 0 ? 'pos' : ''}">${esc(rvcN(sCompra - sRep))}</td></tr>`;
+}
+$('btn-rvc-analizar').addEventListener('click', async ()=>{
+  const corr = $('rvc-campana-select').value;
+  if(!corr){ showMsg('rvc-msg','err','Selecciona una campaña primero.'); return; }
+  $('btn-rvc-analizar').disabled = true;
+  try{
+    rvcDatos = await rvcCalcular(corr); rvcFiltro = 'todos'; $('rvc-buscar').value = '';
+    $('rvc-resultado').style.display = 'block'; $('btn-rvc-excel').style.display = '';
+    rvcRender();
+    if(!rvcDatos.cargas.length) showMsg('rvc-msg','err', `${corr} no tiene compras asignadas: COMPRA sale vacía. Asígnalas en Compras → Cargas guardadas → "Asignar a campaña".`);
+    else $('rvc-msg').style.display = 'none';
+  }catch(err){ console.error(err); showMsg('rvc-msg','err','Error al analizar: '+err.message); }
+  finally{ $('btn-rvc-analizar').disabled = false; }
+});
+$('rvc-campana-select').addEventListener('change', ()=>{ rvcDatos = null; $('rvc-resultado').style.display = 'none'; $('btn-rvc-excel').style.display = 'none'; $('rvc-msg').style.display = 'none'; });
+$('rvc-buscar').addEventListener('input', rvcRender);
+$('rvc-chips').addEventListener('click', e=>{ const b = e.target.closest('[data-rvc-filtro]'); if(!b) return; rvcFiltro = b.dataset.rvcFiltro; rvcRender(); });
+$('btn-rvc-excel').addEventListener('click', ()=>{
+  const d = rvcDatos; if(!d) return;
+  if(typeof XLSX === 'undefined'){ showToast('La librería de Excel aún no carga. Intenta de nuevo.', 'err'); return; }
+  const aoa = [['', '', '', '', 'REPARTO', ...d.cols.slice(1).map(()=> ''), ''], ['SKU','DESCRIPCION','COMPRA','COSTO', ...d.cols.map(t=> t.nombre), 'SALDO']];
+  d.lista.forEach(f=> aoa.push([f.sku, f.desc, f.compra == null ? '' : f.compra, f.costo == null ? '' : Math.round(f.costo * 100) / 100, ...f.celdas.map(c=> c.v || ''), f.saldo]));
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!merges'] = d.cols.length > 1 ? [{ s:{ r:0, c:4 }, e:{ r:0, c:3 + d.cols.length } }] : [];
+  const cambios = [['SKU','DESCRIPCION','TIENDA','REPARTO','GUIA']];
+  d.lista.forEach(f=> f.celdas.forEach((c, i)=>{ if(c.mod) cambios.push([f.sku, f.desc, d.cols[i].nombre, c.rep, c.guia]); }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Reparto vs Compra');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(cambios), 'Cambiados por guia');
+  XLSX.writeFile(wb, `reparto_vs_compra_${d.corr}.xlsx`);
 });
 
 function calcularAnalisisCumplimiento(filasReparto, filasGuia){
