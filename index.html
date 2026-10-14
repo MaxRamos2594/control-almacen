@@ -605,6 +605,22 @@
   @keyframes cmpPop{0%{transform:scale(.4); opacity:0;} 60%{transform:scale(1.15);} 100%{transform:none;}}
   .cmp-camp-chip button{border:none; background:none; cursor:pointer; color:inherit; opacity:.55; font-size:10px; padding:0 4px;}
   .cmp-camp-chip button:hover{opacity:1; color:#a5441a;}
+  /* Buscador de compras */
+  .cmp-buscar{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px; padding:10px 12px; background:#f6f8fb; border:1px solid var(--line); border-radius:10px;}
+  .cmp-buscar #cmp-q{flex:1 1 320px; max-width:520px; font-size:13.5px; padding:8px 12px; border-radius:8px;}
+  .cmp-buscar label{display:flex; gap:6px; align-items:center; font-size:12px; font-weight:600; margin:0; color:var(--ink-soft);}
+  .cmp-buscar input[type=date]{width:auto;}
+  .cmp-q-info{font-size:12px; color:var(--ink-soft);} .cmp-q-info b{font-family:var(--mono); color:var(--ink);}
+  .cmp-q-prod{margin-bottom:12px; border:1px solid #c9d9ea; border-radius:10px; overflow:hidden; animation:regEntra .2s both;}
+  .cmp-q-prod .t{padding:8px 12px; background:#eaf1fb; font-size:12px; font-weight:700; color:var(--ink);}
+  .cmp-q-prod .w{max-height:320px; overflow:auto;}
+  .cmp-q-prod table{width:100%; border-collapse:collapse; font-size:12px;}
+  .cmp-q-prod th{position:sticky; top:0; background:#f6f8fb; text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); padding:6px 10px; border-bottom:1px solid var(--line);}
+  .cmp-q-prod td{padding:5px 10px; border-bottom:1px solid #eef0f3; white-space:nowrap;}
+  .cmp-q-prod td.num{text-align:right; font-family:var(--mono);}
+  .cmp-q-prod tr:hover td{background:#f2f6fb;}
+  .cmp-q-prod mark{background:#ffe58a; color:inherit; border-radius:2px; padding:0 1px;}
+  .cmp-q-prod .mas{padding:6px 12px; font-size:11.5px; color:var(--ink-soft); background:#fafbfc;}
   .cmp-num-aviso{font-size:11.5px; margin-top:4px; min-height:0;}
   .cmp-num-aviso.dup{color:#fff; background:#b3402f; padding:5px 8px; border-radius:6px; font-weight:600; animation:cmpLatido .3s;}
   .cmp-num-aviso.ok{color:#2e8b57;}
@@ -2061,6 +2077,14 @@
   </div>
   <div class="panel" id="cmp-cargas-panel" style="margin-bottom:14px;">
     <h3><span>Cargas de compras guardadas</span><button class="btn btn-primary btn-sm" id="btn-cmp-nueva" type="button" style="margin-left:auto; margin-right:8px; text-transform:none; letter-spacing:0;">🛒 ＋ Nueva carga</button></h3>
+    <div class="cmp-buscar">
+      <input type="search" id="cmp-q" placeholder="🔍 Código de producto, descripción, proveedor o N° de compra…" autocomplete="off">
+      <label>Desde <input type="date" id="cmp-desde"></label>
+      <label>Hasta <input type="date" id="cmp-hasta"></label>
+      <button type="button" class="btn btn-ghost btn-sm" id="btn-cmp-q-limpiar" style="display:none;">✕ Limpiar</button>
+      <span class="cmp-q-info" id="cmp-q-info"></span>
+    </div>
+    <div class="cmp-q-prod" id="cmp-q-prod" style="display:none;"></div>
     <div class="cmp-grupos" id="cmp-grupos" role="tablist" aria-label="Ver cargas por campaña"></div>
     <div class="cmp-camp-resumen" id="cmp-camp-resumen" style="display:none;"></div>
     <div class="cmp-asignar" id="cmp-asignar" style="display:none;">
@@ -3160,8 +3184,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v174';
-const APP_UPDATED = '15/10/2026 10:00';
+const APP_VERSION = 'v175';
+const APP_UPDATED = '15/10/2026 11:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -9098,11 +9122,12 @@ async function cargarListaCompras(){
     const snap = await comprasCargasRef.where('estado','==','ACTIVO').get();
     try{ await esperarRegistrosCampana(); }catch(e){ console.warn('Campañas para compras:', e); }   // nombres para "Asignar a campaña"
     const nuevas = snap.docs.map(d=> d.data()).sort((a,b)=> b.correlativo.localeCompare(a.correlativo));
-    const firma = JSON.stringify(nuevas.map(c=> [c.correlativo, c.numero_compra, c.nota, c.campanas, c.filas, c.unidades_validadas, c.costo_total, c.guardado_por, c.guardado_en && c.guardado_en.seconds]));
+    const firma = JSON.stringify(nuevas.map(c=> [c.correlativo, c.numero_compra, c.nota, c.campanas, c.filas, c.unidades_validadas, c.costo_total, c.guardado_por, c.guardado_en && c.guardado_en.seconds, c.editado_en && c.editado_en.seconds]));
     const primera = !cmpCargasLeidas;
     cmpCargas = nuevas; cmpCargasLeidas = true;
     cmpSugerirProveedores();
     if(firma === cmpCargasFirma && !primera) return;
+    if(firma !== cmpCargasFirma){ cmpIndice = null; if(cmpTokens().length) await cmpCargarIndice().catch(()=>{}); }
     cmpCargasFirma = firma;
   }catch(err){ console.error(err); showMsg('cmp-msg','err','No se pudieron leer las cargas: '+err.message); }
   renderListaCompras();
@@ -9131,10 +9156,89 @@ $('cmp-cargas-head').addEventListener('click', e=>{
 const cmpSel = new Set();      // cargas marcadas para asignar
 let cmpFiltroCamp = '';        // '' = todas · '__SIN' = sin campaña · REG-… = esa campaña
 function cmpCargasFiltradas(){
-  if(!cmpFiltroCamp) return cmpCargas;
-  if(cmpFiltroCamp === '__SIN') return cmpCargas.filter(c=> !(c.campanas || []).length);
-  return cmpCargas.filter(c=> (c.campanas || []).includes(cmpFiltroCamp));
+  let l = cmpCargas;
+  if(cmpFiltroCamp === '__SIN') l = l.filter(c=> !(c.campanas || []).length);
+  else if(cmpFiltroCamp) l = l.filter(c=> (c.campanas || []).includes(cmpFiltroCamp));
+  return cmpBusquedaActiva() ? l.filter(cmpCargaCoincide) : l;
 }
+// -------- Buscador: código de producto, descripción, proveedor, N° de compra y fechas --------
+// Se lee una sola vez el índice de productos (compras_totales: un renglón por SKU
+// de cada carga) y se busca en memoria; se vuelve a leer solo si cambian las cargas.
+let cmpIndice = null, cmpIndiceCargando = null, cmpQTimer = null;
+const cmpTokens = ()=> normalizarTexto($('cmp-q').value).split(/\s+/).filter(Boolean);
+const cmpBusquedaActiva = ()=> !!(cmpTokens().length || $('cmp-desde').value || $('cmp-hasta').value);
+const cmpFechaCarga = c=>{ const t = c.guardado_en && c.guardado_en.toDate ? c.guardado_en.toDate() : null; if(!t) return ''; const p = n=> String(n).padStart(2, '0'); return `${t.getFullYear()}-${p(t.getMonth() + 1)}-${p(t.getDate())}`; };
+function cmpEnRango(c){
+  const d = $('cmp-desde').value, h = $('cmp-hasta').value;
+  if(!d && !h) return true;
+  const f = cmpFechaCarga(c);
+  return !!f && (!d || f >= d) && (!h || f <= h);
+}
+const cmpTextoCarga = c=> normalizarTexto(`${c.correlativo} ${c.numero_compra || ''} ${c.nota || ''}`);
+function cmpCargaCoincide(c){
+  if(!cmpEnRango(c)) return false;
+  const tk = cmpTokens(); if(!tk.length) return true;
+  const txt = cmpTextoCarga(c);
+  if(tk.every(t=> txt.includes(t))) return true;
+  const filas = cmpIndice && cmpIndice.porCarga.get(c.correlativo);
+  return !!filas && filas.some(r=> tk.every(t=> r.txt.includes(t) || txt.includes(t)));
+}
+async function cmpCargarIndice(){
+  if(cmpIndice) return cmpIndice;
+  if(!cmpIndiceCargando) cmpIndiceCargando = (async ()=>{
+    const snap = await comprasTotalesRef.get();
+    const porCarga = new Map();
+    snap.docs.forEach(d=>{ const r = d.data(); if(!r.carga_correlativo) return;
+      r.txt = normalizarTexto(`${r.sku || ''} ${r.correl_sku || ''} ${r.descripcion || ''} ${r.codigo_barras || ''}`);
+      (porCarga.get(r.carga_correlativo) || porCarga.set(r.carga_correlativo, []).get(r.carga_correlativo)).push(r); });
+    cmpIndice = { porCarga, n: snap.size };
+    return cmpIndice;
+  })().finally(()=>{ cmpIndiceCargando = null; });
+  return cmpIndiceCargando;
+}
+// Resalta las palabras buscadas; cada tramo de texto se escapa con esc().
+function cmpMarcar(texto, tk){
+  const t = String(texto || '');
+  const n = [...t].map(ch=> ch.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')).join('');
+  if(n.length !== t.length) return esc(t);
+  const marca = new Array(t.length).fill(false);
+  tk.forEach(w=>{ let i = n.indexOf(w); while(w && i >= 0){ for(let k = i; k < i + w.length; k++) marca[k] = true; i = n.indexOf(w, i + w.length); } });
+  let out = '', i = 0;
+  while(i < t.length){ let j = i; while(j < t.length && marca[j] === marca[i]) j++; out += marca[i] ? `<mark>${esc(t.slice(i, j))}</mark>` : esc(t.slice(i, j)); i = j; }
+  return out;
+}
+function cmpRenderBusqueda(filtradas){
+  const tk = cmpTokens(), activa = cmpBusquedaActiva();
+  $('btn-cmp-q-limpiar').style.display = activa ? '' : 'none';
+  $('cmp-q-info').innerHTML = activa ? `<b>${esc(filtradas.length)}</b> carga(s) encontradas` : '';
+  const box = $('cmp-q-prod');
+  if(!tk.length || !cmpIndice){ box.style.display = 'none'; box.innerHTML = ''; return; }
+  const filas = [];
+  filtradas.forEach(c=>{ const txt = cmpTextoCarga(c);
+    (cmpIndice.porCarga.get(c.correlativo) || []).forEach(r=>{ if(tk.every(t=> r.txt.includes(t) || txt.includes(t)) && tk.some(t=> r.txt.includes(t))) filas.push({ c, r }); }); });
+  if(!filas.length){ box.style.display = 'none'; box.innerHTML = ''; return; }
+  filas.sort((a, b)=> b.c.correlativo.localeCompare(a.c.correlativo) || (a.r.orden || 0) - (b.r.orden || 0));
+  const MAX = 100;
+  box.innerHTML = `<div class="t">📦 ${esc(filas.length)} producto(s) encontrados en ${esc(new Set(filas.map(x=> x.c.correlativo)).size)} carga(s)</div><div class="w"><table><thead><tr><th>Carga</th><th>Fecha</th><th>Proveedor</th><th>N° compra</th><th>SKU</th><th>Descripción</th><th class="num">Cant. validada</th><th class="num">Costo unit.</th><th></th></tr></thead><tbody>` +
+    filas.slice(0, MAX).map(({ c, r })=> `<tr><td><b>${esc(c.correlativo)}</b></td><td>${esc(cmpFechaCarga(c).split('-').reverse().join('/'))}</td><td>${cmpMarcar(c.nota || '', tk)}</td><td>${esc(c.numero_compra || '—')}</td>` +
+      `<td><b>${cmpMarcar(r.sku || r.correl_sku || '', tk)}</b></td><td>${cmpMarcar(r.descripcion || '', tk)}</td><td class="num">${esc(anFmt(r.cant_validada || 0))}</td><td class="num">${esc(r.costo_unit == null ? '' : Number(r.costo_unit).toFixed(2))}</td>` +
+      `<td><button type="button" class="btn btn-sm" data-cmp-abrir="${esc(c.correlativo)}">Abrir</button></td></tr>`).join('') +
+    `</tbody></table></div>${filas.length > MAX ? `<div class="mas">… y ${esc(filas.length - MAX)} más. Escribe más para afinar la búsqueda.</div>` : ''}`;
+  box.style.display = 'block';
+}
+async function cmpBuscar(){
+  cmpCargasPag = 0;
+  if(cmpTokens().length && !cmpIndice){
+    $('cmp-q-info').textContent = '⏳ Preparando la búsqueda…';
+    try{ await cmpCargarIndice(); }catch(err){ console.error(err); $('cmp-q-info').textContent = 'No se pudo leer los productos: ' + err.message; return; }
+  }
+  renderListaCompras();
+}
+$('cmp-q').addEventListener('input', ()=>{ clearTimeout(cmpQTimer); cmpQTimer = setTimeout(cmpBuscar, 120); });
+$('cmp-q').addEventListener('focus', ()=>{ cmpCargarIndice().catch(()=>{}); });   // se adelanta la lectura
+['cmp-desde','cmp-hasta'].forEach(id=> $(id).addEventListener('change', cmpBuscar));
+$('btn-cmp-q-limpiar').addEventListener('click', ()=>{ $('cmp-q').value = ''; $('cmp-desde').value = ''; $('cmp-hasta').value = ''; cmpBuscar(); });
+$('cmp-q-prod').addEventListener('click', e=>{ const b = e.target.closest('[data-cmp-abrir]'); if(b) abrirCargaCompras(b.dataset.cmpAbrir); });
 // Color fijo por campaña (el mismo en tarjetas, etiquetas y accesos rápidos).
 function cmpColorCamp(k){ let h = 0; for(const ch of String(k)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return 'cmp-c' + (h % 8); }
 const cmpSoles = n=> (Number(n) || 0).toLocaleString('es-PE', { minimumFractionDigits:2, maximumFractionDigits:2 });
@@ -9241,7 +9345,7 @@ function renderListaCompras(){
   const val = c=> col.v ? col.v(c) : (col.num ? Number(c[col.k]) || 0 : String(c[col.k] || ''));
   const ordenadas = filtradas.slice().sort((a, b)=>{ const x = val(a), y = val(b); return (typeof x === 'number' ? x - y : x.localeCompare(y)) * cmpCargasOrden.dir || b.correlativo.localeCompare(a.correlativo); });
   $('cmp-cargas-vacio').style.display = filtradas.length || !cmpCargasLeidas ? 'none' : 'block';
-  $('cmp-cargas-vacio').textContent = !cmpCargas.length ? 'Aún no hay cargas de compras guardadas.' : (cmpFiltroCamp === '__SIN' ? '🎉 Todas las cargas ya tienen campaña.' : 'Esta campaña aún no tiene cargas asignadas.');
+  $('cmp-cargas-vacio').textContent = !cmpCargas.length ? 'Aún no hay cargas de compras guardadas.' : (cmpBusquedaActiva() ? '🔍 Ninguna carga coincide con la búsqueda.' : cmpFiltroCamp === '__SIN' ? '🎉 Todas las cargas ya tienen campaña.' : 'Esta campaña aún no tiene cargas asignadas.');
   $('cmp-sel-todas').indeterminate = algunaSel && !todasSel;
   const puedeEliminar = currentPermisos.admin || currentPermisos.eliminar;
   const paginas = Math.max(1, Math.ceil(filtradas.length / CMP_CARGAS_POR_PAG));
@@ -9250,6 +9354,7 @@ function renderListaCompras(){
   $('cmp-cargas-pag').innerHTML = cmpPagerHtml('data-cmp-cargas-pag', cmpCargasPag, filtradas.length, CMP_CARGAS_POR_PAG);
   cmpContadores();
   cmpRenderCampanas(filtradas);
+  cmpRenderBusqueda(filtradas);
   const nombreCamp = corr=>{ const r = campRegAllCache.find(x=> x.correlativo === corr); return r ? `${corr} — ${r.campana || ''}` : corr; };
   $('cmp-cargas-body').innerHTML = ordenadas.slice(desde, desde + CMP_CARGAS_POR_PAG).map((c, i)=>{
     const f = c.guardado_en && c.guardado_en.toDate ? c.guardado_en.toDate().toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }) : '';

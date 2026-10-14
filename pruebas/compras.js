@@ -346,6 +346,43 @@ const tsv = filas=> filas.map(f=> f.map(c=> /[\t\n"]/.test(c) ? '"' + c.replace(
   await tab('detalle');
   await page.locator('#cmp-det-panel').screenshot({ path: require('path').join(__dirname, 'salida', 'compras_filtros.png') });
 
+  // 13. Buscador: código de producto, descripción, proveedor, N° de compra y rango de fechas
+  await tab('cargas');
+  await page.evaluate(()=>{ cmpFiltroCamp = ''; cmpCargasOrden = { k:'correlativo', dir:-1 }; renderListaCompras(); });
+  const cargasVis = ()=> page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-body tr')].map(r=> r.cells[1].innerText).join(','));
+  const buscar = async (q)=>{ await page.fill('#cmp-q', q); await page.waitForTimeout(400); return { cargas: await cargasVis(), info: await page.textContent('#cmp-q-info'),
+    prod: await page.evaluate(()=> $('cmp-q-prod').style.display !== 'none' ? [...document.querySelectorAll('#cmp-q-prod tbody tr')].map(r=> r.cells[0].innerText + ':' + r.cells[4].innerText) : []),
+    marcas: await page.evaluate(()=> [...document.querySelectorAll('#cmp-q-prod mark')].map(m=> m.textContent).join(',')) }; };
+  let b = await buscar('arbolito');
+  verificar(b.cargas === 'COM-00002' && b.prod.join() === 'COM-00002:ZJ-7193' && b.marcas === 'ARBOLITO' && /1 carga\(s\) encontradas/.test(b.info), `Por descripción "arbolito": carga ${b.cargas}, producto ${b.prod.join()} (resaltado "${b.marcas}")`);
+  b = await buscar('zj 7193');
+  verificar(b.cargas === 'COM-00002' && b.prod.join() === 'COM-00002:ZJ-7193', `Por código de producto "zj 7193": ${b.prod.join()}`);
+  b = await buscar('haoqui');
+  verificar(b.cargas === 'COM-00004' && !b.prod.length, `Por proveedor "haoqui": ${b.cargas}`);
+  b = await buscar('oc-103');
+  verificar(b.cargas === 'COM-00005', `Por N° de compra "oc-103": ${b.cargas}`);
+  b = await buscar('boris uno');
+  verificar(b.cargas === 'COM-00005' && b.prod.join() === 'COM-00005:A-1', `Proveedor + descripción "boris uno": ${b.prod.join()}`);
+  b = await buscar('nada-parecido');
+  verificar(b.cargas === '' && /Ninguna carga coincide/.test(await page.textContent('#cmp-cargas-vacio')), 'Sin coincidencias avisa');
+  await page.fill('#cmp-q', '');
+  const hoy = await page.evaluate(()=>{ const t = new Date(), p = n=> String(n).padStart(2, '0'); return `${t.getFullYear()}-${p(t.getMonth() + 1)}-${p(t.getDate())}`; });
+  const manana = await page.evaluate(()=>{ const t = new Date(Date.now() + 86400000), p = n=> String(n).padStart(2, '0'); return `${t.getFullYear()}-${p(t.getMonth() + 1)}-${p(t.getDate())}`; });
+  await page.fill('#cmp-desde', hoy); await page.fill('#cmp-hasta', hoy); await page.dispatchEvent('#cmp-hasta', 'change'); await page.waitForTimeout(300);
+  let fr = await cargasVis();
+  verificar(fr === 'COM-00005,COM-00004,COM-00002,COM-00001', `Rango de fechas (hoy): ${fr}`);
+  await page.fill('#cmp-desde', manana); await page.dispatchEvent('#cmp-desde', 'change'); await page.waitForTimeout(300);
+  verificar(await cargasVis() === '', 'Rango sin cargas: no muestra ninguna');
+  await page.click('#btn-cmp-q-limpiar'); await page.waitForTimeout(300);
+  fr = await cargasVis();
+  verificar(fr.split(',').length === 7 && await page.evaluate(()=> $('btn-cmp-q-limpiar').style.display === 'none'), `"Limpiar" vuelve a mostrar todas (${fr})`);
+  const ms = await page.evaluate(async ()=>{ const t0 = performance.now(); $('cmp-q').value = 'producto'; await cmpBuscar(); return Math.round(performance.now() - t0); });
+  verificar(ms < 300, `Búsqueda rápida: ${ms} ms (en memoria, sin volver a leer la base)`);
+  await page.locator('#cmp-cargas-panel').screenshot({ path: require('path').join(__dirname, 'salida', 'compras_buscar.png') });
+  await page.click('#cmp-q-prod [data-cmp-abrir="COM-00004"] >> nth=0');
+  await page.waitForFunction(()=> /COM-00004: 45 compra/.test($('cmp-msg').textContent), null, { timeout: 10000 });
+  verificar(true, '"Abrir" desde un producto encontrado abre su carga');
+
   if(errores.length) console.log('\nErrores de JavaScript:\n' + [...new Set(errores)].join('\n'));
   console.log(fallas || errores.length ? `\n${fallas} verificación(es) fallida(s).` : '\nTodo correcto.');
   await browser.close();
