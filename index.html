@@ -494,7 +494,7 @@
   #cmp-cargas-head th[data-cmp-orden]:hover{color:var(--ink);}
   #cmp-cargas-head th.activo{color:var(--blue);}
   /* Anchos fijos: ordenar o cambiar de página no mueve las columnas */
-  #cmp-cargas-tabla{table-layout:fixed; width:100%; min-width:1000px;}
+  #cmp-cargas-tabla{table-layout:fixed; width:100%; min-width:1100px;}
   #cmp-cargas-tabla th, #cmp-cargas-tabla td{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   #cmp-cargas-tabla input[type=checkbox]{width:auto; margin:0; cursor:pointer;}
   #cmp-cargas-tabla td.cmp-camps{white-space:normal;}
@@ -547,6 +547,11 @@
   @keyframes cmpPop{0%{transform:scale(.4); opacity:0;} 60%{transform:scale(1.15);} 100%{transform:none;}}
   .cmp-camp-chip button{border:none; background:none; cursor:pointer; color:inherit; opacity:.55; font-size:10px; padding:0 4px;}
   .cmp-camp-chip button:hover{opacity:1; color:#a5441a;}
+  .cmp-num-aviso{font-size:11.5px; margin-top:4px; min-height:0;}
+  .cmp-num-aviso.dup{color:#fff; background:#b3402f; padding:5px 8px; border-radius:6px; font-weight:600; animation:cmpLatido .3s;}
+  .cmp-num-aviso.ok{color:#2e8b57;}
+  #cmp-numero.dup{border-color:#b3402f; box-shadow:0 0 0 2px rgba(179,64,47,.2);}
+  .cmp-descartes{margin:8px 0; padding:9px 12px; border-radius:8px; background:#fff5e0; border:1px solid #d08a12; border-left-width:5px; font-size:12.5px;}
   .cmp-sin-camp{font-size:11px; color:var(--ink-soft); font-style:italic;}
   #cmp-cargas-head .flecha{display:inline-block; width:1em; text-align:center;}
   .cmp-pager{display:flex; align-items:center; gap:10px; justify-content:flex-end; flex-wrap:wrap; margin-top:8px; font-size:12px; color:var(--ink-soft);}
@@ -2013,7 +2018,7 @@
       </div>
     </div>
     <div class="hist-wrap">
-      <table class="reg-tabla sin-anim" id="cmp-cargas-tabla"><colgroup><col style="width:4%"><col style="width:9%"><col style="width:16%"><col style="width:16%"><col style="width:12%"><col style="width:10%"><col style="width:6%"><col style="width:8%"><col style="width:9%"><col style="width:10%"></colgroup><thead id="cmp-cargas-head"></thead><tbody id="cmp-cargas-body"></tbody></table>
+      <table class="reg-tabla sin-anim" id="cmp-cargas-tabla"><colgroup><col style="width:4%"><col style="width:8%"><col style="width:9%"><col style="width:13%"><col style="width:14%"><col style="width:11%"><col style="width:9%"><col style="width:6%"><col style="width:8%"><col style="width:8%"><col style="width:10%"></colgroup><thead id="cmp-cargas-head"></thead><tbody id="cmp-cargas-body"></tbody></table>
       <div class="empty-state" id="cmp-cargas-vacio" style="display:none;">Aún no hay cargas de compras guardadas.</div>
     </div>
     <div id="cmp-cargas-pag"></div>
@@ -2031,8 +2036,10 @@
 
   <div class="panel" id="cmp-det-panel" style="margin-bottom:14px;">
     <h3>Detalle cargado <span id="cmp-modo" class="reg-chip" style="margin:0 0 0 8px; vertical-align:middle;"></span></h3>
+    <p class="hint" style="margin-bottom:6px;">Solo se guardan las filas con ESTADO <b>VALIDADO</b> o <b>EN VALIDACIÓN</b> y CANT. VALIDADA <b>mayor a 0</b>; las demás (por ejemplo PRELIMINAR) se quitan solas.</p>
     <p class="hint" style="margin-bottom:10px;">Copia las filas en Excel (con o sin la fila de títulos) y pégalas aquí con <b>Ctrl+V</b>. Puedes corregir cualquier celda o pegar a partir de una celda, como en Excel. Al guardar, la carga recibe su número (COM-00001…) y queda <b>bloqueada</b>; para modificarla usa "✏️ Habilitar edición".</p>
     <div class="cmp-barra">
+      <div class="field" style="max-width:200px; min-width:160px;"><label>N° de compra *</label><input type="text" id="cmp-numero" class="upper" placeholder="EJ. OC-1520" autocomplete="off"><div class="cmp-num-aviso" id="cmp-numero-aviso"></div></div>
       <div class="field" style="max-width:320px; min-width:220px;"><label>Nota (opcional)</label><input type="text" id="cmp-nota" class="upper" placeholder="EJ. COMPRAS SEMANA 41"></div>
       <button class="btn btn-primary" id="btn-cmp-guardar">💾 Guardar</button>
       <button class="btn btn-primary" id="btn-cmp-habilitar" type="button" style="display:none;">✏️ Habilitar edición</button>
@@ -2042,6 +2049,7 @@
       <div class="cmp-resumen" id="cmp-resumen"></div>
     </div>
     <div class="msg" id="cmp-msg"></div>
+    <div class="cmp-descartes" id="cmp-descartes" style="display:none;"></div>
     <div class="cmp-errores" id="cmp-errores"></div>
     <div class="cmp-wrap" id="cmp-wrap" tabindex="0">
       <table class="cmp-grid"><thead id="cmp-head"></thead><tbody id="cmp-body"></tbody></table>
@@ -3066,8 +3074,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v168';
-const APP_UPDATED = '14/10/2026 13:00';
+const APP_VERSION = 'v169';
+const APP_UPDATED = '14/10/2026 15:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -8782,6 +8790,32 @@ function cmpErrorCelda(c, v){
   return '';
 }
 const cmpFilaVacia = f=> f.every(v=> !String(v||'').trim());
+// Solo valen ESTADO "VALIDADO" o "EN VALIDACIÓN" y CANT. VALIDADA > 0.
+// Devuelve el motivo por el que la fila se descarta ('' = la fila vale).
+const CMP_ESTADOS_OK = ['VALIDADO', 'EN VALIDACION'];
+function cmpMotivoDescarte(f){
+  if(!CMP_ESTADOS_OK.includes(normalizarTexto(f[0]).replace(/\s+/g, ' '))) return 'estado';
+  const cv = cmpNumero(f[9]);
+  if(Number.isNaN(cv)) return '';            // no es número: se marca en rojo para corregir
+  return cv == null || cv <= 0 ? 'cantidad' : '';
+}
+// Texto con lo descartado: "3 en PRELIMINAR, 2 con CANT. VALIDADA 0 o vacía".
+function cmpTextoDescartes(desc){
+  const est = {}; let cant = 0;
+  desc.forEach(({ f, m })=>{ if(m === 'cantidad') cant++; else { const e = normalizarTexto(f[0]) || 'SIN ESTADO'; est[e] = (est[e] || 0) + 1; } });
+  return Object.entries(est).map(([e, n])=> `${n} en ${e}`).concat(cant ? [`${cant} con CANT. VALIDADA 0 o vacía`] : []).join(', ');
+}
+// Quita de la cuadrícula las filas que no valen; devuelve cuántas y por qué.
+function cmpQuitarDescartadas(){
+  const desc = [];
+  cmpFilas = cmpFilas.filter(f=>{ if(cmpFilaVacia(f)) return true; const m = cmpMotivoDescarte(f); if(m){ desc.push({ f, m }); return false; } return true; });
+  return desc;
+}
+function cmpAvisoDescartes(desc){
+  const box = $('cmp-descartes');
+  box.style.display = desc.length ? 'block' : 'none';
+  box.innerHTML = desc.length ? `🧹 Se quitaron <b>${esc(desc.length)}</b> fila(s) que no se guardan: ${esc(cmpTextoDescartes(desc))}.` : '';
+}
 // En columnas de número se quita el punto o la coma que Excel deja al final ("12." → "12").
 const cmpLimpiar = (c, v)=> CMP_COLS[c] && CMP_COLS[c].tipo === 'num' ? String(v||'').trim().replace(/[.,]$/, '') : v;
 // Texto copiado de Excel → filas de celdas (tabulador entre columnas; las
@@ -8817,7 +8851,8 @@ function renderCompras(){
   $('btn-cmp-habilitar').style.display = bloq ? '' : 'none';
   $('btn-cmp-cancelar').style.display = cmpCarga && !bloq ? '' : 'none';
   $('btn-cmp-fila').disabled = bloq; $('btn-cmp-limpiar').disabled = bloq;
-  $('cmp-nota').readOnly = bloq;
+  $('cmp-nota').readOnly = bloq; $('cmp-numero').readOnly = bloq;
+  cmpAvisoNumero();
   $('cmp-wrap').classList.toggle('bloqueado', bloq);
   $('cmp-head').innerHTML = '<tr><th>#</th>' + CMP_COLS.map((c, i)=> `<th>${esc(c.t)}</th>` + (i === 3 ? '<th class="deriv" title="Se toma de CORREL. / SKU: lo que va después del guion">SKU</th>' : '')).join('') + (bloq ? '' : '<th></th>') + '</tr>';
   $('cmp-vacio').style.display = cmpFilas.length || bloq ? 'none' : 'block';
@@ -8873,7 +8908,11 @@ $('cmp-wrap').addEventListener('paste', e=>{
   if(td && filas.length === 1 && filas[0].length === 1){ document.execCommand('insertText', false, filas[0][0]); return; }
   if(filas.length && cmpEsTitulo(filas[0])) filas = filas.slice(1);
   filas = filas.filter(f=> f.some(v=> v));
-  if(!filas.length) return;
+  // Filas completas (desde ESTADO): se quitan las que no valen.
+  const c0p = td ? Number(td.dataset.c) : 0, desc = [];
+  if(c0p === 0) filas = filas.filter(f=>{ if(f.length < 10) return true; const m = cmpMotivoDescarte(f.map((v, c)=> cmpLimpiar(c, v))); if(m){ desc.push({ f, m }); return false; } return true; });
+  cmpAvisoDescartes(desc);
+  if(!filas.length){ if(desc.length) showMsg('cmp-msg','err', `No se pegó ninguna fila: las ${desc.length} no se guardan (${cmpTextoDescartes(desc)}).`); return; }
   const r0 = td ? Number(td.closest('tr').dataset.r) : cmpFilas.filter(f=> !cmpFilaVacia(f)).length;
   const c0 = td ? Number(td.dataset.c) : 0;
   if(!td) cmpFilas = cmpFilas.filter(f=> !cmpFilaVacia(f));
@@ -8884,7 +8923,7 @@ $('cmp-wrap').addEventListener('paste', e=>{
   cmpCambios = true;
   if(!td) cmpPag = Math.floor(r0 / CMP_POR_PAG);
   renderCompras();
-  showMsg('cmp-msg','ok', `Se pegaron ${filas.length} fila(s). Revisa y presiona "Guardar".`);
+  showMsg('cmp-msg','ok', `Se pegaron ${filas.length} fila(s)${desc.length ? ` (se quitaron ${desc.length}: ${cmpTextoDescartes(desc)})` : ''}. Revisa y presiona "Guardar".`);
 });
 // Editar una celda a mano
 $('cmp-body').addEventListener('input', e=>{
@@ -8970,7 +9009,7 @@ async function cargarListaCompras(){
     const snap = await comprasCargasRef.where('estado','==','ACTIVO').get();
     try{ await esperarRegistrosCampana(); }catch(e){ console.warn('Campañas para compras:', e); }   // nombres para "Asignar a campaña"
     const nuevas = snap.docs.map(d=> d.data()).sort((a,b)=> b.correlativo.localeCompare(a.correlativo));
-    const firma = JSON.stringify(nuevas.map(c=> [c.correlativo, c.nota, c.campanas, c.filas, c.unidades_validadas, c.costo_total, c.guardado_por, c.guardado_en && c.guardado_en.seconds]));
+    const firma = JSON.stringify(nuevas.map(c=> [c.correlativo, c.numero_compra, c.nota, c.campanas, c.filas, c.unidades_validadas, c.costo_total, c.guardado_por, c.guardado_en && c.guardado_en.seconds]));
     const primera = !cmpCargasLeidas;
     cmpCargas = nuevas; cmpCargasLeidas = true;
     if(firma === cmpCargasFirma && !primera) return;
@@ -8981,6 +9020,7 @@ async function cargarListaCompras(){
 // Columnas de la lista de cargas; clic en el título ordena (otro clic invierte).
 const CMP_CARGAS_COLS = [
   { k:'correlativo', t:'Carga' },
+  { k:'numero_compra', t:'N° compra' },
   { k:'nota', t:'Nota' },
   { k:'campanas', t:'Campaña(s)', v: c=> (c.campanas || []).slice().sort().join(',') },
   { k:'fecha', t:'Fecha y hora', v: c=> c.guardado_en && c.guardado_en.seconds || 0 },
@@ -9125,7 +9165,7 @@ function renderListaCompras(){
     const f = c.guardado_en && c.guardado_en.toDate ? c.guardado_en.toDate().toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }) : '';
     const recien = cmpRecien && cmpRecien.hasta > Date.now() && cmpRecien.cargas.has(c.correlativo) ? cmpRecien.camp : '';
     const camps = (c.campanas || []).slice().sort().map(k=> `<span class="cmp-camp-chip ${cmpColorCamp(k)}${k === recien ? ' nuevo' : ''}" title="${esc(nombreCamp(k))}">${esc(k)}<button type="button" data-cmp-quitar-camp="${esc(k)}" data-cmp-carga="${esc(c.correlativo)}" title="Quitar ${esc(c.correlativo)} de ${esc(k)}">✕</button></span>`).join('');
-    return `<tr class="${cmpCarga === c.correlativo ? 'reg-sel' : ''}${cmpSel.has(c.correlativo) ? ' cmp-marcada' : ''}"><td><input type="checkbox" data-cmp-sel="${esc(c.correlativo)}" ${cmpSel.has(c.correlativo) ? 'checked' : ''}></td><td><b>${esc(c.correlativo)}</b></td><td title="${esc(c.nota || '')}">${esc(c.nota || '—')}</td>` +
+    return `<tr class="${cmpCarga === c.correlativo ? 'reg-sel' : ''}${cmpSel.has(c.correlativo) ? ' cmp-marcada' : ''}"><td><input type="checkbox" data-cmp-sel="${esc(c.correlativo)}" ${cmpSel.has(c.correlativo) ? 'checked' : ''}></td><td><b>${esc(c.correlativo)}</b></td><td title="${esc(c.numero_compra || '')}">${esc(c.numero_compra || '—')}</td><td title="${esc(c.nota || '')}">${esc(c.nota || '—')}</td>` +
       `<td class="cmp-camps">${camps || '<span class="cmp-sin-camp">Sin campaña</span>'}</td>` +
       `<td>${esc(f)}</td><td title="${esc(c.guardado_por || '')}">${esc(c.guardado_por || '')}</td><td class="num">${esc(anFmt(c.filas))}</td><td class="num">${esc(anFmt(c.unidades_validadas))}</td>` +
       `<td class="num">${esc(Number(c.costo_total||0).toLocaleString('es-PE', { minimumFractionDigits:2, maximumFractionDigits:2 }))}</td>` +
@@ -9138,7 +9178,7 @@ async function abrirCargaCompras(corr){
   cmpCarga = corr; cmpFilas = []; cmpCambios = false; cmpGuardadas = 0; cmpBloqueado = true; cmpPag = 0; cmpTotPag = 0;
   cmpIrA('totales');
   const cab = cmpCargas.find(c=> c.correlativo === corr) || {};
-  $('cmp-nota').value = cab.nota || '';
+  $('cmp-nota').value = cab.nota || ''; $('cmp-numero').value = cab.numero_compra || ''; cmpAvisoDescartes([]);
   renderCompras(); renderListaCompras();
   showMsg('cmp-msg','ok', `Abriendo ${corr}…`);
   try{
@@ -9152,7 +9192,7 @@ async function abrirCargaCompras(corr){
 }
 $('btn-cmp-nueva').addEventListener('click', ()=>{
   if(cmpCambios && !confirm('Hay cambios sin guardar en la cuadrícula. ¿Descartarlos y empezar una carga nueva?')) return;
-  cmpCarga = null; cmpFilas = []; cmpCambios = false; cmpGuardadas = 0; cmpBloqueado = false; cmpPag = 0; cmpTotPag = 0; $('cmp-nota').value = '';
+  cmpCarga = null; cmpFilas = []; cmpCambios = false; cmpGuardadas = 0; cmpBloqueado = false; cmpPag = 0; cmpTotPag = 0; $('cmp-nota').value = ''; $('cmp-numero').value = ''; cmpAvisoDescartes([]);
   renderCompras(); renderListaCompras();
   cmpIrA('detalle');
 });
@@ -9172,22 +9212,50 @@ $('cmp-cargas-body').addEventListener('click', async e=>{
     for(let i = 0; i < tots.docs.length; i += 400){ const b = db.batch(); tots.docs.slice(i, i + 400).forEach(d=> b.delete(d.ref)); await b.commit(); }
     await comprasCargasRef.doc(corr).set({ estado:'ANULADO', anulado_por: currentUserAlias, anulado_en: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true });
     await logAccion('compras_carga_eliminada', {detalle:`${corr}: ${items.size} compra(s) eliminadas`});
-    if(cmpCarga === corr){ cmpCarga = null; cmpFilas = []; cmpCambios = false; cmpGuardadas = 0; cmpBloqueado = false; cmpPag = 0; $('cmp-nota').value = ''; renderCompras(); }
+    if(cmpCarga === corr){ cmpCarga = null; cmpFilas = []; cmpCambios = false; cmpGuardadas = 0; cmpBloqueado = false; cmpPag = 0; $('cmp-nota').value = ''; $('cmp-numero').value = ''; renderCompras(); }
     showToast(`${corr} eliminada.`, 'ok');
     cargarListaCompras();
   }catch(err){ console.error(err); showToast('No se pudo eliminar: '+err.message, 'err'); }
 });
+// N° de compra: obligatorio y sin repetir entre las cargas activas.
+function cmpNormNumero(v){ return String(v || '').toUpperCase().replace(/\s+/g, ' ').trim(); }
+function cmpNumeroRepetido(num){ return num ? cmpCargas.find(c=> c.correlativo !== cmpCarga && cmpNormNumero(c.numero_compra) === num) : null; }
+function cmpAvisoNumero(){
+  const num = cmpNormNumero($('cmp-numero').value), dup = !cmpBloqueado && cmpNumeroRepetido(num), box = $('cmp-numero-aviso');
+  $('cmp-numero').classList.toggle('dup', !!dup);
+  box.className = 'cmp-num-aviso' + (dup ? ' dup' : '');
+  box.textContent = dup ? `⚠ Ya existe en ${dup.correlativo}${dup.nota ? ' (' + dup.nota + ')' : ''}` : '';
+  return dup;
+}
+$('cmp-numero').addEventListener('input', ()=>{ if(cmpBloqueado) return; cmpCambios = true; cmpAvisoNumero(); cmpResumen(); });
 $('btn-cmp-guardar').addEventListener('click', async ()=>{
-  const { filas, errores, unidades, costo } = cmpResumen();
-  if(!filas.length){ showMsg('cmp-msg','err','No hay filas para guardar. Pega las compras desde Excel.'); return; }
   if(cmpBloqueado) return;
+  const descartes = cmpQuitarDescartadas();
+  if(descartes.length){ cmpCambios = true; renderCompras(); }
+  cmpAvisoDescartes(descartes);
+  const { filas, errores, unidades, costo } = cmpResumen();
+  const numero = cmpNormNumero($('cmp-numero').value);
+  if(!filas.length){ showMsg('cmp-msg','err', descartes.length ? `No queda ninguna fila para guardar: se quitaron ${descartes.length} (${cmpTextoDescartes(descartes)}).` : 'No hay filas para guardar. Pega las compras desde Excel.'); return; }
   if(errores.length){
     showMsg('cmp-msg','err', `Corrige las ${errores.length} celda(s) en rojo antes de guardar.`);
     const r = cmpFilas.findIndex(f=> !cmpFilaVacia(f) && CMP_COLS.some((col, c)=> cmpErrorCelda(c, f[c])));
     if(r >= 0){ cmpPag = Math.floor(r / CMP_POR_PAG); renderCompras(); const td = $('cmp-body').querySelector('td.err'); if(td) td.focus(); }
     return;
   }
+  if(!numero){ showMsg('cmp-msg','err','Ingresa el N° de compra — es obligatorio.'); $('cmp-numero').focus(); return; }
   const editando = cmpCarga;
+  // Se revisa contra lo guardado (no solo la lista en pantalla) para no duplicar la compra.
+  try{
+    const ya = (await comprasCargasRef.where('numero_compra','==',numero).get()).docs.map(d=> d.data()).find(c=> c.estado === 'ACTIVO' && c.correlativo !== editando)
+      || cmpNumeroRepetido(numero);
+    if(ya){
+      cmpAvisoNumero();
+      showMsg('cmp-msg','err', `La compra N° ${numero} ya está cargada en ${ya.correlativo}${ya.nota ? ' (' + ya.nota + ')' : ''}. No se guardó.`);
+      alert(`⚠ Compra duplicada\n\nEl N° de compra ${numero} ya está cargado en ${ya.correlativo}${ya.nota ? ' (' + ya.nota + ')' : ''}.\nNo se guardó nada.`);
+      $('cmp-numero').focus();
+      return;
+    }
+  }catch(err){ console.error(err); showMsg('cmp-msg','err','No se pudo revisar el N° de compra: '+err.message); return; }
   if(editando && !confirm(`Se reemplazarán las ${cmpGuardadas} compra(s) de ${editando} por estas ${filas.length}. ¿Continuar?`)) return;
   const nota = $('cmp-nota').value.trim().toUpperCase();
   $('btn-cmp-guardar').disabled = true;
@@ -9222,17 +9290,17 @@ $('btn-cmp-guardar').addEventListener('click', async ()=>{
       await batch.commit();
     }
     await comprasCargasRef.doc(corr).set(Object.assign({ skus: totales.length,
-      correlativo: corr, nota, filas: filas.length, unidades_validadas: unidades, costo_total: Math.round(costo * 100) / 100, estado:'ACTIVO'
+      correlativo: corr, numero_compra: numero, nota, filas: filas.length, unidades_validadas: unidades, costo_total: Math.round(costo * 100) / 100, estado:'ACTIVO'
     }, editando ? { editado_por: currentUserAlias, editado_en: firebase.firestore.FieldValue.serverTimestamp() }
                 : { guardado_por: currentUserAlias, guardado_en: firebase.firestore.FieldValue.serverTimestamp() }), { merge:true });
-    await logAccion(editando ? 'compras_carga_editada' : 'compras_carga_guardada', {detalle:`${corr}: ${filas.length} compra(s)${editando ? ` (reemplazan ${viejas.size})` : ''}${nota ? ' · ' + nota : ''}`});
+    await logAccion(editando ? 'compras_carga_editada' : 'compras_carga_guardada', {detalle:`${corr} · N° ${numero}: ${filas.length} compra(s)${editando ? ` (reemplazan ${viejas.size})` : ''}${nota ? ' · ' + nota : ''}`});
     proc.fin();
     // La cuadrícula muestra lo que quedó guardado (números convertidos, SKU en mayúsculas).
     cmpFilas = filas.map(f=> CMP_COLS.map((col, c)=>{ const v = String(f[c]||'').trim(); if(col.tipo === 'num'){ const n = cmpNumero(v); return n == null ? '' : String(n); } return col.k === 'correl_sku' ? v.toUpperCase() : v; }));
     cmpCarga = corr; cmpGuardadas = filas.length; cmpCambios = false; cmpBloqueado = true;
     if(!editando) cmpCargasPag = 0;
     renderCompras();
-    showMsg('cmp-msg','ok', `¡Guardado! ${corr} — ${filas.length} compra(s), ${totales.length} SKU. Quedó bloqueada; para modificarla usa "✏️ Habilitar edición".`);
+    showMsg('cmp-msg','ok', `¡Guardado! ${corr} — ${filas.length} compra(s), ${totales.length} SKU (N° de compra ${numero}).${descartes.length ? ` Se quitaron ${descartes.length} fila(s): ${cmpTextoDescartes(descartes)}.` : ''} Quedó bloqueada; para modificarla usa "✏️ Habilitar edición".`);
     showToast(`Compras guardadas: ${corr}`, 'ok');
     cargarListaCompras();
   }catch(err){
