@@ -429,7 +429,14 @@
   table.rvc-tabla thead th.vacio{background:#fff;}
   table.rvc-tabla thead th.guia::after{content:" 🚚"; font-size:10px;}
   table.rvc-tabla td.num, table.rvc-tabla th.num{text-align:right; font-family:var(--mono);}
-  table.rvc-tabla .fijo{position:sticky; left:0; z-index:1;} table.rvc-tabla thead .fijo{z-index:3;}
+  /* Columnas inmovilizadas (como "Inmovilizar paneles" de Excel): SKU, Descripción, Compra y Costo */
+  table.rvc-tabla .fijo{position:sticky; z-index:1; box-sizing:border-box; overflow:hidden; text-overflow:ellipsis;}
+  table.rvc-tabla thead .fijo{z-index:4;} table.rvc-tabla tfoot .fijo{z-index:4;}
+  table.rvc-tabla .c1{left:0; width:100px; min-width:100px; max-width:100px;}
+  table.rvc-tabla .c2{left:100px; width:240px; min-width:240px; max-width:240px;}
+  table.rvc-tabla .c3{left:340px; width:84px; min-width:84px; max-width:84px;}
+  table.rvc-tabla .c4{left:424px; width:70px; min-width:70px; max-width:70px; border-right:2px solid #c9a48c; box-shadow:4px 0 6px -3px rgba(27,36,48,.25);}
+  table.rvc-tabla thead th.c2g{left:100px; width:394px; min-width:394px; max-width:394px; border-right:2px solid #c9a48c;}
   table.rvc-tabla td.sku{font-family:var(--mono); font-weight:700;}
   table.rvc-tabla td.desc{max-width:260px; overflow:hidden; text-overflow:ellipsis;}
   table.rvc-tabla td.compra{background:#f3f7fb; font-weight:700;}
@@ -3127,8 +3134,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v172';
-const APP_UPDATED = '14/10/2026 19:00';
+const APP_VERSION = 'v173';
+const APP_UPDATED = '14/10/2026 19:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -12471,17 +12478,17 @@ function rvcRender(){
   const n = { todos: L.length, mod: L.filter(f=> f.mods).length, neg: L.filter(f=> f.saldo < 0).length, pos: L.filter(f=> f.saldo > 0).length, sin: sinCompra };
   $('rvc-chips').innerHTML = [['todos','Todos'],['mod','🟥 Cambiados por guía'],['neg','Saldo negativo'],['pos','Saldo positivo'],['sin','Sin compra']]
     .map(([k, t])=> `<button type="button" data-rvc-filtro="${k}" class="${rvcFiltro === k ? 'activo' : ''}">${esc(t)}<b>${esc(n[k])}</b></button>`).join('');
-  $('rvc-head').innerHTML = `<tr><th class="vacio fijo" colspan="1"></th><th class="vacio" colspan="3"></th><th class="grupo" colspan="${d.cols.length}">Reparto</th><th class="vacio"></th></tr>` +
-    `<tr><th class="fijo">SKU</th><th>Descripción</th><th class="num">Compra</th><th class="num">Costo</th>` + d.cols.map(t=> `<th class="num${t.guia ? ' guia' : ''}" title="${esc(t.nombre)}${t.guia ? ' — ya tiene guía' : ''}">${esc(t.nombre)}</th>`).join('') + '<th class="num">Saldo</th></tr>';
+  $('rvc-head').innerHTML = `<tr><th class="vacio fijo c1"></th><th class="vacio fijo c2g" colspan="3"></th><th class="grupo" colspan="${d.cols.length}">Reparto</th><th class="vacio"></th></tr>` +
+    `<tr><th class="fijo c1">SKU</th><th class="fijo c2">Descripción</th><th class="num fijo c3">Compra</th><th class="num fijo c4">Costo</th>` + d.cols.map(t=> `<th class="num${t.guia ? ' guia' : ''}" title="${esc(t.nombre)}${t.guia ? ' — ya tiene guía' : ''}">${esc(t.nombre)}</th>`).join('') + '<th class="num">Saldo</th></tr>';
   const filas = rvcFiltrar();
   $('rvc-vacio').style.display = filas.length ? 'none' : 'block';
-  $('rvc-body').innerHTML = filas.map(f=> `<tr><td class="fijo sku">${esc(f.sku)}</td><td class="desc" title="${esc(f.desc)}">${esc(f.desc)}</td>` +
-    (f.compra == null ? '<td class="num compra sin-compra" title="Sin compra asignada a la campaña">sin compra</td><td class="num"></td>' : `<td class="num compra">${esc(rvcN(f.compra))}</td><td class="num">${esc(f.costo == null ? '' : f.costo.toFixed(2))}</td>`) +
+  $('rvc-body').innerHTML = filas.map(f=> `<tr><td class="fijo c1 sku" title="${esc(f.sku)}">${esc(f.sku)}</td><td class="fijo c2 desc" title="${esc(f.desc)}">${esc(f.desc)}</td>` +
+    (f.compra == null ? '<td class="num fijo c3 compra sin-compra" title="Sin compra asignada a la campaña">sin compra</td><td class="num fijo c4"></td>' : `<td class="num fijo c3 compra">${esc(rvcN(f.compra))}</td><td class="num fijo c4">${esc(f.costo == null ? '' : f.costo.toFixed(2))}</td>`) +
     f.celdas.map((c, i)=> c.mod ? `<td class="num mod" title="${esc(d.cols[i].nombre)}: reparto ${esc(rvcN(c.rep))} → guía ${esc(rvcN(c.guia))}">${esc(rvcN(c.v))}</td>` : `<td class="num${c.v ? '' : ' cero'}">${c.v ? esc(rvcN(c.v)) : '·'}</td>`).join('') +
     `<td class="num saldo ${f.saldo < 0 ? 'neg' : f.saldo > 0 ? 'pos' : ''}">${esc(rvcN(f.saldo))}</td></tr>`).join('');
   const sumCol = i=> filas.reduce((s, f)=> s + f.celdas[i].v, 0);
   const sCompra = filas.reduce((s, f)=> s + (f.compra || 0), 0), sRep = filas.reduce((s, f)=> s + f.repartido, 0);
-  $('rvc-foot').innerHTML = `<tr><td class="fijo">TOTAL</td><td>${esc(filas.length)} SKU</td><td class="num">${esc(rvcN(sCompra))}</td><td></td>` + d.cols.map((t, i)=> `<td class="num">${esc(rvcN(sumCol(i)))}</td>`).join('') +
+  $('rvc-foot').innerHTML = `<tr><td class="fijo c1">TOTAL</td><td class="fijo c2">${esc(filas.length)} SKU</td><td class="num fijo c3">${esc(rvcN(sCompra))}</td><td class="fijo c4"></td>` + d.cols.map((t, i)=> `<td class="num">${esc(rvcN(sumCol(i)))}</td>`).join('') +
     `<td class="num saldo ${sCompra - sRep < 0 ? 'neg' : sCompra - sRep > 0 ? 'pos' : ''}">${esc(rvcN(sCompra - sRep))}</td></tr>`;
 }
 $('btn-rvc-analizar').addEventListener('click', async ()=>{

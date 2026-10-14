@@ -62,6 +62,17 @@ function verificar(condicion, texto){
   verificar(/SKU DEL REPARTO=3/i.test(t.kpis) && /UNID\. COMPRADAS=33/i.test(t.kpis) && /UNID\. REPARTIDAS=31/i.test(t.kpis) && /SALDO=2/i.test(t.kpis) && /CAMBIADAS POR GUÍA=1/i.test(t.kpis) && /VALOR DE LA COMPRA=S\/ 84\.00/i.test(t.kpis), `Indicadores: ${t.kpis}`);
   await page.locator('#campsub-panel-repcmp').screenshot({ path: path.join(__dirname, 'salida', 'reparto_compra.png') });
 
+  // Columnas inmovilizadas: al desplazar a la derecha, SKU, Descripción, Compra y Costo quedan fijas
+  const fijas = await page.evaluate(async ()=>{
+    const w = document.querySelector('.rvc-wrap'); w.style.maxWidth = '620px';
+    const pos = ()=> [...document.querySelectorAll('#rvc-head tr:nth-child(2) th')].map(th=> Math.round(th.getBoundingClientRect().left));
+    const fila = ()=> [...document.querySelector('#rvc-body tr').cells].slice(0, 5).map(td=> Math.round(td.getBoundingClientRect().left));
+    const a = pos(), fa = fila(); w.scrollLeft = 200; await new Promise(r=> setTimeout(r, 100));
+    const b = pos(), fb = fila(); const res = { a, b, fa, fb, scroll: w.scrollLeft }; w.style.maxWidth = ''; w.scrollLeft = 0; return res;
+  });
+  verificar(fijas.scroll > 0 && fijas.a.slice(0, 4).join() === fijas.b.slice(0, 4).join() && fijas.fa.slice(0, 4).join() === fijas.fb.slice(0, 4).join() && fijas.b[4] < fijas.a[4] && fijas.fb[4] < fijas.fa[4],
+    `Al desplazar ${fijas.scroll}px a la derecha, SKU · Descripción · Compra · Costo quedan inmovilizadas y las tiendas se mueven (${fijas.a[4]} → ${fijas.b[4]})`);
+
   const ver = async f=>{ await page.click(`#rvc-chips [data-rvc-filtro="${f}"]`); return page.evaluate(()=> [...document.querySelectorAll('#rvc-body tr')].map(r=> r.cells[0].innerText).join(',')); };
   verificar(await ver('mod') === 'S1' && await ver('neg') === 'S2,S3' && await ver('pos') === 'S1' && await ver('sin') === 'S3', 'Filtros: cambiados por guía, saldo negativo/positivo y sin compra');
   await ver('todos');
