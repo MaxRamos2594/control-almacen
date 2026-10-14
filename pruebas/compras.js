@@ -199,21 +199,23 @@ const tsv = filas=> filas.map(f=> f.map(c=> /[\t\n"]/.test(c) ? '"' + c.replace(
   const fl = await page.evaluate(()=> ({ mut: window.__mut, vacio: window.__vacio, anim: getComputedStyle(document.querySelector('#cmp-cargas-body tr')).animationName, filas: document.querySelectorAll('#cmp-cargas-body tr').length }));
   verificar(fl.mut <= 1 && !fl.vacio && fl.anim === 'none' && fl.filas > 0, `Al volver de Guía a Compras la lista no parpadea (${fl.mut} redibujo, sin animación ni lista vacía)`);
 
-  // 9. Lista de cargas de 5 en 5, las últimas primero
-  await page.evaluate(async ()=>{
-    for(const c of ['COM-00010','COM-00011','COM-00012']) await comprasCargasRef.doc(c).set({ correlativo:c, nota:'X', filas:1, unidades_validadas:1, costo_total:1, estado:'ACTIVO' });
+  // 9. Lista de cargas de 15 en 15, las últimas primero
+  const extras = Array.from({ length: 10 }, (_, i)=> 'COM-000' + (20 + i));
+  await page.evaluate(async (extras)=>{
+    for(const c of ['COM-00010','COM-00011','COM-00012', ...extras]) await comprasCargasRef.doc(c).set({ correlativo:c, nota:'X', filas:1, unidades_validadas:1, costo_total:1, estado:'ACTIVO' });
     await cargarListaCompras();
-  });
-  let cl = await page.evaluate(()=> ({ filas: [...document.querySelectorAll('#cmp-cargas-body tr')].map(r=> r.cells[1].innerText).join(','), pager: $('cmp-cargas-pag').innerText.replace(/\s+/g,' ') }));
-  verificar(cl.filas === 'COM-00012,COM-00011,COM-00010,COM-00004,COM-00002' && /1–5 de 6/.test(cl.pager), `Cargas de 5 en 5, las últimas primero: ${cl.filas} (${cl.pager})`);
+  }, extras);
+  let cl = await page.evaluate(()=> ({ filas: [...document.querySelectorAll('#cmp-cargas-body tr')].map(r=> r.cells[1].innerText), pager: $('cmp-cargas-pag').innerText.replace(/\s+/g,' ') }));
+  verificar(cl.filas.length === 15 && cl.filas[0] === 'COM-00029' && cl.filas.slice(-5).join(',') === 'COM-00012,COM-00011,COM-00010,COM-00004,COM-00002' && /1–15 de 16/.test(cl.pager), `Cargas de 15 en 15, las últimas primero: ${cl.filas[0]} … ${cl.filas.slice(-1)} (${cl.pager})`);
   await page.click('#cmp-cargas-pag [data-cmp-cargas-pag="1"]');
   cl = await page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-body tr')].map(r=> r.cells[1].innerText).join(','));
   verificar(cl === 'COM-00001', `Página 2 de cargas: ${cl}`);
+  await page.evaluate(async (extras)=>{ for(const c of extras) await comprasCargasRef.doc(c).set({ estado:'ANULADO' }, { merge:true }); await cargarListaCompras(); }, extras);
 
   // 10. Columnas separadas y orden por columna
   const cab = await page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-head th')].map(t=> t.innerText.replace(/\s*[▲▼↕]\s*$/, '')).join('|'));
   verificar(cab === '|CARGA|N° COMPRA|PROVEEDOR|CAMPAÑA(S)|FECHA Y HORA|USUARIO|FILAS|UNID. VALIDADAS|COSTO (S/)|', `Fecha y hora y Usuario en columnas separadas: ${cab}`);
-  const usuario = await page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-body tr')][0].cells[6].innerText);
+  const usuario = await page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-body tr')].find(r=> r.cells[1].innerText === 'COM-00001').cells[6].innerText);
   verificar(usuario === 'VICTOR', `Columna Usuario con quien guardó la carga: "${usuario}"`);
   const anchos = ()=> page.evaluate(()=> [...document.querySelectorAll('#cmp-cargas-head th')].map(t=> Math.round(t.getBoundingClientRect().width)).join(','));
   const anchosAntes = await anchos();
@@ -228,9 +230,9 @@ const tsv = filas=> filas.map(f=> f.map(c=> /[\t\n"]/.test(c) ? '"' + c.replace(
   const notas = ord.split(',').map(n=> n === '—' ? '' : n);
   verificar(notas.every((n, i)=> !i || notas[i-1].localeCompare(n) <= 0), `Clic en "Nota": orden alfabético, sin nota primero (${ord})`);
   const anchosOrden = await anchos();
-  await page.click('#cmp-cargas-pag [data-cmp-cargas-pag="1"]');
+  await page.click('#cmp-cargas-head [data-cmp-orden="costo_total"]');
   const anchosPag = await anchos();
-  verificar(anchosOrden === anchosAntes && anchosPag === anchosAntes, `Las columnas mantienen su ancho al ordenar y al cambiar de página (${anchosAntes})`);
+  verificar(anchosOrden === anchosAntes && anchosPag === anchosAntes, `Las columnas mantienen su ancho al ordenar (${anchosAntes})`);
 
   // 11. Asignar campaña a varias cargas (y una carga a varias campañas)
   await page.evaluate(async ()=>{

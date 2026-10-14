@@ -3127,8 +3127,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v171';
-const APP_UPDATED = '14/10/2026 18:30';
+const APP_VERSION = 'v172';
+const APP_UPDATED = '14/10/2026 19:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -8753,7 +8753,7 @@ let cmpCarga = null;        // carga abierta en la cuadrícula (null = carga nue
 let cmpCargas = [];         // cabeceras de las cargas guardadas
 let cmpBloqueado = false;   // carga guardada: solo lectura hasta "Habilitar edición"
 let cmpPag = 0, cmpCargasPag = 0;
-const CMP_POR_PAG = 20, CMP_CARGAS_POR_PAG = 5;
+const CMP_POR_PAG = 20, CMP_CARGAS_POR_PAG = 15;
 const comprasTotalesRef = db.collection('compras_totales');  // totales por SKU de cada carga
 // Paginador: « ‹ Página X de Y › »
 function cmpPagerHtml(attr, pag, n, porPag){
