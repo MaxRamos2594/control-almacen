@@ -2067,7 +2067,7 @@
 
   <div class="panel" id="cmp-det-panel" style="margin-bottom:14px;">
     <h3>Detalle cargado <span id="cmp-modo" class="reg-chip" style="margin:0 0 0 8px; vertical-align:middle;"></span></h3>
-    <p class="hint" style="margin-bottom:6px;">Solo se guardan las filas con ESTADO <b>VALIDADO</b> o <b>EN VALIDACIÓN</b> y CANT. VALIDADA <b>mayor a 0</b>; las demás (por ejemplo PRELIMINAR) se quitan solas.</p>
+    <p class="hint" style="margin-bottom:6px;">Solo se guardan las filas con ESTADO <b>VALIDADO</b> o <b>EN VALIDACIÓN</b> (también sus variantes, como VALIDADO 1/2) y CANT. VALIDADA <b>mayor a 0</b>; las demás (por ejemplo PRELIMINAR) se quitan solas.</p>
     <p class="hint" style="margin-bottom:10px;">Copia las filas en Excel (con o sin la fila de títulos) y pégalas aquí con <b>Ctrl+V</b>. Puedes corregir cualquier celda o pegar a partir de una celda, como en Excel. Al guardar, la carga recibe su número (COM-00001…) y queda <b>bloqueada</b>; para modificarla usa "✏️ Habilitar edición".</p>
     <div class="cmp-barra">
       <div class="field" style="max-width:200px; min-width:160px;"><label>N° de compra *</label><input type="text" id="cmp-numero" class="upper" placeholder="EJ. OC-1520" autocomplete="off"><div class="cmp-num-aviso" id="cmp-numero-aviso"></div></div>
@@ -3128,7 +3128,7 @@ function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 const APP_VERSION = 'v171';
-const APP_UPDATED = '14/10/2026 18:00';
+const APP_UPDATED = '14/10/2026 18:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -8846,9 +8846,10 @@ function cmpErrorCelda(c, v){
 const cmpFilaVacia = f=> f.every(v=> !String(v||'').trim());
 // Solo valen ESTADO "VALIDADO" o "EN VALIDACIÓN" y CANT. VALIDADA > 0.
 // Devuelve el motivo por el que la fila se descarta ('' = la fila vale).
-const CMP_ESTADOS_OK = ['VALIDADO', 'EN VALIDACION'];
+// También sus variantes: "VALIDADO 1/2", "VALIDADO 2/2", "VALIDADO (1/2)", "EN VALIDACIÓN 1/3"…
+const CMP_ESTADO_OK = /^(VALIDADO|EN VALIDACION)(?![A-Z])/;
 function cmpMotivoDescarte(f){
-  if(!CMP_ESTADOS_OK.includes(normalizarTexto(f[0]).replace(/\s+/g, ' '))) return 'estado';
+  if(!CMP_ESTADO_OK.test(normalizarTexto(f[0]).replace(/\s+/g, ' '))) return 'estado';
   const cv = cmpNumero(f[9]);
   if(Number.isNaN(cv)) return '';            // no es número: se marca en rojo para corregir
   return cv == null || cv <= 0 ? 'cantidad' : '';
