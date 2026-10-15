@@ -48,7 +48,7 @@ function verificar(condicion, texto){
   const t = await page.evaluate(()=> ({
     grupo: document.querySelector('#rvc-head th.grupo').innerText + ':' + document.querySelector('#rvc-head th.grupo').colSpan,
     cols: [...document.querySelectorAll('#rvc-head tr:nth-child(2) th')].map(th=> th.innerText.replace(/\s*[▲▼↕]\s*$/, '').trim()).join('|'),
-    grupos: [...document.querySelectorAll('#rvc-head th.tc')].map(th=> th.innerText.replace(/\s*[▲▼↕]\s*$/, '') + ':' + (['g1','g2','g3'].find(g=> th.classList.contains(g)) || '-')).join(' '),
+    grupos: [...document.querySelectorAll('#rvc-head th.tc')].map(th=> th.innerText.replace(/\s*[▲▼↕]\s*$/, '') + ':' + (['g1','g15','g17','g2','g3'].find(g=> th.classList.contains(g)) || '-')).join(' '),
     guia: [...document.querySelectorAll('#rvc-head th.guia')].map(th=> th.title).join(','),
     filas: [...document.querySelectorAll('#rvc-body tr')].map(r=> [...r.cells].map(c=> c.innerText.trim()).filter((v, i)=> i !== 1).join('|')),
     rojas: [...document.querySelectorAll('#rvc-body td.mod')].map(td=> td.title),
@@ -56,9 +56,19 @@ function verificar(condicion, texto){
     kpis: [...document.querySelectorAll('#rvc-kpis .reg-kpi')].map(k=> k.querySelector('.t').innerText + '=' + k.querySelector('.v').innerText).join(' · ')
   }));
   verificar(t.grupo === 'REPARTO:3' && t.cols === 'SKU|DESCRIPCIÓN|COMPRA|COSTO|COMAS|ATE|AREQUIPA|SALDO', `Columnas como la hoja, tiendas en el orden pedido (las no listadas al final): ${t.cols}`);
-  verificar(t.grupos === 'COMAS:g1 ATE:g1 AREQUIPA:-', `Color por grupo: ${t.grupos}`);
+  verificar(t.grupos === 'COMAS:g1 ATE:g1 AREQUIPA:g17', `Color por grupo: ${t.grupos}`);
   verificar(t.guia === 'COMAS — ya tiene guía · clic para ordenar', `Solo COMAS tiene guía activa (la invalidada de ATE no cuenta): ${t.guia}`);
-  verificar(t.filas.join(' / ') === 'S1|25|2.40|6|10|·|9 / S2|8|3.00|·|5|6|-3 / S3|sin compra||4|·|·|-4', `Filas: ${t.filas.join(' / ')}`);
+  verificar(t.filas.join(' / ') === 'S1|25|2.40|6|10|-|9 / S2|8|3.00|-|5|6|-3 / S3|sin compra||4|-|-|-4', `Filas: ${t.filas.join(' / ')}`);
+  const formato = await page.evaluate(()=> ({ alin: [...new Set([...document.querySelectorAll('#rvc-body td.num, #rvc-foot td.num, #rvc-head th.num')].map(c=> getComputedStyle(c).textAlign))].join(),
+    miles: rvcV(43674), cero: rvcV(0) }));
+  verificar(formato.alin === 'center' && formato.miles === '43,674' && formato.cero === '-', `Valores centrados, con miles (${formato.miles}) y "-" cuando es 0`);
+  const ajuste = await page.evaluate(()=>{
+    const td = document.querySelector('#rvc-body td.tc'); const ancho = Math.round(td.getBoundingClientRect().width);
+    td.textContent = '43,674'; const cabe = td.scrollWidth <= td.clientWidth + 1; rvcRender();
+    const cortadas = [...document.querySelectorAll('#rvc-body td.num, #rvc-foot td.num')].filter(c=> c.scrollWidth > c.clientWidth + 1).length;
+    return { ancho, cabe, cortadas, desc: Math.round(document.querySelector('#rvc-body td.c2').getBoundingClientRect().width) };
+  });
+  verificar(ajuste.ancho <= 70 && ajuste.desc <= 180 && ajuste.cabe && ajuste.cortadas === 0, `Columnas angostas (tienda ${ajuste.ancho}px, descripción ${ajuste.desc}px) y los valores se ven completos (43,674 cabe: ${ajuste.cabe}, cortadas: ${ajuste.cortadas})`);
   verificar(t.rojas.join(',') === 'COMAS: reparto 8 → guía 6', `Celda en rojo donde la guía difiere del reparto: ${t.rojas.join(',')}`);
   verificar(t.total === 'TOTAL|3 SKU|33||10|15|6|2', `Fila TOTAL: ${t.total}`);
   verificar(/SKU DEL REPARTO=3/i.test(t.kpis) && /UNID\. COMPRADAS=33/i.test(t.kpis) && /UNID\. REPARTIDAS=31/i.test(t.kpis) && /SALDO=2/i.test(t.kpis) && /CAMBIADAS POR GUÍA=1/i.test(t.kpis) && /VALOR DE LA COMPRA=S\/ 84\.00/i.test(t.kpis), `Indicadores: ${t.kpis}`);
@@ -66,7 +76,7 @@ function verificar(condicion, texto){
 
   // Columnas inmovilizadas: al desplazar a la derecha, SKU, Descripción, Compra y Costo quedan fijas
   const fijas = await page.evaluate(async ()=>{
-    const w = document.querySelector('.rvc-wrap'); w.style.maxWidth = '620px';
+    const w = document.querySelector('.rvc-wrap'); w.style.maxWidth = '450px';
     const pos = ()=> [...document.querySelectorAll('#rvc-head tr:nth-child(2) th')].map(th=> Math.round(th.getBoundingClientRect().left));
     const fila = ()=> [...document.querySelector('#rvc-body tr').cells].slice(0, 5).map(td=> Math.round(td.getBoundingClientRect().left));
     const a = pos(), fa = fila(); w.scrollLeft = 200; await new Promise(r=> setTimeout(r, 100));
@@ -83,11 +93,11 @@ function verificar(condicion, texto){
   await page.fill('#rvc-buscar', '');
 
   // Orden de los grupos con nombres reales del reparto
-  const orden = await page.evaluate(()=> ['ATE','VMT','ICA','MALL PLAZA COMAS','CERCADO DE LIMA','HUANCAYO','SAN JUAN DE LURIGANCHO','LOS OLIVOS','RAMSES PTE Y MARAÑON','COMAS','TACNA','HUAYCÁN','PIURA','MAGDALENA','VENTANILLA','VENTA VIRTUAL']
+  const orden = await page.evaluate(()=> ['ATE','VMT','ICA','AREQUIPA','MALL PLAZA COMAS','CERCADO DE LIMA','HUANCAYO','SAN JUAN DE LURIGANCHO','LOS OLIVOS','RAMSES PTE Y MARAÑON','COMAS','TACNA','HUAYCÁN','PIURA','MAGDALENA','VENTANILLA','VENTA VIRTUAL']
     .map(n=> Object.assign({ n }, rvcGrupoTienda(n))).sort((a, b)=> a.pos - b.pos || a.n.localeCompare(b.n)).map(x=> x.n + (x.g ? '' : '(-)')).join(', '));
-  const grupos = await page.evaluate(()=> ['MALL PLAZA COMAS','VENTA VIRTUAL','COMAS','AREQUIPA'].map(n=> n + ':' + (rvcGrupoTienda(n).g || '-')).join(' '));
-  verificar(grupos === 'MALL PLAZA COMAS:g1 VENTA VIRTUAL:g15 COMAS:g1 AREQUIPA:-', `Mall Plaza Comas en el grupo verde y Venta Virtual en naranja suave: ${grupos}`);
-  verificar(orden === 'CERCADO DE LIMA, COMAS, MAGDALENA, VENTANILLA, HUAYCÁN, SAN JUAN DE LURIGANCHO, ATE, MALL PLAZA COMAS, VENTA VIRTUAL, RAMSES PTE Y MARAÑON, LOS OLIVOS, VMT, PIURA, HUANCAYO, TACNA, ICA', `Orden de tiendas: ${orden}`);
+  const grupos = await page.evaluate(()=> ['MALL PLAZA COMAS','VENTA VIRTUAL','COMAS','AREQUIPA','TRUJILLO'].map(n=> n + ':' + (rvcGrupoTienda(n).g || '-')).join(' '));
+  verificar(grupos === 'MALL PLAZA COMAS:g1 VENTA VIRTUAL:g15 COMAS:g1 AREQUIPA:g17 TRUJILLO:-', `Mall Plaza Comas verde, Venta Virtual naranja suave, Arequipa amarillo fosforescente: ${grupos}`);
+  verificar(orden === 'CERCADO DE LIMA, COMAS, MAGDALENA, VENTANILLA, HUAYCÁN, SAN JUAN DE LURIGANCHO, ATE, MALL PLAZA COMAS, VENTA VIRTUAL, AREQUIPA, RAMSES PTE Y MARAÑON, LOS OLIVOS, VMT, PIURA, HUANCAYO, TACNA, ICA', `Orden de tiendas: ${orden}`);
 
   // Ordenar por columnas sin cambiar el ancho
   const anchos = ()=> page.evaluate(()=> [...document.querySelectorAll('#rvc-head tr:nth-child(2) th')].map(th=> Math.round(th.getBoundingClientRect().width)).join(','));
