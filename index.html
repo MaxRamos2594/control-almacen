@@ -3186,8 +3186,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v178';
-const APP_UPDATED = '15/10/2026 14:00';
+const APP_VERSION = 'v179';
+const APP_UPDATED = '15/10/2026 15:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -8512,6 +8512,7 @@ $('btn-guardar-campana').addEventListener('click', async ()=>{
       // Nombres de las tiendas (participantes): Rótulos de Campaña los usa sin
       // tener que descargar todas las filas de la campaña.
       participantes_lista: [...participantesSet].filter(Boolean).sort(),
+      skus_lista: skusDeFilas(campParsedRows),
       estado: 'ACTIVO',
       usuario: currentUserAlias,
       fecha_carga: firebase.firestore.FieldValue.serverTimestamp()
@@ -8691,6 +8692,7 @@ async function adicionarACampana(fecha){
         sku_distintos: new Set(todas.map(r=> r.sku)).size,
         participantes: participantes.length,
         participantes_lista: participantes,
+        skus_lista: skusDeFilas(todas),
         adiciones: firebase.firestore.FieldValue.increment(1),
         ultima_adicion_por: currentUserAlias,
         ultima_adicion_en: firebase.firestore.FieldValue.serverTimestamp()
@@ -8760,6 +8762,7 @@ async function reemplazarCampana(fecha){
       total_filas: filasNuevas.length,
       participantes: participantesSet.size,
       participantes_lista: [...participantesSet].filter(Boolean).sort(),
+      skus_lista: skusDeFilas(filasNuevas),
       reemplazado_por: currentUserAlias,
       reemplazado_en: firebase.firestore.FieldValue.serverTimestamp(),
       reemplazos: firebase.firestore.FieldValue.increment(1)
@@ -10617,17 +10620,35 @@ async function guardarMapeoDestinoParticipante(puntoLlegada, participante){
 
 // Descarga (una sola vez por sesión) las filas de las campañas activas que aún
 // no están en memoria, todas a la vez. onAvance(listas, total) por cada una.
+// Códigos (SKU) distintos de una campaña: se guardan en su cabecera (skus_lista)
+// para reconocer a qué campaña pertenece una guía sin descargar su reparto.
+function skusDeFilas(filas){ return [...new Set(filas.map(r=> claveSku(r.sku)).filter(Boolean))].sort(); }
+function participantesDeCampana(corr){
+  const cab = campRegAllCache.find(c=> c.correlativo === corr);
+  if(cab && Array.isArray(cab.participantes_lista) && cab.participantes_lista.length) return cab.participantes_lista.slice();
+  return [...new Set((campRegCache[corr] || []).map(f=> f.participante).filter(Boolean))];
+}
+// Solo las campañas antiguas que aún no tienen su lista de códigos se descargan
+// (una sola vez): se les guarda la lista y las próximas veces ya no se descargan.
 async function cargarFilasCampanasActivas(onAvance){
   await esperarRegistrosCampana();
   const activos = campRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
-  let listas = activos.filter(c=> campRegCache[c.correlativo]).length;
-  if(onAvance) onAvance(listas, activos.length);
-  await Promise.all(activos.filter(c=> !campRegCache[c.correlativo]).map(async campania=>{
+  const faltan = activos.filter(c=> !Array.isArray(c.skus_lista) || !Array.isArray(c.participantes_lista));
+  let listas = 0;
+  if(faltan.length && onAvance) onAvance(listas, faltan.length);
+  await Promise.all(faltan.map(async campania=>{
     try{
-      const snap = await campanaItemsRef.where('correlativo','==',campania.correlativo).limit(3000).get();
-      campRegCache[campania.correlativo] = snap.docs.map(d=>d.data());
+      let filas = campRegCache[campania.correlativo];
+      if(!filas){
+        const snap = await campanaItemsRef.where('correlativo','==',campania.correlativo).limit(3000).get();
+        filas = campRegCache[campania.correlativo] = snap.docs.map(d=>d.data());
+      }
+      campania.skus_lista = skusDeFilas(filas);
+      campania.participantes_lista = [...new Set(filas.map(f=> f.participante).filter(Boolean))].sort();
+      campanaRegistrosRef.doc(campania.correlativo).set({ skus_lista: campania.skus_lista, participantes_lista: campania.participantes_lista }, { merge:true })
+        .catch(err=> console.warn('No se pudo guardar la lista de códigos', err));
     }finally{
-      listas++; if(onAvance) onAvance(listas, activos.length);
+      listas++; if(onAvance) onAvance(listas, faltan.length);
     }
   }));
   return activos;
@@ -10639,13 +10660,16 @@ async function sugerirCampanaYParticipante(resultado){
   let mejor = { correlativo:'', pct:0 };
   const porcentajesPorCampana = {};
   for(const campania of activos){
-    let filas = campRegCache[campania.correlativo];
-    if(!filas){
-      const snap = await campanaItemsRef.where('correlativo','==',campania.correlativo).limit(3000).get();
-      filas = snap.docs.map(d=>d.data());
-      campRegCache[campania.correlativo] = filas;
+    let skus = campania.skus_lista;
+    if(!Array.isArray(skus)){
+      let filas = campRegCache[campania.correlativo];
+      if(!filas){
+        const snap = await campanaItemsRef.where('correlativo','==',campania.correlativo).limit(3000).get();
+        filas = campRegCache[campania.correlativo] = snap.docs.map(d=>d.data());
+      }
+      skus = skusDeFilas(filas);
     }
-    const skusCampania = new Set(filas.map(r=>claveSku(r.sku)));
+    const skusCampania = new Set(skus);
     let coincidencias = 0;
     codigosGuia.forEach(c=>{ if(skusCampania.has(c)) coincidencias++; });
     const pct = codigosGuia.size ? Math.round((coincidencias/codigosGuia.size)*100) : 0;
@@ -10663,19 +10687,27 @@ async function sugerirCampanaYParticipante(resultado){
   return { correlativo: mejor.correlativo, pct: mejor.pct, participante: participanteSugerido, porcentajesPorCampana, aprendido: !!aprendido };
 }
 
-// Dentro de los participantes REALES de una campaña (los de su hoja de reparto), busca
-// cuál aparece como texto dentro del punto de llegada de la guía. Si varios coinciden,
-// se queda con el nombre más largo (más específico, ej. "SAN JUAN DE LURIGANCHO" antes
-// que un posible "LURIGANCHO" suelto).
+// Participante de la campaña que corresponde al punto de llegada de la guía.
+// 1) El maestro de participantes: su nombre, sus otros nombres o sus palabras de
+//    dirección aparecen en el punto de llegada (palabra completa; gana la más larga).
+// 2) Si no, el nombre de un participante de la campaña escrito en la dirección.
 function buscarParticipanteEnTexto(correlativo, puntoLlegada){
-  const filas = campRegCache[correlativo] || [];
-  const participantes = [...new Set(filas.map(f=>f.participante).filter(Boolean))];
-  const texto = normalizarTexto(puntoLlegada);
-  let mejorMatch = '';
-  participantes.forEach(p=>{
-    if(texto.includes(normalizarTexto(p)) && p.length > mejorMatch.length) mejorMatch = p;
+  const participantes = participantesDeCampana(correlativo);
+  const texto = ' ' + normalizarTexto(puntoLlegada).replace(/[^A-Z0-9]+/g, ' ') + ' ';
+  const aparece = w=>{ const k = normalizarTexto(w).replace(/[^A-Z0-9]+/g, ' ').trim(); return k.length >= 3 && texto.includes(' ' + k + ' ') ? k.length : 0; };
+  let mejor = '', largo = 0;
+  Object.values(participantesMaestroCache).filter(m=> m.activo !== false).forEach(m=>{
+    const l = Math.max(aparece(m.nombre), ...(m.alias || []).map(aparece), ...(m.palabras_direccion || []).map(aparece));
+    if(l <= largo) return;
+    // El nombre que usa ESTA campaña para esa tienda (puede ser otro de sus nombres).
+    const enCampana = participantes.find(p=>{ const x = participanteDelMaestro(p); return x && x.nombre === m.nombre; });
+    if(enCampana){ mejor = enCampana; largo = l; }
   });
-  return mejorMatch;
+  if(mejor) return mejor;
+  participantes.forEach(p=>{
+    if(normalizarTexto(puntoLlegada).includes(normalizarTexto(p)) && p.length > mejor.length) mejor = p;
+  });
+  return mejor;
 }
 
 // Busca si ya existe una guía ACTIVA guardada con ese mismo N° de guía (evita duplicados).
@@ -10719,9 +10751,9 @@ $('btn-procesar-guia').addEventListener('click', async ()=>{
   }
 
   if(guiaBatch.some(it=> it.resultado)){
-    avance('Procesando… descargando campañas activas para comparar');
+    avance('Procesando… comparando con las campañas activas');
     try{
-      await cargarFilasCampanasActivas((listas, total)=> avance(`Procesando… comparando contra campañas activas: ${listas} de ${total}`));
+      await cargarFilasCampanasActivas((listas, total)=> avance(`Procesando… preparando ${total} campaña(s) antiguas para compararlas (solo esta vez): ${listas} de ${total}`));
     }catch(err){ console.error(err); }
   }
   avance('Procesando… verificando duplicados');
@@ -10790,8 +10822,7 @@ function actualizarFilaTrasCambioCampana(idx){
   // Primero el participante cuyo nombre aparece en el punto de llegada; si no
   // aparece ninguno, el "aprendido" para este mismo destino en una carga anterior.
   if(selParticipante){
-    const filas = correlativo ? (campRegCache[correlativo] || []) : [];
-    const participantes = [...new Set(filas.map(f=>f.participante).filter(Boolean))].sort();
+    const participantes = correlativo ? participantesDeCampana(correlativo).sort() : [];
     const porTexto = correlativo ? buscarParticipanteEnTexto(correlativo, item.resultado.punto_llegada) : '';
     let sugerido = porTexto || item.participanteAprendido;
     const etiquetaSugerido = porTexto ? ' (sugerido)' : ' (recordado)';
