@@ -26,6 +26,9 @@ function verificar(condicion, texto){
     await guiasRegistrosRef.doc('G1').set({ correlativo:'G1', campana_correlativo:'REG-00060', participante:'COMAS', estado:'ACTIVO' });
     await guiaItemsRef.doc().set({ correlativo_guia:'G1', campana_correlativo:'REG-00060', participante:'COMAS', codigo:'S1', cantidad:6 });
     await guiaItemsRef.doc().set({ correlativo_guia:'G1', campana_correlativo:'REG-00060', participante:'COMAS', codigo:'S3', cantidad:4 });
+    await guiaItemsRef.doc().set({ correlativo_guia:'G1', campana_correlativo:'REG-00060', participante:'COMAS', codigo:'s9', descripcion:'NO ESTA EN EL REPARTO', cantidad:3 });
+    await guiasRegistrosRef.doc('G3').set({ correlativo:'G3', nro_guia:'TG01-777', campana_correlativo:'REG-00060', participante:'PIURA', estado:'ACTIVO' });
+    await guiaItemsRef.doc().set({ correlativo_guia:'G3', campana_correlativo:'REG-00060', participante:'PIURA', codigo:'S1', descripcion:'PRODUCTO S1', cantidad:2 });
     await guiasRegistrosRef.doc('G2').set({ correlativo:'G2', campana_correlativo:'REG-00060', participante:'ATE', estado:'INVALIDADO' });
     await guiaItemsRef.doc().set({ correlativo_guia:'G2', campana_correlativo:'REG-00060', participante:'ATE', codigo:'S1', cantidad:99 });
     // Compras: dos cargas asignadas, una anulada y una sin asignar
@@ -90,6 +93,15 @@ function verificar(condicion, texto){
   verificar(t.rojas.join(',') === 'COMAS: reparto 8 → guía 6', `Celda en rojo donde la guía difiere del reparto: ${t.rojas.join(',')}`);
   verificar(t.total === 'TOTAL|3 SKU|33||10|15|6|2', `Fila TOTAL: ${t.total}`);
   verificar(/SKU DEL REPARTO=3/i.test(t.kpis) && /UNID\. COMPRADAS=33/i.test(t.kpis) && /UNID\. REPARTIDAS=31/i.test(t.kpis) && /SALDO=2/i.test(t.kpis) && /CAMBIADAS POR GUÍA=1/i.test(t.kpis) && /VALOR DE LA COMPRA=S\/ 84\.00/i.test(t.kpis), `Indicadores: ${t.kpis}`);
+  // Códigos de las guías que no hacen match con el reparto
+  const btnFuera = await page.textContent('#btn-rvc-fuera');
+  verificar(btnFuera === '⚠ Códigos de guía sin reparto: 2', `Aviso: "${btnFuera}"`);
+  await page.click('#btn-rvc-fuera');
+  const fuera = await page.evaluate(()=> [...document.querySelectorAll('#rvc-fuera tbody tr')].map(r=> [...r.cells].filter((c, i)=> i !== 1).map(c=> c.innerText.trim()).join('|')));
+  verificar(fuera.join(' / ') === 'S1|PIURA|2|TG01-777|La tienda no está en el reparto / S9|COMAS|3|G1|El código no está en el reparto', `Lista de códigos sin match: ${fuera.join(' / ')}`);
+  await page.locator('#campsub-panel-repcmp').screenshot({ path: path.join(__dirname, 'salida', 'reparto_compra_fuera.png') });
+  await page.click('#btn-rvc-fuera');
+  verificar(await page.evaluate(()=> $('rvc-fuera').style.display === 'none'), 'Otro clic oculta la lista');
   await page.locator('#campsub-panel-repcmp').screenshot({ path: path.join(__dirname, 'salida', 'reparto_compra.png') });
 
   // Columnas inmovilizadas: al desplazar a la derecha, SKU, Descripción, Compra y Costo quedan fijas

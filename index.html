@@ -420,6 +420,17 @@
   .rvc-chips button{padding:5px 12px; border-radius:999px; border:1px solid var(--line-strong); background:#fff; font-size:12px; cursor:pointer; color:var(--ink-soft); font-weight:600;}
   .rvc-chips button b{font-family:var(--mono); margin-left:4px; color:var(--ink);}
   .rvc-chips button.activo{background:var(--blue); border-color:var(--blue); color:#fff;} .rvc-chips button.activo b{color:#fff;}
+  .rvc-fuera-btn{margin-left:auto; padding:6px 12px; border-radius:999px; border:1px solid #d08a12; background:#fff5e0; color:#7a4d06; font-size:12px; font-weight:700; cursor:pointer;}
+  .rvc-fuera-btn.ok{border-color:#9fd0b2; background:#e9f6ee; color:#1f7a4a; cursor:default;}
+  .rvc-fuera-btn.abierto{background:#d08a12; color:#fff;}
+  .rvc-fuera{margin-bottom:12px; border:1px solid #e8c98f; border-left:5px solid #d08a12; border-radius:10px; overflow:hidden; animation:regEntra .2s both;}
+  .rvc-fuera .t{padding:8px 12px; background:#fff5e0; font-size:12px; color:#5b3a05;}
+  .rvc-fuera .w{max-height:300px; overflow:auto;}
+  .rvc-fuera table{width:100%; border-collapse:collapse; font-size:12px;}
+  .rvc-fuera th{position:sticky; top:0; background:#fbf3e3; text-align:left; font-size:10.5px; text-transform:uppercase; color:#7a5a25; padding:6px 10px; border-bottom:1px solid #ecd9b2;}
+  .rvc-fuera td{padding:5px 10px; border-bottom:1px solid #f3e7cf; white-space:nowrap;}
+  .rvc-fuera td.num{text-align:center; font-family:var(--mono);}
+  .rvc-fuera .motivo{font-size:11px; color:#8a5a0a;}
   .rvc-wrap{overflow:auto; max-height:70vh; border:1px solid var(--line); border-radius:8px;}
   table.rvc-tabla{border-collapse:separate; border-spacing:0; width:max-content; font-size:12px;}
   table.rvc-tabla th, table.rvc-tabla td{padding:4px 5px; border-bottom:1px solid var(--line); border-right:1px solid #eef0f3; white-space:nowrap; background:#fff;}
@@ -2404,7 +2415,9 @@
       <div class="rvc-filtros">
         <input type="search" id="rvc-buscar" placeholder="Buscar SKU o descripción…" autocomplete="off">
         <div class="rvc-chips" id="rvc-chips"></div>
+        <button type="button" class="rvc-fuera-btn" id="btn-rvc-fuera" style="display:none;"></button>
       </div>
+      <div class="rvc-fuera" id="rvc-fuera" style="display:none;"></div>
       <div class="rvc-wrap"><table class="rvc-tabla" id="rvc-tabla"><thead id="rvc-head"></thead><tbody id="rvc-body"></tbody><tfoot id="rvc-foot"></tfoot></table></div>
       <div class="empty-state" id="rvc-vacio" style="display:none;">Ningún SKU coincide con el filtro.</div>
     </div>
@@ -3186,8 +3199,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v179';
-const APP_UPDATED = '15/10/2026 15:00';
+const APP_VERSION = 'v180';
+const APP_UPDATED = '15/10/2026 16:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -12608,6 +12621,8 @@ async function rvcCalcular(corr){
     // Guías: cantidad por tienda + SKU
     const guia = new Map();
     guiaItems.forEach(i=>{ const t = rvcTienda(i.participante); if(!tiendas.has(t)) return; tiendas.get(t).guia = true; const k = t + '|' + claveSku(i.codigo); guia.set(k, (guia.get(k) || 0) + (Number(i.cantidad) || 0)); });
+    // Guías de la campaña que se cargaron, para mostrar su N° en los códigos sin reparto
+    const nroGuia = new Map((await guiasRegistrosRef.where('campana_correlativo','==',corr).get()).docs.map(d=> d.data()).map(g=> [g.correlativo, g.nro_guia || g.correlativo]));
     // Compras: suma de CANT. VALIDADA y costo promedio ponderado por SKU
     const compra = new Map();
     totales.forEach(t=>{ const k = claveSku(t.sku || t.correl_sku); if(!k) return; const c = compra.get(k) || { cant:0, valor:0, costo:null, desc:'' };
@@ -12627,7 +12642,16 @@ async function rvcCalcular(corr){
       const costo = c ? (c.cant ? c.valor / c.cant : c.costo) : null;
       return { sku: f.sku, desc: f.desc || (c && c.desc) || '', compra: cant, costo, celdas, repartido, saldo: (cant || 0) - repartido, mods: celdas.filter(x=> x.mod).length };
     });
-    return { corr, cols, lista, cargas: cargas.map(c=> c.correlativo).sort(), guias: activas.size };
+    // Códigos de las guías que no están en el reparto (o de tiendas que no están en él):
+    // no entran en la tabla, se listan aparte para revisarlos.
+    const fuera = new Map();
+    guiaItems.forEach(i=>{ const t = rvcTienda(i.participante), k = claveSku(i.codigo); if(!k) return;
+      const sinTienda = !tiendas.has(t), sinCodigo = !filas.has(k); if(!sinTienda && !sinCodigo) return;
+      const clave = t + '|' + k; const x = fuera.get(clave) || { sku: String(i.codigo || '').toUpperCase(), desc: i.descripcion || '', tienda: String(i.participante || '').toUpperCase(), cant: 0, guias: new Set(),
+        motivo: sinCodigo ? 'El código no está en el reparto' : 'La tienda no está en el reparto' };
+      x.cant += Number(i.cantidad) || 0; x.guias.add(nroGuia.get(i.correlativo_guia) || i.nro_guia || i.correlativo_guia); fuera.set(clave, x); });
+    const fueraLista = [...fuera.values()].map(x=> Object.assign(x, { guias: [...x.guias].filter(Boolean).sort().join(', ') })).sort((a, b)=> a.sku.localeCompare(b.sku) || a.tienda.localeCompare(b.tienda));
+    return { corr, cols, lista, fuera: fueraLista, cargas: cargas.map(c=> c.correlativo).sort(), guias: activas.size };
   }catch(err){ proc.fin(); throw err; }
 }
 const rvcN = v=> v == null ? '' : anFmt(Math.round(v * 100) / 100);
@@ -12659,6 +12683,7 @@ function rvcRender(){
   const n = { todos: L.length, mod: L.filter(f=> f.mods).length, neg: L.filter(f=> f.saldo < 0).length, pos: L.filter(f=> f.saldo > 0).length, sin: sinCompra };
   $('rvc-chips').innerHTML = [['todos','Todos'],['mod','🟥 Cambiados por guía'],['neg','Saldo negativo'],['pos','Saldo positivo'],['sin','Sin compra']]
     .map(([k, t])=> `<button type="button" data-rvc-filtro="${k}" class="${rvcFiltro === k ? 'activo' : ''}">${esc(t)}<b>${esc(n[k])}</b></button>`).join('');
+  rvcRenderFuera();
   const th = (k, cls, texto, titulo)=>{ const act = rvcOrden.k === k;
     return `<th data-rvc-orden="${esc(k)}" class="${cls}${act ? ' ord' : ''}" title="${esc(titulo || ('Ordenar por ' + texto))}">${esc(texto)} <span class="flecha">${act ? (rvcOrden.dir > 0 ? '▲' : '▼') : '↕'}</span></th>`; };
   $('rvc-head').innerHTML = `<tr><th class="vacio fijo c1"></th><th class="vacio fijo c2g" colspan="3"></th><th class="grupo" colspan="${d.cols.length}">Reparto</th><th class="vacio sal"></th></tr>` +
@@ -12695,7 +12720,7 @@ $('btn-rvc-analizar').addEventListener('click', async ()=>{
   if(!corr){ showMsg('rvc-msg','err','Selecciona una campaña primero.'); return; }
   $('btn-rvc-analizar').disabled = true;
   try{
-    rvcDatos = await rvcCalcular(corr); rvcFiltro = 'todos'; $('rvc-buscar').value = '';
+    rvcDatos = await rvcCalcular(corr); rvcFiltro = 'todos'; rvcFueraAbierto = false; $('rvc-buscar').value = '';
     $('rvc-resultado').style.display = 'block'; $('btn-rvc-excel').style.display = '';
     rvcRender();
     if(!rvcDatos.cargas.length) showMsg('rvc-msg','err', `${corr} no tiene compras asignadas: COMPRA sale vacía. Asígnalas en Compras → Cargas guardadas → "Asignar a campaña".`);
@@ -12731,6 +12756,22 @@ function rvcModoEnfocado(on){
 $('rvc-flotante').addEventListener('click', e=>{ e.stopPropagation(); rvcAbrirPanel($('rvc-flot-panel').style.display === 'none'); });
 document.addEventListener('click', e=>{ if($('rvc-flot-panel').style.display !== 'none' && !e.target.closest('#rvc-flot-panel, #rvc-flotante')) rvcAbrirPanel(false); });
 document.addEventListener('keydown', e=>{ if(e.key === 'Escape' && $('rvc-flot-panel').style.display !== 'none') rvcAbrirPanel(false); });
+// Códigos de guía que no hacen match con el reparto
+let rvcFueraAbierto = false;
+function rvcRenderFuera(){
+  const d = rvcDatos, b = $('btn-rvc-fuera'), box = $('rvc-fuera');
+  if(!d){ b.style.display = 'none'; box.style.display = 'none'; return; }
+  const F = d.fuera || [];
+  b.style.display = '';
+  b.className = 'rvc-fuera-btn' + (F.length ? '' : ' ok') + (F.length && rvcFueraAbierto ? ' abierto' : '');
+  b.textContent = F.length ? `⚠ Códigos de guía sin reparto: ${F.length}` : '✓ Todos los códigos de las guías están en el reparto';
+  if(!F.length || !rvcFueraAbierto){ box.style.display = 'none'; return; }
+  box.innerHTML = `<div class="t">Estos códigos vienen en las guías de la campaña pero <b>no hacen match</b> con su hoja de reparto, por eso no aparecen en la tabla. Unidades: <b>${esc(anFmt(F.reduce((s, x)=> s + x.cant, 0)))}</b>.</div>` +
+    `<div class="w"><table><thead><tr><th>Código</th><th>Descripción (guía)</th><th>Tienda</th><th class="num">Cantidad</th><th>Guía(s)</th><th>Motivo</th></tr></thead><tbody>` +
+    F.map(x=> `<tr><td><b>${esc(x.sku)}</b></td><td>${esc(x.desc)}</td><td>${esc(x.tienda)}</td><td class="num">${esc(rvcV(x.cant))}</td><td>${esc(x.guias)}</td><td class="motivo">${esc(x.motivo)}</td></tr>`).join('') + '</tbody></table></div>';
+  box.style.display = 'block';
+}
+$('btn-rvc-fuera').addEventListener('click', ()=>{ if(!(rvcDatos && (rvcDatos.fuera || []).length)) return; rvcFueraAbierto = !rvcFueraAbierto; rvcRenderFuera(); });
 $('rvc-chips').addEventListener('click', e=>{ const b = e.target.closest('[data-rvc-filtro]'); if(!b) return; rvcFiltro = b.dataset.rvcFiltro; rvcRender(); });
 $('btn-rvc-excel').addEventListener('click', ()=>{
   const d = rvcDatos; if(!d) return;
@@ -12744,6 +12785,7 @@ $('btn-rvc-excel').addEventListener('click', ()=>{
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Reparto vs Compra');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(cambios), 'Cambiados por guia');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['CODIGO','DESCRIPCION (GUIA)','TIENDA','CANTIDAD','GUIA(S)','MOTIVO'], ...(d.fuera || []).map(x=> [x.sku, x.desc, x.tienda, x.cant, x.guias, x.motivo])]), 'Guia sin reparto');
   XLSX.writeFile(wb, `reparto_vs_compra_${d.corr}.xlsx`);
 });
 
