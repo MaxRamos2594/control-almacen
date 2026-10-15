@@ -98,6 +98,9 @@ function verificar(condicion, texto){
   verificar(!largo.cortada && largo.w > 300 && Math.abs(largo.costo) <= 1, `Con una descripción larga la columna crece a ${largo.w}px sin cortarla y Compra/Costo quedan pegadas a ella`);
   verificar(t.rojas.join(',') === 'COMAS: reparto 8 → guía 6', `Celda en rojo donde la guía difiere del reparto: ${t.rojas.join(',')}`);
   verificar(t.total === 'TOTAL|3 SKU|33||10|15|6|2|-|-|2', `Fila TOTAL: ${t.total}`);
+  const val = await page.evaluate(()=> [...document.querySelectorAll('#rvc-head th.val')].map(th=> th.querySelector('b').textContent).join(' | '));
+  // S1: 9 × 2.40 = 21.60; S2: -3 × 3.00 = -9.00; S3 sin compra (sin costo) = 0
+  verificar(val === 'S/ 12.60 | S/ 0.00 | S/ 0.00 | S/ 12.60', `Valorizado arriba de saldo, sobrantes, saldos campaña y saldo final: ${val}`);
   verificar(/SKU DEL REPARTO=3/i.test(t.kpis) && /UNID\. COMPRADAS=33/i.test(t.kpis) && /UNID\. REPARTIDAS=31/i.test(t.kpis) && /SALDO FINAL=2/i.test(t.kpis) && /CAMBIADAS POR GUÍA=1/i.test(t.kpis) && /VALOR DE LA COMPRA=S\/ 84\.00/i.test(t.kpis), `Indicadores: ${t.kpis}`);
   // Códigos de las guías que no hacen match con el reparto
   const btnFuera = await page.textContent('#btn-rvc-fuera');

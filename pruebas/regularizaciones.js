@@ -83,6 +83,9 @@ function guia(nro, items){
   // R1: compra 20 − reparto 10 = 10; sobrante 3, saldo campaña 2 → final 5. R2: 8 − 5 = 3; saldo campaña 1 → 2
   verificar(r.filas.join(' / ') === '10|10|3|2|5:R1 / 5|3|-|1|2:R2', `Filas (ATE|saldo|sobrantes|saldos campaña|saldo final): ${r.filas.join(' / ')}`);
   verificar(r.total === '13|3|3|7', `TOTAL: ${r.total}`);
+  const val = await page.evaluate(()=> [...document.querySelectorAll('#rvc-head th.val')].map(th=> th.querySelector('b').textContent).join(' | '));
+  // costo 1 en R1 y R2: valorizado = unidades
+  verificar(val === 'S/ 13.00 | S/ 3.00 | S/ 3.00 | S/ 7.00', `Valorizado (costo × unidades) arriba de saldo, sobrantes, saldos campaña y saldo final: ${val}`);
   verificar(/sin reparto: 1/.test(r.fuera), `El código X9 del sobrante, que no está en el reparto, se lista aparte: "${r.fuera}"`);
   await page.locator('#rvc-tabla').screenshot({ path: path.join(__dirname, 'salida', 'regularizaciones_rvc.png') });
 

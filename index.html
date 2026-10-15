@@ -437,7 +437,10 @@
   table.rvc-tabla{border-collapse:separate; border-spacing:0; width:max-content; font-size:12px;}
   table.rvc-tabla th, table.rvc-tabla td{padding:4px 5px; border-bottom:1px solid var(--line); border-right:1px solid #eef0f3; white-space:nowrap; background:#fff;}
   table.rvc-tabla thead th{position:sticky; z-index:2; background:#f6c6ab; color:#3b2416; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; text-align:left;}
-  table.rvc-tabla thead tr:first-child th{top:0; height:26px;} table.rvc-tabla thead tr:nth-child(2) th{top:26px;}
+  table.rvc-tabla thead tr:first-child th{top:0; height:34px; box-sizing:border-box;} table.rvc-tabla thead tr:nth-child(2) th{top:34px;}
+  table.rvc-tabla thead th.val{background:#fff; text-align:center; font-family:var(--mono); text-transform:none; letter-spacing:0; line-height:1.15; padding:3px 2px; border-bottom:2px solid var(--line-strong);}
+  table.rvc-tabla thead th.val small{display:block; font-family:inherit; font-size:8px; letter-spacing:.06em; color:var(--ink-soft); font-weight:700;}
+  table.rvc-tabla thead th.val b{font-size:10px; color:var(--ink);} table.rvc-tabla thead th.val.neg b{color:#b3402f;}
   table.rvc-tabla thead th.grupo{text-align:center; background:#f3b48f; letter-spacing:.12em;}
   table.rvc-tabla thead th.vacio{background:#fff;}
   table.rvc-tabla thead th.guia{padding-top:13px;} table.rvc-tabla thead th.guia::after{content:"🚚"; position:absolute; top:2px; right:3px; font-size:9px; line-height:1;}
@@ -462,7 +465,7 @@
   table.rvc-tabla td.g3{background:#f1f3f5;} table.rvc-tabla thead th.g3{background:#dadee4;}
   table.rvc-tabla .tc{width:92px; min-width:92px; max-width:92px; box-sizing:border-box;}
   table.rvc-tabla thead tr:nth-child(2) th{white-space:normal; line-height:1.15; vertical-align:bottom; font-size:9.5px; letter-spacing:0; overflow-wrap:anywhere;}
-  table.rvc-tabla .sal{width:64px; min-width:64px; max-width:64px; box-sizing:border-box;}
+  table.rvc-tabla .sal{width:88px; min-width:88px; max-width:88px; box-sizing:border-box;}
   table.rvc-tabla thead th[data-rvc-orden]{cursor:pointer; user-select:none;}
   table.rvc-tabla thead th[data-rvc-orden]:hover{color:#000; text-decoration:underline;}
   table.rvc-tabla thead th.ord{box-shadow:inset 0 -3px 0 var(--blue);}
@@ -3248,8 +3251,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v182';
-const APP_UPDATED = '15/10/2026 18:00';
+const APP_VERSION = 'v183';
+const APP_UPDATED = '15/10/2026 18:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -12886,15 +12889,17 @@ function rvcRender(){
   rvcRenderFuera();
   const th = (k, cls, texto, titulo)=>{ const act = rvcOrden.k === k;
     return `<th data-rvc-orden="${esc(k)}" class="${cls}${act ? ' ord' : ''}" title="${esc(titulo || ('Ordenar por ' + texto))}">${esc(texto)} <span class="flecha">${act ? (rvcOrden.dir > 0 ? '▲' : '▼') : '↕'}</span></th>`; };
-  $('rvc-head').innerHTML = `<tr><th class="vacio fijo c1"></th><th class="vacio fijo c2g" colspan="3"></th><th class="grupo" colspan="${d.cols.length}">Reparto</th><th class="vacio sal"></th><th class="grupo rgz" colspan="2">Regularizaciones</th><th class="vacio sal"></th></tr>` +
-    '<tr>' + th('sku', 'fijo c1', 'SKU') + th('desc', 'fijo c2', 'Descripción') + th('compra', 'num fijo c3', 'Compra') + th('costo', 'num fijo c4', 'Costo') +
-    d.cols.map((t, i)=> th('t' + i, `num tc ${t.g}${t.guia ? ' guia' : ''}`, t.nombre, `${t.nombre}${t.guia ? ' — ya tiene guía' : ''} · clic para ordenar`)).join('') + th('saldo', 'num sal', 'Saldo') + th('sob', 'num sal rgz-sob', 'Sobrantes') + th('scamp', 'num sal rgz-scamp', 'Saldos campaña') + th('sfin', 'num sal sfin', 'Saldo final') + '</tr>';
   const filas = rvcFiltrar();
   const vOrden = f=>{ const k = rvcOrden.k;
     if(k === 'sku') return f.sku; if(k === 'desc') return normalizarTexto(f.desc);
     if(k === 'compra') return f.compra == null ? -Infinity : f.compra; if(k === 'costo') return f.costo == null ? -Infinity : f.costo;
     if(k === 'saldo') return f.saldo; if(k === 'sob') return f.sob; if(k === 'scamp') return f.scamp; if(k === 'sfin') return f.sfin; return f.celdas[Number(k.slice(1))].v; };
   filas.sort((a, b)=>{ const x = vOrden(a), y = vOrden(b); return (typeof x === 'string' ? x.localeCompare(y) : x - y) * rvcOrden.dir || a.sku.localeCompare(b.sku); });
+  $('rvc-head').innerHTML = `<tr><th class="vacio fijo c1"></th><th class="vacio fijo c2g" colspan="3"></th><th class="grupo" colspan="${d.cols.length}">Reparto</th>` +
+    [['saldo', 'saldo'], ['sob', 'sobrantes'], ['scamp', 'saldos campaña'], ['sfin', 'saldo final']].map(([k, t])=>{ const v = filas.reduce((s, f)=> s + (f.costo || 0) * f[k], 0);
+      return `<th class="val sal${v < 0 ? ' neg' : ''}" title="Valorizado de ${esc(t)}: costo × unidades"><small>VALORIZADO</small><b>S/ ${esc(v.toLocaleString('es-PE', { minimumFractionDigits:2, maximumFractionDigits:2 }))}</b></th>`; }).join('') + '</tr>' +
+    '<tr>' + th('sku', 'fijo c1', 'SKU') + th('desc', 'fijo c2', 'Descripción') + th('compra', 'num fijo c3', 'Compra') + th('costo', 'num fijo c4', 'Costo') +
+    d.cols.map((t, i)=> th('t' + i, `num tc ${t.g}${t.guia ? ' guia' : ''}`, t.nombre, `${t.nombre}${t.guia ? ' — ya tiene guía' : ''} · clic para ordenar`)).join('') + th('saldo', 'num sal', 'Saldo') + th('sob', 'num sal rgz-sob', 'Sobrantes') + th('scamp', 'num sal rgz-scamp', 'Saldos campaña') + th('sfin', 'num sal sfin', 'Saldo final') + '</tr>';
   $('rvc-vacio').style.display = filas.length ? 'none' : 'block';
   $('rvc-body').innerHTML = filas.map(f=> `<tr><td class="fijo c1 sku" title="${esc(f.sku)}">${esc(f.sku)}</td><td class="fijo c2 desc" title="${esc(f.desc)}">${esc(f.desc)}</td>` +
     (f.compra == null ? '<td class="num fijo c3 compra sin-compra" title="Sin compra asignada a la campaña">sin compra</td><td class="num fijo c4"></td>' : `<td class="num fijo c3 compra">${esc(rvcV(f.compra))}</td><td class="num fijo c4">${esc(f.costo == null ? '' : f.costo.toFixed(2))}</td>`) +
