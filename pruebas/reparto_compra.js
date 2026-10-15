@@ -74,6 +74,11 @@ function verificar(condicion, texto){
     return { ancho, cabe, cortadas, descCortadas, filasTitulo, desc: Math.round(document.querySelector('#rvc-body td.c2').getBoundingClientRect().width) };
   });
   verificar(ajuste.ancho <= 95 && ajuste.desc <= 140 && ajuste.descCortadas === 0 && ajuste.cabe && ajuste.cortadas === 0, `Descripción al ancho de la más larga (${ajuste.desc}px, sin cortar), tiendas de ${ajuste.ancho}px y los valores completos (43,674 cabe: ${ajuste.cabe}, cortadas: ${ajuste.cortadas})`);
+  const skuLargo = await page.evaluate(()=>{ const viejo = rvcDatos.lista[1].sku; rvcDatos.lista[1].sku = 'F-11006(A-68)'; rvcRender();
+    const td = [...document.querySelectorAll('#rvc-body td.sku')].find(c=> c.textContent === 'F-11006(A-68)');
+    const r = { cortado: td.scrollWidth > td.clientWidth + 1, pegada: Math.abs(document.querySelector('#rvc-body td.c2').getBoundingClientRect().left - td.getBoundingClientRect().right) <= 1 };
+    rvcDatos.lista[1].sku = viejo; rvcRender(); return r; });
+  verificar(!skuLargo.cortado && skuLargo.pegada, 'Un SKU largo ("F-11006(A-68)") se ve completo y Descripción queda pegada a él');
   const largo = await page.evaluate(()=>{ const viejo = rvcDatos.lista[0].desc; rvcDatos.lista[0].desc = 'SPINNER HAMBURGUESA ( ESFERA GIRATORIA) EDICION ESPECIAL'; rvcRender();
     const td = document.querySelector('#rvc-body td.desc'); const r = { w: Math.round(td.getBoundingClientRect().width), cortada: td.scrollWidth > td.clientWidth + 1,
       costo: Math.round(document.querySelector('#rvc-body td.c4').getBoundingClientRect().left - document.querySelector('#rvc-body td.c3').getBoundingClientRect().right) };
