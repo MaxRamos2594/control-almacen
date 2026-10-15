@@ -3251,8 +3251,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v183';
-const APP_UPDATED = '15/10/2026 18:30';
+const APP_VERSION = 'v184';
+const APP_UPDATED = '16/10/2026 09:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -12844,11 +12844,6 @@ async function rvcCalcular(corr){
       const clave = t + '|' + k; const x = fuera.get(clave) || { sku: String(i.codigo || '').toUpperCase(), desc: i.descripcion || '', tienda: String(i.participante || '').toUpperCase(), cant: 0, guias: new Set(), ids: [],
         sinCodigo, motivo: sinCodigo ? 'El código no está en el reparto' : 'La tienda no está en el reparto' };
       x.ids.push(i._id); x.cant += Number(i.cantidad) || 0; x.guias.add(nroGuia.get(i.correlativo_guia) || i.nro_guia || i.correlativo_guia); fuera.set(clave, x); });
-    // Códigos de las regularizaciones que no están en el reparto
-    rgzItems.forEach(i=>{ const k = claveSku(i.codigo); if(!k || filas.has(k)) return;
-      const clave = 'RGZ:' + i.tipo + '|' + k; const x = fuera.get(clave) || { sku: String(i.codigo || '').toUpperCase(), desc: i.descripcion || '', tienda: (RGZ_TIPOS[i.tipo] || i.tipo).toUpperCase(), cant: 0, guias: new Set(), ids: [],
-        sinCodigo: true, coleccion: 'regularizacion_items', motivo: 'El código no está en el reparto' };
-      x.ids.push(i._id); x.cant += Number(i.cantidad) || 0; x.guias.add(i.nro_guia || i.correlativo_reg); fuera.set(clave, x); });
     // Sugerencia: el SKU del reparto que es igual sin espacios ni signos ("F-11006 -A-68" → "F-11006(A-68)").
     const alnum = v=> String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
     const porAlnum = new Map(); filas.forEach(f=>{ const a = alnum(f.sku); if(a && !porAlnum.has(a)) porAlnum.set(a, f.sku); });
