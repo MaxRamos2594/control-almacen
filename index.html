@@ -462,7 +462,7 @@
   table.rvc-tabla td.g3{background:#f1f3f5;} table.rvc-tabla thead th.g3{background:#dadee4;}
   table.rvc-tabla .tc{width:92px; min-width:92px; max-width:92px; box-sizing:border-box;}
   table.rvc-tabla thead tr:nth-child(2) th{white-space:normal; line-height:1.15; vertical-align:bottom; font-size:9.5px; letter-spacing:0; overflow-wrap:anywhere;}
-  table.rvc-tabla .sal{width:56px; min-width:56px; max-width:56px; box-sizing:border-box;}
+  table.rvc-tabla .sal{width:64px; min-width:64px; max-width:64px; box-sizing:border-box;}
   table.rvc-tabla thead th[data-rvc-orden]{cursor:pointer; user-select:none;}
   table.rvc-tabla thead th[data-rvc-orden]:hover{color:#000; text-decoration:underline;}
   table.rvc-tabla thead th.ord{box-shadow:inset 0 -3px 0 var(--blue);}
@@ -479,10 +479,15 @@
   .rvc-flot-panel .reg-kpis{margin-bottom:0;}
   table.rvc-tabla td.mod{background:#f8d4cf; color:#8f2a1d; font-weight:700; box-shadow:inset 0 0 0 1px #e59a8f;}
   table.rvc-tabla td.saldo{font-weight:700; background:#fafbfc;}
+  table.rvc-tabla thead th.grupo.rgz{background:#c9b6e4; color:#2e1d4a;}
+  table.rvc-tabla thead th.rgz-sob{background:#cfe0f3;} table.rvc-tabla td.rgz-sob{background:#eef4fb;}
+  table.rvc-tabla thead th.rgz-scamp{background:#ddd0ef;} table.rvc-tabla td.rgz-scamp{background:#f4effb;}
+  table.rvc-tabla thead th.sfin{background:#1B2430; color:#fff;} table.rvc-tabla td.sfin{border-left:2px solid #1B2430;}
   table.rvc-tabla td.saldo.neg{color:#b3402f; background:#fdecea;} table.rvc-tabla td.saldo.pos{color:#1f7a4a; background:#e9f6ee;}
   table.rvc-tabla td.sin-compra{color:#b3402f; font-style:italic; font-size:9.5px; white-space:normal; line-height:1.1;}
   table.rvc-tabla tbody tr:hover td{background:#f2f6fb;} table.rvc-tabla tbody tr:hover td.mod{background:#f4c3bc;}
   table.rvc-tabla tfoot td{position:sticky; bottom:0; background:#1B2430; color:#fff; font-weight:700; font-family:var(--mono); border-right-color:#2b3644;}
+  table.rvc-tabla tfoot td.saldo{background:#1B2430; color:#fff;}
   table.rvc-tabla tfoot td.saldo.neg{color:#ffb4a8; background:#1B2430;} table.rvc-tabla tfoot td.saldo.pos{color:#9fe0b8; background:#1B2430;}
 
   /* Registros y Detalle: indicadores + campañas y guías lado a lado */
@@ -636,6 +641,15 @@
   .cmp-q-prod tr:hover td{background:#f2f6fb;}
   .cmp-q-prod mark{background:#ffe58a; color:inherit; border-radius:2px; padding:0 1px;}
   .cmp-q-prod .mas{padding:6px 12px; font-size:11.5px; color:var(--ink-soft); background:#fafbfc;}
+  /* Regularizaciones */
+  .rgz-conceptos{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;}
+  .rgz-concepto{display:flex; gap:10px; align-items:center; padding:10px 16px; border:2px solid var(--line); border-radius:12px; cursor:pointer; background:#fff; margin:0; font-weight:400; transition:border-color .15s, background .15s;}
+  .rgz-concepto input{width:auto; margin:0;}
+  .rgz-concepto span{display:flex; flex-direction:column;} .rgz-concepto small{font-size:11px; color:var(--ink-soft);}
+  .rgz-concepto.sob:has(input:checked){border-color:#3f7fbf; background:#e8f1fb;}
+  .rgz-concepto.scamp:has(input:checked){border-color:#8a5cc2; background:#f1eafb;}
+  .rgz-chip{display:inline-block; padding:1px 9px; border-radius:999px; font-size:11px; font-weight:700;}
+  .rgz-chip.SOBRANTE{background:#e8f1fb; color:#24578a;} .rgz-chip.SALDO_CAMPANA{background:#f1eafb; color:#5d3a8f;}
   .cmp-num-aviso{font-size:11.5px; margin-top:4px; min-height:0;}
   .cmp-num-aviso.dup{color:#fff; background:#b3402f; padding:5px 8px; border-radius:6px; font-weight:600; animation:cmpLatido .3s;}
   .cmp-num-aviso.ok{color:#2e8b57;}
@@ -2019,6 +2033,7 @@
       <button class="active" id="campsub-cargar-campana">📋 Campaña</button>
       <button id="campsub-cargar-guia">🚚 Guía</button>
       <button id="campsub-compras">🛒 Compras</button>
+      <button id="campsub-regularizaciones">♻️ Regularizaciones</button>
     </div></div>
     <div class="subgrupo"><span class="subgrupo-t">Consultar</span><div class="subgrupo-b">
       <button id="campsub-registros">🗂 Registros y Detalle</button>
@@ -2080,6 +2095,38 @@
       </div>
       <button class="btn btn-primary" id="btn-guardar-guias-lote" style="margin-top:12px;">Guardar todas las guías válidas</button>
     </div>
+  </div>
+  </div>
+
+  <div id="campsub-panel-regularizaciones" style="display:none;">
+  <div class="panel" style="margin-bottom:14px;">
+    <h3>Cargar regularizaciones</h3>
+    <p class="hint" style="margin-bottom:10px;">Igual que en Guía: sube las guías de remisión en PDF (varias a la vez) y cada una se asocia a una campaña. Elige el concepto: en <b>Reparto vs Compra</b> los <b>sobrantes</b> y los <b>saldos de campaña</b> se suman en sus propias columnas y se restan del saldo para dar el <b>saldo final</b>.</p>
+    <div class="rgz-conceptos" id="rgz-conceptos">
+      <label class="rgz-concepto sob"><input type="radio" name="rgz-tipo" value="SOBRANTE" checked><span><b>📦 Sobrantes</b><small>Lo que sobró y regresa</small></span></label>
+      <label class="rgz-concepto scamp"><input type="radio" name="rgz-tipo" value="SALDO_CAMPANA"><span><b>🗂 Saldos campaña</b><small>Saldo que queda de la campaña</small></span></label>
+    </div>
+    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
+      <div class="field" style="margin:0; max-width:420px;"><label>Archivos PDF (guías de remisión) — puedes elegir varios</label><input type="file" id="rgz-pdf-input" accept="application/pdf" multiple></div>
+      <button class="btn btn-primary" id="btn-rgz-procesar" type="button">Procesar PDF(s)</button>
+    </div>
+    <div class="msg" id="rgz-msg"></div>
+    <div id="rgz-batch-wrap" style="display:none; margin-top:14px;">
+      <p class="hint" id="rgz-batch-resumen" style="margin-bottom:10px;"></p>
+      <div class="hist-wrap" style="max-height:520px;">
+        <table><thead><tr><th>Archivo</th><th>Concepto</th><th>N° guía</th><th>Fecha traslado</th><th>Ítems</th><th>Unidades</th><th>Campaña (sugerida, editable)</th><th>Estado</th></tr></thead><tbody id="rgz-batch-body"></tbody></table>
+      </div>
+      <button class="btn btn-primary" id="btn-rgz-guardar" type="button" style="margin-top:12px;">Guardar regularizaciones</button>
+    </div>
+  </div>
+  <div class="panel" style="margin-bottom:14px;">
+    <h3><span>Regularizaciones guardadas</span></h3>
+    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
+      <div class="field" style="margin:0; max-width:360px;"><label>Campaña</label><select id="rgz-filtro-camp"><option value="">Todas las campañas</option></select></div>
+      <span class="hint" id="rgz-lista-resumen"></span>
+    </div>
+    <div class="hist-wrap"><table class="reg-tabla sin-anim"><thead><tr><th>Correlativo</th><th>Concepto</th><th>N° guía</th><th>Fecha traslado</th><th>Campaña</th><th class="num">Ítems</th><th class="num">Unidades</th><th>Usuario</th><th></th></tr></thead><tbody id="rgz-lista-body"></tbody></table>
+      <div class="empty-state" id="rgz-lista-vacio" style="display:none;">Aún no hay regularizaciones.</div></div>
   </div>
   </div>
 
@@ -2405,7 +2452,7 @@
   <div id="campsub-panel-repcmp" style="display:none;">
   <div class="panel">
     <h3><span>Reparto vs Compra</span></h3>
-    <p class="hint" style="margin-bottom:10px;">La base son todos los códigos del reparto de la campaña. <b>COMPRA</b> y <b>COSTO</b> salen de las cargas de compras asignadas a la campaña (Compras → Cargas guardadas → Asignar a campaña). Si una tienda ya tiene guía y la cantidad difiere del reparto, vale la de la guía y la celda se pinta de <span class="rvc-leyenda">rojo</span>. <b>SALDO</b> = COMPRA − total repartido.</p>
+    <p class="hint" style="margin-bottom:10px;">La base son todos los códigos del reparto de la campaña. <b>COMPRA</b> y <b>COSTO</b> salen de las cargas de compras asignadas a la campaña (Compras → Cargas guardadas → Asignar a campaña). Si una tienda ya tiene guía y la cantidad difiere del reparto, vale la de la guía y la celda se pinta de <span class="rvc-leyenda">rojo</span>. <b>SALDO</b> = COMPRA − total repartido. <b>SOBRANTES</b> y <b>SALDOS CAMPAÑA</b> salen de Cargar → Regularizaciones; <b>SALDO FINAL</b> = SALDO − SOBRANTES − SALDOS CAMPAÑA, y los filtros de saldo usan el saldo final.</p>
     <div style="display:flex; gap:12px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
       <div class="field" style="margin:0; max-width:360px; min-width:260px;"><label>Campaña</label><select id="rvc-campana-select"><option value="">— Selecciona una campaña —</option></select></div>
       <button class="btn btn-primary" id="btn-rvc-analizar" type="button">⚖️ Analizar</button>
@@ -3201,8 +3248,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v181';
-const APP_UPDATED = '15/10/2026 17:00';
+const APP_VERSION = 'v182';
+const APP_UPDATED = '15/10/2026 18:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3617,7 +3664,7 @@ $('subtab-retirar-campana').addEventListener('click', ()=>setSubtab('retirar-cam
 $('subtab-unir').addEventListener('click', ()=>setSubtab('unir'));
 
 function setCampanasSubtab(name){
-  ['cargar-campana','cargar-guia','compras','registros','buscar','analisis','repcmp','validadores','vouchers','participantes'].forEach(n=>{
+  ['cargar-campana','cargar-guia','compras','regularizaciones','registros','buscar','analisis','repcmp','validadores','vouchers','participantes'].forEach(n=>{
     $('campsub-'+n).classList.toggle('active', n===name);
     $('campsub-panel-'+n).style.display = (n===name) ? 'block' : 'none';
   });
@@ -3629,6 +3676,7 @@ $('campsub-compras').addEventListener('click', ()=>{ setCampanasSubtab('compras'
 $('campsub-registros').addEventListener('click', ()=>{ setCampanasSubtab('registros'); $('reg-kpis').dataset.pintado = ''; renderRegistrosCampana(); cargarTodasLasGuias(); });
 $('campsub-buscar').addEventListener('click', ()=>setCampanasSubtab('buscar'));
 $('campsub-analisis').addEventListener('click', ()=>{ setCampanasSubtab('analisis'); poblarSelectCampanasAnalisis(); });
+$('campsub-regularizaciones').addEventListener('click', ()=>{ setCampanasSubtab('regularizaciones'); poblarSelectCampanas('rgz-filtro-camp').then(()=>{ $('rgz-filtro-camp').options[0].textContent = 'Todas las campañas'; }); cargarListaRegularizaciones(); });
 $('campsub-repcmp').addEventListener('click', ()=>{ setCampanasSubtab('repcmp'); poblarSelectCampanas('rvc-campana-select'); });
 $('campsub-validadores').addEventListener('click', ()=>{ setCampanasSubtab('validadores'); poblarSelectCampanasValidadores(); calcularPendientesGlobalValidadores(); });
 $('campsub-vouchers').addEventListener('click', ()=>{ setCampanasSubtab('vouchers'); poblarSelectCampanasVouchers(); });
@@ -12470,7 +12518,8 @@ const SELECTS_CAMPANAS = {
   'an-campana-select': r=> `${r.correlativo} — ${r.campana} (${r.fecha_transaccion||''})`,
   'val-campana-select': r=> `${r.correlativo} — ${r.campana}`,
   'vch-campana-select': r=> `${r.correlativo} — ${r.campana}`,
-  'rvc-campana-select': r=> `${r.correlativo} — ${r.campana} (${r.fecha_transaccion||''})`
+  'rvc-campana-select': r=> `${r.correlativo} — ${r.campana} (${r.fecha_transaccion||''})`,
+  'rgz-filtro-camp': r=> `${r.correlativo} — ${r.campana}`
 };
 function llenarSelectCampanas(id){
   const sel = $(id);
@@ -12577,6 +12626,140 @@ $('btn-analizar').addEventListener('click', async ()=>{
   }
 });
 
+// -------- Regularizaciones: sobrantes y saldos de campaña (guías en PDF) --------
+const regularizacionesRef = db.collection('regularizaciones');          // cabecera (id = RGZ-00001…)
+const regularizacionItemsRef = db.collection('regularizacion_items');   // ítems de cada guía
+const RGZ_TIPOS = { SOBRANTE:'Sobrantes', SALDO_CAMPANA:'Saldos campaña' };
+let rgzBatch = [], rgzLista = [];
+async function generarCorrelativoRegularizacion(){
+  const ref = contadoresRef.doc('regularizaciones');
+  const n = await db.runTransaction(async tx=>{ const snap = await tx.get(ref); const nuevo = (snap.exists ? (snap.data().ultimo || 0) : 0) + 1; tx.set(ref, { ultimo: nuevo }, { merge:true }); return nuevo; });
+  return 'RGZ-' + String(n).padStart(5, '0');
+}
+const rgzUnidades = r=> r.items.reduce((s, it)=> s + (Number(it.cantidad) || 0), 0);
+$('btn-rgz-procesar').addEventListener('click', async ()=>{
+  const files = [...$('rgz-pdf-input').files];
+  if(!files.length){ showMsg('rgz-msg','err','Selecciona al menos un archivo PDF.'); return; }
+  const noPdf = files.find(f=> !/\.pdf$/i.test(f.name) && f.type !== 'application/pdf');
+  if(noPdf){ showMsg('rgz-msg','err',`"${noPdf.name}" no es un PDF.`); return; }
+  const tipo = document.querySelector('input[name="rgz-tipo"]:checked').value;
+  $('btn-rgz-procesar').disabled = true; rgzBatch = []; $('rgz-batch-wrap').style.display = 'none';
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const proc = relojProceso('rgz-msg');
+  try{
+    for(let i = 0; i < files.length; i++){
+      const file = files[i], archivo = files.length > 1 ? `archivo ${i + 1} de ${files.length} (${file.name})` : file.name;
+      proc.paso(`Procesando… leyendo ${archivo}`);
+      try{
+        const paginas = await extractGuiaLineGroups(await file.arrayBuffer(), (p, n)=> proc.paso(`Procesando… leyendo ${archivo}: página ${p} de ${n}`));
+        const resultado = parseGuiaPDF(paginas);
+        rgzBatch.push(resultado.items.length ? { fileName: file.name, tipo, resultado, campana:'', pcts:{} } : { fileName: file.name, tipo, resultado:null, error:'No se reconocieron ítems en este PDF.' });
+      }catch(err){ console.error(err); rgzBatch.push({ fileName: file.name, tipo, resultado:null, error: err.message }); }
+    }
+    if(rgzBatch.some(x=> x.resultado)){
+      proc.paso('Procesando… comparando con las campañas activas');
+      try{ await cargarFilasCampanasActivas((l, t)=> proc.paso(`Procesando… preparando ${t} campaña(s) antiguas para compararlas (solo esta vez): ${l} de ${t}`)); }catch(err){ console.error(err); }
+    }
+    proc.paso('Procesando… verificando duplicados');
+    const vistos = new Set();
+    for(const x of rgzBatch){
+      if(!x.resultado) continue;
+      try{ const s = await sugerirCampanaYParticipante(x.resultado); x.campana = s.correlativo; x.pcts = s.porcentajesPorCampana; }catch(err){ console.error(err); }
+      const nro = x.resultado.nro_guia;
+      if(nro){
+        try{
+          const r = (await regularizacionesRef.where('nro_guia','==',nro).get()).docs.map(d=> d.data()).find(c=> c.estado === 'ACTIVO');
+          if(r) x.duplicado = `Ya está cargada como ${RGZ_TIPOS[r.tipo] || r.tipo} (${r.correlativo})`;
+          else { const g = await buscarGuiaDuplicada(nro); if(g) x.duplicado = `Ya está cargada como guía de salida (${g.correlativo})`; }
+        }catch(err){ console.error(err); }
+        if(!x.duplicado && vistos.has(nro)) x.duplicado = 'Repetida en este mismo lote';
+        vistos.add(nro);
+      }
+    }
+    renderRgzBatch();
+    $('rgz-batch-wrap').style.display = 'block';
+    showMsg('rgz-msg','ok', `Se procesaron ${rgzBatch.length} archivo(s)${proc.seg()}. Revisa concepto y campaña antes de guardar.`);
+  }finally{ proc.fin(); $('btn-rgz-procesar').disabled = false; }
+});
+function renderRgzBatch(){
+  const activas = campRegAllCache.filter(r=> (r.estado || 'ACTIVO') === 'ACTIVO');
+  $('rgz-batch-body').innerHTML = rgzBatch.map((x, i)=>{
+    if(!x.resultado) return `<tr><td>${esc(x.fileName)}</td><td colspan="6"></td><td style="color:#8A332A;">⚠ ${esc(x.error)}</td></tr>`;
+    const r = x.resultado;
+    const ops = '<option value="">— Elige la campaña —</option>' + activas.map(c=> `<option value="${esc(c.correlativo)}" ${c.correlativo === x.campana ? 'selected' : ''}>${esc(c.correlativo)} — ${esc(c.campana || '')}${x.pcts[c.correlativo] != null ? ` · ${esc(x.pcts[c.correlativo])}%` : ''}</option>`).join('');
+    return `<tr><td>${esc(x.fileName)}</td><td><select data-rgz-tipo="${i}">${Object.entries(RGZ_TIPOS).map(([k, t])=> `<option value="${esc(k)}" ${k === x.tipo ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></td>` +
+      `<td>${esc(r.nro_guia || '')}</td><td>${esc(r.fecha_traslado || '')}</td><td class="num">${esc(r.items.length)}</td><td class="num">${esc(anFmt(rgzUnidades(r)))}</td>` +
+      `<td><select data-rgz-camp="${i}">${ops}</select></td><td>${x.duplicado ? `<span style="color:#8A332A;">⚠ ${esc(x.duplicado)}</span>` : (x.campana ? '✓ Lista para guardar' : 'Elige la campaña')}</td></tr>`;
+  }).join('');
+  const ok = rgzBatch.filter(x=> x.resultado && !x.duplicado).length;
+  $('rgz-batch-resumen').textContent = `${rgzBatch.length} archivo(s): ${ok} para guardar${rgzBatch.length - ok ? `, ${rgzBatch.length - ok} con aviso` : ''}.`;
+}
+$('rgz-batch-body').addEventListener('change', e=>{
+  const t = e.target;
+  if(t.dataset.rgzTipo != null) rgzBatch[Number(t.dataset.rgzTipo)].tipo = t.value;
+  if(t.dataset.rgzCamp != null){ rgzBatch[Number(t.dataset.rgzCamp)].campana = t.value; renderRgzBatch(); }
+});
+$('btn-rgz-guardar').addEventListener('click', async ()=>{
+  const listas = rgzBatch.filter(x=> x.resultado && !x.duplicado);
+  if(!listas.length){ showMsg('rgz-msg','err','No hay regularizaciones para guardar.'); return; }
+  const sinCamp = listas.filter(x=> !x.campana);
+  if(sinCamp.length){ showMsg('rgz-msg','err',`Elige la campaña de: ${sinCamp.map(x=> x.fileName).join(', ')}.`); return; }
+  $('btn-rgz-guardar').disabled = true;
+  const proc = relojProceso('rgz-msg'); let n = 0;
+  try{
+    for(const x of listas){
+      proc.paso(`Guardando ${++n} de ${listas.length}…`);
+      const corr = await generarCorrelativoRegularizacion(), r = x.resultado;
+      const cab = campRegAllCache.find(c=> c.correlativo === x.campana) || {};
+      for(let i = 0; i < r.items.length; i += 400){
+        const batch = db.batch();
+        r.items.slice(i, i + 400).forEach(it=> batch.set(regularizacionItemsRef.doc(), { correlativo_reg: corr, tipo: x.tipo, campana_correlativo: x.campana, nro_guia: r.nro_guia || '',
+          item: it.item, codigo: it.codigo, descripcion: it.descripcion, unidad: it.unidad, cantidad: it.cantidad, usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp() }));
+        await batch.commit();
+      }
+      await regularizacionesRef.doc(corr).set({ correlativo: corr, tipo: x.tipo, nro_guia: r.nro_guia || '', fecha_traslado: r.fecha_traslado || '', punto_partida: r.punto_partida || '', punto_llegada: r.punto_llegada || '',
+        campana_correlativo: x.campana, campana_nombre: cab.campana || '', total_items: r.items.length, unidades: rgzUnidades(r), archivo: x.fileName,
+        estado:'ACTIVO', usuario: currentUserAlias, fecha_carga: firebase.firestore.FieldValue.serverTimestamp() });
+      await logAccion('regularizacion_cargada', {detalle:`${corr} (${RGZ_TIPOS[x.tipo]}) N° ${r.nro_guia || '—'} → ${x.campana}: ${r.items.length} ítem(s), ${rgzUnidades(r)} unid.`});
+      x.guardada = corr;
+    }
+    proc.fin();
+    showMsg('rgz-msg','ok', `¡Guardado! ${listas.length} regularización(es): ${listas.map(x=> x.guardada).join(', ')}.`);
+    showToast(`${listas.length} regularización(es) guardada(s)`, 'ok');
+    rgzBatch = []; $('rgz-batch-wrap').style.display = 'none'; $('rgz-pdf-input').value = '';
+    cargarListaRegularizaciones();
+  }catch(err){ proc.fin(); console.error(err); showMsg('rgz-msg','err','Error al guardar: '+err.message); }
+  finally{ $('btn-rgz-guardar').disabled = false; }
+});
+async function cargarListaRegularizaciones(){
+  try{ rgzLista = (await regularizacionesRef.where('estado','==','ACTIVO').get()).docs.map(d=> d.data()).sort((a, b)=> b.correlativo.localeCompare(a.correlativo)); }
+  catch(err){ console.error(err); showMsg('rgz-msg','err','No se pudieron leer las regularizaciones: '+err.message); return; }
+  renderListaRegularizaciones();
+}
+function renderListaRegularizaciones(){
+  const f = $('rgz-filtro-camp').value, L = rgzLista.filter(r=> !f || r.campana_correlativo === f);
+  const puede = currentPermisos.admin || currentPermisos.eliminar;
+  const tot = t=> L.filter(r=> r.tipo === t).reduce((s, r)=> s + (Number(r.unidades) || 0), 0);
+  $('rgz-lista-resumen').textContent = L.length ? `${L.length} regularización(es) · Sobrantes ${anFmt(tot('SOBRANTE'))} unid. · Saldos campaña ${anFmt(tot('SALDO_CAMPANA'))} unid.` : '';
+  $('rgz-lista-vacio').style.display = L.length ? 'none' : 'block';
+  $('rgz-lista-body').innerHTML = L.map(r=> `<tr><td><b>${esc(r.correlativo)}</b></td><td><span class="rgz-chip ${esc(r.tipo)}">${esc(RGZ_TIPOS[r.tipo] || r.tipo)}</span></td><td>${esc(r.nro_guia || '—')}</td><td>${esc(r.fecha_traslado || '')}</td>` +
+    `<td>${esc(r.campana_correlativo)} — ${esc(r.campana_nombre || '')}</td><td class="num">${esc(anFmt(r.total_items))}</td><td class="num">${esc(anFmt(r.unidades))}</td><td>${esc(r.usuario || '')}</td>` +
+    `<td class="reg-acc">${puede ? `<button class="btn btn-sm btn-ghost" data-rgz-anular="${esc(r.correlativo)}" title="Anular">🗑</button>` : ''}</td></tr>`).join('');
+}
+$('rgz-filtro-camp').addEventListener('change', renderListaRegularizaciones);
+$('rgz-lista-body').addEventListener('click', async e=>{
+  const b = e.target.closest('[data-rgz-anular]'); if(!b) return;
+  const corr = b.dataset.rgzAnular;
+  if(!(currentPermisos.admin || currentPermisos.eliminar)){ showToast('No tienes permiso para anular.', 'err'); return; }
+  if(!confirm(`¿Anular la regularización ${corr}? Ya no se sumará en Reparto vs Compra.`)) return;
+  try{
+    await regularizacionesRef.doc(corr).set({ estado:'ANULADO', anulado_por: currentUserAlias, anulado_en: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true });
+    await logAccion('regularizacion_anulada', {detalle: corr});
+    showToast(`${corr} anulada.`, 'ok');
+    cargarListaRegularizaciones();
+  }catch(err){ console.error(err); showToast('No se pudo anular: '+err.message, 'err'); }
+});
+
 // -------- Reparto vs Compra --------
 // Filas = códigos del reparto de la campaña; columnas = tiendas del reparto.
 // COMPRA y COSTO salen de las cargas de compras asignadas a la campaña. Si la
@@ -12625,6 +12808,11 @@ async function rvcCalcular(corr){
     guiaItems.forEach(i=>{ const t = rvcTienda(i.participante); if(!tiendas.has(t)) return; tiendas.get(t).guia = true; const k = t + '|' + claveSku(i.codigo); guia.set(k, (guia.get(k) || 0) + (Number(i.cantidad) || 0)); });
     // Guías de la campaña que se cargaron, para mostrar su N° en los códigos sin reparto
     const nroGuia = new Map((await guiasRegistrosRef.where('campana_correlativo','==',corr).get()).docs.map(d=> d.data()).map(g=> [g.correlativo, g.nro_guia || g.correlativo]));
+    // Regularizaciones activas de la campaña: sobrantes y saldos de campaña por SKU
+    const rgzActivas = new Set((await regularizacionesRef.where('campana_correlativo','==',corr).get()).docs.map(d=> d.data()).filter(r=> r.estado === 'ACTIVO').map(r=> r.correlativo));
+    const rgzItems = (await regularizacionItemsRef.where('campana_correlativo','==',corr).limit(10000).get()).docs.map(d=> Object.assign({ _id: d.id }, d.data())).filter(i=> rgzActivas.has(i.correlativo_reg));
+    const rgz = { SOBRANTE: new Map(), SALDO_CAMPANA: new Map() };
+    rgzItems.forEach(i=>{ const m = rgz[i.tipo]; const k = claveSku(i.codigo); if(m && k) m.set(k, (m.get(k) || 0) + (Number(i.cantidad) || 0)); });
     // Compras: suma de CANT. VALIDADA y costo promedio ponderado por SKU
     const compra = new Map();
     totales.forEach(t=>{ const k = claveSku(t.sku || t.correl_sku); if(!k) return; const c = compra.get(k) || { cant:0, valor:0, costo:null, desc:'' };
@@ -12642,7 +12830,8 @@ async function rvcCalcular(corr){
       const repartido = celdas.reduce((s, x)=> s + x.v, 0);
       const cant = c ? c.cant : null;
       const costo = c ? (c.cant ? c.valor / c.cant : c.costo) : null;
-      return { sku: f.sku, desc: f.desc || (c && c.desc) || '', compra: cant, costo, celdas, repartido, saldo: (cant || 0) - repartido, mods: celdas.filter(x=> x.mod).length };
+      const saldo = (cant || 0) - repartido, sob = rgz.SOBRANTE.get(f.k) || 0, scamp = rgz.SALDO_CAMPANA.get(f.k) || 0;
+      return { sku: f.sku, desc: f.desc || (c && c.desc) || '', compra: cant, costo, celdas, repartido, saldo, sob, scamp, sfin: saldo - sob - scamp, mods: celdas.filter(x=> x.mod).length };
     });
     // Códigos de las guías que no están en el reparto (o de tiendas que no están en él):
     // no entran en la tabla, se listan aparte para revisarlos.
@@ -12652,6 +12841,11 @@ async function rvcCalcular(corr){
       const clave = t + '|' + k; const x = fuera.get(clave) || { sku: String(i.codigo || '').toUpperCase(), desc: i.descripcion || '', tienda: String(i.participante || '').toUpperCase(), cant: 0, guias: new Set(), ids: [],
         sinCodigo, motivo: sinCodigo ? 'El código no está en el reparto' : 'La tienda no está en el reparto' };
       x.ids.push(i._id); x.cant += Number(i.cantidad) || 0; x.guias.add(nroGuia.get(i.correlativo_guia) || i.nro_guia || i.correlativo_guia); fuera.set(clave, x); });
+    // Códigos de las regularizaciones que no están en el reparto
+    rgzItems.forEach(i=>{ const k = claveSku(i.codigo); if(!k || filas.has(k)) return;
+      const clave = 'RGZ:' + i.tipo + '|' + k; const x = fuera.get(clave) || { sku: String(i.codigo || '').toUpperCase(), desc: i.descripcion || '', tienda: (RGZ_TIPOS[i.tipo] || i.tipo).toUpperCase(), cant: 0, guias: new Set(), ids: [],
+        sinCodigo: true, coleccion: 'regularizacion_items', motivo: 'El código no está en el reparto' };
+      x.ids.push(i._id); x.cant += Number(i.cantidad) || 0; x.guias.add(i.nro_guia || i.correlativo_reg); fuera.set(clave, x); });
     // Sugerencia: el SKU del reparto que es igual sin espacios ni signos ("F-11006 -A-68" → "F-11006(A-68)").
     const alnum = v=> String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
     const porAlnum = new Map(); filas.forEach(f=>{ const a = alnum(f.sku); if(a && !porAlnum.has(a)) porAlnum.set(a, f.sku); });
@@ -12666,8 +12860,8 @@ function rvcFiltrar(){
   return rvcDatos.lista.filter(f=>{
     if(q && !normalizarTexto(f.sku + ' ' + f.desc).includes(q)) return false;
     if(rvcFiltro === 'mod') return f.mods > 0;
-    if(rvcFiltro === 'neg') return f.saldo < 0;
-    if(rvcFiltro === 'pos') return f.saldo > 0;
+    if(rvcFiltro === 'neg') return f.sfin < 0;
+    if(rvcFiltro === 'pos') return f.sfin > 0;
     if(rvcFiltro === 'sin') return f.compra == null;
     return true;
   });
@@ -12682,34 +12876,38 @@ function rvcRender(){
   $('rvc-kpis').innerHTML = kpi('SKU del reparto', anFmt(L.length), `${d.cols.length} tienda(s) · ${d.guias} guía(s)`, 'var(--blue)') +
     kpi('Unid. compradas', anFmt(tot.compra), d.cargas.length ? `${d.cargas.length} carga(s): ${d.cargas.join(', ')}` : 'Sin compras asignadas', '#2E8B57') +
     kpi('Unid. repartidas', anFmt(tot.rep), 'reparto, o guía donde ya hay', '#B5651D') +
-    kpi('Saldo', anFmt(tot.compra - tot.rep), tot.compra - tot.rep < 0 ? 'falta comprar' : 'sobra de la compra', tot.compra - tot.rep < 0 ? '#B03A48' : '#1F8A8A') +
+    (()=>{ const sob = L.reduce((s, f)=> s + f.sob, 0), sc = L.reduce((s, f)=> s + f.scamp, 0), fin = tot.compra - tot.rep - sob - sc;
+      return kpi('Saldo final', anFmt(fin), `saldo ${anFmt(tot.compra - tot.rep)} − sobrantes ${anFmt(sob)} − saldos campaña ${anFmt(sc)}`, fin < 0 ? '#B03A48' : '#1F8A8A'); })() +
     kpi('Cambiadas por guía', anFmt(mods), 'celdas en rojo', '#B03A48') +
     kpi('Valor de la compra', 'S/ ' + valor.toLocaleString('es-PE', { minimumFractionDigits:2, maximumFractionDigits:2 }), sinCompra ? `${sinCompra} SKU sin compra` : 'todos los SKU con compra', '#7B4FA0');
-  const n = { todos: L.length, mod: L.filter(f=> f.mods).length, neg: L.filter(f=> f.saldo < 0).length, pos: L.filter(f=> f.saldo > 0).length, sin: sinCompra };
+  const n = { todos: L.length, mod: L.filter(f=> f.mods).length, neg: L.filter(f=> f.sfin < 0).length, pos: L.filter(f=> f.sfin > 0).length, sin: sinCompra };
   $('rvc-chips').innerHTML = [['todos','Todos'],['mod','🟥 Cambiados por guía'],['neg','Saldo negativo'],['pos','Saldo positivo'],['sin','Sin compra']]
     .map(([k, t])=> `<button type="button" data-rvc-filtro="${k}" class="${rvcFiltro === k ? 'activo' : ''}">${esc(t)}<b>${esc(n[k])}</b></button>`).join('');
   rvcRenderFuera();
   const th = (k, cls, texto, titulo)=>{ const act = rvcOrden.k === k;
     return `<th data-rvc-orden="${esc(k)}" class="${cls}${act ? ' ord' : ''}" title="${esc(titulo || ('Ordenar por ' + texto))}">${esc(texto)} <span class="flecha">${act ? (rvcOrden.dir > 0 ? '▲' : '▼') : '↕'}</span></th>`; };
-  $('rvc-head').innerHTML = `<tr><th class="vacio fijo c1"></th><th class="vacio fijo c2g" colspan="3"></th><th class="grupo" colspan="${d.cols.length}">Reparto</th><th class="vacio sal"></th></tr>` +
+  $('rvc-head').innerHTML = `<tr><th class="vacio fijo c1"></th><th class="vacio fijo c2g" colspan="3"></th><th class="grupo" colspan="${d.cols.length}">Reparto</th><th class="vacio sal"></th><th class="grupo rgz" colspan="2">Regularizaciones</th><th class="vacio sal"></th></tr>` +
     '<tr>' + th('sku', 'fijo c1', 'SKU') + th('desc', 'fijo c2', 'Descripción') + th('compra', 'num fijo c3', 'Compra') + th('costo', 'num fijo c4', 'Costo') +
-    d.cols.map((t, i)=> th('t' + i, `num tc ${t.g}${t.guia ? ' guia' : ''}`, t.nombre, `${t.nombre}${t.guia ? ' — ya tiene guía' : ''} · clic para ordenar`)).join('') + th('saldo', 'num sal', 'Saldo') + '</tr>';
+    d.cols.map((t, i)=> th('t' + i, `num tc ${t.g}${t.guia ? ' guia' : ''}`, t.nombre, `${t.nombre}${t.guia ? ' — ya tiene guía' : ''} · clic para ordenar`)).join('') + th('saldo', 'num sal', 'Saldo') + th('sob', 'num sal rgz-sob', 'Sobrantes') + th('scamp', 'num sal rgz-scamp', 'Saldos campaña') + th('sfin', 'num sal sfin', 'Saldo final') + '</tr>';
   const filas = rvcFiltrar();
   const vOrden = f=>{ const k = rvcOrden.k;
     if(k === 'sku') return f.sku; if(k === 'desc') return normalizarTexto(f.desc);
     if(k === 'compra') return f.compra == null ? -Infinity : f.compra; if(k === 'costo') return f.costo == null ? -Infinity : f.costo;
-    if(k === 'saldo') return f.saldo; return f.celdas[Number(k.slice(1))].v; };
+    if(k === 'saldo') return f.saldo; if(k === 'sob') return f.sob; if(k === 'scamp') return f.scamp; if(k === 'sfin') return f.sfin; return f.celdas[Number(k.slice(1))].v; };
   filas.sort((a, b)=>{ const x = vOrden(a), y = vOrden(b); return (typeof x === 'string' ? x.localeCompare(y) : x - y) * rvcOrden.dir || a.sku.localeCompare(b.sku); });
   $('rvc-vacio').style.display = filas.length ? 'none' : 'block';
   $('rvc-body').innerHTML = filas.map(f=> `<tr><td class="fijo c1 sku" title="${esc(f.sku)}">${esc(f.sku)}</td><td class="fijo c2 desc" title="${esc(f.desc)}">${esc(f.desc)}</td>` +
     (f.compra == null ? '<td class="num fijo c3 compra sin-compra" title="Sin compra asignada a la campaña">sin compra</td><td class="num fijo c4"></td>' : `<td class="num fijo c3 compra">${esc(rvcV(f.compra))}</td><td class="num fijo c4">${esc(f.costo == null ? '' : f.costo.toFixed(2))}</td>`) +
     f.celdas.map((c, i)=> c.mod ? `<td class="num tc mod" title="${esc(d.cols[i].nombre)}: reparto ${esc(rvcN(c.rep))} → guía ${esc(rvcN(c.guia))}">${esc(rvcV(c.v))}</td>` : `<td class="num tc ${esc(d.cols[i].g)}${c.v ? '' : ' cero'}">${esc(rvcV(c.v))}</td>`).join('') +
-    `<td class="num sal saldo ${f.saldo < 0 ? 'neg' : f.saldo > 0 ? 'pos' : ''}">${esc(rvcV(f.saldo))}</td></tr>`).join('');
+    `<td class="num sal saldo">${esc(rvcV(f.saldo))}</td><td class="num sal rgz-sob${f.sob ? '' : ' cero'}">${esc(rvcV(f.sob))}</td><td class="num sal rgz-scamp${f.scamp ? '' : ' cero'}">${esc(rvcV(f.scamp))}</td>` +
+    `<td class="num sal saldo sfin ${f.sfin < 0 ? 'neg' : f.sfin > 0 ? 'pos' : ''}">${esc(rvcV(f.sfin))}</td></tr>`).join('');
   const sumCol = i=> filas.reduce((s, f)=> s + f.celdas[i].v, 0);
   const sCompra = filas.reduce((s, f)=> s + (f.compra || 0), 0), sRep = filas.reduce((s, f)=> s + f.repartido, 0);
+  const sSob = filas.reduce((s, f)=> s + f.sob, 0), sScamp = filas.reduce((s, f)=> s + f.scamp, 0), sFin = sCompra - sRep - sSob - sScamp;
   rvcAjustarDescripcion(d);
   $('rvc-foot').innerHTML = `<tr><td class="fijo c1">TOTAL</td><td class="fijo c2">${esc(filas.length)} SKU</td><td class="num fijo c3">${esc(rvcV(sCompra))}</td><td class="fijo c4"></td>` + d.cols.map((t, i)=> `<td class="num tc">${esc(rvcV(sumCol(i)))}</td>`).join('') +
-    `<td class="num sal saldo ${sCompra - sRep < 0 ? 'neg' : sCompra - sRep > 0 ? 'pos' : ''}">${esc(rvcV(sCompra - sRep))}</td></tr>`;
+    `<td class="num sal saldo">${esc(rvcV(sCompra - sRep))}</td><td class="num sal">${esc(rvcV(sSob))}</td><td class="num sal">${esc(rvcV(sScamp))}</td>` +
+    `<td class="num sal saldo sfin ${sFin < 0 ? 'neg' : sFin > 0 ? 'pos' : ''}">${esc(rvcV(sFin))}</td></tr>`;
 }
 // Las columnas SKU y Descripción toman el ancho del valor más largo de la campaña.
 let rvcCanvas = null;
@@ -12795,7 +12993,7 @@ $('rvc-fuera').addEventListener('click', async e=>{
   b.disabled = true;
   try{
     const batch = db.batch();
-    x.ids.forEach(id=> batch.update(guiaItemsRef.doc(id), { codigo: nuevo, codigo_original: x.sku, codigo_corregido_por: currentUserAlias, codigo_corregido_en: firebase.firestore.FieldValue.serverTimestamp() }));
+    x.ids.forEach(id=> batch.update(db.collection(x.coleccion || 'guia_items').doc(id), { codigo: nuevo, codigo_original: x.sku, codigo_corregido_por: currentUserAlias, codigo_corregido_en: firebase.firestore.FieldValue.serverTimestamp() }));
     await batch.commit();
     await logAccion('guia_codigo_corregido', {detalle:`${rvcDatos.corr} · guía ${x.guias} · ${x.tienda}: ${x.sku} → ${nuevo} (${x.ids.length} fila(s))`});
     if(typeof anGuiaPorCampanaCache !== 'undefined') delete anGuiaPorCampanaCache[rvcDatos.corr];
@@ -12810,8 +13008,8 @@ $('rvc-chips').addEventListener('click', e=>{ const b = e.target.closest('[data-
 $('btn-rvc-excel').addEventListener('click', ()=>{
   const d = rvcDatos; if(!d) return;
   if(typeof XLSX === 'undefined'){ showToast('La librería de Excel aún no carga. Intenta de nuevo.', 'err'); return; }
-  const aoa = [['', '', '', '', 'REPARTO', ...d.cols.slice(1).map(()=> ''), ''], ['SKU','DESCRIPCION','COMPRA','COSTO', ...d.cols.map(t=> t.nombre), 'SALDO']];
-  d.lista.forEach(f=> aoa.push([f.sku, f.desc, f.compra == null ? '' : f.compra, f.costo == null ? '' : Math.round(f.costo * 100) / 100, ...f.celdas.map(c=> c.v || ''), f.saldo]));
+  const aoa = [['', '', '', '', 'REPARTO', ...d.cols.slice(1).map(()=> ''), '', 'REGULARIZACIONES', '', ''], ['SKU','DESCRIPCION','COMPRA','COSTO', ...d.cols.map(t=> t.nombre), 'SALDO', 'SOBRANTES', 'SALDOS CAMPAÑA', 'SALDO FINAL']];
+  d.lista.forEach(f=> aoa.push([f.sku, f.desc, f.compra == null ? '' : f.compra, f.costo == null ? '' : Math.round(f.costo * 100) / 100, ...f.celdas.map(c=> c.v || ''), f.saldo, f.sob || '', f.scamp || '', f.sfin]));
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws['!merges'] = d.cols.length > 1 ? [{ s:{ r:0, c:4 }, e:{ r:0, c:3 + d.cols.length } }] : [];
   const cambios = [['SKU','DESCRIPCION','TIENDA','REPARTO','GUIA']];
