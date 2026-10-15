@@ -62,6 +62,13 @@ function verificar(condicion, texto){
   const formato = await page.evaluate(()=> ({ alin: [...new Set([...document.querySelectorAll('#rvc-body td.num, #rvc-foot td.num, #rvc-head th.num')].map(c=> getComputedStyle(c).textAlign))].join(),
     miles: rvcV(43674), cero: rvcV(0) }));
   verificar(formato.alin === 'center' && formato.miles === '43,674' && formato.cero === '-', `Valores centrados, con miles (${formato.miles}) y "-" cuando es 0`);
+  const ajuste = await page.evaluate(()=>{
+    const td = document.querySelector('#rvc-body td.tc'); const ancho = Math.round(td.getBoundingClientRect().width);
+    td.textContent = '43,674'; const cabe = td.scrollWidth <= td.clientWidth + 1; rvcRender();
+    const cortadas = [...document.querySelectorAll('#rvc-body td.num, #rvc-foot td.num')].filter(c=> c.scrollWidth > c.clientWidth + 1).length;
+    return { ancho, cabe, cortadas, desc: Math.round(document.querySelector('#rvc-body td.c2').getBoundingClientRect().width) };
+  });
+  verificar(ajuste.ancho <= 70 && ajuste.desc <= 180 && ajuste.cabe && ajuste.cortadas === 0, `Columnas angostas (tienda ${ajuste.ancho}px, descripción ${ajuste.desc}px) y los valores se ven completos (43,674 cabe: ${ajuste.cabe}, cortadas: ${ajuste.cortadas})`);
   verificar(t.rojas.join(',') === 'COMAS: reparto 8 → guía 6', `Celda en rojo donde la guía difiere del reparto: ${t.rojas.join(',')}`);
   verificar(t.total === 'TOTAL|3 SKU|33||10|15|6|2', `Fila TOTAL: ${t.total}`);
   verificar(/SKU DEL REPARTO=3/i.test(t.kpis) && /UNID\. COMPRADAS=33/i.test(t.kpis) && /UNID\. REPARTIDAS=31/i.test(t.kpis) && /SALDO=2/i.test(t.kpis) && /CAMBIADAS POR GUÍA=1/i.test(t.kpis) && /VALOR DE LA COMPRA=S\/ 84\.00/i.test(t.kpis), `Indicadores: ${t.kpis}`);
@@ -69,7 +76,7 @@ function verificar(condicion, texto){
 
   // Columnas inmovilizadas: al desplazar a la derecha, SKU, Descripción, Compra y Costo quedan fijas
   const fijas = await page.evaluate(async ()=>{
-    const w = document.querySelector('.rvc-wrap'); w.style.maxWidth = '620px';
+    const w = document.querySelector('.rvc-wrap'); w.style.maxWidth = '450px';
     const pos = ()=> [...document.querySelectorAll('#rvc-head tr:nth-child(2) th')].map(th=> Math.round(th.getBoundingClientRect().left));
     const fila = ()=> [...document.querySelector('#rvc-body tr').cells].slice(0, 5).map(td=> Math.round(td.getBoundingClientRect().left));
     const a = pos(), fa = fila(); w.scrollLeft = 200; await new Promise(r=> setTimeout(r, 100));
