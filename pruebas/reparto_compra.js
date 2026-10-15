@@ -85,7 +85,9 @@ function verificar(condicion, texto){
   // Orden de los grupos con nombres reales del reparto
   const orden = await page.evaluate(()=> ['ATE','VMT','ICA','MALL PLAZA COMAS','CERCADO DE LIMA','HUANCAYO','SAN JUAN DE LURIGANCHO','LOS OLIVOS','RAMSES PTE Y MARAÑON','COMAS','TACNA','HUAYCÁN','PIURA','MAGDALENA','VENTANILLA','VENTA VIRTUAL']
     .map(n=> Object.assign({ n }, rvcGrupoTienda(n))).sort((a, b)=> a.pos - b.pos || a.n.localeCompare(b.n)).map(x=> x.n + (x.g ? '' : '(-)')).join(', '));
-  verificar(orden === 'CERCADO DE LIMA, COMAS, MAGDALENA, VENTANILLA, HUAYCÁN, SAN JUAN DE LURIGANCHO, ATE, RAMSES PTE Y MARAÑON, LOS OLIVOS, VMT, PIURA, HUANCAYO, TACNA, ICA, MALL PLAZA COMAS(-), VENTA VIRTUAL(-)', `Orden de tiendas: ${orden}`);
+  const grupos = await page.evaluate(()=> ['MALL PLAZA COMAS','VENTA VIRTUAL','COMAS','AREQUIPA'].map(n=> n + ':' + (rvcGrupoTienda(n).g || '-')).join(' '));
+  verificar(grupos === 'MALL PLAZA COMAS:g1 VENTA VIRTUAL:g15 COMAS:g1 AREQUIPA:-', `Mall Plaza Comas en el grupo verde y Venta Virtual en naranja suave: ${grupos}`);
+  verificar(orden === 'CERCADO DE LIMA, COMAS, MAGDALENA, VENTANILLA, HUAYCÁN, SAN JUAN DE LURIGANCHO, ATE, MALL PLAZA COMAS, VENTA VIRTUAL, RAMSES PTE Y MARAÑON, LOS OLIVOS, VMT, PIURA, HUANCAYO, TACNA, ICA', `Orden de tiendas: ${orden}`);
 
   // Ordenar por columnas sin cambiar el ancho
   const anchos = ()=> page.evaluate(()=> [...document.querySelectorAll('#rvc-head tr:nth-child(2) th')].map(th=> Math.round(th.getBoundingClientRect().width)).join(','));
