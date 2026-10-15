@@ -27,6 +27,7 @@ function verificar(condicion, texto){
     await guiaItemsRef.doc().set({ correlativo_guia:'G1', campana_correlativo:'REG-00060', participante:'COMAS', codigo:'S1', cantidad:6 });
     await guiaItemsRef.doc().set({ correlativo_guia:'G1', campana_correlativo:'REG-00060', participante:'COMAS', codigo:'S3', cantidad:4 });
     await guiaItemsRef.doc().set({ correlativo_guia:'G1', campana_correlativo:'REG-00060', participante:'COMAS', codigo:'s9', descripcion:'NO ESTA EN EL REPARTO', cantidad:3 });
+    await guiaItemsRef.doc().set({ correlativo_guia:'G1', campana_correlativo:'REG-00060', participante:'COMAS', codigo:'S -2', descripcion:'MAL ESCRITO', cantidad:1 });
     await guiasRegistrosRef.doc('G3').set({ correlativo:'G3', nro_guia:'TG01-777', campana_correlativo:'REG-00060', participante:'PIURA', estado:'ACTIVO' });
     await guiaItemsRef.doc().set({ correlativo_guia:'G3', campana_correlativo:'REG-00060', participante:'PIURA', codigo:'S1', descripcion:'PRODUCTO S1', cantidad:2 });
     await guiasRegistrosRef.doc('G2').set({ correlativo:'G2', campana_correlativo:'REG-00060', participante:'ATE', estado:'INVALIDADO' });
@@ -100,10 +101,12 @@ function verificar(condicion, texto){
   verificar(/SKU DEL REPARTO=3/i.test(t.kpis) && /UNID\. COMPRADAS=33/i.test(t.kpis) && /UNID\. REPARTIDAS=31/i.test(t.kpis) && /SALDO=2/i.test(t.kpis) && /CAMBIADAS POR GUÍA=1/i.test(t.kpis) && /VALOR DE LA COMPRA=S\/ 84\.00/i.test(t.kpis), `Indicadores: ${t.kpis}`);
   // Códigos de las guías que no hacen match con el reparto
   const btnFuera = await page.textContent('#btn-rvc-fuera');
-  verificar(btnFuera === '⚠ Códigos de guía sin reparto: 2', `Aviso: "${btnFuera}"`);
+  verificar(btnFuera === '⚠ Códigos de guía sin reparto: 3', `Aviso: "${btnFuera}"`);
   await page.click('#btn-rvc-fuera');
-  const fuera = await page.evaluate(()=> [...document.querySelectorAll('#rvc-fuera tbody tr')].map(r=> [...r.cells].filter((c, i)=> i !== 1).map(c=> c.innerText.trim()).join('|')));
-  verificar(fuera.join(' / ') === 'S1|PIURA|2|TG01-777|La tienda no está en el reparto / S9|COMAS|3|G1|El código no está en el reparto', `Lista de códigos sin match: ${fuera.join(' / ')}`);
+  const fuera = await page.evaluate(()=> [...document.querySelectorAll('#rvc-fuera tbody tr')].map(r=> [...r.cells].slice(0, 6).filter((c, i)=> i !== 1).map(c=> c.innerText.trim()).join('|')).sort());
+  verificar(fuera.join(' / ') === 'S -2|COMAS|1|G1|El código no está en el reparto / S1|PIURA|2|TG01-777|La tienda no está en el reparto / S9|COMAS|3|G1|El código no está en el reparto', `Lista de códigos sin match: ${fuera.join(' / ')}`);
+  const sug = await page.evaluate(()=> [...document.querySelectorAll('#rvc-fuera [data-rvc-fix-in]')].map(i=> i.closest('tr').cells[0].innerText + '→' + (i.value || '(vacío)')).sort().join(', '));
+  verificar(sug === 'S -2→S2, S9→(vacío)', `Sugiere el SKU del reparto que coincide sin espacios ni signos: ${sug}`);
   await page.locator('#campsub-panel-repcmp').screenshot({ path: path.join(__dirname, 'salida', 'reparto_compra_fuera.png') });
   await page.click('#btn-rvc-fuera');
   verificar(await page.evaluate(()=> $('rvc-fuera').style.display === 'none'), 'Otro clic oculta la lista');
@@ -159,6 +162,19 @@ function verificar(condicion, texto){
   await page.click('#btn-rvc-analizar');
   await page.waitForFunction(()=> $('rvc-resultado').style.display === 'block', null, { timeout: 20000 });
   verificar(/no tiene compras asignadas/.test(await page.textContent('#rvc-msg')), `Sin compras asignadas avisa: "${await page.textContent('#rvc-msg')}"`);
+
+  // Corregir el código de una guía desde la lista de códigos sin reparto
+  await page.selectOption('#rvc-campana-select', 'REG-00060');
+  await page.click('#btn-rvc-analizar');
+  await page.waitForFunction(()=> $('rvc-resultado').style.display === 'block' && rvcDatos && rvcDatos.corr === 'REG-00060', null, { timeout: 20000 });
+  await page.click('#btn-rvc-fuera');
+  const fila = await page.evaluate(()=> [...document.querySelectorAll('#rvc-fuera [data-rvc-fix-in]')].find(i=> i.value === 'S2').dataset.rvcFixIn);
+  await page.click(`#rvc-fuera [data-rvc-fix="${fila}"]`);
+  await page.waitForFunction(()=> /: 2$/.test($('btn-rvc-fuera').textContent), null, { timeout: 15000 });
+  const fix = await page.evaluate(async ()=>{ const it = (await guiaItemsRef.where('codigo','==','S2').get()).docs.map(d=> d.data())[0];
+    const s2 = rvcDatos.lista.find(f=> f.sku === 'S2'); const iComas = rvcDatos.cols.findIndex(c=> c.nombre === 'COMAS');
+    return { it, celda: s2.celdas[iComas], log: (await movimientosRef.get()).docs.some(d=> d.data().tipo === 'guia_codigo_corregido') }; });
+  verificar(fix.it && fix.it.codigo_original === 'S -2' && fix.celda.v === 1 && fix.celda.mod && fix.log, `Corregir "S -2" → S2: la guía guardada cambia, ya cuenta en COMAS (${fix.celda.v}) y queda en la bitácora`);
 
   // Menú de subpestañas e indicadores en el botón flotante
   const f0 = await page.evaluate(()=> ({ menu: getComputedStyle(document.querySelector('#view-campanas .subtabs')).display, kpis: getComputedStyle($('rvc-kpis')).display, boton: getComputedStyle($('rvc-flotante')).display }));
