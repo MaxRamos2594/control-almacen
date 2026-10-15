@@ -427,18 +427,18 @@
   table.rvc-tabla thead tr:first-child th{top:0; height:26px;} table.rvc-tabla thead tr:nth-child(2) th{top:26px;}
   table.rvc-tabla thead th.grupo{text-align:center; background:#f3b48f; letter-spacing:.12em;}
   table.rvc-tabla thead th.vacio{background:#fff;}
-  table.rvc-tabla thead th.guia::after{content:" 🚚"; font-size:10px;}
+  table.rvc-tabla thead th.guia{padding-top:13px;} table.rvc-tabla thead th.guia::after{content:"🚚"; position:absolute; top:2px; right:3px; font-size:9px; line-height:1;}
   table.rvc-tabla td.num, table.rvc-tabla th.num{text-align:center; font-family:var(--mono);}
   /* Columnas inmovilizadas (como "Inmovilizar paneles" de Excel): SKU, Descripción, Compra y Costo */
   table.rvc-tabla .fijo{position:sticky; z-index:1; box-sizing:border-box; overflow:hidden; text-overflow:ellipsis;}
   table.rvc-tabla thead .fijo{z-index:4;} table.rvc-tabla tfoot .fijo{z-index:4;}
   table.rvc-tabla .c1{left:0; width:84px; min-width:84px; max-width:84px;}
-  table.rvc-tabla .c2{left:84px; width:170px; min-width:170px; max-width:170px;}
-  table.rvc-tabla .c3{left:254px; width:60px; min-width:60px; max-width:60px;}
-  table.rvc-tabla .c4{left:314px; width:50px; min-width:50px; max-width:50px; border-right:2px solid #c9a48c; box-shadow:4px 0 6px -3px rgba(27,36,48,.25);}
-  table.rvc-tabla thead th.c2g{left:84px; width:280px; min-width:280px; max-width:280px; border-right:2px solid #c9a48c;}
+  table.rvc-tabla .c2{left:84px; width:var(--rvc-d, 170px); min-width:var(--rvc-d, 170px); max-width:var(--rvc-d, 170px);}
+  table.rvc-tabla .c3{left:calc(84px + var(--rvc-d, 170px)); width:60px; min-width:60px; max-width:60px;}
+  table.rvc-tabla .c4{left:calc(144px + var(--rvc-d, 170px)); width:56px; min-width:56px; max-width:56px; border-right:2px solid #c9a48c; box-shadow:4px 0 6px -3px rgba(27,36,48,.25);}
+  table.rvc-tabla thead th.c2g{left:84px; width:calc(116px + var(--rvc-d, 170px)); min-width:calc(116px + var(--rvc-d, 170px)); max-width:calc(116px + var(--rvc-d, 170px)); border-right:2px solid #c9a48c;}
   table.rvc-tabla td.sku{font-family:var(--mono); font-weight:700;}
-  table.rvc-tabla td.desc{max-width:170px; overflow:hidden; text-overflow:ellipsis;}
+  table.rvc-tabla td.desc{max-width:var(--rvc-d, 170px); overflow:hidden; text-overflow:ellipsis;}
   table.rvc-tabla td.compra{background:#f3f7fb; font-weight:700;}
   table.rvc-tabla td.cero{color:#c3c8cf;}
   /* Grupos de tiendas: Lima (verde), Lima periferia (amarillo), provincia (gris) */
@@ -447,7 +447,7 @@
   table.rvc-tabla td.g17{background:#fffb9e;} table.rvc-tabla thead th.g17{background:#fff200;}
   table.rvc-tabla td.g2{background:#fdf7dc;} table.rvc-tabla thead th.g2{background:#f5e6a3;}
   table.rvc-tabla td.g3{background:#f1f3f5;} table.rvc-tabla thead th.g3{background:#dadee4;}
-  table.rvc-tabla .tc{width:62px; min-width:62px; max-width:62px; box-sizing:border-box;}
+  table.rvc-tabla .tc{width:92px; min-width:92px; max-width:92px; box-sizing:border-box;}
   table.rvc-tabla thead tr:nth-child(2) th{white-space:normal; line-height:1.15; vertical-align:bottom; font-size:9.5px; letter-spacing:0; overflow-wrap:anywhere;}
   table.rvc-tabla .sal{width:56px; min-width:56px; max-width:56px; box-sizing:border-box;}
   table.rvc-tabla thead th[data-rvc-orden]{cursor:pointer; user-select:none;}
@@ -3186,8 +3186,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v177';
-const APP_UPDATED = '15/10/2026 13:30';
+const APP_VERSION = 'v178';
+const APP_UPDATED = '15/10/2026 14:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -12646,8 +12646,18 @@ function rvcRender(){
     `<td class="num sal saldo ${f.saldo < 0 ? 'neg' : f.saldo > 0 ? 'pos' : ''}">${esc(rvcV(f.saldo))}</td></tr>`).join('');
   const sumCol = i=> filas.reduce((s, f)=> s + f.celdas[i].v, 0);
   const sCompra = filas.reduce((s, f)=> s + (f.compra || 0), 0), sRep = filas.reduce((s, f)=> s + f.repartido, 0);
+  rvcAjustarDescripcion(d);
   $('rvc-foot').innerHTML = `<tr><td class="fijo c1">TOTAL</td><td class="fijo c2">${esc(filas.length)} SKU</td><td class="num fijo c3">${esc(rvcV(sCompra))}</td><td class="fijo c4"></td>` + d.cols.map((t, i)=> `<td class="num tc">${esc(rvcV(sumCol(i)))}</td>`).join('') +
     `<td class="num sal saldo ${sCompra - sRep < 0 ? 'neg' : sCompra - sRep > 0 ? 'pos' : ''}">${esc(rvcV(sCompra - sRep))}</td></tr>`;
+}
+// La columna Descripción toma el ancho de la descripción más larga de la campaña.
+let rvcCanvas = null;
+function rvcAjustarDescripcion(d){
+  const td = document.querySelector('#rvc-body td.desc'); if(!td) return;
+  const ctx = (rvcCanvas = rvcCanvas || document.createElement('canvas')).getContext('2d');
+  ctx.font = getComputedStyle(td).font;
+  const max = d.lista.reduce((m, f)=> Math.max(m, ctx.measureText(f.desc || '').width), ctx.measureText('DESCRIPCIÓN ↕').width);
+  $('rvc-tabla').style.setProperty('--rvc-d', Math.min(480, Math.max(90, Math.ceil(max) + 14)) + 'px');
 }
 $('btn-rvc-analizar').addEventListener('click', async ()=>{
   const corr = $('rvc-campana-select').value;
