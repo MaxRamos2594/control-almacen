@@ -119,7 +119,7 @@ function guiaSunatDePrueba(){
       partida: guiaBatch[0].resultado.punto_partida, llegada: guiaBatch[0].resultado.punto_llegada, part: guiaBatch[0].participanteSugerido,
       opcion: (document.querySelector('.guia-batch-participante[data-idx="0"]') || {}).selectedOptions?.[0]?.text }));
     verificar(info.avisos.some(t=> /página 1 de 3/.test(t)) && info.avisos.some(t=> /página 3 de 3/.test(t)), 'Muestra la página que está leyendo (1 de 3 … 3 de 3)');
-    verificar(info.avisos.some(t=> /campañas activas: 0 de 3/.test(t)) && info.avisos.some(t=> /campañas activas: 3 de 3/.test(t)) && info.avisos.some(t=> /\d+ s$/.test(t)), 'Muestra el avance "X de 3 campañas" y los segundos que lleva');
+    verificar(info.avisos.some(t=> /campaña\(s\) antiguas para compararlas \(solo esta vez\): 0 de 3/.test(t)) && info.avisos.some(t=> /\(solo esta vez\): 3 de 3/.test(t)) && info.avisos.some(t=> /\d+ s$/.test(t)), 'Muestra el avance "X de 3 campañas" y los segundos que lleva');
     const ini = info.tramos.map(t=> t[0]).sort((x,y)=> x-y);
     verificar(info.tramos.length === 3 && ini[2] - ini[0] < 1000 && ms < 12000, `Descarga las 3 campañas en paralelo (total ${ms} ms en vez de 21 s+)`);
     verificar(info.sug === 'CAMP-0001' && /^Se procesaron 1 archivo/.test(info.fin), `Sugiere la campaña correcta (${info.sug}) y termina con "${info.fin}"`);
