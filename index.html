@@ -431,6 +431,8 @@
   .rvc-fuera td{padding:5px 10px; border-bottom:1px solid #f3e7cf; white-space:nowrap;}
   .rvc-fuera td.num{text-align:center; font-family:var(--mono);}
   .rvc-fuera .motivo{font-size:11px; color:#8a5a0a;}
+  .rvc-fix{display:inline-flex; gap:6px; align-items:center;} .rvc-fix input{width:150px; padding:4px 8px; font-family:var(--mono); font-size:12px;}
+  .rvc-fix-sug{margin-left:6px; font-size:10.5px; color:#1f7a4a; font-weight:700;}
   .rvc-wrap{overflow:auto; max-height:70vh; border:1px solid var(--line); border-radius:8px;}
   table.rvc-tabla{border-collapse:separate; border-spacing:0; width:max-content; font-size:12px;}
   table.rvc-tabla th, table.rvc-tabla td{padding:4px 5px; border-bottom:1px solid var(--line); border-right:1px solid #eef0f3; white-space:nowrap; background:#fff;}
@@ -3199,8 +3201,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v180';
-const APP_UPDATED = '15/10/2026 16:30';
+const APP_VERSION = 'v181';
+const APP_UPDATED = '15/10/2026 17:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -12604,7 +12606,7 @@ async function rvcCalcular(corr){
     if(!reparto){ reparto = (await campanaItemsRef.where('correlativo','==',corr).limit(5000).get()).docs.map(d=> d.data()); campRegCache[corr] = reparto; }
     proc.paso('Leyendo las guías de la campaña…');
     const activas = new Set((await guiasRegistrosRef.where('campana_correlativo','==',corr).get()).docs.map(d=> d.data()).filter(g=> (g.estado || 'ACTIVO') === 'ACTIVO').map(g=> g.correlativo));
-    const guiaItems = (await guiaItemsRef.where('campana_correlativo','==',corr).limit(10000).get()).docs.map(d=> d.data()).filter(i=> activas.has(i.correlativo_guia));
+    const guiaItems = (await guiaItemsRef.where('campana_correlativo','==',corr).limit(10000).get()).docs.map(d=> Object.assign({ _id: d.id }, d.data())).filter(i=> activas.has(i.correlativo_guia));
     proc.paso('Leyendo las compras asignadas a la campaña…');
     const cargas = (await comprasCargasRef.where('campanas','array-contains',corr).get()).docs.map(d=> d.data()).filter(c=> c.estado === 'ACTIVO');
     const totales = [];
@@ -12647,10 +12649,13 @@ async function rvcCalcular(corr){
     const fuera = new Map();
     guiaItems.forEach(i=>{ const t = rvcTienda(i.participante), k = claveSku(i.codigo); if(!k) return;
       const sinTienda = !tiendas.has(t), sinCodigo = !filas.has(k); if(!sinTienda && !sinCodigo) return;
-      const clave = t + '|' + k; const x = fuera.get(clave) || { sku: String(i.codigo || '').toUpperCase(), desc: i.descripcion || '', tienda: String(i.participante || '').toUpperCase(), cant: 0, guias: new Set(),
-        motivo: sinCodigo ? 'El código no está en el reparto' : 'La tienda no está en el reparto' };
-      x.cant += Number(i.cantidad) || 0; x.guias.add(nroGuia.get(i.correlativo_guia) || i.nro_guia || i.correlativo_guia); fuera.set(clave, x); });
-    const fueraLista = [...fuera.values()].map(x=> Object.assign(x, { guias: [...x.guias].filter(Boolean).sort().join(', ') })).sort((a, b)=> a.sku.localeCompare(b.sku) || a.tienda.localeCompare(b.tienda));
+      const clave = t + '|' + k; const x = fuera.get(clave) || { sku: String(i.codigo || '').toUpperCase(), desc: i.descripcion || '', tienda: String(i.participante || '').toUpperCase(), cant: 0, guias: new Set(), ids: [],
+        sinCodigo, motivo: sinCodigo ? 'El código no está en el reparto' : 'La tienda no está en el reparto' };
+      x.ids.push(i._id); x.cant += Number(i.cantidad) || 0; x.guias.add(nroGuia.get(i.correlativo_guia) || i.nro_guia || i.correlativo_guia); fuera.set(clave, x); });
+    // Sugerencia: el SKU del reparto que es igual sin espacios ni signos ("F-11006 -A-68" → "F-11006(A-68)").
+    const alnum = v=> String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const porAlnum = new Map(); filas.forEach(f=>{ const a = alnum(f.sku); if(a && !porAlnum.has(a)) porAlnum.set(a, f.sku); });
+    const fueraLista = [...fuera.values()].map(x=> Object.assign(x, { guias: [...x.guias].filter(Boolean).sort().join(', '), sugerido: x.sinCodigo ? (porAlnum.get(alnum(x.sku)) || '') : '' })).sort((a, b)=> a.sku.localeCompare(b.sku) || a.tienda.localeCompare(b.tienda));
     return { corr, cols, lista, fuera: fueraLista, cargas: cargas.map(c=> c.correlativo).sort(), guias: activas.size };
   }catch(err){ proc.fin(); throw err; }
 }
@@ -12771,11 +12776,35 @@ function rvcRenderFuera(){
   b.className = 'rvc-fuera-btn' + (F.length ? '' : ' ok') + (F.length && rvcFueraAbierto ? ' abierto' : '');
   b.textContent = F.length ? `⚠ Códigos de guía sin reparto: ${F.length}` : '✓ Todos los códigos de las guías están en el reparto';
   if(!F.length || !rvcFueraAbierto){ box.style.display = 'none'; return; }
-  box.innerHTML = `<div class="t">Estos códigos vienen en las guías de la campaña pero <b>no hacen match</b> con su hoja de reparto, por eso no aparecen en la tabla. Unidades: <b>${esc(anFmt(F.reduce((s, x)=> s + x.cant, 0)))}</b>.</div>` +
-    `<div class="w"><table><thead><tr><th>Código</th><th>Descripción (guía)</th><th>Tienda</th><th class="num">Cantidad</th><th>Guía(s)</th><th>Motivo</th></tr></thead><tbody>` +
-    F.map(x=> `<tr><td><b>${esc(x.sku)}</b></td><td>${esc(x.desc)}</td><td>${esc(x.tienda)}</td><td class="num">${esc(rvcV(x.cant))}</td><td>${esc(x.guias)}</td><td class="motivo">${esc(x.motivo)}</td></tr>`).join('') + '</tbody></table></div>';
+  box.innerHTML = `<div class="t">Estos códigos vienen en las guías de la campaña pero <b>no hacen match</b> con su hoja de reparto, por eso no aparecen en la tabla. Unidades: <b>${esc(anFmt(F.reduce((s, x)=> s + x.cant, 0)))}</b>. Si el código de la guía está mal escrito, elige el SKU correcto del reparto y presiona <b>✓ Corregir</b>: se cambia en la guía guardada.</div>` +
+    `<datalist id="rvc-skus">${d.lista.map(f=> `<option value="${esc(f.sku)}"></option>`).join('')}</datalist>` +
+    `<div class="w"><table><thead><tr><th>Código</th><th>Descripción (guía)</th><th>Tienda</th><th class="num">Cantidad</th><th>Guía(s)</th><th>Motivo</th><th>Corregir el código de la guía</th></tr></thead><tbody>` +
+    F.map((x, i)=> `<tr><td><b>${esc(x.sku)}</b></td><td>${esc(x.desc)}</td><td>${esc(x.tienda)}</td><td class="num">${esc(rvcV(x.cant))}</td><td>${esc(x.guias)}</td><td class="motivo">${esc(x.motivo)}</td>` +
+      `<td>${x.sinCodigo ? `<span class="rvc-fix"><input list="rvc-skus" data-rvc-fix-in="${i}" value="${esc(x.sugerido)}" placeholder="SKU del reparto" autocomplete="off"><button type="button" class="btn btn-sm btn-primary" data-rvc-fix="${i}">✓ Corregir</button></span>${x.sugerido ? '<span class="rvc-fix-sug">sugerido</span>' : ''}` : '<span class="motivo">Corrige la tienda en Registros y Detalle</span>'}</td></tr>`).join('') + '</tbody></table></div>';
   box.style.display = 'block';
 }
+// Corrige el código en las filas de la(s) guía(s) para que haga match con el reparto.
+$('rvc-fuera').addEventListener('click', async e=>{
+  const b = e.target.closest('[data-rvc-fix]'); if(!b || !rvcDatos) return;
+  const x = (rvcDatos.fuera || [])[Number(b.dataset.rvcFix)]; if(!x) return;
+  const nuevo = String($('rvc-fuera').querySelector(`[data-rvc-fix-in="${b.dataset.rvcFix}"]`).value || '').trim().toUpperCase();
+  if(!nuevo){ showToast('Escribe o elige el SKU del reparto.', 'err'); return; }
+  const enReparto = rvcDatos.lista.some(f=> claveSku(f.sku) === claveSku(nuevo));
+  if(!enReparto && !confirm(`"${nuevo}" tampoco está en el reparto de ${rvcDatos.corr}. ¿Corregir igual?`)) return;
+  if(!confirm(`¿Cambiar el código ${x.sku} por ${nuevo} en ${x.ids.length} fila(s) de la guía ${x.guias} (${x.tienda})?`)) return;
+  b.disabled = true;
+  try{
+    const batch = db.batch();
+    x.ids.forEach(id=> batch.update(guiaItemsRef.doc(id), { codigo: nuevo, codigo_original: x.sku, codigo_corregido_por: currentUserAlias, codigo_corregido_en: firebase.firestore.FieldValue.serverTimestamp() }));
+    await batch.commit();
+    await logAccion('guia_codigo_corregido', {detalle:`${rvcDatos.corr} · guía ${x.guias} · ${x.tienda}: ${x.sku} → ${nuevo} (${x.ids.length} fila(s))`});
+    if(typeof anGuiaPorCampanaCache !== 'undefined') delete anGuiaPorCampanaCache[rvcDatos.corr];
+    showToast(`Código corregido: ${x.sku} → ${nuevo}`, 'ok');
+    const filtro = rvcFiltro;
+    rvcDatos = await rvcCalcular(rvcDatos.corr); rvcFiltro = filtro;
+    rvcRender();
+  }catch(err){ console.error(err); showToast('No se pudo corregir: ' + err.message, 'err'); b.disabled = false; }
+});
 $('btn-rvc-fuera').addEventListener('click', ()=>{ if(!(rvcDatos && (rvcDatos.fuera || []).length)) return; rvcFueraAbierto = !rvcFueraAbierto; rvcRenderFuera(); });
 $('rvc-chips').addEventListener('click', e=>{ const b = e.target.closest('[data-rvc-filtro]'); if(!b) return; rvcFiltro = b.dataset.rvcFiltro; rvcRender(); });
 $('btn-rvc-excel').addEventListener('click', ()=>{
