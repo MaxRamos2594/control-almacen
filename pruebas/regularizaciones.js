@@ -66,7 +66,7 @@ function guia(nro, items){
   await page.click('#btn-rgz-guardar');
   await page.waitForFunction(()=> /RGZ-00003/.test($('rgz-msg').textContent), null, { timeout: 20000 });
   await page.waitForFunction(()=> document.querySelectorAll('#rgz-lista-body tr').length === 3, null, { timeout: 10000 });
-  const lista = await page.evaluate(()=> ({ filas: [...document.querySelectorAll('#rgz-lista-body tr')].map(r=> r.cells[0].innerText + ':' + r.cells[1].innerText + ':' + r.cells[6].innerText).join(' '), res: $('rgz-lista-resumen').textContent }));
+  const lista = await page.evaluate(()=> ({ filas: [...document.querySelectorAll('#rgz-lista-body tr')].map(r=> r.cells[0].innerText + ':' + (r.cells[1].querySelector('select') ? r.cells[1].querySelector('select').selectedOptions[0].text : r.cells[1].innerText) + ':' + r.cells[6].innerText).join(' '), res: $('rgz-lista-resumen').textContent }));
   verificar(lista.filas === 'RGZ-00003:Devolución venta virtual:4 RGZ-00002:Saldos campaña:3 RGZ-00001:Sobrantes:4' && /Devolución venta virtual 4 unid\. · Sobrantes 4 unid\. · Saldos campaña 3 unid\./.test(lista.res), `Lista de regularizaciones: ${lista.filas} (${lista.res})`);
   await page.locator('#campsub-panel-regularizaciones').screenshot({ path: path.join(__dirname, 'salida', 'regularizaciones.png') });
 
@@ -101,15 +101,29 @@ function guia(nro, items){
   r = await analizar();
   verificar(r.filas[1] === '3|-|-|7|-4:R2' && r.neg === 1 && r.pos === 1, `R2 con saldo 3 pero saldo final -4: el filtro "Saldo negativo" lo cuenta (${r.neg} negativo, ${r.pos} positivo)`);
 
-  // Anular una regularización: deja de sumarse
+  // Cambiar el concepto de una regularización guardada
   await page.evaluate(()=> $('campsub-regularizaciones').click());
   await page.waitForFunction(()=> document.querySelectorAll('#rgz-lista-body tr').length === 4, null, { timeout: 10000 });
+  await page.selectOption('#rgz-lista-body [data-rgz-cambiar="RGZ-00002"]', 'SOBRANTE');
+  await page.waitForFunction(async ()=> (await regularizacionesRef.doc('RGZ-00002').get()).data().tipo === 'SOBRANTE', null, { timeout: 10000 });
+  const cambio = await page.evaluate(async ()=> ({ items: [...new Set((await regularizacionItemsRef.where('correlativo_reg','==','RGZ-00002').get()).docs.map(d=> d.data().tipo))].join(),
+    cab: (await regularizacionesRef.doc('RGZ-00002').get()).data().tipo_anterior }));
+  verificar(cambio.items === 'SOBRANTE' && cambio.cab === 'SALDO_CAMPANA', `Cambiar RGZ-00002 de Saldos campaña a Sobrantes: cabecera e ítems cambian (${cambio.items})`);
+  r = await analizar();
+  verificar(r.filas.join(' / ') === '10|4|5|-|9:R1 / 3|-|1|6|-4:R2', `En Reparto vs Compra pasa a la columna Sobrantes: ${r.filas.join(' / ')}`);
+  await page.evaluate(()=> $('campsub-regularizaciones').click());
+  await page.waitForFunction(()=> document.querySelectorAll('#rgz-lista-body tr').length === 4, null, { timeout: 10000 });
+  await page.selectOption('#rgz-lista-body [data-rgz-cambiar="RGZ-00002"]', 'SALDO_CAMPANA');
+  await page.waitForFunction(async ()=> (await regularizacionesRef.doc('RGZ-00002').get()).data().tipo === 'SALDO_CAMPANA', null, { timeout: 10000 });
+
+  // Anular una regularización: deja de sumarse
+  await page.waitForTimeout(500);
   await page.click('#rgz-lista-body [data-rgz-anular="RGZ-00001"]');
   await page.waitForFunction(()=> document.querySelectorAll('#rgz-lista-body tr').length === 3, null, { timeout: 10000 });
   r = await analizar();
   verificar(r.filas[0] === '10|4|-|2|12:R1' && !/sin reparto: \d/.test(r.fuera), `Anulada RGZ-00001: el sobrante ya no se resta (${r.filas[0]})`);
   const log = await page.evaluate(async ()=> (await movimientosRef.get()).docs.map(d=> d.data().tipo).filter(t=> /^regularizacion_/.test(t)).sort().join(','));
-  verificar(log === 'regularizacion_anulada,regularizacion_cargada,regularizacion_cargada,regularizacion_cargada', `Bitácora: ${log}`);
+  verificar(log === 'regularizacion_anulada,regularizacion_cargada,regularizacion_cargada,regularizacion_cargada,regularizacion_concepto_cambiado,regularizacion_concepto_cambiado', `Bitácora: ${log}`);
 
   if(errores.length) console.log('\nErrores de JavaScript:\n' + [...new Set(errores)].join('\n'));
   console.log(fallas || errores.length ? `\n${fallas} verificación(es) fallida(s).` : '\nTodo correcto.');
