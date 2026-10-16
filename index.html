@@ -655,6 +655,7 @@
   .rgz-concepto.scamp:has(input:checked){border-color:#8a5cc2; background:#f1eafb;}
   .rgz-chip{display:inline-block; padding:1px 9px; border-radius:999px; font-size:11px; font-weight:700;}
   .rgz-concepto.dvv:has(input:checked){border-color:#0b7a3b; background:#dff3e6;}
+  select.rgz-tipo-sel{width:auto; border:none; cursor:pointer; padding:2px 8px; font-family:inherit; appearance:auto;}
   .rgz-chip.DEVOLUCION_VV{background:#0b7a3b; color:#fff;}
   .rgz-chip.SOBRANTE{background:#e8f1fb; color:#24578a;} .rgz-chip.SALDO_CAMPANA{background:#f1eafb; color:#5d3a8f;}
   .cmp-num-aviso{font-size:11.5px; margin-top:4px; min-height:0;}
@@ -3256,8 +3257,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v185';
-const APP_UPDATED = '16/10/2026 10:00';
+const APP_VERSION = 'v186';
+const APP_UPDATED = '16/10/2026 11:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -12750,11 +12751,27 @@ function renderListaRegularizaciones(){
   const tot = t=> L.filter(r=> r.tipo === t).reduce((s, r)=> s + (Number(r.unidades) || 0), 0);
   $('rgz-lista-resumen').textContent = L.length ? `${L.length} regularización(es) · Devolución venta virtual ${anFmt(tot('DEVOLUCION_VV'))} unid. · Sobrantes ${anFmt(tot('SOBRANTE'))} unid. · Saldos campaña ${anFmt(tot('SALDO_CAMPANA'))} unid.` : '';
   $('rgz-lista-vacio').style.display = L.length ? 'none' : 'block';
-  $('rgz-lista-body').innerHTML = L.map(r=> `<tr><td><b>${esc(r.correlativo)}</b></td><td><span class="rgz-chip ${esc(r.tipo)}">${esc(RGZ_TIPOS[r.tipo] || r.tipo)}</span></td><td>${esc(r.nro_guia || '—')}</td><td>${esc(r.fecha_traslado || '')}</td>` +
+  $('rgz-lista-body').innerHTML = L.map(r=> `<tr><td><b>${esc(r.correlativo)}</b></td><td>${puede ? `<select class="rgz-tipo-sel rgz-chip ${esc(r.tipo)}" data-rgz-cambiar="${esc(r.correlativo)}" title="Cambiar el concepto">${Object.entries(RGZ_TIPOS).map(([k, t])=> `<option value="${esc(k)}" ${k === r.tipo ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>` : `<span class="rgz-chip ${esc(r.tipo)}">${esc(RGZ_TIPOS[r.tipo] || r.tipo)}</span>`}</td><td>${esc(r.nro_guia || '—')}</td><td>${esc(r.fecha_traslado || '')}</td>` +
     `<td>${esc(r.campana_correlativo)} — ${esc(r.campana_nombre || '')}</td><td class="num">${esc(anFmt(r.total_items))}</td><td class="num">${esc(anFmt(r.unidades))}</td><td>${esc(r.usuario || '')}</td>` +
     `<td class="reg-acc">${puede ? `<button class="btn btn-sm btn-ghost" data-rgz-anular="${esc(r.correlativo)}" title="Anular">🗑</button>` : ''}</td></tr>`).join('');
 }
 $('rgz-filtro-camp').addEventListener('change', renderListaRegularizaciones);
+// Cambiar el concepto de una regularización ya guardada (cabecera y todos sus ítems).
+$('rgz-lista-body').addEventListener('change', async e=>{
+  const sel = e.target.closest('[data-rgz-cambiar]'); if(!sel) return;
+  const corr = sel.dataset.rgzCambiar, r = rgzLista.find(x=> x.correlativo === corr); if(!r) return;
+  const nuevo = sel.value;
+  if(!confirm(`¿Cambiar ${corr} (guía ${r.nro_guia || '—'}) de "${RGZ_TIPOS[r.tipo] || r.tipo}" a "${RGZ_TIPOS[nuevo]}"?`)){ sel.value = r.tipo; return; }
+  sel.disabled = true;
+  try{
+    const items = await regularizacionItemsRef.where('correlativo_reg','==',corr).get();
+    for(let i = 0; i < items.docs.length; i += 400){ const b = db.batch(); items.docs.slice(i, i + 400).forEach(d=> b.update(d.ref, { tipo: nuevo })); await b.commit(); }
+    await regularizacionesRef.doc(corr).set({ tipo: nuevo, tipo_anterior: r.tipo, tipo_cambiado_por: currentUserAlias, tipo_cambiado_en: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true });
+    await logAccion('regularizacion_concepto_cambiado', {detalle:`${corr}: ${RGZ_TIPOS[r.tipo] || r.tipo} → ${RGZ_TIPOS[nuevo]} (${items.size} ítem(s))`});
+    showToast(`${corr} ahora es ${RGZ_TIPOS[nuevo]}`, 'ok');
+    cargarListaRegularizaciones();
+  }catch(err){ console.error(err); showToast('No se pudo cambiar: ' + err.message, 'err'); sel.value = r.tipo; sel.disabled = false; }
+});
 $('rgz-lista-body').addEventListener('click', async e=>{
   const b = e.target.closest('[data-rgz-anular]'); if(!b) return;
   const corr = b.dataset.rgzAnular;
