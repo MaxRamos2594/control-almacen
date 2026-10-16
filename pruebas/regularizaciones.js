@@ -61,9 +61,13 @@ function guia(nro, items){
   verificar(/^SALDO_CAMPANA\|TG01-00000502\|2\|3\|REG-00080\|✓/.test(b[0]) && /Ya está cargada como Sobrantes \(RGZ-00001\)/.test(b[1]), `Saldo de campaña listo y el N° ya cargado se avisa como duplicado: ${b.join(' / ')}`);
   await page.click('#btn-rgz-guardar');
   await page.waitForFunction(()=> /Guardado! 1 regularización/.test($('rgz-msg').textContent) && /RGZ-00002/.test($('rgz-msg').textContent), null, { timeout: 20000 });
-  await page.waitForFunction(()=> document.querySelectorAll('#rgz-lista-body tr').length === 2, null, { timeout: 10000 });
+  b = await procesar('DEVOLUCION_VV', [guia('TG01-00000503', [['R1', 4]])]);
+  verificar(/^DEVOLUCION_VV\|TG01-00000503\|1\|4\|REG-00080\|✓/.test(b[0]), `Devolución de venta virtual leída: ${b[0]}`);
+  await page.click('#btn-rgz-guardar');
+  await page.waitForFunction(()=> /RGZ-00003/.test($('rgz-msg').textContent), null, { timeout: 20000 });
+  await page.waitForFunction(()=> document.querySelectorAll('#rgz-lista-body tr').length === 3, null, { timeout: 10000 });
   const lista = await page.evaluate(()=> ({ filas: [...document.querySelectorAll('#rgz-lista-body tr')].map(r=> r.cells[0].innerText + ':' + r.cells[1].innerText + ':' + r.cells[6].innerText).join(' '), res: $('rgz-lista-resumen').textContent }));
-  verificar(lista.filas === 'RGZ-00002:Saldos campaña:3 RGZ-00001:Sobrantes:4' && /Sobrantes 4 unid\. · Saldos campaña 3 unid\./.test(lista.res), `Lista de regularizaciones: ${lista.filas} (${lista.res})`);
+  verificar(lista.filas === 'RGZ-00003:Devolución venta virtual:4 RGZ-00002:Saldos campaña:3 RGZ-00001:Sobrantes:4' && /Devolución venta virtual 4 unid\. · Sobrantes 4 unid\. · Saldos campaña 3 unid\./.test(lista.res), `Lista de regularizaciones: ${lista.filas} (${lista.res})`);
   await page.locator('#campsub-panel-regularizaciones').screenshot({ path: path.join(__dirname, 'salida', 'regularizaciones.png') });
 
   // Reparto vs Compra
@@ -73,19 +77,21 @@ function guia(nro, items){
     await page.selectOption('#rvc-campana-select', 'REG-00080');
     await page.click('#btn-rvc-analizar');
     await page.waitForFunction(()=> $('rvc-resultado').style.display === 'block' && rvcDatos && rvcDatos.corr === 'REG-00080', null, { timeout: 20000 });
-    return page.evaluate(()=> ({ cols: [...document.querySelectorAll('#rvc-head tr:nth-child(2) th')].map(th=> th.innerText.replace(/\s*[▲▼↕]\s*$/, '').trim()).slice(-4).join('|'),
+    return page.evaluate(()=> ({ cols: [...document.querySelectorAll('#rvc-head tr:nth-child(2) th')].map(th=> th.innerText.replace(/\s*[▲▼↕]\s*$/, '').trim()).slice(-5).join('|'),
       filas: [...document.querySelectorAll('#rvc-body tr')].map(r=> [...r.cells].slice(-5).map(c=> c.innerText.trim()).join('|') + ':' + r.cells[0].innerText),
-      total: [...document.querySelectorAll('#rvc-foot td')].slice(-4).map(c=> c.innerText.trim()).join('|'), fuera: $('btn-rvc-fuera').textContent,
+      total: [...document.querySelectorAll('#rvc-foot td')].slice(-5).map(c=> c.innerText.trim()).join('|'), fuera: $('btn-rvc-fuera').textContent,
       neg: Number(document.querySelector('[data-rvc-filtro="neg"] b').textContent), pos: Number(document.querySelector('[data-rvc-filtro="pos"] b').textContent) }));
   };
   let r = await analizar();
-  verificar(r.cols === 'SALDO|SOBRANTES|SALDOS CAMPAÑA|SALDO FINAL', `Columnas a la derecha del saldo: ${r.cols}`);
-  // R1: compra 20 − reparto 10 = 10; sobrante 3, saldo campaña 2 → final 5. R2: 8 − 5 = 3; saldo campaña 1 → 2
-  verificar(r.filas.join(' / ') === '10|10|3|2|5:R1 / 5|3|-|1|2:R2', `Filas (ATE|saldo|sobrantes|saldos campaña|saldo final): ${r.filas.join(' / ')}`);
-  verificar(r.total === '13|3|3|7', `TOTAL: ${r.total}`);
+  verificar(r.cols === 'SALDO|DEV. VENTA VIRTUAL|SOBRANTES|SALDOS CAMPAÑA|SALDO FINAL', `Columnas a la derecha del saldo: ${r.cols}`);
+  // R1: compra 20 − reparto 10 = 10; + dev. venta virtual 4 − sobrante 3 − saldo campaña 2 → final 9. R2: 8 − 5 = 3; − saldo campaña 1 → 2
+  verificar(r.filas.join(' / ') === '10|4|3|2|9:R1 / 3|-|-|1|2:R2', `Filas (saldo|dev. venta virtual|sobrantes|saldos campaña|saldo final): ${r.filas.join(' / ')}`);
+  verificar(r.total === '13|4|3|3|11', `TOTAL: ${r.total}`);
+  const verde = await page.evaluate(()=> getComputedStyle(document.querySelector('#rvc-body td.rgz-dvv')).backgroundColor);
+  verificar(verde === 'rgb(19, 160, 80)', `Columna de devolución de venta virtual en verde intenso (${verde})`);
   const val = await page.evaluate(()=> [...document.querySelectorAll('#rvc-head th.val')].map(th=> th.querySelector('b').textContent).join(' | '));
   // costo 1 en R1 y R2: valorizado = unidades
-  verificar(val === 'S/ 13.00 | S/ 3.00 | S/ 3.00 | S/ 7.00', `Valorizado (costo × unidades) arriba de saldo, sobrantes, saldos campaña y saldo final: ${val}`);
+  verificar(val === 'S/ 13.00 | S/ 4.00 | S/ 3.00 | S/ 3.00 | S/ 11.00', `Valorizado (costo × unidades) arriba de saldo, sobrantes, saldos campaña y saldo final: ${val}`);
   verificar(!/sin reparto: \d/.test(r.fuera), `Los códigos de regularizaciones (X9 del sobrante) no van a la lista de "Códigos de guía sin reparto", que es solo de guías: "${r.fuera}"`);
   await page.locator('#rvc-tabla').screenshot({ path: path.join(__dirname, 'salida', 'regularizaciones_rvc.png') });
 
@@ -93,17 +99,17 @@ function guia(nro, items){
   await page.evaluate(async ()=>{ await regularizacionesRef.doc('RGZ-00099').set({ correlativo:'RGZ-00099', tipo:'SALDO_CAMPANA', campana_correlativo:'REG-00080', estado:'ACTIVO' });
     await regularizacionItemsRef.doc().set({ correlativo_reg:'RGZ-00099', tipo:'SALDO_CAMPANA', campana_correlativo:'REG-00080', codigo:'R2', cantidad:6 }); });
   r = await analizar();
-  verificar(r.filas[1] === '5|3|-|7|-4:R2' && r.neg === 1 && r.pos === 1, `R2 con saldo 3 pero saldo final -4: el filtro "Saldo negativo" lo cuenta (${r.neg} negativo, ${r.pos} positivo)`);
+  verificar(r.filas[1] === '3|-|-|7|-4:R2' && r.neg === 1 && r.pos === 1, `R2 con saldo 3 pero saldo final -4: el filtro "Saldo negativo" lo cuenta (${r.neg} negativo, ${r.pos} positivo)`);
 
   // Anular una regularización: deja de sumarse
   await page.evaluate(()=> $('campsub-regularizaciones').click());
-  await page.waitForFunction(()=> document.querySelectorAll('#rgz-lista-body tr').length === 3, null, { timeout: 10000 });
+  await page.waitForFunction(()=> document.querySelectorAll('#rgz-lista-body tr').length === 4, null, { timeout: 10000 });
   await page.click('#rgz-lista-body [data-rgz-anular="RGZ-00001"]');
-  await page.waitForFunction(()=> document.querySelectorAll('#rgz-lista-body tr').length === 2, null, { timeout: 10000 });
+  await page.waitForFunction(()=> document.querySelectorAll('#rgz-lista-body tr').length === 3, null, { timeout: 10000 });
   r = await analizar();
-  verificar(r.filas[0] === '10|10|-|2|8:R1' && !/sin reparto: \d/.test(r.fuera), `Anulada RGZ-00001: el sobrante ya no se resta (${r.filas[0]})`);
+  verificar(r.filas[0] === '10|4|-|2|12:R1' && !/sin reparto: \d/.test(r.fuera), `Anulada RGZ-00001: el sobrante ya no se resta (${r.filas[0]})`);
   const log = await page.evaluate(async ()=> (await movimientosRef.get()).docs.map(d=> d.data().tipo).filter(t=> /^regularizacion_/.test(t)).sort().join(','));
-  verificar(log === 'regularizacion_anulada,regularizacion_cargada,regularizacion_cargada', `Bitácora: ${log}`);
+  verificar(log === 'regularizacion_anulada,regularizacion_cargada,regularizacion_cargada,regularizacion_cargada', `Bitácora: ${log}`);
 
   if(errores.length) console.log('\nErrores de JavaScript:\n' + [...new Set(errores)].join('\n'));
   console.log(fallas || errores.length ? `\n${fallas} verificación(es) fallida(s).` : '\nTodo correcto.');

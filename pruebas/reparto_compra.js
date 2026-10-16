@@ -59,10 +59,10 @@ function verificar(condicion, texto){
     total: [...document.querySelectorAll('#rvc-foot td')].map(c=> c.innerText.trim()).join('|'),
     kpis: [...document.querySelectorAll('#rvc-kpis .reg-kpi')].map(k=> k.querySelector('.t').innerText + '=' + k.querySelector('.v').innerText).join(' · ')
   }));
-  verificar(t.grupo === 'REPARTO:3' && t.cols === 'SKU|DESCRIPCIÓN|COMPRA|COSTO|COMAS|ATE|AREQUIPA|SALDO|SOBRANTES|SALDOS CAMPAÑA|SALDO FINAL', `Columnas como la hoja, tiendas en el orden pedido (las no listadas al final): ${t.cols}`);
+  verificar(t.grupo === 'REPARTO:3' && t.cols === 'SKU|DESCRIPCIÓN|COMPRA|COSTO|COMAS|ATE|AREQUIPA|SALDO|DEV. VENTA VIRTUAL|SOBRANTES|SALDOS CAMPAÑA|SALDO FINAL', `Columnas como la hoja, tiendas en el orden pedido (las no listadas al final): ${t.cols}`);
   verificar(t.grupos === 'COMAS:g1 ATE:g1 AREQUIPA:g17', `Color por grupo: ${t.grupos}`);
   verificar(t.guia === 'COMAS — ya tiene guía · clic para ordenar', `Solo COMAS tiene guía activa (la invalidada de ATE no cuenta): ${t.guia}`);
-  verificar(t.filas.join(' / ') === 'S1|25|2.40|6|10|-|9|-|-|9 / S2|8|3.00|-|5|6|-3|-|-|-3 / S3|sin compra||4|-|-|-4|-|-|-4', `Filas: ${t.filas.join(' / ')}`);
+  verificar(t.filas.join(' / ') === 'S1|25|2.40|6|10|-|9|-|-|-|9 / S2|8|3.00|-|5|6|-3|-|-|-|-3 / S3|sin compra||4|-|-|-4|-|-|-|-4', `Filas: ${t.filas.join(' / ')}`);
   const formato = await page.evaluate(()=> ({ alin: [...new Set([...document.querySelectorAll('#rvc-body td.num, #rvc-foot td.num, #rvc-head th.num')].map(c=> getComputedStyle(c).textAlign))].join(),
     miles: rvcV(43674), cero: rvcV(0) }));
   verificar(formato.alin === 'center' && formato.miles === '43,674' && formato.cero === '-', `Valores centrados, con miles (${formato.miles}) y "-" cuando es 0`);
@@ -97,10 +97,10 @@ function verificar(condicion, texto){
   verificar(lineas.every(x=> Number(x.split('=').pop()) <= 2), `Títulos de tiendas en 2 líneas como máximo: ${lineas.join(' · ')}`);
   verificar(!largo.cortada && largo.w > 300 && Math.abs(largo.costo) <= 1, `Con una descripción larga la columna crece a ${largo.w}px sin cortarla y Compra/Costo quedan pegadas a ella`);
   verificar(t.rojas.join(',') === 'COMAS: reparto 8 → guía 6', `Celda en rojo donde la guía difiere del reparto: ${t.rojas.join(',')}`);
-  verificar(t.total === 'TOTAL|3 SKU|33||10|15|6|2|-|-|2', `Fila TOTAL: ${t.total}`);
+  verificar(t.total === 'TOTAL|3 SKU|33||10|15|6|2|-|-|-|2', `Fila TOTAL: ${t.total}`);
   const val = await page.evaluate(()=> [...document.querySelectorAll('#rvc-head th.val')].map(th=> th.querySelector('b').textContent).join(' | '));
   // S1: 9 × 2.40 = 21.60; S2: -3 × 3.00 = -9.00; S3 sin compra (sin costo) = 0
-  verificar(val === 'S/ 12.60 | S/ 0.00 | S/ 0.00 | S/ 12.60', `Valorizado arriba de saldo, sobrantes, saldos campaña y saldo final: ${val}`);
+  verificar(val === 'S/ 12.60 | S/ 0.00 | S/ 0.00 | S/ 0.00 | S/ 12.60', `Valorizado arriba de saldo, sobrantes, saldos campaña y saldo final: ${val}`);
   verificar(/SKU DEL REPARTO=3/i.test(t.kpis) && /UNID\. COMPRADAS=33/i.test(t.kpis) && /UNID\. REPARTIDAS=31/i.test(t.kpis) && /SALDO FINAL=2/i.test(t.kpis) && /CAMBIADAS POR GUÍA=1/i.test(t.kpis) && /VALOR DE LA COMPRA=S\/ 84\.00/i.test(t.kpis), `Indicadores: ${t.kpis}`);
   // Códigos de las guías que no hacen match con el reparto
   const btnFuera = await page.textContent('#btn-rvc-fuera');
