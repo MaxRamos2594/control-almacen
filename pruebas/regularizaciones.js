@@ -86,7 +86,7 @@ function guia(nro, items){
   const val = await page.evaluate(()=> [...document.querySelectorAll('#rvc-head th.val')].map(th=> th.querySelector('b').textContent).join(' | '));
   // costo 1 en R1 y R2: valorizado = unidades
   verificar(val === 'S/ 13.00 | S/ 3.00 | S/ 3.00 | S/ 7.00', `Valorizado (costo × unidades) arriba de saldo, sobrantes, saldos campaña y saldo final: ${val}`);
-  verificar(/sin reparto: 1/.test(r.fuera), `El código X9 del sobrante, que no está en el reparto, se lista aparte: "${r.fuera}"`);
+  verificar(!/sin reparto: \d/.test(r.fuera), `Los códigos de regularizaciones (X9 del sobrante) no van a la lista de "Códigos de guía sin reparto", que es solo de guías: "${r.fuera}"`);
   await page.locator('#rvc-tabla').screenshot({ path: path.join(__dirname, 'salida', 'regularizaciones_rvc.png') });
 
   // Los filtros obedecen al saldo final: con un saldo de campaña de 6 en R2, el final queda negativo
