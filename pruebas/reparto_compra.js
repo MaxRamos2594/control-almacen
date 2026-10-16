@@ -59,7 +59,7 @@ function verificar(condicion, texto){
     total: [...document.querySelectorAll('#rvc-foot td')].map(c=> c.innerText.trim()).join('|'),
     kpis: [...document.querySelectorAll('#rvc-kpis .reg-kpi')].map(k=> k.querySelector('.t').innerText + '=' + k.querySelector('.v').innerText).join(' · ')
   }));
-  verificar(t.grupo === 'REPARTO:3' && t.cols === 'SKU|DESCRIPCIÓN|COMPRA|COSTO|COMAS|ATE|AREQUIPA|SALDO|DEV. VENTA VIRTUAL|SOBRANTES|SALDOS CAMPAÑA|SALDO FINAL', `Columnas como la hoja, tiendas en el orden pedido (las no listadas al final): ${t.cols}`);
+  verificar(t.grupo === 'REPARTO:3' && t.cols === 'SKU|DESCRIPCIÓN|COMPRA|COSTO|COMAS|ATE|AREQUIPA|SALDO|DEV. VENTA VIRTUAL|MERMA|SALDOS CAMPAÑA|SALDO FINAL', `Columnas como la hoja, tiendas en el orden pedido (las no listadas al final): ${t.cols}`);
   verificar(t.grupos === 'COMAS:g1 ATE:g1 AREQUIPA:g17', `Color por grupo: ${t.grupos}`);
   verificar(t.guia === 'COMAS — ya tiene guía · clic para ordenar', `Solo COMAS tiene guía activa (la invalidada de ATE no cuenta): ${t.guia}`);
   verificar(t.filas.join(' / ') === 'S1|25|2.40|6|10|-|9|-|-|-|9 / S2|8|3.00|-|5|6|-3|-|-|-|-3 / S3|sin compra||4|-|-|-4|-|-|-|-4', `Filas: ${t.filas.join(' / ')}`);
