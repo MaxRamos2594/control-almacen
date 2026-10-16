@@ -485,7 +485,8 @@
   table.rvc-tabla thead th.grupo.rgz{background:#c9b6e4; color:#2e1d4a;}
   table.rvc-tabla thead th.rgz-dvv{background:#0b7a3b; color:#fff;} table.rvc-tabla td.rgz-dvv{background:#13a050; color:#fff; font-weight:700;} table.rvc-tabla td.rgz-dvv.cero{color:#bfe8cf;}
   table.rvc-tabla tbody tr:hover td.rgz-dvv{background:#0e8a43;}
-  table.rvc-tabla thead th.rgz-sob{background:#cfe0f3;} table.rvc-tabla td.rgz-sob{background:#eef4fb;}
+  table.rvc-tabla thead th.rgz-sob{background:#c2187a; color:#fff;} table.rvc-tabla td.rgz-sob{background:#e3168c; color:#fff; font-weight:700;} table.rvc-tabla td.rgz-sob.cero{color:#f7b3da;}
+  table.rvc-tabla tbody tr:hover td.rgz-sob{background:#c2187a;}
   table.rvc-tabla thead th.rgz-scamp{background:#ddd0ef;} table.rvc-tabla td.rgz-scamp{background:#f4effb;}
   table.rvc-tabla thead th.sfin{background:#1B2430; color:#fff;} table.rvc-tabla td.sfin{border-left:2px solid #1B2430;}
   table.rvc-tabla td.saldo.neg{color:#b3402f; background:#fdecea;} table.rvc-tabla td.saldo.pos{color:#1f7a4a; background:#e9f6ee;}
@@ -651,13 +652,14 @@
   .rgz-concepto{display:flex; gap:10px; align-items:center; padding:10px 16px; border:2px solid var(--line); border-radius:12px; cursor:pointer; background:#fff; margin:0; font-weight:400; transition:border-color .15s, background .15s;}
   .rgz-concepto input{width:auto; margin:0;}
   .rgz-concepto span{display:flex; flex-direction:column;} .rgz-concepto small{font-size:11px; color:var(--ink-soft);}
-  .rgz-concepto.sob:has(input:checked){border-color:#3f7fbf; background:#e8f1fb;}
+  .rgz-concepto.merma:has(input:checked){border-color:#c2187a; background:#fde4f2;}
+  table.cmp-grid td.aviso{background:#fff5e0;}
   .rgz-concepto.scamp:has(input:checked){border-color:#8a5cc2; background:#f1eafb;}
   .rgz-chip{display:inline-block; padding:1px 9px; border-radius:999px; font-size:11px; font-weight:700;}
   .rgz-concepto.dvv:has(input:checked){border-color:#0b7a3b; background:#dff3e6;}
   select.rgz-tipo-sel{width:auto; border:none; cursor:pointer; padding:2px 8px; font-family:inherit; appearance:auto;}
   .rgz-chip.DEVOLUCION_VV{background:#0b7a3b; color:#fff;}
-  .rgz-chip.SOBRANTE{background:#e8f1fb; color:#24578a;} .rgz-chip.SALDO_CAMPANA{background:#f1eafb; color:#5d3a8f;}
+  .rgz-chip.MERMA, .rgz-chip.SOBRANTE{background:#e3168c; color:#fff;} .rgz-chip.SALDO_CAMPANA{background:#f1eafb; color:#5d3a8f;}
   .cmp-num-aviso{font-size:11.5px; margin-top:4px; min-height:0;}
   .cmp-num-aviso.dup{color:#fff; background:#b3402f; padding:5px 8px; border-radius:6px; font-weight:600; animation:cmpLatido .3s;}
   .cmp-num-aviso.ok{color:#2e8b57;}
@@ -2109,15 +2111,30 @@
   <div id="campsub-panel-regularizaciones" style="display:none;">
   <div class="panel" style="margin-bottom:14px;">
     <h3>Cargar regularizaciones</h3>
-    <p class="hint" style="margin-bottom:10px;">Igual que en Guía: sube las guías de remisión en PDF (varias a la vez) y cada una se asocia a una campaña. Elige el concepto: en <b>Reparto vs Compra</b> cada uno tiene su columna; la <b>devolución de venta virtual</b> se suma al saldo y los <b>sobrantes</b> y <b>saldos de campaña</b> se restan, para dar el <b>saldo final</b>.</p>
+    <p class="hint" style="margin-bottom:10px;">Elige el concepto. La <b>devolución de venta virtual</b> y los <b>saldos de campaña</b> se cargan como en Guía (guías de remisión en PDF, varias a la vez); la <b>merma</b> se pega desde Excel, como en Compras. En <b>Reparto vs Compra</b> cada uno tiene su columna: la devolución de venta virtual se suma al saldo y la merma y los saldos de campaña se restan, para dar el <b>saldo final</b>.</p>
     <div class="rgz-conceptos" id="rgz-conceptos">
       <label class="rgz-concepto dvv"><input type="radio" name="rgz-tipo" value="DEVOLUCION_VV"><span><b>🔄 Devolución venta virtual</b><small>Lo que regresa de Venta Virtual (suma)</small></span></label>
-      <label class="rgz-concepto sob"><input type="radio" name="rgz-tipo" value="SOBRANTE" checked><span><b>📦 Sobrantes</b><small>Lo que sobró y regresa</small></span></label>
+      <label class="rgz-concepto merma"><input type="radio" name="rgz-tipo" value="MERMA" checked><span><b>📉 Merma</b><small>Se pega desde Excel (resta)</small></span></label>
       <label class="rgz-concepto scamp"><input type="radio" name="rgz-tipo" value="SALDO_CAMPANA"><span><b>🗂 Saldos campaña</b><small>Saldo que queda de la campaña</small></span></label>
     </div>
-    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
+    <div id="rgz-pdf-zona" style="display:none; gap:10px; align-items:end; flex-wrap:wrap;">
       <div class="field" style="margin:0; max-width:420px;"><label>Archivos PDF (guías de remisión) — puedes elegir varios</label><input type="file" id="rgz-pdf-input" accept="application/pdf" multiple></div>
       <button class="btn btn-primary" id="btn-rgz-procesar" type="button">Procesar PDF(s)</button>
+    </div>
+    <div id="rgz-merma-zona">
+      <div class="cmp-barra">
+        <div class="field" style="margin:0; max-width:360px; min-width:260px;"><label>Campaña *</label><select id="rgz-merma-camp"><option value="">— Elige la campaña —</option></select></div>
+        <button class="btn btn-primary" id="btn-rgz-merma-guardar" type="button">💾 Guardar merma</button>
+        <button class="btn btn-ghost" id="btn-rgz-merma-fila" type="button">+ Fila</button>
+        <button class="btn btn-ghost" id="btn-rgz-merma-limpiar" type="button">Limpiar</button>
+        <div class="cmp-resumen" id="rgz-merma-resumen"></div>
+      </div>
+      <p class="hint" style="margin-bottom:8px;">Copia en Excel las columnas <b>SKU · DESCRIPCION · CANTIDAD · PARTICIPANTE</b> (con o sin la fila de títulos) y pégalas aquí con <b>Ctrl+V</b>. Puedes corregir cualquier celda. El participante debe ser una tienda de la campaña.</p>
+      <div class="cmp-errores" id="rgz-merma-errores"></div>
+      <div class="cmp-wrap" id="rgz-merma-wrap" tabindex="0">
+        <table class="cmp-grid"><thead><tr><th>#</th><th>SKU</th><th>DESCRIPCION</th><th>CANTIDAD</th><th>PARTICIPANTE</th><th></th></tr></thead><tbody id="rgz-merma-body"></tbody></table>
+        <div class="cmp-vacio" id="rgz-merma-vacio"><b>Pega aquí la merma (Ctrl+V)</b>Haz clic en este recuadro y pega las filas copiadas de Excel.</div>
+      </div>
     </div>
     <div class="msg" id="rgz-msg"></div>
     <div id="rgz-batch-wrap" style="display:none; margin-top:14px;">
@@ -2461,7 +2478,7 @@
   <div id="campsub-panel-repcmp" style="display:none;">
   <div class="panel">
     <h3><span>Reparto vs Compra</span></h3>
-    <p class="hint" style="margin-bottom:10px;">La base son todos los códigos del reparto de la campaña. <b>COMPRA</b> y <b>COSTO</b> salen de las cargas de compras asignadas a la campaña (Compras → Cargas guardadas → Asignar a campaña). Si una tienda ya tiene guía y la cantidad difiere del reparto, vale la de la guía y la celda se pinta de <span class="rvc-leyenda">rojo</span>. <b>SALDO</b> = COMPRA − total repartido. <b>DEV. VENTA VIRTUAL</b>, <b>SOBRANTES</b> y <b>SALDOS CAMPAÑA</b> salen de Cargar → Regularizaciones; <b>SALDO FINAL</b> = SALDO + DEV. VENTA VIRTUAL − SOBRANTES − SALDOS CAMPAÑA, y los filtros de saldo usan el saldo final.</p>
+    <p class="hint" style="margin-bottom:10px;">La base son todos los códigos del reparto de la campaña. <b>COMPRA</b> y <b>COSTO</b> salen de las cargas de compras asignadas a la campaña (Compras → Cargas guardadas → Asignar a campaña). Si una tienda ya tiene guía y la cantidad difiere del reparto, vale la de la guía y la celda se pinta de <span class="rvc-leyenda">rojo</span>. <b>SALDO</b> = COMPRA − total repartido. <b>DEV. VENTA VIRTUAL</b>, <b>MERMA</b> y <b>SALDOS CAMPAÑA</b> salen de Cargar → Regularizaciones; <b>SALDO FINAL</b> = SALDO + DEV. VENTA VIRTUAL − MERMA − SALDOS CAMPAÑA, y los filtros de saldo usan el saldo final.</p>
     <div style="display:flex; gap:12px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
       <div class="field" style="margin:0; max-width:360px; min-width:260px;"><label>Campaña</label><select id="rvc-campana-select"><option value="">— Selecciona una campaña —</option></select></div>
       <button class="btn btn-primary" id="btn-rvc-analizar" type="button">⚖️ Analizar</button>
@@ -3257,8 +3274,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v186';
-const APP_UPDATED = '16/10/2026 11:00';
+const APP_VERSION = 'v187';
+const APP_UPDATED = '16/10/2026 12:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3685,7 +3702,7 @@ $('campsub-compras').addEventListener('click', ()=>{ setCampanasSubtab('compras'
 $('campsub-registros').addEventListener('click', ()=>{ setCampanasSubtab('registros'); $('reg-kpis').dataset.pintado = ''; renderRegistrosCampana(); cargarTodasLasGuias(); });
 $('campsub-buscar').addEventListener('click', ()=>setCampanasSubtab('buscar'));
 $('campsub-analisis').addEventListener('click', ()=>{ setCampanasSubtab('analisis'); poblarSelectCampanasAnalisis(); });
-$('campsub-regularizaciones').addEventListener('click', ()=>{ setCampanasSubtab('regularizaciones'); poblarSelectCampanas('rgz-filtro-camp').then(()=>{ $('rgz-filtro-camp').options[0].textContent = 'Todas las campañas'; }); cargarListaRegularizaciones(); });
+$('campsub-regularizaciones').addEventListener('click', ()=>{ setCampanasSubtab('regularizaciones'); rgzMostrarZona(); renderRgzMerma(); poblarSelectCampanas('rgz-filtro-camp').then(()=>{ $('rgz-filtro-camp').options[0].textContent = 'Todas las campañas'; rgzLlenarCampMerma(); }); cargarListaRegularizaciones(); });
 $('campsub-repcmp').addEventListener('click', ()=>{ setCampanasSubtab('repcmp'); poblarSelectCampanas('rvc-campana-select'); });
 $('campsub-validadores').addEventListener('click', ()=>{ setCampanasSubtab('validadores'); poblarSelectCampanasValidadores(); calcularPendientesGlobalValidadores(); });
 $('campsub-vouchers').addEventListener('click', ()=>{ setCampanasSubtab('vouchers'); poblarSelectCampanasVouchers(); });
@@ -12635,10 +12652,13 @@ $('btn-analizar').addEventListener('click', async ()=>{
   }
 });
 
-// -------- Regularizaciones: sobrantes y saldos de campaña (guías en PDF) --------
+// -------- Regularizaciones: devolución de venta virtual y saldos de campaña (guías en PDF) y merma (pegada desde Excel) --------
 const regularizacionesRef = db.collection('regularizaciones');          // cabecera (id = RGZ-00001…)
 const regularizacionItemsRef = db.collection('regularizacion_items');   // ítems de cada guía
-const RGZ_TIPOS = { DEVOLUCION_VV:'Devolución venta virtual', SOBRANTE:'Sobrantes', SALDO_CAMPANA:'Saldos campaña' };
+const RGZ_TIPOS = { DEVOLUCION_VV:'Devolución venta virtual', MERMA:'Merma', SALDO_CAMPANA:'Saldos campaña' };
+// "Sobrantes" (versión anterior) ahora es "Merma".
+const rgzTipo = t=> t === 'SOBRANTE' ? 'MERMA' : t;
+const rgzEtiqueta = t=> RGZ_TIPOS[rgzTipo(t)] || t;
 let rgzBatch = [], rgzLista = [];
 async function generarCorrelativoRegularizacion(){
   const ref = contadoresRef.doc('regularizaciones');
@@ -12678,7 +12698,7 @@ $('btn-rgz-procesar').addEventListener('click', async ()=>{
       if(nro){
         try{
           const r = (await regularizacionesRef.where('nro_guia','==',nro).get()).docs.map(d=> d.data()).find(c=> c.estado === 'ACTIVO');
-          if(r) x.duplicado = `Ya está cargada como ${RGZ_TIPOS[r.tipo] || r.tipo} (${r.correlativo})`;
+          if(r) x.duplicado = `Ya está cargada como ${rgzEtiqueta(r.tipo)} (${r.correlativo})`;
           else { const g = await buscarGuiaDuplicada(nro); if(g) x.duplicado = `Ya está cargada como guía de salida (${g.correlativo})`; }
         }catch(err){ console.error(err); }
         if(!x.duplicado && vistos.has(nro)) x.duplicado = 'Repetida en este mismo lote';
@@ -12740,6 +12760,116 @@ $('btn-rgz-guardar').addEventListener('click', async ()=>{
   }catch(err){ proc.fin(); console.error(err); showMsg('rgz-msg','err','Error al guardar: '+err.message); }
   finally{ $('btn-rgz-guardar').disabled = false; }
 });
+// Merma se pega desde Excel; los demás conceptos se cargan con guías en PDF.
+function rgzMostrarZona(){
+  const merma = document.querySelector('input[name="rgz-tipo"]:checked').value === 'MERMA';
+  $('rgz-merma-zona').style.display = merma ? 'block' : 'none';
+  $('rgz-pdf-zona').style.display = merma ? 'none' : 'flex';
+  if(merma) $('rgz-batch-wrap').style.display = 'none';
+}
+document.querySelectorAll('input[name="rgz-tipo"]').forEach(r=> r.addEventListener('change', rgzMostrarZona));
+let rgzMerma = [];   // filas pegadas: [SKU, DESCRIPCION, CANTIDAD, PARTICIPANTE]
+const RGZ_MERMA_COLS = ['SKU','DESCRIPCION','CANTIDAD','PARTICIPANTE'];
+function rgzLlenarCampMerma(){
+  const sel = $('rgz-merma-camp'), prev = sel.value;
+  const activas = campRegAllCache.filter(r=> (r.estado || 'ACTIVO') === 'ACTIVO');
+  sel.innerHTML = '<option value="">— Elige la campaña —</option>' + activas.map(r=> `<option value="${esc(r.correlativo)}">${esc(r.correlativo)} — ${esc(r.campana || '')}</option>`).join('');
+  sel.value = activas.some(r=> r.correlativo === prev) ? prev : '';
+}
+// Nombre de la tienda en la campaña que corresponde a lo escrito (mismo nombre, otro nombre del maestro).
+function rgzParticipanteDe(v, corr){
+  if(!corr || !String(v || '').trim()) return '';
+  const parts = participantesDeCampana(corr), k = claveParticipante(v), m = participanteDelMaestro(v);
+  return parts.find(p=> claveParticipante(p) === k) || (m ? parts.find(p=>{ const x = participanteDelMaestro(p); return x && x.nombre === m.nombre; }) : '') || '';
+}
+const rgzMermaVacia = f=> f.every(v=> !String(v || '').trim());
+function rgzMermaError(c, v){
+  const t = String(v || '').trim(), corr = $('rgz-merma-camp').value;
+  if(c === 0) return t ? '' : 'falta el SKU';
+  if(c === 2){ const n = cmpNumero(t); return n == null ? 'falta la cantidad' : Number.isNaN(n) ? 'la cantidad no es un número' : n <= 0 ? 'la cantidad debe ser mayor a 0' : ''; }
+  if(c === 3){ if(!t) return 'falta el participante'; return corr && !rgzParticipanteDe(t, corr) ? `${t} no es participante de ${corr}` : ''; }
+  return '';
+}
+function rgzMermaAviso(f){
+  const cab = campRegAllCache.find(c=> c.correlativo === $('rgz-merma-camp').value);
+  return cab && Array.isArray(cab.skus_lista) && String(f[0] || '').trim() && !cab.skus_lista.includes(claveSku(f[0])) ? 'Este SKU no está en el reparto de la campaña' : '';
+}
+function rgzMermaResumen(){
+  const filas = rgzMerma.filter(f=> !rgzMermaVacia(f)), errores = [];
+  rgzMerma.forEach((f, r)=>{ if(rgzMermaVacia(f)) return; [0, 2, 3].forEach(c=>{ const e = rgzMermaError(c, f[c]); if(e) errores.push(`Fila ${r + 1}: ${e}`); }); });
+  const unid = filas.reduce((s, f)=>{ const n = cmpNumero(f[2]); return s + (n && !Number.isNaN(n) ? n : 0); }, 0);
+  $('rgz-merma-resumen').innerHTML = `<span><b>${esc(anFmt(filas.length))}</b> filas</span><span><b>${esc(anFmt(unid))}</b> unid.</span>`;
+  const box = $('rgz-merma-errores');
+  box.style.display = errores.length ? 'block' : 'none';
+  box.textContent = errores.length ? `⚠ ${errores.length} celda(s) por corregir (en rojo): ${errores.slice(0, 4).join(' · ')}${errores.length > 4 ? ' …' : ''}` : '';
+  return { filas, errores, unid };
+}
+function renderRgzMerma(){
+  $('rgz-merma-vacio').style.display = rgzMerma.length ? 'none' : 'block';
+  $('rgz-merma-body').innerHTML = rgzMerma.map((f, r)=>{ const aviso = rgzMermaAviso(f);
+    return `<tr data-r="${r}"><td class="n">${r + 1}</td>` + RGZ_MERMA_COLS.map((col, c)=>{ const e = rgzMermaError(c, f[c]), av = !e && c === 0 ? aviso : '';
+      return `<td contenteditable="true" spellcheck="false" data-c="${c}" class="${c === 2 ? 'num' : ''}${e ? ' err' : av ? ' aviso' : ''}" title="${esc(e || av)}">${esc(f[c] || '')}</td>`; }).join('') +
+      `<td class="x"><button type="button" data-rgz-merma-quitar="${r}" title="Quitar fila">✕</button></td></tr>`; }).join('');
+  rgzMermaResumen();
+}
+$('rgz-merma-wrap').addEventListener('paste', e=>{
+  const txt = (e.clipboardData || window.clipboardData).getData('text/plain'); if(!txt) return;
+  e.preventDefault();
+  let filas = cmpLeerPegado(txt);
+  const td = e.target.closest && e.target.closest('td[data-c]');
+  if(td && filas.length === 1 && filas[0].length === 1){ document.execCommand('insertText', false, filas[0][0]); return; }
+  if(filas.length && filas[0].some(v=> normalizarTexto(v) === 'SKU') && filas[0].some(v=> normalizarTexto(v) === 'CANTIDAD')) filas = filas.slice(1);
+  filas = filas.filter(f=> f.some(v=> v)); if(!filas.length) return;
+  const r0 = td ? Number(td.closest('tr').dataset.r) : rgzMerma.filter(f=> !rgzMermaVacia(f)).length, c0 = td ? Number(td.dataset.c) : 0;
+  if(!td) rgzMerma = rgzMerma.filter(f=> !rgzMermaVacia(f));
+  filas.forEach((f, i)=>{ const fila = rgzMerma[r0 + i] || (rgzMerma[r0 + i] = ['', '', '', '']);
+    f.forEach((v, j)=>{ if(c0 + j < 4) fila[c0 + j] = c0 + j === 2 ? String(v).trim().replace(/[.,]$/, '') : v; }); });
+  renderRgzMerma();
+  showMsg('rgz-msg','ok', `Se pegaron ${filas.length} fila(s) de merma. Revisa y presiona "Guardar merma".`);
+});
+$('rgz-merma-body').addEventListener('input', e=>{
+  const td = e.target.closest('td[data-c]'); if(!td) return;
+  const r = Number(td.closest('tr').dataset.r), c = Number(td.dataset.c);
+  rgzMerma[r][c] = td.textContent;
+  const err = rgzMermaError(c, td.textContent), av = !err && c === 0 ? rgzMermaAviso(rgzMerma[r]) : '';
+  td.classList.toggle('err', !!err); td.classList.toggle('aviso', !!av); td.title = err || av;
+  rgzMermaResumen();
+});
+$('rgz-merma-body').addEventListener('click', e=>{ const b = e.target.closest('[data-rgz-merma-quitar]'); if(!b) return; rgzMerma.splice(Number(b.dataset.rgzMermaQuitar), 1); renderRgzMerma(); });
+$('btn-rgz-merma-fila').addEventListener('click', ()=>{ rgzMerma.push(['', '', '', '']); renderRgzMerma(); const u = $('rgz-merma-body').lastElementChild; if(u) u.querySelector('td[data-c="0"]').focus(); });
+$('btn-rgz-merma-limpiar').addEventListener('click', ()=>{ if(rgzMerma.some(f=> !rgzMermaVacia(f)) && !confirm('¿Vaciar la merma pegada?')) return; rgzMerma = []; renderRgzMerma(); });
+$('rgz-merma-camp').addEventListener('change', renderRgzMerma);
+$('btn-rgz-merma-guardar').addEventListener('click', async ()=>{
+  const corr = $('rgz-merma-camp').value;
+  const { filas, errores, unid } = rgzMermaResumen();
+  if(!filas.length){ showMsg('rgz-msg','err','No hay merma para guardar. Pégala desde Excel.'); return; }
+  if(!corr){ showMsg('rgz-msg','err','Elige la campaña de la merma.'); $('rgz-merma-camp').focus(); return; }
+  if(errores.length){ renderRgzMerma(); showMsg('rgz-msg','err', `Corrige las ${errores.length} celda(s) en rojo antes de guardar.`); const td = $('rgz-merma-body').querySelector('td.err'); if(td) td.focus(); return; }
+  if(!confirm(`¿Guardar la merma de ${corr}: ${filas.length} fila(s), ${anFmt(unid)} unidades?`)) return;
+  $('btn-rgz-merma-guardar').disabled = true;
+  const proc = relojProceso('rgz-msg');
+  try{
+    proc.paso('Guardando merma…');
+    const rgzCorr = await generarCorrelativoRegularizacion(), cab = campRegAllCache.find(c=> c.correlativo === corr) || {};
+    const hoy = new Date(), dd = n=> String(n).padStart(2, '0');
+    for(let i = 0; i < filas.length; i += 400){
+      const batch = db.batch();
+      filas.slice(i, i + 400).forEach((f, j)=> batch.set(regularizacionItemsRef.doc(), { correlativo_reg: rgzCorr, tipo:'MERMA', campana_correlativo: corr, nro_guia:'', item: String(i + j + 1),
+        codigo: String(f[0]).trim().toUpperCase(), descripcion: String(f[1] || '').trim().toUpperCase(), unidad:'', cantidad: cmpNumero(f[2]), participante: rgzParticipanteDe(f[3], corr),
+        usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp() }));
+      await batch.commit();
+    }
+    await regularizacionesRef.doc(rgzCorr).set({ correlativo: rgzCorr, tipo:'MERMA', origen:'PEGADO', nro_guia:'', fecha_traslado: `${dd(hoy.getDate())}/${dd(hoy.getMonth() + 1)}/${hoy.getFullYear()}`,
+      campana_correlativo: corr, campana_nombre: cab.campana || '', total_items: filas.length, unidades: unid, estado:'ACTIVO', usuario: currentUserAlias, fecha_carga: firebase.firestore.FieldValue.serverTimestamp() });
+    await logAccion('regularizacion_cargada', {detalle:`${rgzCorr} (Merma, pegada) → ${corr}: ${filas.length} fila(s), ${unid} unid.`});
+    proc.fin();
+    showMsg('rgz-msg','ok', `¡Guardado! ${rgzCorr} — merma de ${corr}: ${filas.length} fila(s), ${anFmt(unid)} unidades.`);
+    showToast(`Merma guardada: ${rgzCorr}`, 'ok');
+    rgzMerma = []; renderRgzMerma();
+    cargarListaRegularizaciones();
+  }catch(err){ proc.fin(); console.error(err); showMsg('rgz-msg','err','No se pudo guardar la merma: '+err.message); }
+  finally{ $('btn-rgz-merma-guardar').disabled = false; }
+});
 async function cargarListaRegularizaciones(){
   try{ rgzLista = (await regularizacionesRef.where('estado','==','ACTIVO').get()).docs.map(d=> d.data()).sort((a, b)=> b.correlativo.localeCompare(a.correlativo)); }
   catch(err){ console.error(err); showMsg('rgz-msg','err','No se pudieron leer las regularizaciones: '+err.message); return; }
@@ -12748,10 +12878,10 @@ async function cargarListaRegularizaciones(){
 function renderListaRegularizaciones(){
   const f = $('rgz-filtro-camp').value, L = rgzLista.filter(r=> !f || r.campana_correlativo === f);
   const puede = currentPermisos.admin || currentPermisos.eliminar;
-  const tot = t=> L.filter(r=> r.tipo === t).reduce((s, r)=> s + (Number(r.unidades) || 0), 0);
-  $('rgz-lista-resumen').textContent = L.length ? `${L.length} regularización(es) · Devolución venta virtual ${anFmt(tot('DEVOLUCION_VV'))} unid. · Sobrantes ${anFmt(tot('SOBRANTE'))} unid. · Saldos campaña ${anFmt(tot('SALDO_CAMPANA'))} unid.` : '';
+  const tot = t=> L.filter(r=> rgzTipo(r.tipo) === t).reduce((s, r)=> s + (Number(r.unidades) || 0), 0);
+  $('rgz-lista-resumen').textContent = L.length ? `${L.length} regularización(es) · Devolución venta virtual ${anFmt(tot('DEVOLUCION_VV'))} unid. · Merma ${anFmt(tot('MERMA'))} unid. · Saldos campaña ${anFmt(tot('SALDO_CAMPANA'))} unid.` : '';
   $('rgz-lista-vacio').style.display = L.length ? 'none' : 'block';
-  $('rgz-lista-body').innerHTML = L.map(r=> `<tr><td><b>${esc(r.correlativo)}</b></td><td>${puede ? `<select class="rgz-tipo-sel rgz-chip ${esc(r.tipo)}" data-rgz-cambiar="${esc(r.correlativo)}" title="Cambiar el concepto">${Object.entries(RGZ_TIPOS).map(([k, t])=> `<option value="${esc(k)}" ${k === r.tipo ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>` : `<span class="rgz-chip ${esc(r.tipo)}">${esc(RGZ_TIPOS[r.tipo] || r.tipo)}</span>`}</td><td>${esc(r.nro_guia || '—')}</td><td>${esc(r.fecha_traslado || '')}</td>` +
+  $('rgz-lista-body').innerHTML = L.map(r=> `<tr><td><b>${esc(r.correlativo)}</b></td><td>${puede ? `<select class="rgz-tipo-sel rgz-chip ${esc(rgzTipo(r.tipo))}" data-rgz-cambiar="${esc(r.correlativo)}" title="Cambiar el concepto">${Object.entries(RGZ_TIPOS).map(([k, t])=> `<option value="${esc(k)}" ${k === rgzTipo(r.tipo) ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>` : `<span class="rgz-chip ${esc(rgzTipo(r.tipo))}">${esc(rgzEtiqueta(r.tipo))}</span>`}</td><td>${esc(r.nro_guia || '—')}</td><td>${esc(r.fecha_traslado || '')}</td>` +
     `<td>${esc(r.campana_correlativo)} — ${esc(r.campana_nombre || '')}</td><td class="num">${esc(anFmt(r.total_items))}</td><td class="num">${esc(anFmt(r.unidades))}</td><td>${esc(r.usuario || '')}</td>` +
     `<td class="reg-acc">${puede ? `<button class="btn btn-sm btn-ghost" data-rgz-anular="${esc(r.correlativo)}" title="Anular">🗑</button>` : ''}</td></tr>`).join('');
 }
@@ -12761,16 +12891,16 @@ $('rgz-lista-body').addEventListener('change', async e=>{
   const sel = e.target.closest('[data-rgz-cambiar]'); if(!sel) return;
   const corr = sel.dataset.rgzCambiar, r = rgzLista.find(x=> x.correlativo === corr); if(!r) return;
   const nuevo = sel.value;
-  if(!confirm(`¿Cambiar ${corr} (guía ${r.nro_guia || '—'}) de "${RGZ_TIPOS[r.tipo] || r.tipo}" a "${RGZ_TIPOS[nuevo]}"?`)){ sel.value = r.tipo; return; }
+  if(!confirm(`¿Cambiar ${corr} (guía ${r.nro_guia || '—'}) de "${rgzEtiqueta(r.tipo)}" a "${RGZ_TIPOS[nuevo]}"?`)){ sel.value = rgzTipo(r.tipo); return; }
   sel.disabled = true;
   try{
     const items = await regularizacionItemsRef.where('correlativo_reg','==',corr).get();
     for(let i = 0; i < items.docs.length; i += 400){ const b = db.batch(); items.docs.slice(i, i + 400).forEach(d=> b.update(d.ref, { tipo: nuevo })); await b.commit(); }
     await regularizacionesRef.doc(corr).set({ tipo: nuevo, tipo_anterior: r.tipo, tipo_cambiado_por: currentUserAlias, tipo_cambiado_en: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true });
-    await logAccion('regularizacion_concepto_cambiado', {detalle:`${corr}: ${RGZ_TIPOS[r.tipo] || r.tipo} → ${RGZ_TIPOS[nuevo]} (${items.size} ítem(s))`});
+    await logAccion('regularizacion_concepto_cambiado', {detalle:`${corr}: ${rgzEtiqueta(r.tipo)} → ${RGZ_TIPOS[nuevo]} (${items.size} ítem(s))`});
     showToast(`${corr} ahora es ${RGZ_TIPOS[nuevo]}`, 'ok');
     cargarListaRegularizaciones();
-  }catch(err){ console.error(err); showToast('No se pudo cambiar: ' + err.message, 'err'); sel.value = r.tipo; sel.disabled = false; }
+  }catch(err){ console.error(err); showToast('No se pudo cambiar: ' + err.message, 'err'); sel.value = rgzTipo(r.tipo); sel.disabled = false; }
 });
 $('rgz-lista-body').addEventListener('click', async e=>{
   const b = e.target.closest('[data-rgz-anular]'); if(!b) return;
@@ -12833,11 +12963,11 @@ async function rvcCalcular(corr){
     guiaItems.forEach(i=>{ const t = rvcTienda(i.participante); if(!tiendas.has(t)) return; tiendas.get(t).guia = true; const k = t + '|' + claveSku(i.codigo); guia.set(k, (guia.get(k) || 0) + (Number(i.cantidad) || 0)); });
     // Guías de la campaña que se cargaron, para mostrar su N° en los códigos sin reparto
     const nroGuia = new Map((await guiasRegistrosRef.where('campana_correlativo','==',corr).get()).docs.map(d=> d.data()).map(g=> [g.correlativo, g.nro_guia || g.correlativo]));
-    // Regularizaciones activas de la campaña: sobrantes y saldos de campaña por SKU
+    // Regularizaciones activas de la campaña: devolución de venta virtual, merma y saldos de campaña por SKU
     const rgzActivas = new Set((await regularizacionesRef.where('campana_correlativo','==',corr).get()).docs.map(d=> d.data()).filter(r=> r.estado === 'ACTIVO').map(r=> r.correlativo));
     const rgzItems = (await regularizacionItemsRef.where('campana_correlativo','==',corr).limit(10000).get()).docs.map(d=> Object.assign({ _id: d.id }, d.data())).filter(i=> rgzActivas.has(i.correlativo_reg));
-    const rgz = { DEVOLUCION_VV: new Map(), SOBRANTE: new Map(), SALDO_CAMPANA: new Map() };
-    rgzItems.forEach(i=>{ const m = rgz[i.tipo]; const k = claveSku(i.codigo); if(m && k) m.set(k, (m.get(k) || 0) + (Number(i.cantidad) || 0)); });
+    const rgz = { DEVOLUCION_VV: new Map(), MERMA: new Map(), SALDO_CAMPANA: new Map() };
+    rgzItems.forEach(i=>{ const m = rgz[rgzTipo(i.tipo)]; const k = claveSku(i.codigo); if(m && k) m.set(k, (m.get(k) || 0) + (Number(i.cantidad) || 0)); });
     // Compras: suma de CANT. VALIDADA y costo promedio ponderado por SKU
     const compra = new Map();
     totales.forEach(t=>{ const k = claveSku(t.sku || t.correl_sku); if(!k) return; const c = compra.get(k) || { cant:0, valor:0, costo:null, desc:'' };
@@ -12855,8 +12985,8 @@ async function rvcCalcular(corr){
       const repartido = celdas.reduce((s, x)=> s + x.v, 0);
       const cant = c ? c.cant : null;
       const costo = c ? (c.cant ? c.valor / c.cant : c.costo) : null;
-      const saldo = (cant || 0) - repartido, dvv = rgz.DEVOLUCION_VV.get(f.k) || 0, sob = rgz.SOBRANTE.get(f.k) || 0, scamp = rgz.SALDO_CAMPANA.get(f.k) || 0;
-      // Saldo final: la devolución de venta virtual entra (suma); sobrantes y saldos de campaña salen (restan).
+      const saldo = (cant || 0) - repartido, dvv = rgz.DEVOLUCION_VV.get(f.k) || 0, sob = rgz.MERMA.get(f.k) || 0, scamp = rgz.SALDO_CAMPANA.get(f.k) || 0;
+      // Saldo final: la devolución de venta virtual entra (suma); merma y saldos de campaña salen (restan).
       return { sku: f.sku, desc: f.desc || (c && c.desc) || '', compra: cant, costo, celdas, repartido, saldo, dvv, sob, scamp, sfin: saldo + dvv - sob - scamp, mods: celdas.filter(x=> x.mod).length };
     });
     // Códigos de las guías que no están en el reparto (o de tiendas que no están en él):
@@ -12898,7 +13028,7 @@ function rvcRender(){
     kpi('Unid. compradas', anFmt(tot.compra), d.cargas.length ? `${d.cargas.length} carga(s): ${d.cargas.join(', ')}` : 'Sin compras asignadas', '#2E8B57') +
     kpi('Unid. repartidas', anFmt(tot.rep), 'reparto, o guía donde ya hay', '#B5651D') +
     (()=>{ const dvv = L.reduce((s, f)=> s + f.dvv, 0), sob = L.reduce((s, f)=> s + f.sob, 0), sc = L.reduce((s, f)=> s + f.scamp, 0), fin = tot.compra - tot.rep + dvv - sob - sc;
-      return kpi('Saldo final', anFmt(fin), `saldo ${anFmt(tot.compra - tot.rep)} + dev. venta virtual ${anFmt(dvv)} − sobrantes ${anFmt(sob)} − saldos campaña ${anFmt(sc)}`, fin < 0 ? '#B03A48' : '#1F8A8A'); })() +
+      return kpi('Saldo final', anFmt(fin), `saldo ${anFmt(tot.compra - tot.rep)} + dev. venta virtual ${anFmt(dvv)} − merma ${anFmt(sob)} − saldos campaña ${anFmt(sc)}`, fin < 0 ? '#B03A48' : '#1F8A8A'); })() +
     kpi('Cambiadas por guía', anFmt(mods), 'celdas en rojo', '#B03A48') +
     kpi('Valor de la compra', 'S/ ' + valor.toLocaleString('es-PE', { minimumFractionDigits:2, maximumFractionDigits:2 }), sinCompra ? `${sinCompra} SKU sin compra` : 'todos los SKU con compra', '#7B4FA0');
   const n = { todos: L.length, mod: L.filter(f=> f.mods).length, neg: L.filter(f=> f.sfin < 0).length, pos: L.filter(f=> f.sfin > 0).length, sin: sinCompra };
@@ -12914,10 +13044,10 @@ function rvcRender(){
     if(k === 'saldo') return f.saldo; if(k === 'dvv') return f.dvv; if(k === 'sob') return f.sob; if(k === 'scamp') return f.scamp; if(k === 'sfin') return f.sfin; return f.celdas[Number(k.slice(1))].v; };
   filas.sort((a, b)=>{ const x = vOrden(a), y = vOrden(b); return (typeof x === 'string' ? x.localeCompare(y) : x - y) * rvcOrden.dir || a.sku.localeCompare(b.sku); });
   $('rvc-head').innerHTML = `<tr><th class="vacio fijo c1"></th><th class="vacio fijo c2g" colspan="3"></th><th class="grupo" colspan="${d.cols.length}">Reparto</th>` +
-    [['saldo', 'saldo'], ['dvv', 'devolución venta virtual'], ['sob', 'sobrantes'], ['scamp', 'saldos campaña'], ['sfin', 'saldo final']].map(([k, t])=>{ const v = filas.reduce((s, f)=> s + (f.costo || 0) * f[k], 0);
+    [['saldo', 'saldo'], ['dvv', 'devolución venta virtual'], ['sob', 'merma'], ['scamp', 'saldos campaña'], ['sfin', 'saldo final']].map(([k, t])=>{ const v = filas.reduce((s, f)=> s + (f.costo || 0) * f[k], 0);
       return `<th class="val sal${v < 0 ? ' neg' : ''}" title="Valorizado de ${esc(t)}: costo × unidades"><small>VALORIZADO</small><b>S/ ${esc(v.toLocaleString('es-PE', { minimumFractionDigits:2, maximumFractionDigits:2 }))}</b></th>`; }).join('') + '</tr>' +
     '<tr>' + th('sku', 'fijo c1', 'SKU') + th('desc', 'fijo c2', 'Descripción') + th('compra', 'num fijo c3', 'Compra') + th('costo', 'num fijo c4', 'Costo') +
-    d.cols.map((t, i)=> th('t' + i, `num tc ${t.g}${t.guia ? ' guia' : ''}`, t.nombre, `${t.nombre}${t.guia ? ' — ya tiene guía' : ''} · clic para ordenar`)).join('') + th('saldo', 'num sal', 'Saldo') + th('dvv', 'num sal rgz-dvv', 'Dev. venta virtual', 'Devolución de venta virtual (suma al saldo) · clic para ordenar') + th('sob', 'num sal rgz-sob', 'Sobrantes') + th('scamp', 'num sal rgz-scamp', 'Saldos campaña') + th('sfin', 'num sal sfin', 'Saldo final') + '</tr>';
+    d.cols.map((t, i)=> th('t' + i, `num tc ${t.g}${t.guia ? ' guia' : ''}`, t.nombre, `${t.nombre}${t.guia ? ' — ya tiene guía' : ''} · clic para ordenar`)).join('') + th('saldo', 'num sal', 'Saldo') + th('dvv', 'num sal rgz-dvv', 'Dev. venta virtual', 'Devolución de venta virtual (suma al saldo) · clic para ordenar') + th('sob', 'num sal rgz-sob', 'Merma') + th('scamp', 'num sal rgz-scamp', 'Saldos campaña') + th('sfin', 'num sal sfin', 'Saldo final') + '</tr>';
   $('rvc-vacio').style.display = filas.length ? 'none' : 'block';
   $('rvc-body').innerHTML = filas.map(f=> `<tr><td class="fijo c1 sku" title="${esc(f.sku)}">${esc(f.sku)}</td><td class="fijo c2 desc" title="${esc(f.desc)}">${esc(f.desc)}</td>` +
     (f.compra == null ? '<td class="num fijo c3 compra sin-compra" title="Sin compra asignada a la campaña">sin compra</td><td class="num fijo c4"></td>' : `<td class="num fijo c3 compra">${esc(rvcV(f.compra))}</td><td class="num fijo c4">${esc(f.costo == null ? '' : f.costo.toFixed(2))}</td>`) +
@@ -13031,7 +13161,7 @@ $('rvc-chips').addEventListener('click', e=>{ const b = e.target.closest('[data-
 $('btn-rvc-excel').addEventListener('click', ()=>{
   const d = rvcDatos; if(!d) return;
   if(typeof XLSX === 'undefined'){ showToast('La librería de Excel aún no carga. Intenta de nuevo.', 'err'); return; }
-  const aoa = [['', '', '', '', 'REPARTO', ...d.cols.slice(1).map(()=> ''), '', 'REGULARIZACIONES', '', '', ''], ['SKU','DESCRIPCION','COMPRA','COSTO', ...d.cols.map(t=> t.nombre), 'SALDO', 'DEVOLUCION VENTA VIRTUAL', 'SOBRANTES', 'SALDOS CAMPAÑA', 'SALDO FINAL']];
+  const aoa = [['', '', '', '', 'REPARTO', ...d.cols.slice(1).map(()=> ''), '', 'REGULARIZACIONES', '', '', ''], ['SKU','DESCRIPCION','COMPRA','COSTO', ...d.cols.map(t=> t.nombre), 'SALDO', 'DEVOLUCION VENTA VIRTUAL', 'MERMA', 'SALDOS CAMPAÑA', 'SALDO FINAL']];
   d.lista.forEach(f=> aoa.push([f.sku, f.desc, f.compra == null ? '' : f.compra, f.costo == null ? '' : Math.round(f.costo * 100) / 100, ...f.celdas.map(c=> c.v || ''), f.saldo, f.dvv || '', f.sob || '', f.scamp || '', f.sfin]));
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws['!merges'] = d.cols.length > 1 ? [{ s:{ r:0, c:4 }, e:{ r:0, c:3 + d.cols.length } }] : [];
