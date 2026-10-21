@@ -144,6 +144,42 @@ function guia(nro, items){
   const log = await page.evaluate(async ()=> (await movimientosRef.get()).docs.map(d=> d.data().tipo).filter(t=> /^regularizacion_/.test(t)).sort().join(','));
   verificar(log === 'regularizacion_anulada,regularizacion_cargada,regularizacion_cargada,regularizacion_cargada,regularizacion_concepto_cambiado,regularizacion_concepto_cambiado', `Bitácora: ${log}`);
 
+  // Sin campaña: se guarda igual y se asigna después (cualquiera de los 3 conceptos)
+  await page.evaluate(()=> $('campsub-regularizaciones').click());
+  b = await procesar('DEVOLUCION_VV', [guia('TG01-00000504', [['R2', 5]])]);
+  await page.selectOption('#rgz-batch-body [data-rgz-camp="0"]', '');
+  const estado = await page.evaluate(()=> document.querySelector('#rgz-batch-body tr').cells[7].innerText);
+  verificar(/Lista \(sin campaña: asígnala después\)/.test(estado), `Sin campaña también se puede guardar: "${estado}"`);
+  await page.click('#btn-rgz-guardar');
+  await page.waitForFunction(()=> /Guardado! 1 regularización/.test($('rgz-msg').textContent), null, { timeout: 20000 });
+  const sinC = await page.evaluate(async ()=>{ const id = $('rgz-msg').textContent.match(/RGZ-\d+/)[0]; const cab = (await regularizacionesRef.doc(id).get()).data();
+    const items = (await regularizacionItemsRef.where('correlativo_reg','==',id).get()).docs.map(d=> d.data().campana_correlativo); return { id, camp: cab.campana_correlativo, items: items.join() }; });
+  verificar(sinC.camp === '' && sinC.items === '', `${sinC.id} guardada sin campaña (cabecera e ítems)`);
+  await page.waitForFunction((id)=> !!document.querySelector(`#rgz-lista-body [data-rgz-asignar="${id}"]`), sinC.id, { timeout: 10000 });
+  await page.selectOption('#rgz-filtro-camp', '__SIN');
+  const soloSin = await page.evaluate(()=> [...document.querySelectorAll('#rgz-lista-body tr')].map(r=> r.cells[0].innerText).join(','));
+  verificar(soloSin === sinC.id, `Filtro "Sin campaña": ${soloSin}`);
+  r = await analizar();
+  verificar(r.filas[1] === '3|-|-|7|-4:R2', `Sin campaña no cuenta en ninguna campaña (${r.filas[1]})`);
+  await page.evaluate(()=> $('campsub-regularizaciones').click());
+  await page.waitForFunction((id)=> !!document.querySelector(`#rgz-lista-body [data-rgz-asignar="${id}"]`), sinC.id, { timeout: 10000 });
+  await page.selectOption(`#rgz-lista-body [data-rgz-asignar="${sinC.id}"]`, 'REG-00080');
+  await page.waitForFunction(async (id)=> (await regularizacionesRef.doc(id).get()).data().campana_correlativo === 'REG-00080', sinC.id, { timeout: 10000 });
+  const asig = await page.evaluate(async (id)=> [...new Set((await regularizacionItemsRef.where('correlativo_reg','==',id).get()).docs.map(d=> d.data().campana_correlativo))].join(), sinC.id);
+  r = await analizar();
+  verificar(asig === 'REG-00080' && r.filas[1] === '3|5|-|7|1:R2', `Asignada después a REG-00080: ya suma en su columna (${r.filas[1]})`);
+  // Merma sin campaña
+  await page.evaluate(()=> $('campsub-regularizaciones').click());
+  await page.check('input[name="rgz-tipo"][value="MERMA"]');
+  await page.selectOption('#rgz-merma-camp', '');
+  await page.evaluate(()=>{ const dt = new DataTransfer(); dt.setData('text/plain', 'R1\tProd\t2\tate\r\n'); $('rgz-merma-wrap').dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true })); });
+  await page.click('#btn-rgz-merma-guardar');
+  await page.waitForFunction(()=> /merma sin campaña: 1 fila/.test($('rgz-msg').textContent), null, { timeout: 20000 });
+  verificar(true, `Merma sin campaña guardada: "${await page.textContent('#rgz-msg')}"`);
+  await page.selectOption('#rgz-filtro-camp', '');
+  await page.waitForTimeout(500);
+  await page.locator('#campsub-panel-regularizaciones .panel').nth(1).screenshot({ path: path.join(__dirname, 'salida', 'regularizaciones_lista.png') });
+
   if(errores.length) console.log('\nErrores de JavaScript:\n' + [...new Set(errores)].join('\n'));
   console.log(fallas || errores.length ? `\n${fallas} verificación(es) fallida(s).` : '\nTodo correcto.');
   await browser.close();

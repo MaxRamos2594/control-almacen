@@ -657,6 +657,8 @@
   .rgz-concepto.scamp:has(input:checked){border-color:#8a5cc2; background:#f1eafb;}
   .rgz-chip{display:inline-block; padding:1px 9px; border-radius:999px; font-size:11px; font-weight:700;}
   .rgz-concepto.dvv:has(input:checked){border-color:#0b7a3b; background:#dff3e6;}
+  select.rgz-camp-sel{width:auto; max-width:300px; padding:3px 6px; font-size:12px;}
+  select.rgz-camp-sel.sin{border-color:#d08a12; background:#fff5e0; color:#7a4d06; font-weight:700;}
   select.rgz-tipo-sel{width:auto; border:none; cursor:pointer; padding:2px 8px; font-family:inherit; appearance:auto;}
   .rgz-chip.DEVOLUCION_VV{background:#0b7a3b; color:#fff;}
   .rgz-chip.MERMA, .rgz-chip.SOBRANTE{background:#e3168c; color:#fff;} .rgz-chip.SALDO_CAMPANA{background:#f1eafb; color:#5d3a8f;}
@@ -2123,7 +2125,7 @@
     </div>
     <div id="rgz-merma-zona">
       <div class="cmp-barra">
-        <div class="field" style="margin:0; max-width:360px; min-width:260px;"><label>Campaña *</label><select id="rgz-merma-camp"><option value="">— Elige la campaña —</option></select></div>
+        <div class="field" style="margin:0; max-width:360px; min-width:260px;"><label>Campaña (opcional, se puede asignar después)</label><select id="rgz-merma-camp"><option value="">— Sin campaña —</option></select></div>
         <button class="btn btn-primary" id="btn-rgz-merma-guardar" type="button">💾 Guardar merma</button>
         <button class="btn btn-ghost" id="btn-rgz-merma-fila" type="button">+ Fila</button>
         <button class="btn btn-ghost" id="btn-rgz-merma-limpiar" type="button">Limpiar</button>
@@ -3274,8 +3276,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v187';
-const APP_UPDATED = '16/10/2026 12:30';
+const APP_VERSION = 'v188';
+const APP_UPDATED = '20/10/2026 09:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3702,7 +3704,8 @@ $('campsub-compras').addEventListener('click', ()=>{ setCampanasSubtab('compras'
 $('campsub-registros').addEventListener('click', ()=>{ setCampanasSubtab('registros'); $('reg-kpis').dataset.pintado = ''; renderRegistrosCampana(); cargarTodasLasGuias(); });
 $('campsub-buscar').addEventListener('click', ()=>setCampanasSubtab('buscar'));
 $('campsub-analisis').addEventListener('click', ()=>{ setCampanasSubtab('analisis'); poblarSelectCampanasAnalisis(); });
-$('campsub-regularizaciones').addEventListener('click', ()=>{ setCampanasSubtab('regularizaciones'); rgzMostrarZona(); renderRgzMerma(); poblarSelectCampanas('rgz-filtro-camp').then(()=>{ $('rgz-filtro-camp').options[0].textContent = 'Todas las campañas'; rgzLlenarCampMerma(); }); cargarListaRegularizaciones(); });
+$('campsub-regularizaciones').addEventListener('click', ()=>{ setCampanasSubtab('regularizaciones'); rgzMostrarZona(); renderRgzMerma(); poblarSelectCampanas('rgz-filtro-camp').then(()=>{ const fc = $('rgz-filtro-camp'); fc.options[0].textContent = 'Todas las campañas';
+  if(!fc.querySelector('option[value="__SIN"]')) fc.options[0].insertAdjacentHTML('afterend', '<option value="__SIN">Sin campaña</option>'); rgzLlenarCampMerma(); }); cargarListaRegularizaciones(); });
 $('campsub-repcmp').addEventListener('click', ()=>{ setCampanasSubtab('repcmp'); poblarSelectCampanas('rvc-campana-select'); });
 $('campsub-validadores').addEventListener('click', ()=>{ setCampanasSubtab('validadores'); poblarSelectCampanasValidadores(); calcularPendientesGlobalValidadores(); });
 $('campsub-vouchers').addEventListener('click', ()=>{ setCampanasSubtab('vouchers'); poblarSelectCampanasVouchers(); });
@@ -12715,10 +12718,10 @@ function renderRgzBatch(){
   $('rgz-batch-body').innerHTML = rgzBatch.map((x, i)=>{
     if(!x.resultado) return `<tr><td>${esc(x.fileName)}</td><td colspan="6"></td><td style="color:#8A332A;">⚠ ${esc(x.error)}</td></tr>`;
     const r = x.resultado;
-    const ops = '<option value="">— Elige la campaña —</option>' + activas.map(c=> `<option value="${esc(c.correlativo)}" ${c.correlativo === x.campana ? 'selected' : ''}>${esc(c.correlativo)} — ${esc(c.campana || '')}${x.pcts[c.correlativo] != null ? ` · ${esc(x.pcts[c.correlativo])}%` : ''}</option>`).join('');
+    const ops = '<option value="">— Sin campaña (asignar después) —</option>' + activas.map(c=> `<option value="${esc(c.correlativo)}" ${c.correlativo === x.campana ? 'selected' : ''}>${esc(c.correlativo)} — ${esc(c.campana || '')}${x.pcts[c.correlativo] != null ? ` · ${esc(x.pcts[c.correlativo])}%` : ''}</option>`).join('');
     return `<tr><td>${esc(x.fileName)}</td><td><select data-rgz-tipo="${i}">${Object.entries(RGZ_TIPOS).map(([k, t])=> `<option value="${esc(k)}" ${k === x.tipo ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></td>` +
       `<td>${esc(r.nro_guia || '')}</td><td>${esc(r.fecha_traslado || '')}</td><td class="num">${esc(r.items.length)}</td><td class="num">${esc(anFmt(rgzUnidades(r)))}</td>` +
-      `<td><select data-rgz-camp="${i}">${ops}</select></td><td>${x.duplicado ? `<span style="color:#8A332A;">⚠ ${esc(x.duplicado)}</span>` : (x.campana ? '✓ Lista para guardar' : 'Elige la campaña')}</td></tr>`;
+      `<td><select data-rgz-camp="${i}">${ops}</select></td><td>${x.duplicado ? `<span style="color:#8A332A;">⚠ ${esc(x.duplicado)}</span>` : (x.campana ? '✓ Lista para guardar' : '✓ Lista (sin campaña: asígnala después)')}</td></tr>`;
   }).join('');
   const ok = rgzBatch.filter(x=> x.resultado && !x.duplicado).length;
   $('rgz-batch-resumen').textContent = `${rgzBatch.length} archivo(s): ${ok} para guardar${rgzBatch.length - ok ? `, ${rgzBatch.length - ok} con aviso` : ''}.`;
@@ -12731,8 +12734,6 @@ $('rgz-batch-body').addEventListener('change', e=>{
 $('btn-rgz-guardar').addEventListener('click', async ()=>{
   const listas = rgzBatch.filter(x=> x.resultado && !x.duplicado);
   if(!listas.length){ showMsg('rgz-msg','err','No hay regularizaciones para guardar.'); return; }
-  const sinCamp = listas.filter(x=> !x.campana);
-  if(sinCamp.length){ showMsg('rgz-msg','err',`Elige la campaña de: ${sinCamp.map(x=> x.fileName).join(', ')}.`); return; }
   $('btn-rgz-guardar').disabled = true;
   const proc = relojProceso('rgz-msg'); let n = 0;
   try{
@@ -12749,7 +12750,7 @@ $('btn-rgz-guardar').addEventListener('click', async ()=>{
       await regularizacionesRef.doc(corr).set({ correlativo: corr, tipo: x.tipo, nro_guia: r.nro_guia || '', fecha_traslado: r.fecha_traslado || '', punto_partida: r.punto_partida || '', punto_llegada: r.punto_llegada || '',
         campana_correlativo: x.campana, campana_nombre: cab.campana || '', total_items: r.items.length, unidades: rgzUnidades(r), archivo: x.fileName,
         estado:'ACTIVO', usuario: currentUserAlias, fecha_carga: firebase.firestore.FieldValue.serverTimestamp() });
-      await logAccion('regularizacion_cargada', {detalle:`${corr} (${RGZ_TIPOS[x.tipo]}) N° ${r.nro_guia || '—'} → ${x.campana}: ${r.items.length} ítem(s), ${rgzUnidades(r)} unid.`});
+      await logAccion('regularizacion_cargada', {detalle:`${corr} (${RGZ_TIPOS[x.tipo]}) N° ${r.nro_guia || '—'} → ${x.campana || 'sin campaña'}: ${r.items.length} ítem(s), ${rgzUnidades(r)} unid.`});
       x.guardada = corr;
     }
     proc.fin();
@@ -12843,9 +12844,8 @@ $('btn-rgz-merma-guardar').addEventListener('click', async ()=>{
   const corr = $('rgz-merma-camp').value;
   const { filas, errores, unid } = rgzMermaResumen();
   if(!filas.length){ showMsg('rgz-msg','err','No hay merma para guardar. Pégala desde Excel.'); return; }
-  if(!corr){ showMsg('rgz-msg','err','Elige la campaña de la merma.'); $('rgz-merma-camp').focus(); return; }
   if(errores.length){ renderRgzMerma(); showMsg('rgz-msg','err', `Corrige las ${errores.length} celda(s) en rojo antes de guardar.`); const td = $('rgz-merma-body').querySelector('td.err'); if(td) td.focus(); return; }
-  if(!confirm(`¿Guardar la merma de ${corr}: ${filas.length} fila(s), ${anFmt(unid)} unidades?`)) return;
+  if(!confirm(`¿Guardar la merma${corr ? ' de ' + corr : ' sin campaña (podrás asignarla después)'}: ${filas.length} fila(s), ${anFmt(unid)} unidades?`)) return;
   $('btn-rgz-merma-guardar').disabled = true;
   const proc = relojProceso('rgz-msg');
   try{
@@ -12855,15 +12855,15 @@ $('btn-rgz-merma-guardar').addEventListener('click', async ()=>{
     for(let i = 0; i < filas.length; i += 400){
       const batch = db.batch();
       filas.slice(i, i + 400).forEach((f, j)=> batch.set(regularizacionItemsRef.doc(), { correlativo_reg: rgzCorr, tipo:'MERMA', campana_correlativo: corr, nro_guia:'', item: String(i + j + 1),
-        codigo: String(f[0]).trim().toUpperCase(), descripcion: String(f[1] || '').trim().toUpperCase(), unidad:'', cantidad: cmpNumero(f[2]), participante: rgzParticipanteDe(f[3], corr),
+        codigo: String(f[0]).trim().toUpperCase(), descripcion: String(f[1] || '').trim().toUpperCase(), unidad:'', cantidad: cmpNumero(f[2]), participante: rgzParticipanteDe(f[3], corr) || String(f[3] || '').trim().toUpperCase(),
         usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp() }));
       await batch.commit();
     }
     await regularizacionesRef.doc(rgzCorr).set({ correlativo: rgzCorr, tipo:'MERMA', origen:'PEGADO', nro_guia:'', fecha_traslado: `${dd(hoy.getDate())}/${dd(hoy.getMonth() + 1)}/${hoy.getFullYear()}`,
       campana_correlativo: corr, campana_nombre: cab.campana || '', total_items: filas.length, unidades: unid, estado:'ACTIVO', usuario: currentUserAlias, fecha_carga: firebase.firestore.FieldValue.serverTimestamp() });
-    await logAccion('regularizacion_cargada', {detalle:`${rgzCorr} (Merma, pegada) → ${corr}: ${filas.length} fila(s), ${unid} unid.`});
+    await logAccion('regularizacion_cargada', {detalle:`${rgzCorr} (Merma, pegada) → ${corr || 'sin campaña'}: ${filas.length} fila(s), ${unid} unid.`});
     proc.fin();
-    showMsg('rgz-msg','ok', `¡Guardado! ${rgzCorr} — merma de ${corr}: ${filas.length} fila(s), ${anFmt(unid)} unidades.`);
+    showMsg('rgz-msg','ok', `¡Guardado! ${rgzCorr} — merma ${corr ? 'de ' + corr : 'sin campaña'}: ${filas.length} fila(s), ${anFmt(unid)} unidades.`);
     showToast(`Merma guardada: ${rgzCorr}`, 'ok');
     rgzMerma = []; renderRgzMerma();
     cargarListaRegularizaciones();
@@ -12876,16 +12876,39 @@ async function cargarListaRegularizaciones(){
   renderListaRegularizaciones();
 }
 function renderListaRegularizaciones(){
-  const f = $('rgz-filtro-camp').value, L = rgzLista.filter(r=> !f || r.campana_correlativo === f);
+  const f = $('rgz-filtro-camp').value, L = rgzLista.filter(r=> !f || (f === '__SIN' ? !r.campana_correlativo : r.campana_correlativo === f));
+  const activas = campRegAllCache.filter(c=> (c.estado || 'ACTIVO') === 'ACTIVO');
+  const selCamp = r=> `<select class="rgz-camp-sel${r.campana_correlativo ? '' : ' sin'}" data-rgz-asignar="${esc(r.correlativo)}" title="Asignar o cambiar la campaña"><option value="">— Sin campaña —</option>` +
+    (r.campana_correlativo && !activas.some(c=> c.correlativo === r.campana_correlativo) ? `<option value="${esc(r.campana_correlativo)}" selected>${esc(r.campana_correlativo)} — ${esc(r.campana_nombre || '')}</option>` : '') +
+    activas.map(c=> `<option value="${esc(c.correlativo)}" ${c.correlativo === r.campana_correlativo ? 'selected' : ''}>${esc(c.correlativo)} — ${esc(c.campana || '')}</option>`).join('') + '</select>';
   const puede = currentPermisos.admin || currentPermisos.eliminar;
   const tot = t=> L.filter(r=> rgzTipo(r.tipo) === t).reduce((s, r)=> s + (Number(r.unidades) || 0), 0);
   $('rgz-lista-resumen').textContent = L.length ? `${L.length} regularización(es) · Devolución venta virtual ${anFmt(tot('DEVOLUCION_VV'))} unid. · Merma ${anFmt(tot('MERMA'))} unid. · Saldos campaña ${anFmt(tot('SALDO_CAMPANA'))} unid.` : '';
   $('rgz-lista-vacio').style.display = L.length ? 'none' : 'block';
   $('rgz-lista-body').innerHTML = L.map(r=> `<tr><td><b>${esc(r.correlativo)}</b></td><td>${puede ? `<select class="rgz-tipo-sel rgz-chip ${esc(rgzTipo(r.tipo))}" data-rgz-cambiar="${esc(r.correlativo)}" title="Cambiar el concepto">${Object.entries(RGZ_TIPOS).map(([k, t])=> `<option value="${esc(k)}" ${k === rgzTipo(r.tipo) ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>` : `<span class="rgz-chip ${esc(rgzTipo(r.tipo))}">${esc(rgzEtiqueta(r.tipo))}</span>`}</td><td>${esc(r.nro_guia || '—')}</td><td>${esc(r.fecha_traslado || '')}</td>` +
-    `<td>${esc(r.campana_correlativo)} — ${esc(r.campana_nombre || '')}</td><td class="num">${esc(anFmt(r.total_items))}</td><td class="num">${esc(anFmt(r.unidades))}</td><td>${esc(r.usuario || '')}</td>` +
+    `<td>${selCamp(r)}</td><td class="num">${esc(anFmt(r.total_items))}</td><td class="num">${esc(anFmt(r.unidades))}</td><td>${esc(r.usuario || '')}</td>` +
     `<td class="reg-acc">${puede ? `<button class="btn btn-sm btn-ghost" data-rgz-anular="${esc(r.correlativo)}" title="Anular">🗑</button>` : ''}</td></tr>`).join('');
 }
 $('rgz-filtro-camp').addEventListener('change', renderListaRegularizaciones);
+// Asignar o cambiar la campaña de una regularización ya guardada (cabecera y todos sus ítems).
+$('rgz-lista-body').addEventListener('change', async e=>{
+  const sel = e.target.closest('[data-rgz-asignar]'); if(!sel) return;
+  const corr = sel.dataset.rgzAsignar, r = rgzLista.find(x=> x.correlativo === corr); if(!r) return;
+  const nueva = sel.value, cab = campRegAllCache.find(c=> c.correlativo === nueva) || {};
+  if(!confirm(nueva ? `¿Asignar ${corr} (${rgzEtiqueta(r.tipo)}) a la campaña ${nueva}${cab.campana ? ' — ' + cab.campana : ''}?` : `¿Quitar la campaña de ${corr}?`)){ sel.value = r.campana_correlativo || ''; return; }
+  sel.disabled = true;
+  try{
+    const items = await regularizacionItemsRef.where('correlativo_reg','==',corr).get();
+    for(let i = 0; i < items.docs.length; i += 400){ const b = db.batch(); items.docs.slice(i, i + 400).forEach(d=>{
+      const upd = { campana_correlativo: nueva }, p = d.data().participante;
+      if(nueva && p){ const n = rgzParticipanteDe(p, nueva); if(n) upd.participante = n; }   // el nombre que tiene la tienda en la campaña
+      b.update(d.ref, upd); }); await b.commit(); }
+    await regularizacionesRef.doc(corr).set({ campana_correlativo: nueva, campana_nombre: cab.campana || '', campana_asignada_por: currentUserAlias, campana_asignada_en: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true });
+    await logAccion('regularizacion_campana_asignada', {detalle:`${corr}: ${r.campana_correlativo || 'sin campaña'} → ${nueva || 'sin campaña'}`});
+    showToast(nueva ? `${corr} asignada a ${nueva}` : `${corr} quedó sin campaña`, 'ok');
+    cargarListaRegularizaciones();
+  }catch(err){ console.error(err); showToast('No se pudo asignar: ' + err.message, 'err'); sel.value = r.campana_correlativo || ''; sel.disabled = false; }
+});
 // Cambiar el concepto de una regularización ya guardada (cabecera y todos sus ítems).
 $('rgz-lista-body').addEventListener('change', async e=>{
   const sel = e.target.closest('[data-rgz-cambiar]'); if(!sel) return;
