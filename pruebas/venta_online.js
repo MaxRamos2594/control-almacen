@@ -261,6 +261,46 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
   }, fs.readFileSync(pdfPath).toString('base64'));
   verificar(/Despacho: 22\/09\/2026 a 30\/09\/2026/.test(texto) && /BV02-00000003/.test(texto) && /BV02-00000002/.test(texto) && !/BV02-00000001/.test(texto) && /F\. despacho/.test(texto) && /Clave/.test(texto) && /CLIENTE 3/.test(texto) && /2 comprobante/.test(texto),
     'Exportar PDF: solo lo filtrado, con los filtros y las mismas columnas de la lista');
+  // Link público para el cliente: solo se copia con el botón y queda como "enviado".
+  await ad.context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'http://127.0.0.1:5055' });
+  await ad.page.evaluate(()=>{ $('vo-desde').value = ''; $('vo-hasta').value = ''; $('vo-fcampo').value = 'emision'; voBuscar(); voAbrir('BV01-00000721'); });
+  await ad.page.waitForFunction(()=> !!document.querySelector('#btn-vo-link'), null, { timeout: 10000 });
+  let lk = await ad.page.evaluate(()=>{ const ev = new ClipboardEvent('copy', { bubbles:true, cancelable:true }); $('vo-link-url').dispatchEvent(ev);
+    return { bloqueado: ev.defaultPrevented, sel: getComputedStyle($('vo-link-url')).userSelect, est: $('vo-link-box').innerText }; });
+  verificar(lk.bloqueado && lk.sel === 'none' && /Aún no enviado/.test(lk.est), 'Link debajo de la clave: no se puede seleccionar ni copiar con Ctrl+C');
+  await ad.page.click('#btn-vo-link');
+  await ad.page.waitForFunction(()=> /Enviado el/.test(($('vo-link-box') || {}).innerText || ''), null, { timeout: 10000 });
+  lk = await ad.page.evaluate(async ()=>{ const c = (await voComprobantesRef.doc('BV01-00000721').get()).data();
+    return { clip: await navigator.clipboard.readText(), c, chip: !!document.querySelector('#vo-res [data-vo-id="BV01-00000721"] .vo-link-chip'), pub: (await voPublicoRef.doc(c.link_token).get()).data() }; });
+  verificar(lk.clip === `http://127.0.0.1:5055/?envio=${lk.c.link_token}` && lk.c.link_token.length === 32 && lk.c.link_enviado === true && lk.c.link_copias === 1 && lk.chip && lk.pub.clave === 'AB-4521',
+    `Botón "Copiar link": copia el link (código de ${lk.c.link_token.length} caracteres) y marca "Link enviado"`);
+  await ad.page.click('#btn-vo-link'); await ad.page.waitForTimeout(800);
+  const copias = await ad.page.evaluate(async ()=> (await voComprobantesRef.doc('BV01-00000721').get()).data().link_copias);
+  await ad.page.selectOption('#vo-link-f', 'enviado');
+  const envs = await ad.page.evaluate(()=> voFiltrados().map(c=> c.id).join(','));
+  await ad.page.selectOption('#vo-link-f', 'pendiente');
+  const pends = await ad.page.evaluate(()=> voFiltrados().length);
+  verificar(copias === 2 && envs === 'BV01-00000721' && pends === 14, `Filtro de link: enviados ${envs} · por enviar ${pends} · copias ${copias}`);
+  await ad.page.selectOption('#vo-link-f', '');
+  await ad.page.locator('#vo-detalle').screenshot({ path: path.join(__dirname, 'salida', 'vo_link.png'), clip: undefined }).catch(()=>{});
+  await ad.page.evaluate(()=> voAbrir('BV01-00000721')); await ad.page.waitForTimeout(400);
+  await ad.page.screenshot({ path: path.join(__dirname, 'salida', 'vo_link.png') });
+  // El cliente abre el link sin iniciar sesión.
+  const pub = await (await ad.browser.newContext({ viewport:{ width: 430, height: 900 } })).newPage();
+  await pub.goto(lk.clip);
+  await pub.waitForFunction(()=> !!document.querySelector('#vo-publico canvas.vo-hoja'), null, { timeout: 20000 });
+  const vpub = await pub.evaluate(async ()=> {
+    let lista = 'permitido'; try{ await voPublicoRef.get(); }catch(e){ lista = 'bloqueado'; }
+    let privado = 'permitido'; try{ await voComprobantesRef.doc('BV01-00000721').get(); }catch(e){ privado = 'bloqueado'; }
+    return { txt: $('vo-publico').innerText, login: getComputedStyle($('login-screen')).display, sesion: !!auth.currentUser, lista, privado };
+  });
+  verificar(/BV01-00000721/.test(vpub.txt) && /AB-4521/.test(vpub.txt) && /20\/10\/2026/.test(vpub.txt) && /COMPROBANTE/.test(vpub.txt) && vpub.login === "none" && !vpub.sesion,
+    'El cliente abre el link sin iniciar sesión: ve N°, clave, fecha de despacho y sus documentos');
+  verificar(vpub.lista === "bloqueado" && vpub.privado === "bloqueado", 'Seguro: sin sesión no se puede listar los links ni leer los datos internos');
+  await pub.screenshot({ path: path.join(__dirname, 'salida', 'vo_link_cliente.png'), fullPage: true });
+  await pub.goto('http://127.0.0.1:5055/?envio=noexiste123');
+  await pub.waitForFunction(()=> /Enlace no válido/.test($('vo-publico').innerText), null, { timeout: 10000 });
+  verificar(true, 'Un link inventado muestra "Enlace no válido"');
   errores.push(...ad.errores);
   await ad.browser.close();
 
