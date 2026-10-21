@@ -63,6 +63,14 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // Link público de Venta Online para el cliente: cualquiera que tenga el link puede leer
+    // ESE documento (su id es un código aleatorio de 32 caracteres, imposible de adivinar);
+    // nadie puede listar la colección. Solo los usuarios registrados lo crean o cambian
+    // (eso lo cubre la regla general de abajo).
+    match /vo_publico/{id} {
+      allow get: if true;
+    }
+
     // Resto de colecciones de la app: cualquier usuario registrado.
     match /{coleccion}/{id} {
       allow read, write: if registered()

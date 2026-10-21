@@ -708,6 +708,28 @@
   .vo-clave input{flex:1 1 160px; max-width:280px; font-family:var(--mono); font-size:20px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; padding:4px 10px; border:2px solid #1b1b00; border-radius:8px; background:#fff;}
   .vo-clave button{border:none; background:#1b1b00; color:#dfff00; font-weight:800; border-radius:8px; padding:6px 12px; cursor:pointer; font-size:12px;}
   .vo-clave .ok{font-size:11px; font-weight:800; color:#2f5d00;}
+  /* Link para el cliente: llamativo y sin poder copiarse con Ctrl+C (solo con el botón) */
+  .vo-link{position:relative; border-radius:12px; padding:12px 14px; margin-bottom:12px; color:#fff; background:linear-gradient(120deg, #ff2fb9 0%, #7a3cff 55%, #00d4ff 100%); box-shadow:0 0 16px rgba(255,47,185,.45);}
+  .vo-link.enviado{background:linear-gradient(120deg, #00c26e 0%, #00a3c4 100%); box-shadow:0 0 14px rgba(0,194,110,.45);}
+  .vo-link-cab{display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px;}
+  .vo-link .lbl{font-weight:800; font-size:12px; text-transform:uppercase; letter-spacing:.08em;}
+  .vo-link-est{font-size:11.5px; font-weight:700; background:rgba(0,0,0,.25); padding:2px 10px; border-radius:12px;}
+  .vo-link-fila{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+  .vo-link-url{flex:1 1 260px; min-width:0; font-family:var(--mono); font-size:12.5px; font-weight:700; background:rgba(255,255,255,.95); color:#3b1060; border-radius:8px; padding:8px 10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    user-select:none; -webkit-user-select:none; cursor:not-allowed;}
+  .vo-link-url.vacio{color:#7a6b8a; font-family:inherit; font-weight:600;}
+  .vo-link button{border:none; background:#1b0b2e; color:#fff; font-weight:800; border-radius:8px; padding:9px 16px; cursor:pointer; font-size:13px; white-space:nowrap;} .vo-link button:hover{background:#000;}
+  .vo-link-chip{font-size:10.5px; font-weight:800; padding:1px 8px; border-radius:10px; background:#d9f7e8; color:#0b6b3a;}
+  /* Página pública del link (sin iniciar sesión) */
+  body.modo-publico #login-screen, body.modo-publico #app-shell, body.modo-publico #app-footer{display:none !important;}
+  body.modo-publico{background:#eef1f6;}
+  #vo-publico{max-width:880px; margin:0 auto; padding:18px 14px 40px;}
+  .vp-cab{background:linear-gradient(120deg, #1b2430, #2b4c6f); color:#fff; border-radius:14px; padding:18px 20px; margin-bottom:14px;}
+  .vp-cab small{opacity:.75; text-transform:uppercase; letter-spacing:.1em; font-size:11px;} .vp-cab h1{margin:4px 0 2px; font-size:22px; font-family:var(--mono);} .vp-cab .nom{font-size:14px; opacity:.9;}
+  .vp-datos{display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:14px;}
+  .vp-dato{background:#fff; border-radius:12px; padding:12px 14px; border:1px solid var(--line);} .vp-dato span{display:block; font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-soft);} .vp-dato b{font-size:16px;}
+  .vp-dato.clave{background:#dfff00; border:2px solid #b8d400; box-shadow:0 0 14px rgba(214,255,0,.8);} .vp-dato.clave b{font-family:var(--mono); font-size:24px; letter-spacing:.12em; color:#1b1b00;}
+  .vp-panel{background:#fff; border-radius:14px; padding:12px; border:1px solid var(--line);}
   .vo-desp{font-size:10.5px; font-weight:700; padding:1px 7px; border-radius:10px;} .vo-desp.con{background:#e3eef8; color:#1d5f8a;} .vo-desp.sin{background:#f1f2f4; color:#8a9099; font-weight:600;}
   .vo-pag{display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:8px; font-size:12px; color:var(--ink-soft);}
   .vo-pag button{border:1px solid var(--line-strong); background:#fff; border-radius:6px; padding:4px 10px; font-size:12px; cursor:pointer; font-weight:600;} .vo-pag button:disabled{opacity:.4; cursor:default;}
@@ -1582,6 +1604,7 @@
 </head>
 <body>
 
+<div id="vo-publico" style="display:none;"></div>
 <div id="login-screen">
   <div id="login-bg-illustration" aria-hidden="true"><svg viewBox="0 0 1400 900" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMaxYMax slice">
   <defs>
@@ -2774,6 +2797,7 @@
       <div class="vo-filtros">
         <div class="vo-seg" id="vo-seg"><button type="button" data-vo-f="todos" class="activo">Todos</button><button type="button" data-vo-f="sin">Sin voucher</button><button type="button" data-vo-f="con">Con voucher</button></div>
         <div class="vo-seg" id="vo-seg-desp"><button type="button" data-vo-d="todos" class="activo">Todos</button><button type="button" data-vo-d="sin">Sin despacho</button><button type="button" data-vo-d="con">🚚 Despachados</button></div>
+        <select id="vo-link-f" title="Estado del link enviado al cliente"><option value="">Link: todos</option><option value="pendiente">🔗 Link por enviar</option><option value="enviado">📨 Link enviado</option></select>
         <select id="vo-tipo"><option value="">Boletas y facturas</option><option value="BOLETA">Boletas</option><option value="FACTURA">Facturas</option></select>
         <select id="vo-fcampo" title="Qué fecha filtran Desde / Hasta"><option value="emision">Fecha de emisión</option><option value="despacho">Fecha de despacho</option></select>
         <label>Desde <input type="date" id="vo-desde"></label><label>Hasta <input type="date" id="vo-hasta"></label>
@@ -3426,8 +3450,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v200';
-const APP_UPDATED = '22/10/2026 14:00';
+const APP_VERSION = 'v202';
+const APP_UPDATED = '22/10/2026 17:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3609,6 +3633,7 @@ $('btn-logout').addEventListener('click', async ()=>{
 });
 
 auth.onAuthStateChanged(async (user)=>{
+  if(new URLSearchParams(location.search).get('envio')) return;   // link público para el cliente
   if(user){ await loadPermisos(user); resetInactivityTimer(); }
   else{
     // No se detiene el intervalo de inactividad: ya ignora el caso sin sesión
@@ -12975,7 +13000,7 @@ $('btn-vo-guardar').addEventListener('click', async ()=>{
       if(yaCargado(await docRef.get())){ x.duplicado = `Ya está cargado (${x.c.nro})`; continue; }
       // Nombre único: un duplicado nunca reemplaza el PDF de un comprobante ya cargado.
       const ref = storage.ref().child(`vo_comprobantes/${x.c.nro}_${Date.now()}.pdf`);
-      await ref.put(x.file, { contentType:'application/pdf' });
+      await ref.put(x.file, { contentType:'application/pdf', cacheControl:'private, max-age=31536000' });
       const pdf_url = await ref.getDownloadURL();
       const guardado = await db.runTransaction(async tx=>{
         if(yaCargado(await tx.get(docRef))) return false;
@@ -13020,18 +13045,20 @@ function voIndexar(c){
   c._txt = normalizarTexto([c.id, c.tipo, c.nombre, c.doc_tipo, c.doc_numero, f, c.fecha_texto, c.canal, c.moneda,
     c.importe_total != null ? `${Number(c.importe_total).toFixed(2)} ${String(c.importe_total).replace('.', ',')}` : '',
     ...(c.items || []).map(it=> `${it.codigo} ${it.descripcion}`), ...(c.vouchers || []).map(v=> v.nombre), (c.vouchers || []).length ? 'CON VOUCHER' : 'SIN VOUCHER',
-    c.fecha_despacho ? `DESPACHO DESPACHADO ${voFechaTxt(c.fecha_despacho)}` : 'SIN DESPACHO', c.clave ? `CLAVE ${c.clave}` : 'SIN CLAVE'].join(' '));
+    c.fecha_despacho ? `DESPACHO DESPACHADO ${voFechaTxt(c.fecha_despacho)}` : 'SIN DESPACHO', c.clave ? `CLAVE ${c.clave}` : 'SIN CLAVE', c.link_enviado ? 'LINK ENVIADO' : 'LINK PENDIENTE'].join(' '));
 }
 const voFechaTxt = iso=> (iso || '').split('-').reverse().join('/');
 const voTokens = ()=> normalizarTexto($('vo-q').value).split(/\s+/).filter(Boolean);
 function voFiltrados(){
-  const tk = voTokens(), tipo = $('vo-tipo').value, d = $('vo-desde').value, h = $('vo-hasta').value, campo = $('vo-fcampo').value === 'despacho' ? 'fecha_despacho' : 'fecha_emision';
+  const tk = voTokens(), tipo = $('vo-tipo').value, d = $('vo-desde').value, h = $('vo-hasta').value, campo = $('vo-fcampo').value === 'despacho' ? 'fecha_despacho' : 'fecha_emision', lnk = $('vo-link-f').value;
   return voLista.filter(c=>{
     const nv = (c.vouchers || []).length;
     if(voFiltro === 'sin' && nv) return false;
     if(voFiltro === 'con' && !nv) return false;
     if(voFiltroDesp === 'sin' && c.fecha_despacho) return false;
     if(voFiltroDesp === 'con' && !c.fecha_despacho) return false;
+    if(lnk === 'enviado' && !c.link_enviado) return false;
+    if(lnk === 'pendiente' && c.link_enviado) return false;
     if(tipo && c.tipo !== tipo) return false;
     if((d || h) && !c[campo]) return false;
     if(d && c[campo] < d) return false;
@@ -13043,9 +13070,9 @@ function renderVoLista(){
   const L = voFiltrados(), tk = voTokens();
   const con = L.filter(c=> (c.vouchers || []).length).length;
   const desp = L.filter(c=> c.fecha_despacho).length;
-  $('btn-vo-limpiar').style.display = tk.length || $('vo-tipo').value || $('vo-desde').value || $('vo-hasta').value || voFiltro !== 'todos' || voFiltroDesp !== 'todos' ? '' : 'none';
+  $('btn-vo-limpiar').style.display = tk.length || $('vo-tipo').value || $('vo-desde').value || $('vo-hasta').value || voFiltro !== 'todos' || voFiltroDesp !== 'todos' || $('vo-link-f').value ? '' : 'none';
   $('vo-kpis').innerHTML = `<div class="vo-kpi"><b>${esc(anFmt(L.length))}</b><span>Comprobantes</span></div><div class="vo-kpi ok"><b>${esc(anFmt(con))}</b><span>Con voucher</span></div>` +
-    `<div class="vo-kpi alerta"><b>${esc(anFmt(L.length - con))}</b><span>Sin voucher</span></div><div class="vo-kpi desp"><b>${esc(anFmt(desp))}</b><span>Despachados</span></div><div class="vo-kpi"><b>${esc(voSoles(L.reduce((s, c)=> s + (Number(c.importe_total) || 0), 0)))}</b><span>Importe</span></div>`;
+    `<div class="vo-kpi alerta"><b>${esc(anFmt(L.length - con))}</b><span>Sin voucher</span></div><div class="vo-kpi desp"><b>${esc(anFmt(desp))}</b><span>Despachados</span></div><div class="vo-kpi"><b>${esc(anFmt(L.filter(c=> c.link_enviado).length))}</b><span>Links enviados</span></div><div class="vo-kpi"><b>${esc(voSoles(L.reduce((s, c)=> s + (Number(c.importe_total) || 0), 0)))}</b><span>Importe</span></div>`;
   if(!L.length){ $('vo-res').innerHTML = `<div class="vo-vacio">🔍<b>${voLista.length ? 'Nada coincide con la búsqueda' : 'Aún no hay comprobantes'}</b>${voLista.length ? 'Prueba con otra palabra o quita los filtros.' : 'Cárgalos en Venta Online → Comprobantes Agencia.'}</div>`; $('vo-mas').innerHTML = ''; return; }
   const paginas = Math.ceil(L.length / VO_POR_PAGINA);
   voPagina = Math.min(Math.max(0, voPagina), paginas - 1);
@@ -13054,6 +13081,7 @@ function renderVoLista(){
     return `<button type="button" role="option" class="vo-fila${nv ? ' con' : ''}${voSel === c.id ? ' sel' : ''}" data-vo-id="${esc(c.id)}" aria-selected="${voSel === c.id}">` +
       `<span class="t"><span class="nro">${cmpMarcar(c.id, tk)}</span><span class="vo-tipo ${esc(c.tipo)}">${esc(c.tipo)}</span><span class="vo-est ${nv ? 'con' : 'sin'}">${nv ? `📎 ${esc(nv)} voucher${nv > 1 ? 's' : ''}` : 'Sin voucher'}</span>` +
       `${c.clave ? `<span class="vo-clave-chip" title="Clave">🔑 ${cmpMarcar(c.clave, tk)}</span>` : '<span class="vo-clave-chip sin">Sin clave</span>'}` +
+      `${c.link_enviado ? '<span class="vo-link-chip">📨 Link enviado</span>' : ''}` +
       `${c.fecha_despacho ? `<span class="vo-desp con">🚚 ${cmpMarcar(voFechaTxt(c.fecha_despacho), tk)}</span>` : '<span class="vo-desp sin">Sin despacho</span>'}</span>` +
       `<span class="imp">${esc(voSoles(c.importe_total))}</span>` +
       `<span class="s">${cmpMarcar(c.nombre || '—', tk)} · ${esc(c.doc_tipo || '')} ${cmpMarcar(c.doc_numero || '', tk)}${coincide.length ? ` · ${coincide.map(it=> cmpMarcar(`${it.codigo} ${it.descripcion}`.trim(), tk)).join(' · ')}` : ''}</span>` +
@@ -13065,12 +13093,12 @@ function renderVoLista(){
 }
 function voBuscar(){ voPagina = 0; renderVoLista(); }
 $('vo-q').addEventListener('input', ()=>{ clearTimeout(voQTimer); voQTimer = setTimeout(voBuscar, 90); });
-['vo-tipo','vo-fcampo','vo-desde','vo-hasta'].forEach(id=> $(id).addEventListener('change', voBuscar));
+['vo-link-f','vo-tipo','vo-fcampo','vo-desde','vo-hasta'].forEach(id=> $(id).addEventListener('change', voBuscar));
 $('vo-seg-desp').addEventListener('click', e=>{ const b = e.target.closest('[data-vo-d]'); if(!b) return; voFiltroDesp = b.dataset.voD;
   document.querySelectorAll('#vo-seg-desp button').forEach(x=> x.classList.toggle('activo', x === b)); voBuscar(); });
 $('vo-seg').addEventListener('click', e=>{ const b = e.target.closest('[data-vo-f]'); if(!b) return; voFiltro = b.dataset.voF;
   document.querySelectorAll('#vo-seg button').forEach(x=> x.classList.toggle('activo', x === b)); voBuscar(); });
-$('btn-vo-limpiar').addEventListener('click', ()=>{ $('vo-q').value = ''; $('vo-tipo').value = ''; $('vo-fcampo').value = 'emision'; $('vo-desde').value = ''; $('vo-hasta').value = ''; voFiltro = 'todos'; voFiltroDesp = 'todos';
+$('btn-vo-limpiar').addEventListener('click', ()=>{ $('vo-q').value = ''; $('vo-tipo').value = ''; $('vo-fcampo').value = 'emision'; $('vo-link-f').value = ''; $('vo-desde').value = ''; $('vo-hasta').value = ''; voFiltro = 'todos'; voFiltroDesp = 'todos';
   document.querySelectorAll('#vo-seg button').forEach(x=> x.classList.toggle('activo', x.dataset.voF === 'todos'));
   document.querySelectorAll('#vo-seg-desp button').forEach(x=> x.classList.toggle('activo', x.dataset.voD === 'todos')); voBuscar(); $('vo-q').focus(); });
 $('vo-mas').addEventListener('click', e=>{ const b = e.target.closest('[data-vo-pag]'); if(b && !b.disabled){ voPagina += Number(b.dataset.voPag); renderVoLista(); $('vo-res').scrollTop = 0; } });
@@ -13109,6 +13137,10 @@ function renderVoDetalle(){
     `<div class="vo-clave${c.clave ? '' : ' sin'}" id="vo-clave-box"><span class="lbl">🔑 Clave</span>${puede
       ? `<input type="text" id="vo-clave" value="${esc(c.clave || '')}" placeholder="Escribe la clave" maxlength="40" autocomplete="off" spellcheck="false" title="Escribe la clave y presiona Enter (o sal del campo) para guardarla"><button type="button" id="btn-vo-clave">Guardar</button>`
       : `<span class="val">${esc(c.clave || 'Sin clave')}</span>`}${c.clave ? '<button type="button" id="btn-vo-clave-copiar" title="Copiar la clave">📋 Copiar</button>' : ''}<span class="ok" id="vo-clave-ok"></span></div>` +
+    `<div class="vo-link${c.link_enviado ? ' enviado' : ''}" id="vo-link-box"><div class="vo-link-cab"><span class="lbl">🔗 Link para el cliente</span><span class="vo-link-est">${c.link_enviado
+      ? `📨 Enviado el ${esc(new Date(c.link_enviado_en).toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }))} por ${esc(c.link_enviado_por || '')}${c.link_copias > 1 ? ` · copiado ${esc(c.link_copias)} veces` : ''}` : '⏳ Aún no enviado'}</span></div>` +
+      `<div class="vo-link-fila"><div class="vo-link-url${c.link_token ? '' : ' vacio'}" id="vo-link-url" title="Usa el botón Copiar link">${esc(c.link_token ? voLinkUrl(c.link_token) : 'El link se crea al presionar "Copiar link"')}</div>` +
+      `<button type="button" id="btn-vo-link">📋 Copiar link</button></div></div>` +
     `<div class="vo-datos"><div class="vo-dato"><span>Nombre / Razón social</span><b>${esc(c.nombre || '—')}</b></div><div class="vo-dato"><span>${esc(c.doc_tipo || 'Documento')}</span><b>${esc(c.doc_numero || '—')}</b></div>` +
     `<div class="vo-dato"><span>Fecha de emisión</span><b>${esc((c.fecha_emision || '').split('-').reverse().join('/'))}</b></div><div class="vo-dato"><span>Códigos · unidades</span><b>${esc(c.cant_codigos || 0)} · ${esc(anFmt(c.unidades || 0))}</b></div>` +
     `<div class="vo-dato desp${c.fecha_despacho ? '' : ' vacio'}"><span>🚚 Fecha de despacho <i class="ok" id="vo-desp-ok"></i></span>${puede
@@ -13124,7 +13156,9 @@ function renderVoDetalle(){
     `<details style="margin-top:10px;"><summary class="hint" style="cursor:pointer;">Ver los ${esc(c.cant_codigos || 0)} código(s) del comprobante</summary><table class="vo-items"><thead><tr><th>Código</th><th>Descripción</th><th class="num">Cant.</th><th class="num">Total</th></tr></thead><tbody>` +
     (c.items || []).map(it=> `<tr><td><b>${esc(it.codigo || '—')}</b></td><td>${esc(it.descripcion || '')}</td><td class="num">${esc(it.cantidad ?? '')}</td><td class="num">${esc(it.total == null ? '' : Number(it.total).toFixed(2))}</td></tr>`).join('') + '</tbody></table></details>';
   voPintarVisor(d);
+  clearTimeout(voPrecargaTimer); voPrecargaTimer = setTimeout(voPrecargar, 400);
 }
+let voPrecargaTimer = null;
 // El giro de cada documento se guarda (pdf_giro del comprobante, giro de cada voucher) para que
 // todos lo vean ya derecho. Es solo cómo se muestra: lo puede guardar cualquiera que lo vea.
 let voGiroCola = Promise.resolve();
@@ -13138,10 +13172,95 @@ function voGuardarGiro(c, d){
         const snap = await tx.get(ref), lista = (snap.data().vouchers || []).map(v=> v.path === d.path ? Object.assign({}, v, { giro }) : v);
         tx.update(ref, { vouchers: lista });
       });
+      voSyncPublico(c);
       const el = $('vo-vb-info'); if(el && $('vo-visor') && $('vo-visor').dataset.url === d.url) el.textContent += ' · ✓ giro guardado';
     }catch(err){ console.error(err); showToast('No se pudo guardar el giro: ' + err.message, 'err'); }
   });
 }
+// -------- Link público para el cliente --------
+// El cliente lo abre sin iniciar sesión: ve su comprobante, la fecha de despacho, la clave y los vouchers.
+// Seguro: el link lleva un código aleatorio de 32 caracteres (imposible de adivinar) y apunta a
+// vo_publico/{código}, que solo guarda esos datos; nadie puede listar esa colección (firestore.rules).
+const voPublicoRef = db.collection('vo_publico');
+const voLinkUrl = token=> `${location.origin}${location.pathname}?envio=${token}`;
+function voNuevoToken(){ const b = new Uint8Array(24); crypto.getRandomValues(b); return btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+function voDatosPublicos(c){
+  const nv = (c.vouchers || []).length;
+  return { nro: c.id, tipo: c.tipo || '', nombre: c.nombre || '', fecha_emision: c.fecha_emision || '', fecha_despacho: c.fecha_despacho || null, clave: c.clave || null,
+    docs: [...(c.vouchers || []).map((v, i)=> ({ etiqueta: nv > 1 ? `VOUCHER ${i + 1}` : 'VOUCHER', url: v.url, tipo: v.tipo || '', giro: v.giro || 0 })),
+      ...(c.pdf_url ? [{ etiqueta: 'COMPROBANTE', url: c.pdf_url, tipo: 'application/pdf', giro: c.pdf_giro || 0 }] : [])],
+    actualizado: new Date().toISOString() };
+}
+// Mantiene al día lo que ve el cliente cuando cambian la clave, el despacho, los vouchers o el giro.
+function voSyncPublico(c){
+  if(c && c.link_token) voPublicoRef.doc(c.link_token).set(voDatosPublicos(c)).catch(err=> console.warn('Link público:', err));
+}
+async function voCopiarLink(){
+  const c = voLista.find(x=> x.id === voSel); if(!c) return;
+  try{
+    if(!c.link_token){
+      const token = voNuevoToken();
+      await voPublicoRef.doc(token).set(voDatosPublicos(c));
+      await voComprobantesRef.doc(c.id).update({ link_token: token });
+      c.link_token = token;
+    }
+    await navigator.clipboard.writeText(voLinkUrl(c.link_token));
+    const ahora = new Date().toISOString(), primera = !c.link_enviado;
+    const cambios = { link_enviado: true, link_copias: firebase.firestore.FieldValue.increment(1), link_ultima_copia: ahora };
+    if(primera){ cambios.link_enviado_en = ahora; cambios.link_enviado_por = currentUserAlias; }
+    await voComprobantesRef.doc(c.id).update(cambios);
+    Object.assign(c, { link_enviado: true, link_copias: (c.link_copias || 0) + 1, link_ultima_copia: ahora }, primera ? { link_enviado_en: ahora, link_enviado_por: currentUserAlias } : {});
+    voIndexar(c);
+    await logAccion('vo_link_copiado', {detalle:`${c.id}: link para el cliente copiado${primera ? ' (marcado como enviado)' : ''}`});
+    showToast('Link copiado. Pégalo en el chat con el cliente.', 'ok');
+    renderVoLista(); renderVoDetalle();
+  }catch(err){ console.error(err); showToast('No se pudo copiar el link: ' + err.message, 'err'); }
+}
+$('vo-detalle').addEventListener('click', e=>{ if(e.target.closest('#btn-vo-link')) voCopiarLink(); });
+// El link solo se copia con el botón (así queda registrado como enviado): se bloquea Ctrl+C, cortar, clic derecho y arrastrar.
+['copy','cut','contextmenu','dragstart','selectstart'].forEach(ev=> $('vo-detalle').addEventListener(ev, e=>{
+  if(e.target.closest && e.target.closest('#vo-link-url')){ e.preventDefault(); if(ev === 'copy' || ev === 'contextmenu') showToast('Usa el botón "Copiar link" para que quede registrado como enviado.', 'err'); }
+}));
+document.addEventListener('copy', e=>{
+  const sel = String(window.getSelection ? window.getSelection() : '');
+  if(sel && /[?&]envio=/.test(sel)){ e.preventDefault(); showToast('Usa el botón "Copiar link" para que quede registrado como enviado.', 'err'); }
+});
+// Página pública (?envio=código): no pide iniciar sesión y solo muestra los datos de ese envío.
+const VO_TOKEN_PUBLICO = new URLSearchParams(location.search).get('envio');
+async function voPaginaPublica(token){
+  document.body.classList.add('modo-publico');
+  const caja = $('vo-publico'); caja.style.display = 'block';
+  caja.innerHTML = '<div class="vp-panel"><div class="vo-vacio">⏳<b>Cargando tu envío…</b></div></div>';
+  let d;
+  try{ const snap = await voPublicoRef.doc(token).get(); d = snap.exists ? snap.data() : null; }
+  catch(err){ console.error(err); d = null; }
+  if(!d){ caja.innerHTML = '<div class="vp-panel"><div class="vo-vacio">🔒<b>Enlace no válido</b>Revisa que el link esté completo o pide uno nuevo a tu vendedor.</div></div>'; return; }
+  document.title = `Envío ${d.nro}`;
+  let sel = 0;
+  const pintar = ()=>{
+    const doc = d.docs[sel];
+    caja.innerHTML = `<div class="vp-cab"><small>Seguimiento de tu pedido</small><h1>${esc(d.nro)}</h1><div class="nom">${esc(d.nombre)}</div></div>` +
+      `<div class="vp-datos">${d.clave ? `<div class="vp-dato clave"><span>🔑 Clave</span><b>${esc(d.clave)}</b></div>` : ''}` +
+      `<div class="vp-dato"><span>🚚 Fecha de despacho</span><b>${esc(d.fecha_despacho ? voFechaTxt(d.fecha_despacho) : 'Por despachar')}</b></div>` +
+      `<div class="vp-dato"><span>Fecha de emisión</span><b>${esc(voFechaTxt(d.fecha_emision))}</b></div></div>` +
+      `<div class="vp-panel">${d.docs.length ? `<div class="vo-docs">${d.docs.map((x, i)=> `<span class="vo-doc${i === sel ? ' activo' : ''}" data-vp-doc="${esc(i)}">${/pdf/.test(x.tipo) ? '📄' : '🖼'} <span>${esc(x.etiqueta)}</span><a href="${esc(x.url)}" target="_blank" rel="noopener" class="x" title="Descargar">⬇</a></span>`).join('')}</div>` +
+        `<div class="vo-visor-barra"><span class="vo-vb-info" id="vo-vb-info"></span><span class="vo-vb-grupo"><button type="button" data-vp-zoom="-">−</button><span id="vo-vb-zoom">Ajustado</span><button type="button" data-vp-zoom="+">+</button><button type="button" data-vp-zoom="fit">↔ Ajustar</button><button type="button" data-vp-girar="1">⟳ Girar</button></span></div>` +
+        `<div class="vo-visor" id="vo-visor" data-url="${esc(doc.url)}"><div class="vo-vacio">⏳<b>Cargando…</b></div></div>` : '<div class="vo-vacio">📦<b>Aún no hay documentos del envío</b>Vuelve a abrir este link más tarde.</div>'}</div>`;
+    if(doc) voPintarVisor(doc);
+  };
+  caja.addEventListener('click', e=>{
+    const t = e.target.closest('[data-vp-doc]'); if(t && !e.target.closest('a')){ sel = Number(t.dataset.vpDoc); voZoom = null; pintar(); return; }
+    const z = e.target.closest('[data-vp-zoom]'), g = e.target.closest('[data-vp-girar]'); if(!z && !g) return;
+    const doc = d.docs[sel];
+    if(z){ const cv = $('vo-visor').querySelector('canvas'), base = voZoom || (cv ? Number(cv.dataset.escala) : 1) || 1;
+      voZoom = z.dataset.vpZoom === 'fit' ? null : Math.min(4, Math.max(0.2, base * (z.dataset.vpZoom === '+' ? 1.25 : 0.8))); }
+    if(g) doc.giro = ((doc.giro || 0) + 90) % 360;   // solo en esta pantalla
+    voPintarVisor(doc);
+  });
+  pintar();
+}
+// pdf.js se carga con "defer": se espera a que el documento termine de cargar.
+if(VO_TOKEN_PUBLICO){ if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ()=> voPaginaPublica(VO_TOKEN_PUBLICO)); else voPaginaPublica(VO_TOKEN_PUBLICO); }
 // Clave: se escribe en el recuadro fosforescente y se guarda con Enter, al salir o con "Guardar".
 async function voGuardarClave(){
   const inp = $('vo-clave'), c = voLista.find(x=> x.id === voSel); if(!inp || !c) return;
@@ -13151,7 +13270,7 @@ async function voGuardarClave(){
   if(nueva === antes) return;
   try{
     await voComprobantesRef.doc(c.id).update({ clave: nueva || null, clave_por: currentUserAlias, clave_en: new Date().toISOString() });
-    c.clave = nueva || null; voIndexar(c);
+    c.clave = nueva || null; voIndexar(c); voSyncPublico(c);
     await logAccion('vo_clave', {detalle:`${c.id}: clave ${nueva ? `"${nueva}"` : 'quitada'}${antes ? ` (antes "${antes}")` : ''}`});
     renderVoLista(); renderVoDetalle();
     $('vo-clave-ok').textContent = nueva ? '✓ Clave guardada' : '✓ Clave quitada';
@@ -13175,7 +13294,7 @@ $('vo-detalle').addEventListener('change', async e=>{
   if(nueva === antes) return;
   try{
     await voComprobantesRef.doc(c.id).update({ fecha_despacho: nueva, despacho_por: currentUserAlias, despacho_en: new Date().toISOString() });
-    c.fecha_despacho = nueva; voIndexar(c);
+    c.fecha_despacho = nueva; voIndexar(c); voSyncPublico(c);
     await logAccion('vo_despacho', {detalle:`${c.id}: fecha de despacho ${nueva ? voFechaTxt(nueva) : 'quitada'}${antes ? ` (antes ${voFechaTxt(antes)})` : ''}`});
     const caja = e.target.closest('.vo-dato'); caja.classList.toggle('vacio', !nueva);
     $('vo-desp-ok').textContent = nueva ? '✓ guardada' : '✓ quitada';
@@ -13190,6 +13309,7 @@ $('btn-vo-pdf').addEventListener('click', ()=>{
   if($('vo-q').value.trim()) filtros.push(`Búsqueda: "${$('vo-q').value.trim()}"`);
   if(voFiltro !== 'todos') filtros.push(voFiltro === 'con' ? 'Con voucher' : 'Sin voucher');
   if(voFiltroDesp !== 'todos') filtros.push(voFiltroDesp === 'con' ? 'Despachados' : 'Sin despacho');
+  if($('vo-link-f').value) filtros.push($('vo-link-f').value === 'enviado' ? 'Link enviado' : 'Link por enviar');
   if($('vo-tipo').value) filtros.push($('vo-tipo').value === 'BOLETA' ? 'Boletas' : 'Facturas');
   if($('vo-desde').value || $('vo-hasta').value) filtros.push(`${$('vo-fcampo').value === 'despacho' ? 'Despacho' : 'Emisión'}: ${$('vo-desde').value ? voFechaTxt($('vo-desde').value) : '…'} a ${$('vo-hasta').value ? voFechaTxt($('vo-hasta').value) : '…'}`);
   const doc = new jspdf.jsPDF({ orientation:'landscape', unit:'pt', format:'a4' }), W = doc.internal.pageSize.getWidth();
@@ -13202,10 +13322,10 @@ $('btn-vo-pdf').addEventListener('click', ()=>{
   doc.setTextColor(0);
   doc.autoTable({
     startY: 76, margin:{ left:32, right:32 }, styles:{ fontSize:8, cellPadding:3 }, headStyles:{ fillColor:[43, 76, 111] },
-    head: [['N° comprobante', 'Clave', 'Tipo', 'Nombre / Razón social', 'DNI / RUC', 'F. emisión', 'F. despacho', 'Códigos', 'Unid.', 'Importe', 'Vouchers', 'Canal']],
+    head: [['N° comprobante', 'Clave', 'Tipo', 'Nombre / Razón social', 'DNI / RUC', 'F. emisión', 'F. despacho', 'Códigos', 'Unid.', 'Importe', 'Vouchers', 'Link', 'Canal']],
     body: L.map(c=> [c.id, c.clave || '—', c.tipo || '', c.nombre || '', `${c.doc_tipo || ''} ${c.doc_numero || ''}`.trim(), voFechaTxt(c.fecha_emision), c.fecha_despacho ? voFechaTxt(c.fecha_despacho) : 'Pendiente',
-      String(c.cant_codigos || 0), anFmt(c.unidades || 0), voSoles(c.importe_total), String((c.vouchers || []).length || '—'), c.canal || 'AGENCIA']),
-    foot: [['TOTAL', '', '', `${L.length} comprobante(s)`, '', '', `${desp} despachado(s)`, '', '', voSoles(total), String(conV), '']],
+      String(c.cant_codigos || 0), anFmt(c.unidades || 0), voSoles(c.importe_total), String((c.vouchers || []).length || '—'), c.link_enviado ? `Enviado ${voFechaTxt((c.link_enviado_en || '').slice(0, 10))}` : 'Por enviar', c.canal || 'AGENCIA']),
+    foot: [['TOTAL', '', '', `${L.length} comprobante(s)`, '', '', `${desp} despachado(s)`, '', '', voSoles(total), String(conV), `${L.filter(c=> c.link_enviado).length} enviado(s)`, '']],
     footStyles:{ fillColor:[234, 241, 251], textColor:20, fontStyle:'bold' },
     columnStyles:{ 0:{ fontStyle:'bold' }, 1:{ fontStyle:'bold', fillColor:[223, 255, 0], textColor:[27, 27, 0] }, 7:{ halign:'right' }, 8:{ halign:'right' }, 9:{ halign:'right' }, 10:{ halign:'center' } },
     didDrawPage: d=> { doc.setFontSize(8); doc.setTextColor(120); doc.text(`Página ${doc.internal.getNumberOfPages()}`, W - 32, doc.internal.pageSize.getHeight() - 16, { align:'right' }); doc.setTextColor(0); }
@@ -13217,15 +13337,46 @@ $('btn-vo-pdf').addEventListener('click', ()=>{
 // cargando dentro de la página y no existe en celulares. Permite acercar y girar (fotos de lado).
 const voPdfCache = new Map();
 let voZoom = null, voVisorUrl = null, voVisorTurno = 0;
+// Para que cargue rápido: un solo "worker" de pdf.js para todo el visor (antes se creaba uno nuevo,
+// con su script de ~1 MB, por cada PDF), el archivo se baja en una sola descarga (no por pedazos),
+// los últimos 8 quedan en memoria y se adelanta la descarga de lo que probablemente se abra después.
+let voPdfWorker = null;
+const voAvances = new Map();
+function voWorker(){
+  if(!voPdfWorker){
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    voPdfWorker = new pdfjsLib.PDFWorker({ name: 'vo-visor' });
+  }
+  return voPdfWorker;
+}
+async function voDescargar(url){
+  const r = await fetch(url);
+  if(!r.ok) throw new Error('HTTP ' + r.status);
+  const total = Number(r.headers.get('content-length')) || 0;
+  if(!r.body || !total) return new Uint8Array(await r.arrayBuffer());
+  const lector = r.body.getReader(), partes = []; let n = 0;
+  for(;;){
+    const { done, value } = await lector.read(); if(done) break;
+    partes.push(value); n += value.length;
+    const fn = voAvances.get(url); if(fn) fn(Math.min(99, Math.round(n / total * 100)), total);
+  }
+  const out = new Uint8Array(n); let o = 0; partes.forEach(p=> { out.set(p, o); o += p.length; });
+  return out;
+}
 function voPdfDoc(url){
   if(!voPdfCache.has(url)){
-    if(voPdfCache.size > 6) voPdfCache.delete(voPdfCache.keys().next().value);
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    const pr = pdfjsLib.getDocument({ url }).promise;
+    if(voPdfCache.size >= 8){ const [k, viejo] = voPdfCache.entries().next().value; voPdfCache.delete(k); viejo.then(d=> d.destroy()).catch(()=>{}); }
+    const pr = voDescargar(url).then(data=> pdfjsLib.getDocument({ data, worker: voWorker() }).promise);
     pr.catch(()=> voPdfCache.delete(url));
     voPdfCache.set(url, pr);
-  }
+  }else{ const pr = voPdfCache.get(url); voPdfCache.delete(url); voPdfCache.set(url, pr); }   // el más usado queda al final
   return voPdfCache.get(url);
+}
+// Adelanta (sin mostrar) los documentos del comprobante abierto y el comprobante siguiente de la lista.
+function voPrecargar(){
+  const L = voFiltrados(), i = L.findIndex(c=> c.id === voSel);
+  const docs = [...(i >= 0 ? voDocs(L[i]) : []), ...(L[i + 1] ? voDocs(L[i + 1]).slice(0, 1) : [])];
+  docs.forEach(d=>{ if(/pdf/.test(d.tipo || '')) voPdfDoc(d.url).catch(()=>{}); else { const im = new Image(); im.crossOrigin = 'anonymous'; im.src = d.url; } });
 }
 function voImagen(url){
   return new Promise((ok, mal)=>{ const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = ()=> ok(im); im.onerror = ()=> mal(new Error('No se pudo cargar la imagen')); im.src = url; });
@@ -13240,7 +13391,8 @@ async function voPintarVisor(d){
     cv.width = Math.round(w * k); cv.height = Math.round(h * k); cv.style.width = Math.round(w) + 'px'; cv.style.height = Math.round(h) + 'px'; cv.className = 'vo-hoja'; return [cv, k]; };
   try{
     if(/pdf/.test(d.tipo || '')){
-      const doc = await voPdfDoc(d.url); if(turno !== voVisorTurno) return;
+      if(!voPdfCache.has(d.url)) voAvances.set(d.url, (p, total)=>{ if(turno === voVisorTurno) caja.innerHTML = `<div class="vo-vacio">⏳<b>Descargando… ${esc(p)}%</b>${esc(voMB(total))}</div>`; });
+      const doc = await voPdfDoc(d.url); voAvances.delete(d.url); if(turno !== voVisorTurno) return;
       const n = Math.min(doc.numPages, 30), cont = document.createElement('div'); cont.className = 'vo-paginas';
       info(`${doc.numPages} página${doc.numPages > 1 ? 's' : ''}`);
       for(let i = 1; i <= n; i++){
@@ -13294,8 +13446,8 @@ async function voReducir(f, avance){
     let blob, nombre = f.name;
     if(/pdf/.test(f.type)){
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-      const doc = await pdfjsLib.getDocument({ data: await f.arrayBuffer() }).promise;
-      if(doc.numPages > 40) return f;
+      const doc = await pdfjsLib.getDocument({ data: await f.arrayBuffer(), worker: voWorker() }).promise;
+      if(doc.numPages > 40){ doc.destroy(); return f; }
       let pdf = null;
       for(let i = 1; i <= doc.numPages; i++){
         if(avance) avance(`Reduciendo página ${i} de ${doc.numPages}…`);
@@ -13311,7 +13463,7 @@ async function voReducir(f, avance){
         pdf.addImage(jpg, 'JPEG', 0, 0, v1.width, v1.height);
         cv.width = cv.height = 0;
       }
-      blob = pdf.output('blob');
+      blob = pdf.output('blob'); doc.destroy();
     }else if(/^image\//.test(f.type)){
       if(avance) avance('Reduciendo imagen…');
       const img = await createImageBitmap(f), k = Math.min(1, VO_LADO_MAX / Math.max(img.width, img.height));
@@ -13339,7 +13491,8 @@ async function voSubirVouchers(files){
       fila.firstChild.textContent = `Subiendo${reducido} `;
       const path = `vo_vouchers/${c.id}/${Date.now()}_${ff.name.replace(/[^\w.\-]+/g, '_')}`;
       const ref = storage.ref().child(path);
-      const tarea = ref.put(ff, { contentType: ff.type });
+      // Nombre único: el archivo nunca cambia, así el navegador lo guarda y la próxima vez abre al instante.
+      const tarea = ref.put(ff, { contentType: ff.type, cacheControl:'private, max-age=31536000' });
       tarea.on('state_changed', snap=>{ const p = Math.round(snap.bytesTransferred / snap.totalBytes * 100); fila.querySelector('span').textContent = p + '%'; fila.querySelector('i').style.width = p + '%'; });
       await tarea;
       const v = { nombre: ff.name, url: await ref.getDownloadURL(), path, tipo: ff.type, tam: ff.size, subido_por: currentUserAlias, subido_en: new Date().toISOString() };
@@ -13351,6 +13504,7 @@ async function voSubirVouchers(files){
       fila.remove();
     }catch(err){ console.error(err); fila.innerHTML = `⚠ No se pudo subir <b>${esc(f.name)}</b>: ${esc(err.message)}`; }
   }
+  voSyncPublico(c);
   showToast(`Voucher(s) agregado(s) a ${c.id}`, 'ok');
   voDocSel = voDocs(c).length - 1;
   renderVoLista(); renderVoDetalle();
@@ -13369,7 +13523,7 @@ $('vo-detalle').addEventListener('click', async e=>{
       const resto = c.vouchers.filter(x=> x.path !== v.path);
       await voComprobantesRef.doc(c.id).update({ vouchers: resto });
       storage.ref().child(v.path).delete().catch(err=> console.warn('No se pudo borrar el archivo', err));
-      c.vouchers = resto; voIndexar(c); voDocSel = 0;
+      c.vouchers = resto; voIndexar(c); voDocSel = 0; voSyncPublico(c);
       await logAccion('vo_voucher_quitado', {detalle:`${c.id}: ${v.nombre}`});
       showToast('Voucher quitado', 'ok'); renderVoLista(); renderVoDetalle();
     }catch(err){ console.error(err); showToast('No se pudo quitar: ' + err.message, 'err'); }
