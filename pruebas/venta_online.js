@@ -305,9 +305,13 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
   await ad.page.setViewportSize({ width: 1440, height: 900 });
   verificar(angosta.pos === 'static' && angosta.ancho <= 820 && angosta.debajo, `Responsive: en 820 px la lista no queda fija y el detalle va debajo, sin cruzarse (${JSON.stringify(angosta)})`);
   // El cliente abre el link sin iniciar sesión.
-  const pub = await (await ad.browser.newContext({ viewport:{ width: 430, height: 900 } })).newPage();
+  const ctxPub = await ad.browser.newContext({ viewport:{ width: 430, height: 900 } });
+  // Lo primero que se pinta no debe ser el login del sistema (antes aparecía un instante).
+  await ctxPub.addInitScript(()=> document.addEventListener('DOMContentLoaded', ()=>{ window.__loginAlCargar = getComputedStyle(document.getElementById('login-screen')).display; }));
+  const pub = await ctxPub.newPage();
   await pub.goto(lk.clip);
   await pub.waitForSelector('#vp-doc', { timeout: 20000 });
+  verificar((await pub.evaluate(()=> window.__loginAlCargar)) === 'none', 'Al abrir el link no aparece el login del sistema ni por un instante');
   const sinDni = await pub.evaluate(()=> $('vo-publico').innerText);
   await pub.screenshot({ path: path.join(__dirname, 'salida', 'vo_link_dni.png') });
   await pub.fill('#vp-doc', '87654321'); await pub.click('#vp-entrar');

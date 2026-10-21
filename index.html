@@ -17,6 +17,8 @@
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
+<!-- Link público para el cliente (?envio=…): se marca antes de pintar nada, así no aparece el login ni un instante. -->
+<script>if(/[?&]envio=/.test(location.search)) document.documentElement.classList.add('modo-publico');</script>
 <style>
   :root{
     --ink:#1B2430; --ink-soft:#4A5568; --bg:#E9EBEE; --panel:#FFFFFF;
@@ -731,8 +733,8 @@
   .vo-fila.anulado{border-left-color:#c0392b; background:#fff8f8;} .vo-fila.anulado .t .nro{text-decoration:line-through;}
   .vo-link-chip{font-size:10.5px; font-weight:800; padding:1px 8px; border-radius:10px; background:#d9f7e8; color:#0b6b3a;}
   /* Página pública del link (sin iniciar sesión) */
-  body.modo-publico #login-screen, body.modo-publico #app-shell, body.modo-publico #app-footer{display:none !important;}
-  body.modo-publico{background:#eef1f6;}
+  .modo-publico #login-screen, .modo-publico #app-shell, .modo-publico #app-footer{display:none !important;}
+  .modo-publico body, body.modo-publico{background:#eef1f6;} html.modo-publico #vo-publico{display:block !important;}
   #vo-publico{max-width:880px; margin:0 auto; padding:18px 14px 40px;}
   .vp-cab{background:linear-gradient(120deg, #1b2430, #2b4c6f); color:#fff; border-radius:14px; padding:18px 20px; margin-bottom:14px;}
   .vp-cab small{opacity:.75; text-transform:uppercase; letter-spacing:.1em; font-size:11px;} .vp-cab h1{margin:4px 0 2px; font-size:22px; font-family:var(--mono);} .vp-cab .nom{font-size:14px; opacity:.9;}
@@ -1623,7 +1625,7 @@
 </head>
 <body>
 
-<div id="vo-publico" style="display:none;"></div>
+<div id="vo-publico" style="display:none;"><div class="vp-panel"><div class="vo-vacio">⏳<b>Cargando…</b></div></div></div>
 <div id="login-screen">
   <div id="login-bg-illustration" aria-hidden="true"><svg viewBox="0 0 1400 900" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMaxYMax slice">
   <defs>
@@ -3471,8 +3473,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v207';
-const APP_UPDATED = '23/10/2026 11:00';
+const APP_VERSION = 'v208';
+const APP_UPDATED = '23/10/2026 12:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
