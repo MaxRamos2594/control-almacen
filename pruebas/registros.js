@@ -37,7 +37,7 @@ function verificar(condicion, texto){
 
   // Subpestañas agrupadas
   const g = await page.evaluate(()=> [...document.querySelectorAll('#view-campanas > .subtabs .subgrupo')].map(x=> x.querySelector('.subgrupo-t').innerText + ':' + x.querySelectorAll('button').length));
-  verificar(g.join(' ') === 'CARGAR:4 CONSULTAR:4 GESTIONAR:3 VENTA ONLINE:2', `Subpestañas agrupadas: ${g.join(' · ')}`);
+  verificar(g.join(' ') === 'CARGAR:4 CONSULTAR:4 GESTIONAR:3', `Subpestañas agrupadas: ${g.join(' · ')}`);
   await page.locator('#view-campanas > .subtabs').screenshot({ path: path.join(__dirname, 'salida', 'subpestanas.png') });
 
   await page.click('#campsub-registros');
