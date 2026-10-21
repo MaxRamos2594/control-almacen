@@ -719,6 +719,7 @@
     user-select:none; -webkit-user-select:none; cursor:not-allowed;}
   .vo-link-url.vacio{color:#7a6b8a; font-family:inherit; font-weight:600;}
   .vo-link button{border:none; background:#1b0b2e; color:#fff; font-weight:800; border-radius:8px; padding:9px 16px; cursor:pointer; font-size:13px; white-space:nowrap;} .vo-link button:hover{background:#000;}
+  .vo-link-ultima{margin-top:8px; font-size:12px; font-weight:600; background:rgba(0,0,0,.22); border-radius:8px; padding:5px 10px; display:inline-block;} .vo-link-ultima b{font-weight:800;}
   .vo-link-chip{font-size:10.5px; font-weight:800; padding:1px 8px; border-radius:10px; background:#d9f7e8; color:#0b6b3a;}
   /* Página pública del link (sin iniciar sesión) */
   body.modo-publico #login-screen, body.modo-publico #app-shell, body.modo-publico #app-footer{display:none !important;}
@@ -3456,8 +3457,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v203';
-const APP_UPDATED = '22/10/2026 18:30';
+const APP_VERSION = 'v204';
+const APP_UPDATED = '22/10/2026 19:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -13149,7 +13150,8 @@ function renderVoDetalle(){
     `<div class="vo-link${c.link_enviado ? ' enviado' : ''}" id="vo-link-box"><div class="vo-link-cab"><span class="lbl">🔗 Link para el cliente</span><span class="vo-link-est">${c.link_enviado
       ? `📨 Enviado el ${esc(new Date(c.link_enviado_en).toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }))} por ${esc(c.link_enviado_por || '')}${c.link_copias > 1 ? ` · copiado ${esc(c.link_copias)} veces` : ''}` : '⏳ Aún no enviado'}</span></div>` +
       `<div class="vo-link-fila"><div class="vo-link-url${c.link_token ? '' : ' vacio'}" id="vo-link-url" title="Usa el botón Copiar link">${esc(c.link_token ? voLinkUrl(c.link_token) : 'El link se crea al presionar "Copiar link"')}</div>` +
-      `<button type="button" id="btn-vo-link">📋 Copiar link</button></div></div>` +
+      `<button type="button" id="btn-vo-link">📋 Copiar link</button></div>` +
+      `${c.link_ultima_copia ? `<div class="vo-link-ultima" id="vo-link-ultima">📋 Última copia: <b>${esc(c.link_ultima_copia_por || c.link_enviado_por || '—')}</b> · ${esc(new Date(c.link_ultima_copia).toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }))}</div>` : ''}</div>` +
     `<div class="vo-datos"><div class="vo-dato"><span>Nombre / Razón social</span><b>${esc(c.nombre || '—')}</b></div><div class="vo-dato"><span>${esc(c.doc_tipo || 'Documento')}</span><b>${esc(c.doc_numero || '—')}</b></div>` +
     `<div class="vo-dato"><span>Fecha de emisión</span><b>${esc((c.fecha_emision || '').split('-').reverse().join('/'))}</b></div><div class="vo-dato"><span>Códigos · unidades</span><b>${esc(c.cant_codigos || 0)} · ${esc(anFmt(c.unidades || 0))}</b></div>` +
     `<div class="vo-dato desp${c.fecha_despacho ? '' : ' vacio'}"><span>🚚 Fecha de despacho <i class="ok" id="vo-desp-ok"></i></span>${puede
@@ -13218,10 +13220,10 @@ async function voCopiarLink(){
     }
     await navigator.clipboard.writeText(voLinkUrl(c.link_token));
     const ahora = new Date().toISOString(), primera = !c.link_enviado;
-    const cambios = { link_enviado: true, link_copias: firebase.firestore.FieldValue.increment(1), link_ultima_copia: ahora };
+    const cambios = { link_enviado: true, link_copias: firebase.firestore.FieldValue.increment(1), link_ultima_copia: ahora, link_ultima_copia_por: currentUserAlias };
     if(primera){ cambios.link_enviado_en = ahora; cambios.link_enviado_por = currentUserAlias; }
     await voComprobantesRef.doc(c.id).update(cambios);
-    Object.assign(c, { link_enviado: true, link_copias: (c.link_copias || 0) + 1, link_ultima_copia: ahora }, primera ? { link_enviado_en: ahora, link_enviado_por: currentUserAlias } : {});
+    Object.assign(c, { link_enviado: true, link_copias: (c.link_copias || 0) + 1, link_ultima_copia: ahora, link_ultima_copia_por: currentUserAlias }, primera ? { link_enviado_en: ahora, link_enviado_por: currentUserAlias } : {});
     voIndexar(c);
     await logAccion('vo_link_copiado', {detalle:`${c.id}: link para el cliente copiado${primera ? ' (marcado como enviado)' : ''}`});
     showToast('Link copiado. Pégalo en el chat con el cliente.', 'ok');

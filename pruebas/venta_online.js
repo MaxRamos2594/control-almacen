@@ -284,6 +284,9 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
   verificar(lk.clip === `http://127.0.0.1:5055/?envio=${lk.c.link_token}` && lk.c.link_token.length === 32 && lk.c.link_enviado === true && lk.c.link_copias === 1 && lk.chip && lk.pub.clave === 'AB-4521',
     `Botón "Copiar link": copia el link (código de ${lk.c.link_token.length} caracteres) y marca "Link enviado"`);
   await ad.page.click('#btn-vo-link'); await ad.page.waitForTimeout(800);
+  await ad.page.waitForFunction(()=> /Última copia: Administrador/i.test(($('vo-link-ultima') || {}).innerText || ''), null, { timeout: 10000 });
+  const ult = await ad.page.evaluate(async ()=> ({ txt: $('vo-link-ultima').innerText, bd: (await voComprobantesRef.doc('BV01-00000721').get()).data() }));
+  verificar(/Última copia: Administrador · \d/.test(ult.txt) && ult.bd.link_ultima_copia_por === 'Administrador' && !!ult.bd.link_ultima_copia, `Debajo del link: ${ult.txt}`);
   const copias = await ad.page.evaluate(async ()=> (await voComprobantesRef.doc('BV01-00000721').get()).data().link_copias);
   await ad.page.selectOption('#vo-link-f', 'enviado');
   const envs = await ad.page.evaluate(()=> voFiltrados().map(c=> c.id).join(','));
