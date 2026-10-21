@@ -112,7 +112,7 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
   await page.waitForFunction(()=> (voLista.find(c=> c.id === 'F001-00000045').vouchers || []).length === 2 && !document.querySelector('#vo-subidas .vo-subiendo'), null, { timeout: 30000 });
   det = await page.evaluate(async ()=> ({ docs: [...document.querySelectorAll('#vo-detalle .vo-doc')].map(d=> d.innerText.replace(/[↗✕]/g, '').replace(/\s+/g, ' ').trim()).join(' | '), img: await new Promise(ok=> { const t0 = Date.now(); (function ver(){ const cv = document.querySelector('#vo-visor canvas.vo-hoja'); if(cv && /voucher_prueba\.png/.test(decodeURIComponent($('vo-visor').dataset.url))) ok(true); else if(Date.now() - t0 > 10000) ok(false); else setTimeout(ver, 100); })(); }),
     bd: (await voComprobantesRef.doc('F001-00000045').get()).data().vouchers.map(v=> v.nombre).join(','), fila: document.querySelector('#vo-res [data-vo-id="F001-00000045"]') ? 1 : 0 }));
-  verificar(det.bd === 'voucher_prueba.pdf,voucher_prueba.png' && /Comprobante \| 📄 voucher_prueba\.pdf \| 🖼 voucher_prueba\.png/.test(det.docs) && det.img, `2 vouchers subidos y visibles; se muestra el último (${det.docs})`);
+  verificar(det.bd === 'voucher_prueba.pdf,voucher_prueba.png' && det.docs === '🧾 COMPROBANTE | 📄 VOUCHER 1 | 🖼 VOUCHER 2' && det.img, `2 vouchers subidos y visibles; se muestra el último (${det.docs})`);
   verificar(det.fila === 0, 'Con el filtro "Sin voucher", el que ya tiene voucher sale de la lista');
   await page.click('#vo-seg [data-vo-f="con"]');
   verificar(await buscar('voucher_prueba') === 'F001-00000045', 'Filtro "Con voucher" y búsqueda por nombre del voucher');
@@ -171,11 +171,17 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
   verificar(vista.tabs === 'ventaonline' && vista.subs === 'vosub-vouchers' && vista.panel === 'block' && vista.otros === 'none',
     `Usuario comercial: solo ve Venta Online → Subir voucher (${vista.tabs} / ${vista.subs})`);
   await com.page.click('#vo-seg [data-vo-f="todos"]');
-  await com.page.click('#vo-res [data-vo-id="BV01-00000721"]');
-  await com.page.waitForFunction(()=> !!document.querySelector('#vo-detalle .vo-visor'), null, { timeout: 5000 });
-  await com.page.setInputFiles('#vo-voucher-input', [vpdf]);
-  await com.page.waitForFunction(()=> (voLista.find(c=> c.id === 'BV01-00000721').vouchers || []).length === 1 && !document.querySelector('#vo-subidas .vo-subiendo'), null, { timeout: 30000 });
-  verificar(!(await com.page.$('#vo-detalle [data-vo-quitar]')), 'Usuario comercial: puede subir vouchers, pero no quitarlos');
+  await com.page.click('#vo-res [data-vo-id="F001-00000045"]');
+  await com.page.waitForFunction(()=> !!document.querySelector('#vo-visor canvas.vo-hoja'), null, { timeout: 15000 });
+  const sl = await com.page.evaluate(async ()=>{
+    const r = { drop: !!document.querySelector('#vo-drop, #vo-voucher-input'), quitar: !!document.querySelector('[data-vo-quitar]'), aviso: (document.querySelector('.vo-solo-ver') || {}).innerText || '',
+      tabs: [...document.querySelectorAll('#vo-detalle .vo-doc')].map(d=> d.innerText.replace(/[↗✕]/g, '').replace(/\s+/g, ' ').trim()).join(' | ') };
+    await voSubirVouchers([new File(['x'], 'x.pdf', { type:'application/pdf' })]);
+    r.n = (await voComprobantesRef.doc('F001-00000045').get()).data().vouchers.length;
+    return r;
+  });
+  verificar(!sl.drop && !sl.quitar && /Solo consulta/.test(sl.aviso) && sl.n === 2 && sl.tabs === '🧾 COMPROBANTE | 📄 VOUCHER 1 | 📄 VOUCHER 2',
+    `Usuario sin permiso de editar: solo consulta (sin zona para subir ni quitar; ${sl.tabs})`);
   await com.page.screenshot({ path: path.join(__dirname, 'salida', 'vo_comercial.png') });
   errores.push(...com.errores);
   await com.browser.close();
