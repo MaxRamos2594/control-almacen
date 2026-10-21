@@ -721,6 +721,14 @@
   .vo-link-url.vacio{color:#7a6b8a; font-family:inherit; font-weight:600;}
   .vo-link button{border:none; background:#1b0b2e; color:#fff; font-weight:800; border-radius:8px; padding:9px 16px; cursor:pointer; font-size:13px; white-space:nowrap;} .vo-link button:hover{background:#000;}
   .vo-link-ultima{margin-top:8px; font-size:12px; font-weight:600; background:rgba(0,0,0,.22); border-radius:8px; padding:5px 10px; display:inline-block;} .vo-link-ultima b{font-weight:800;}
+  .vo-btn-anular{margin-top:6px; border:1px solid #e3b4b4; background:#fff; color:#8A332A; border-radius:8px; padding:3px 10px; font-size:11.5px; font-weight:700; cursor:pointer;} .vo-btn-anular:hover{background:#fbeaea;}
+  .vo-anular-form{border:2px solid #d9534f; background:#fff5f5; border-radius:12px; padding:10px 14px; margin-bottom:12px; font-size:12.5px; color:#5c1d1a;}
+  .vo-anular-form textarea{width:100%; margin:8px 0; font:inherit; padding:6px 8px; border:1px solid #d9a3a1; border-radius:8px; box-sizing:border-box;}
+  .vo-anular-form .acc{display:flex; gap:8px;} .vo-anular-form button{border:none; background:#c0392b; color:#fff; font-weight:800; border-radius:8px; padding:7px 14px; cursor:pointer;} .vo-anular-form button.sec{background:#e6e8eb; color:#333;}
+  .vo-anulado-box{background:#fbeaea; border:2px solid #d9534f; color:#8A332A; border-radius:12px; padding:10px 14px; margin-bottom:12px; font-size:13px;}
+  .vo-anulado-box .mot{margin:4px 0 8px; color:#5c1d1a;} .vo-anulado-box button{border:none; background:#2b4c6f; color:#fff; font-weight:800; border-radius:8px; padding:7px 14px; cursor:pointer;}
+  .vo-anulado-chip{font-size:10.5px; font-weight:800; padding:1px 8px; border-radius:10px; background:#c0392b; color:#fff;}
+  .vo-fila.anulado{border-left-color:#c0392b; background:#fff8f8;} .vo-fila.anulado .t .nro{text-decoration:line-through;}
   .vo-link-chip{font-size:10.5px; font-weight:800; padding:1px 8px; border-radius:10px; background:#d9f7e8; color:#0b6b3a;}
   /* Página pública del link (sin iniciar sesión) */
   body.modo-publico #login-screen, body.modo-publico #app-shell, body.modo-publico #app-footer{display:none !important;}
@@ -731,6 +739,10 @@
   .vp-datos{display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:14px;}
   .vp-dato{background:#fff; border-radius:12px; padding:12px 14px; border:1px solid var(--line);} .vp-dato span{display:block; font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-soft);} .vp-dato b{font-size:16px;}
   .vp-dato.clave{background:#dfff00; border:2px solid #b8d400; box-shadow:0 0 14px rgba(214,255,0,.8);} .vp-dato.clave b{font-family:var(--mono); font-size:24px; letter-spacing:.12em; color:#1b1b00;}
+  .vp-acceso{display:flex; flex-direction:column; gap:10px; max-width:420px; margin:0 auto;} .vp-acceso label{font-weight:800; font-size:13px;}
+  .vp-acceso input{font-family:var(--mono); font-size:24px; letter-spacing:.15em; padding:10px 12px; border:2px solid #2b4c6f; border-radius:10px; text-align:center;}
+  .vp-acceso button{border:none; background:#2b4c6f; color:#fff; font-weight:800; font-size:15px; border-radius:10px; padding:12px; cursor:pointer;} .vp-acceso button:disabled{opacity:.6;}
+  .vp-error{color:#b0182c; font-weight:700; font-size:13px; min-height:18px;}
   .vp-panel{background:#fff; border-radius:14px; padding:12px; border:1px solid var(--line);}
   /* Agencia de envío */
   .vo-ag{font-size:10.5px; font-weight:800; padding:1px 8px; border-radius:10px; letter-spacing:.03em;}
@@ -2804,6 +2816,7 @@
       <div class="vo-filtros">
         <div class="vo-seg" id="vo-seg"><button type="button" data-vo-f="todos" class="activo">Todos</button><button type="button" data-vo-f="sin">Sin voucher</button><button type="button" data-vo-f="con">Con voucher</button></div>
         <div class="vo-seg" id="vo-seg-desp"><button type="button" data-vo-d="todos" class="activo">Todos</button><button type="button" data-vo-d="sin">Sin despacho</button><button type="button" data-vo-d="con">🚚 Despachados</button></div>
+        <select id="vo-estado-f" title="Comprobantes activos o anulados"><option value="">Activos</option><option value="anulados">🗑 Ver anulados</option></select>
         <select id="vo-agencia-f" title="Agencia de envío"><option value="">Agencia: todas</option><option value="__SIN">Sin agencia</option><option value="SHALOM">SHALOM</option><option value="MARVISUR">MARVISUR</option><option value="FLORES">FLORES</option></select>
         <select id="vo-link-f" title="Estado del link enviado al cliente"><option value="">Link: todos</option><option value="pendiente">🔗 Link por enviar</option><option value="enviado">📨 Link enviado</option></select>
         <select id="vo-tipo"><option value="">Boletas y facturas</option><option value="BOLETA">Boletas</option><option value="FACTURA">Facturas</option></select>
@@ -3458,8 +3471,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v205';
-const APP_UPDATED = '22/10/2026 20:00';
+const APP_VERSION = 'v207';
+const APP_UPDATED = '23/10/2026 11:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -13040,10 +13053,11 @@ async function voCargar(forzar){
   if(voLeidos && !forzar){ renderVoLista(); return; }
   $('vo-res').innerHTML = '<div class="vo-vacio">⏳<b>Cargando comprobantes…</b></div>';
   try{
-    voLista = (await voComprobantesRef.get()).docs.map(d=> Object.assign({ id: d.id }, d.data())).filter(c=> c.estado !== 'ANULADO')
+    voLista = (await voComprobantesRef.get()).docs.map(d=> Object.assign({ id: d.id }, d.data()))
       .sort((a, b)=> (b.fecha_emision || '').localeCompare(a.fecha_emision || '') || b.id.localeCompare(a.id));
     voLista.forEach(voIndexar);
     voLeidos = true;
+    voMigrarLinks();
   }catch(err){ console.error(err); $('vo-res').innerHTML = `<div class="vo-vacio">⚠<b>No se pudieron leer los comprobantes</b>${esc(err.message)}</div>`; return; }
   renderVoLista();
 }
@@ -13053,13 +13067,14 @@ function voIndexar(c){
   c._txt = normalizarTexto([c.id, c.tipo, c.nombre, c.doc_tipo, c.doc_numero, f, c.fecha_texto, c.canal, c.moneda,
     c.importe_total != null ? `${Number(c.importe_total).toFixed(2)} ${String(c.importe_total).replace('.', ',')}` : '',
     ...(c.items || []).map(it=> `${it.codigo} ${it.descripcion}`), ...(c.vouchers || []).map(v=> v.nombre), (c.vouchers || []).length ? 'CON VOUCHER' : 'SIN VOUCHER',
-    c.fecha_despacho ? `DESPACHO DESPACHADO ${voFechaTxt(c.fecha_despacho)}` : 'SIN DESPACHO', c.clave ? `CLAVE ${c.clave}` : 'SIN CLAVE', c.link_enviado ? 'LINK ENVIADO' : 'LINK PENDIENTE', c.agencia_envio ? `AGENCIA ${c.agencia_envio}` : 'SIN AGENCIA'].join(' '));
+    c.fecha_despacho ? `DESPACHO DESPACHADO ${voFechaTxt(c.fecha_despacho)}` : 'SIN DESPACHO', c.clave ? `CLAVE ${c.clave}` : 'SIN CLAVE', c.link_enviado ? 'LINK ENVIADO' : 'LINK PENDIENTE', c.agencia_envio ? `AGENCIA ${c.agencia_envio}` : 'SIN AGENCIA', c.estado === 'ANULADO' ? `ANULADO ${c.anulado_motivo || ''}` : ''].join(' '));
 }
 const voFechaTxt = iso=> (iso || '').split('-').reverse().join('/');
 const voTokens = ()=> normalizarTexto($('vo-q').value).split(/\s+/).filter(Boolean);
 function voFiltrados(){
-  const tk = voTokens(), tipo = $('vo-tipo').value, d = $('vo-desde').value, h = $('vo-hasta').value, campo = $('vo-fcampo').value === 'despacho' ? 'fecha_despacho' : 'fecha_emision', lnk = $('vo-link-f').value, ag = $('vo-agencia-f').value;
+  const tk = voTokens(), tipo = $('vo-tipo').value, d = $('vo-desde').value, h = $('vo-hasta').value, campo = $('vo-fcampo').value === 'despacho' ? 'fecha_despacho' : 'fecha_emision', lnk = $('vo-link-f').value, ag = $('vo-agencia-f').value, verAnulados = $('vo-estado-f').value === 'anulados';
   return voLista.filter(c=>{
+    if((c.estado === 'ANULADO') !== verAnulados) return false;
     const nv = (c.vouchers || []).length;
     if(voFiltro === 'sin' && nv) return false;
     if(voFiltro === 'con' && !nv) return false;
@@ -13080,7 +13095,7 @@ function renderVoLista(){
   const L = voFiltrados(), tk = voTokens();
   const con = L.filter(c=> (c.vouchers || []).length).length;
   const desp = L.filter(c=> c.fecha_despacho).length;
-  $('btn-vo-limpiar').style.display = tk.length || $('vo-tipo').value || $('vo-desde').value || $('vo-hasta').value || voFiltro !== 'todos' || voFiltroDesp !== 'todos' || $('vo-link-f').value || $('vo-agencia-f').value ? '' : 'none';
+  $('btn-vo-limpiar').style.display = tk.length || $('vo-tipo').value || $('vo-desde').value || $('vo-hasta').value || voFiltro !== 'todos' || voFiltroDesp !== 'todos' || $('vo-link-f').value || $('vo-agencia-f').value || $('vo-estado-f').value ? '' : 'none';
   $('vo-kpis').innerHTML = `<div class="vo-kpi"><b>${esc(anFmt(L.length))}</b><span>Comprobantes</span></div><div class="vo-kpi ok"><b>${esc(anFmt(con))}</b><span>Con voucher</span></div>` +
     `<div class="vo-kpi alerta"><b>${esc(anFmt(L.length - con))}</b><span>Sin voucher</span></div><div class="vo-kpi desp"><b>${esc(anFmt(desp))}</b><span>Despachados</span></div><div class="vo-kpi"><b>${esc(anFmt(L.filter(c=> c.link_enviado).length))}</b><span>Links enviados</span></div><div class="vo-kpi"><b>${esc(voSoles(L.reduce((s, c)=> s + (Number(c.importe_total) || 0), 0)))}</b><span>Importe</span></div>`;
   if(!L.length){ $('vo-res').innerHTML = `<div class="vo-vacio">🔍<b>${voLista.length ? 'Nada coincide con la búsqueda' : 'Aún no hay comprobantes'}</b>${voLista.length ? 'Prueba con otra palabra o quita los filtros.' : 'Cárgalos en Venta Online → Comprobantes Agencia.'}</div>`; $('vo-mas').innerHTML = ''; return; }
@@ -13088,8 +13103,9 @@ function renderVoLista(){
   voPagina = Math.min(Math.max(0, voPagina), paginas - 1);
   $('vo-res').innerHTML = L.slice(voPagina * VO_POR_PAGINA, (voPagina + 1) * VO_POR_PAGINA).map(c=>{ const nv = (c.vouchers || []).length;
     const coincide = tk.length ? (c.items || []).filter(it=> tk.some(t=> normalizarTexto(`${it.codigo} ${it.descripcion}`).includes(t))).slice(0, 2) : [];
-    return `<button type="button" role="option" class="vo-fila${nv ? ' con' : ''}${voSel === c.id ? ' sel' : ''}" data-vo-id="${esc(c.id)}" aria-selected="${voSel === c.id}">` +
+    return `<button type="button" role="option" class="vo-fila${nv ? ' con' : ''}${c.estado === 'ANULADO' ? ' anulado' : ''}${voSel === c.id ? ' sel' : ''}" data-vo-id="${esc(c.id)}" aria-selected="${voSel === c.id}">` +
       `<span class="t"><span class="nro">${cmpMarcar(c.id, tk)}</span><span class="vo-tipo ${esc(c.tipo)}">${esc(c.tipo)}</span><span class="vo-est ${nv ? 'con' : 'sin'}">${nv ? `📎 ${esc(nv)} voucher${nv > 1 ? 's' : ''}` : 'Sin voucher'}</span>` +
+      `${c.estado === 'ANULADO' ? '<span class="vo-anulado-chip">🗑 ANULADO</span>' : ''}` +
       `${c.clave ? `<span class="vo-clave-chip" title="Clave">🔑 ${cmpMarcar(c.clave, tk)}</span>` : '<span class="vo-clave-chip sin">Sin clave</span>'}` +
       `${c.agencia_envio ? `<span class="vo-ag ${esc(c.agencia_envio)}">🏢 ${cmpMarcar(c.agencia_envio, tk)}</span>` : '<span class="vo-ag sin">Sin agencia</span>'}` +
       `${c.link_enviado ? '<span class="vo-link-chip">📨 Link enviado</span>' : ''}` +
@@ -13104,12 +13120,12 @@ function renderVoLista(){
 }
 function voBuscar(){ voPagina = 0; renderVoLista(); }
 $('vo-q').addEventListener('input', ()=>{ clearTimeout(voQTimer); voQTimer = setTimeout(voBuscar, 90); });
-['vo-agencia-f','vo-link-f','vo-tipo','vo-fcampo','vo-desde','vo-hasta'].forEach(id=> $(id).addEventListener('change', voBuscar));
+['vo-estado-f','vo-agencia-f','vo-link-f','vo-tipo','vo-fcampo','vo-desde','vo-hasta'].forEach(id=> $(id).addEventListener('change', voBuscar));
 $('vo-seg-desp').addEventListener('click', e=>{ const b = e.target.closest('[data-vo-d]'); if(!b) return; voFiltroDesp = b.dataset.voD;
   document.querySelectorAll('#vo-seg-desp button').forEach(x=> x.classList.toggle('activo', x === b)); voBuscar(); });
 $('vo-seg').addEventListener('click', e=>{ const b = e.target.closest('[data-vo-f]'); if(!b) return; voFiltro = b.dataset.voF;
   document.querySelectorAll('#vo-seg button').forEach(x=> x.classList.toggle('activo', x === b)); voBuscar(); });
-$('btn-vo-limpiar').addEventListener('click', ()=>{ $('vo-q').value = ''; $('vo-tipo').value = ''; $('vo-fcampo').value = 'emision'; $('vo-link-f').value = ''; $('vo-agencia-f').value = ''; $('vo-desde').value = ''; $('vo-hasta').value = ''; voFiltro = 'todos'; voFiltroDesp = 'todos';
+$('btn-vo-limpiar').addEventListener('click', ()=>{ $('vo-q').value = ''; $('vo-tipo').value = ''; $('vo-fcampo').value = 'emision'; $('vo-link-f').value = ''; $('vo-agencia-f').value = ''; $('vo-estado-f').value = ''; $('vo-desde').value = ''; $('vo-hasta').value = ''; voFiltro = 'todos'; voFiltroDesp = 'todos';
   document.querySelectorAll('#vo-seg button').forEach(x=> x.classList.toggle('activo', x.dataset.voF === 'todos'));
   document.querySelectorAll('#vo-seg-desp button').forEach(x=> x.classList.toggle('activo', x.dataset.voD === 'todos')); voBuscar(); $('vo-q').focus(); });
 $('vo-mas').addEventListener('click', e=>{ const b = e.target.closest('[data-vo-pag]'); if(b && !b.disabled){ voPagina += Number(b.dataset.voPag); renderVoLista(); $('vo-res').scrollTop = 0; } });
@@ -13142,19 +13158,26 @@ const voDocs = c=> [{ nombre:`Comprobante ${c.id}`, url: c.pdf_url, tipo:'applic
 function renderVoDetalle(){
   const c = voLista.find(x=> x.id === voSel), box = $('vo-detalle');
   if(!c){ box.innerHTML = '<div class="vo-vacio">📄<b>Elige un comprobante</b>Busca por cualquier dato y haz clic en un comprobante para ver su detalle, su PDF y sus vouchers.</div>'; return; }
-  const docs = voDocs(c), nv = (c.vouchers || []).length, puede = voPuedeEditar();
+  const anulado = c.estado === 'ANULADO', docs = voDocs(c), nv = (c.vouchers || []).length, puede = voPuedeEditar() && !anulado;
   if(voDocSel >= docs.length) voDocSel = docs.length - 1;
   const d = docs[voDocSel];
   box.innerHTML = `<div class="vo-cab"><div><div style="display:flex; gap:6px; align-items:center; margin-bottom:4px;"><span class="vo-tipo ${esc(c.tipo)}">${esc(c.tipo)}</span><span class="vo-canal">${esc(c.canal || 'AGENCIA')}</span><span class="vo-est ${nv ? 'con' : 'sin'}">${nv ? `📎 ${esc(nv)} voucher${nv > 1 ? 's' : ''}` : 'Sin voucher'}</span></div><h2>${esc(c.id)}</h2></div>` +
-    `<div style="text-align:right;"><div class="imp">${esc(voSoles(c.importe_total))}</div><div class="hint">${esc(c.fecha_texto || '')}</div></div></div>` +
+    `<div style="text-align:right;"><div class="imp">${esc(voSoles(c.importe_total))}</div><div class="hint">${esc(c.fecha_texto || '')}</div>` +
+    `${voPuedeEditar() && !anulado ? '<button type="button" class="vo-btn-anular" id="btn-vo-anular" title="Anular este comprobante (por ejemplo, si se subió por error)">🗑 Anular</button>' : ''}</div></div>` +
+    (anulado ? `<div class="vo-anulado-box"><b>🗑 COMPROBANTE ANULADO</b> el ${esc(new Date(c.anulado_en).toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }))} por ${esc(c.anulado_por || '')}` +
+      `<div class="mot">Motivo: ${esc(c.anulado_motivo || '—')}</div><div class="mot">🗑 PDF borrados: ${esc((c.archivos_borrados || []).map(a=> a.nombre).join(', ') || 'ninguno')}</div>` +
+      `<div class="mot">Para corregirlo, vuelve a subir el comprobante correcto en "Comprobantes Agencia".</div></div>` : '') +
+    `<div class="vo-anular-form" id="vo-anular-form" hidden><b>¿Anular ${esc(c.id)}?</b> <b>Se borrarán el PDF del comprobante y sus ${esc(nv)} voucher(s); no se puede deshacer.</b> Sale de la lista (queda el registro en "Ver anulados") y, si tiene link, el cliente verá "Este envío fue anulado". Luego puedes volver a subir el comprobante correcto.` +
+      `<textarea id="vo-anular-motivo" rows="2" maxlength="300" placeholder="Escribe el motivo (obligatorio). Ej.: se subió por error, no era de Agencia…"></textarea>` +
+      `<div class="acc"><button type="button" id="btn-vo-anular-ok">🗑 Confirmar anulación</button><button type="button" id="btn-vo-anular-no" class="sec">Cancelar</button></div></div>` +
     `<div class="vo-clave${c.clave ? '' : ' sin'}" id="vo-clave-box"><span class="lbl">🔑 Clave</span>${puede
       ? `<input type="text" id="vo-clave" value="${esc(c.clave || '')}" placeholder="Escribe la clave" maxlength="40" autocomplete="off" spellcheck="false" title="Escribe la clave y presiona Enter (o sal del campo) para guardarla"><button type="button" id="btn-vo-clave">Guardar</button>`
       : `<span class="val">${esc(c.clave || 'Sin clave')}</span>`}${c.clave ? '<button type="button" id="btn-vo-clave-copiar" title="Copiar la clave">📋 Copiar</button>' : ''}<span class="ok" id="vo-clave-ok"></span></div>` +
-    `<div class="vo-link${c.link_enviado ? ' enviado' : ''}" id="vo-link-box"><div class="vo-link-cab"><span class="lbl">🔗 Link para el cliente</span><span class="vo-link-est">${c.link_enviado
+    (anulado ? '' : `<div class="vo-link${c.link_enviado ? ' enviado' : ''}" id="vo-link-box"><div class="vo-link-cab"><span class="lbl">🔗 Link para el cliente</span><span class="vo-link-est">${c.link_enviado
       ? `📨 Enviado el ${esc(new Date(c.link_enviado_en).toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }))} por ${esc(c.link_enviado_por || '')}${c.link_copias > 1 ? ` · copiado ${esc(c.link_copias)} veces` : ''}` : '⏳ Aún no enviado'}</span></div>` +
       `<div class="vo-link-fila"><div class="vo-link-url${c.link_token ? '' : ' vacio'}" id="vo-link-url" title="Usa el botón Copiar link">${esc(c.link_token ? voLinkUrl(c.link_token) : 'El link se crea al presionar "Copiar link"')}</div>` +
       `<button type="button" id="btn-vo-link">📋 Copiar link</button></div>` +
-      `${c.link_ultima_copia ? `<div class="vo-link-ultima" id="vo-link-ultima">📋 Última copia: <b>${esc(c.link_ultima_copia_por || c.link_enviado_por || '—')}</b> · ${esc(new Date(c.link_ultima_copia).toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }))}</div>` : ''}</div>` +
+      `${c.link_ultima_copia ? `<div class="vo-link-ultima" id="vo-link-ultima">📋 Última copia: <b>${esc(c.link_ultima_copia_por || c.link_enviado_por || '—')}</b> · ${esc(new Date(c.link_ultima_copia).toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }))}</div>` : ''}</div>`) +
     `<div class="vo-datos"><div class="vo-dato"><span>Nombre / Razón social</span><b>${esc(c.nombre || '—')}</b></div><div class="vo-dato"><span>${esc(c.doc_tipo || 'Documento')}</span><b>${esc(c.doc_numero || '—')}</b></div>` +
     `<div class="vo-dato"><span>Fecha de emisión</span><b>${esc((c.fecha_emision || '').split('-').reverse().join('/'))}</b></div><div class="vo-dato"><span>Códigos · unidades</span><b>${esc(c.cant_codigos || 0)} · ${esc(anFmt(c.unidades || 0))}</b></div>` +
     `<div class="vo-dato desp${c.fecha_despacho ? '' : ' vacio'}"><span>🚚 Fecha de despacho <i class="ok" id="vo-desp-ok"></i></span>${puede
@@ -13164,7 +13187,7 @@ function renderVoDetalle(){
       ? `<select id="vo-agencia" title="Elige la agencia con la que se envió"><option value="">— Elegir —</option>${VO_AGENCIAS.map(a=> `<option value="${esc(a)}"${c.agencia_envio === a ? ' selected' : ''}>${esc(a)}</option>`).join('')}</select>`
       : `<b>${esc(c.agencia_envio || 'Pendiente')}</b>`}</div></div>` +
     (puede ? `<label class="vo-drop" id="vo-drop"><input type="file" id="vo-voucher-input" accept="application/pdf,image/*" multiple hidden><b>📎 Arrastra aquí los vouchers o haz clic para elegirlos</b>PDF o imagen · puedes subir varios para este comprobante</label><div id="vo-subidas"></div>`
-      : `<div class="vo-solo-ver">👁 Solo consulta: puedes ver el comprobante y sus vouchers. Para subir vouchers se necesita el permiso "Puede editar / eliminar".</div>`) +
+      : `<div class="vo-solo-ver">${anulado ? '🗑 Comprobante anulado: sus PDF fueron borrados.' : '👁 Solo consulta: puedes ver el comprobante y sus vouchers. Para subir vouchers se necesita el permiso "Puede editar / eliminar".'}</div>`) +
     `<div class="vo-docs">${docs.map((x, i)=> `<span class="vo-doc${i === voDocSel ? ' activo' : ''}" data-vo-doc="${i}" title="${esc(x.nombre)}">${x.comprobante ? '🧾' : /pdf/.test(x.tipo || '') ? '📄' : '🖼'} <span>${esc(x.comprobante ? 'COMPROBANTE' : nv > 1 ? `VOUCHER ${c.vouchers.indexOf(x) + 1}` : 'VOUCHER')}</span>` +
       `${!x.comprobante ? `<a href="${esc(x.url)}" target="_blank" rel="noopener" title="Abrir en otra pestaña" class="x">↗</a>${puede ? `<button type="button" class="x" data-vo-quitar="${esc(x.path)}" title="Quitar este voucher">✕</button>` : ''}` : ''}</span>`).join('')}</div>` +
     (d ? `<div class="vo-visor-barra"><span class="vo-vb-info" id="vo-vb-info"></span><span class="vo-vb-grupo"><button type="button" data-vo-zoom="-" title="Alejar">−</button><span id="vo-vb-zoom">Ajustado</span><button type="button" data-vo-zoom="+" title="Acercar">+</button><button type="button" data-vo-zoom="fit" title="Ajustar al ancho">↔ Ajustar</button></span>` +
@@ -13195,9 +13218,10 @@ function voGuardarGiro(c, d){
   });
 }
 // -------- Link público para el cliente --------
-// El cliente lo abre sin iniciar sesión: ve su comprobante, la fecha de despacho, la clave y los vouchers.
-// Seguro: el link lleva un código aleatorio de 32 caracteres (imposible de adivinar) y apunta a
-// vo_publico/{código}, que solo guarda esos datos; nadie puede listar esa colección (firestore.rules).
+// El cliente lo abre sin iniciar sesión y, para ver su envío, escribe su DNI o RUC.
+// Seguro: el link lleva un código aleatorio de 32 caracteres. vo_publico/{código} solo dice qué pedir
+// (DNI o RUC) y si está anulado; los datos están en vo_publico/{SHA-256 de "código:DNI"}, así que sin el
+// DNI/RUC correcto no hay forma de encontrarlos. Nadie puede listar esa colección (firestore.rules).
 const voPublicoRef = db.collection('vo_publico');
 const voLinkUrl = token=> `${location.origin}${location.pathname}?envio=${token}`;
 function voNuevoToken(){ const b = new Uint8Array(24); crypto.getRandomValues(b); return btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
@@ -13208,18 +13232,35 @@ function voDatosPublicos(c){
       ...(c.pdf_url ? [{ etiqueta: 'COMPROBANTE', url: c.pdf_url, tipo: 'application/pdf', giro: c.pdf_giro || 0 }] : [])],
     actualizado: new Date().toISOString() };
 }
+const voSoloDigitos = t=> String(t || '').replace(/\D/g, '');
+async function voHashAcceso(token, doc){
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${token}:${voSoloDigitos(doc)}`));
+  return [...new Uint8Array(b)].map(x=> x.toString(16).padStart(2, '0')).join('');
+}
+// Escribe lo que ve el cliente: la portada (qué pedir) y los datos bajo la llave del DNI/RUC.
+async function voEscribirPublico(c){
+  const pide = c.doc_tipo === 'RUC' || voSoloDigitos(c.doc_numero).length === 11 ? 'RUC' : 'DNI';
+  await voPublicoRef.doc(c.link_token).set({ pide, actualizado: new Date().toISOString() });
+  await voPublicoRef.doc(await voHashAcceso(c.link_token, c.doc_numero)).set(voDatosPublicos(c));
+}
 // Mantiene al día lo que ve el cliente cuando cambian la clave, el despacho, los vouchers o el giro.
 function voSyncPublico(c){
-  if(c && c.link_token) voPublicoRef.doc(c.link_token).set(voDatosPublicos(c)).catch(err=> console.warn('Link público:', err));
+  if(c && c.link_token && c.estado !== 'ANULADO') voEscribirPublico(c).catch(err=> console.warn('Link público:', err));
+}
+// Links creados antes de pedir DNI/RUC: se pasan al formato nuevo la primera vez que se abre la lista.
+function voMigrarLinks(){
+  voLista.filter(c=> c.link_token && !c.link_v2 && c.estado !== 'ANULADO' && voSoloDigitos(c.doc_numero)).forEach(c=>
+    voEscribirPublico(c).then(()=> voComprobantesRef.doc(c.id).update({ link_v2: true })).then(()=> { c.link_v2 = true; }).catch(err=> console.warn('Migrar link:', err)));
 }
 async function voCopiarLink(){
-  const c = voLista.find(x=> x.id === voSel); if(!c) return;
+  const c = voLista.find(x=> x.id === voSel); if(!c || c.estado === 'ANULADO') return;
+  if(!voSoloDigitos(c.doc_numero)){ showToast('Este comprobante no tiene DNI ni RUC: el link necesita uno para que el cliente pueda abrirlo.', 'err'); return; }
   try{
     if(!c.link_token){
       const token = voNuevoToken();
-      await voPublicoRef.doc(token).set(voDatosPublicos(c));
-      await voComprobantesRef.doc(c.id).update({ link_token: token });
-      c.link_token = token;
+      await voEscribirPublico(Object.assign({}, c, { link_token: token }));
+      await voComprobantesRef.doc(c.id).update({ link_token: token, link_v2: true });
+      c.link_token = token; c.link_v2 = true;
     }
     await navigator.clipboard.writeText(voLinkUrl(c.link_token));
     const ahora = new Date().toISOString(), primera = !c.link_enviado;
@@ -13242,43 +13283,109 @@ document.addEventListener('copy', e=>{
   const sel = String(window.getSelection ? window.getSelection() : '');
   if(sel && /[?&]envio=/.test(sel)){ e.preventDefault(); showToast('Usa el botón "Copiar link" para que quede registrado como enviado.', 'err'); }
 });
-// Página pública (?envio=código): no pide iniciar sesión y solo muestra los datos de ese envío.
+// Página pública (?envio=código): no pide iniciar sesión; pide el DNI o RUC del cliente para mostrar su envío.
 const VO_TOKEN_PUBLICO = new URLSearchParams(location.search).get('envio');
 async function voPaginaPublica(token){
   document.body.classList.add('modo-publico');
   const caja = $('vo-publico'); caja.style.display = 'block';
-  caja.innerHTML = '<div class="vp-panel"><div class="vo-vacio">⏳<b>Cargando tu envío…</b></div></div>';
-  let d;
-  try{ const snap = await voPublicoRef.doc(token).get(); d = snap.exists ? snap.data() : null; }
-  catch(err){ console.error(err); d = null; }
-  if(!d){ caja.innerHTML = '<div class="vp-panel"><div class="vo-vacio">🔒<b>Enlace no válido</b>Revisa que el link esté completo o pide uno nuevo a tu vendedor.</div></div>'; return; }
-  document.title = `Envío ${d.nro}`;
-  let sel = 0;
-  const pintar = ()=>{
-    const doc = d.docs[sel];
-    caja.innerHTML = `<div class="vp-cab"><small>Seguimiento de tu pedido</small><h1>${esc(d.nro)}</h1><div class="nom">${esc(d.nombre)}</div></div>` +
-      `<div class="vp-datos">${d.clave ? `<div class="vp-dato clave"><span>🔑 Clave</span><b>${esc(d.clave)}</b></div>` : ''}` +
-      `${d.agencia_envio ? `<div class="vp-dato"><span>🏢 Agencia de envío</span><b>${esc(d.agencia_envio)}</b></div>` : ''}` +
-      `<div class="vp-dato"><span>🚚 Fecha de despacho</span><b>${esc(d.fecha_despacho ? voFechaTxt(d.fecha_despacho) : 'Por despachar')}</b></div>` +
-      `<div class="vp-dato"><span>Fecha de emisión</span><b>${esc(voFechaTxt(d.fecha_emision))}</b></div></div>` +
-      `<div class="vp-panel">${d.docs.length ? `<div class="vo-docs">${d.docs.map((x, i)=> `<span class="vo-doc${i === sel ? ' activo' : ''}" data-vp-doc="${esc(i)}">${/pdf/.test(x.tipo) ? '📄' : '🖼'} <span>${esc(x.etiqueta)}</span><a href="${esc(x.url)}" target="_blank" rel="noopener" class="x" title="Descargar">⬇</a></span>`).join('')}</div>` +
-        `<div class="vo-visor-barra"><span class="vo-vb-info" id="vo-vb-info"></span><span class="vo-vb-grupo"><button type="button" data-vp-zoom="-">−</button><span id="vo-vb-zoom">Ajustado</span><button type="button" data-vp-zoom="+">+</button><button type="button" data-vp-zoom="fit">↔ Ajustar</button><button type="button" data-vp-girar="1">⟳ Girar</button></span></div>` +
-        `<div class="vo-visor" id="vo-visor" data-url="${esc(doc.url)}"><div class="vo-vacio">⏳<b>Cargando…</b></div></div>` : '<div class="vo-vacio">📦<b>Aún no hay documentos del envío</b>Vuelve a abrir este link más tarde.</div>'}</div>`;
-    if(doc) voPintarVisor(doc);
+  caja.innerHTML = '<div class="vp-panel"><div class="vo-vacio">⏳<b>Cargando…</b></div></div>';
+  let portada = null;
+  try{ const snap = await voPublicoRef.doc(token).get(); portada = snap.exists ? snap.data() : null; }catch(err){ console.error(err); }
+  if(!portada || !portada.pide && !portada.anulado){ caja.innerHTML = '<div class="vp-panel"><div class="vo-vacio">🔒<b>Enlace no válido</b>Revisa que el link esté completo o pide uno nuevo a tu vendedor.</div></div>'; return; }
+  if(portada.anulado){ caja.innerHTML = `<div class="vp-panel"><div class="vo-vacio">🚫<b>Este envío fue anulado</b>Si tienes dudas, comunícate con tu vendedor.</div></div>`; return; }
+  const pide = portada.pide === 'RUC' ? 'RUC' : 'DNI', largo = pide === 'RUC' ? 11 : 8;
+  let fallos = 0;
+  const pedir = (msg)=>{
+    caja.innerHTML = `<div class="vp-cab"><small>Seguimiento de tu pedido</small><h1>🔒 Acceso protegido</h1><div class="nom">Para ver tu envío, escribe el ${esc(pide)} con el que se emitió tu comprobante.</div></div>` +
+      `<form class="vp-panel vp-acceso" id="vp-acceso"><label for="vp-doc">${esc(pide)}</label><input id="vp-doc" inputmode="numeric" autocomplete="off" maxlength="${esc(largo)}" placeholder="${esc(pide === 'RUC' ? '11 dígitos' : '8 dígitos')}">` +
+      `<button type="submit" id="vp-entrar">Ver mi envío</button><div class="vp-error" id="vp-error">${esc(msg || '')}</div></form>`;
+    $('vp-doc').focus();
   };
-  caja.addEventListener('click', e=>{
-    const t = e.target.closest('[data-vp-doc]'); if(t && !e.target.closest('a')){ sel = Number(t.dataset.vpDoc); voZoom = null; pintar(); return; }
-    const z = e.target.closest('[data-vp-zoom]'), g = e.target.closest('[data-vp-girar]'); if(!z && !g) return;
-    const doc = d.docs[sel];
-    if(z){ const cv = $('vo-visor').querySelector('canvas'), base = voZoom || (cv ? Number(cv.dataset.escala) : 1) || 1;
-      voZoom = z.dataset.vpZoom === 'fit' ? null : Math.min(4, Math.max(0.2, base * (z.dataset.vpZoom === '+' ? 1.25 : 0.8))); }
-    if(g) doc.giro = ((doc.giro || 0) + 90) % 360;   // solo en esta pantalla
-    voPintarVisor(doc);
+  const entrar = async (doc, guardado)=>{
+    let d = null;
+    try{ const snap = await voPublicoRef.doc(await voHashAcceso(token, doc)).get(); d = snap.exists ? snap.data() : null; }catch(err){ console.error(err); }
+    if(!d){
+      if(guardado){ pedir(''); return; }
+      fallos++;
+      if(fallos >= 5){ pedir(`Demasiados intentos. Espera 30 segundos.`); $('vp-entrar').disabled = true; setTimeout(()=>{ fallos = 0; pedir(''); }, 30000); return; }
+      pedir(`El ${pide} no coincide con el del comprobante. Revisa y vuelve a intentar.`); return;
+    }
+    try{ sessionStorage.setItem('vo-acceso-' + token, voSoloDigitos(doc)); }catch(e){}
+    mostrar(d);
+  };
+  caja.addEventListener('submit', e=>{
+    if(e.target.id !== 'vp-acceso') return;
+    e.preventDefault();
+    const v = voSoloDigitos($('vp-doc').value);
+    if(v.length !== largo){ $('vp-error').textContent = `El ${pide} tiene ${largo} dígitos.`; return; }
+    $('vp-entrar').disabled = true; $('vp-entrar').textContent = 'Verificando…';
+    entrar(v, false);
   });
-  pintar();
+  const mostrar = d=>{
+    document.title = `Envío ${d.nro}`;
+    let sel = 0;
+    const pintar = ()=>{
+      const doc = d.docs[sel];
+      caja.innerHTML = `<div class="vp-cab"><small>Seguimiento de tu pedido</small><h1>${esc(d.nro)}</h1><div class="nom">${esc(d.nombre)}</div></div>` +
+        `<div class="vp-datos">${d.clave ? `<div class="vp-dato clave"><span>🔑 Clave</span><b>${esc(d.clave)}</b></div>` : ''}` +
+        `${d.agencia_envio ? `<div class="vp-dato"><span>🏢 Agencia de envío</span><b>${esc(d.agencia_envio)}</b></div>` : ''}` +
+        `<div class="vp-dato"><span>🚚 Fecha de despacho</span><b>${esc(d.fecha_despacho ? voFechaTxt(d.fecha_despacho) : 'Por despachar')}</b></div>` +
+        `<div class="vp-dato"><span>Fecha de emisión</span><b>${esc(voFechaTxt(d.fecha_emision))}</b></div></div>` +
+        `<div class="vp-panel">${d.docs.length ? `<div class="vo-docs">${d.docs.map((x, i)=> `<span class="vo-doc${i === sel ? ' activo' : ''}" data-vp-doc="${esc(i)}">${/pdf/.test(x.tipo) ? '📄' : '🖼'} <span>${esc(x.etiqueta)}</span><a href="${esc(x.url)}" target="_blank" rel="noopener" class="x" title="Descargar">⬇</a></span>`).join('')}</div>` +
+          `<div class="vo-visor-barra"><span class="vo-vb-info" id="vo-vb-info"></span><span class="vo-vb-grupo"><button type="button" data-vp-zoom="-">−</button><span id="vo-vb-zoom">Ajustado</span><button type="button" data-vp-zoom="+">+</button><button type="button" data-vp-zoom="fit">↔ Ajustar</button><button type="button" data-vp-girar="1">⟳ Girar</button></span></div>` +
+          `<div class="vo-visor" id="vo-visor" data-url="${esc(doc.url)}"><div class="vo-vacio">⏳<b>Cargando…</b></div></div>` : '<div class="vo-vacio">📦<b>Aún no hay documentos del envío</b>Vuelve a abrir este link más tarde.</div>'}</div>`;
+      if(doc) voPintarVisor(doc);
+    };
+    caja.addEventListener('click', e=>{
+      const t = e.target.closest('[data-vp-doc]'); if(t && !e.target.closest('a')){ sel = Number(t.dataset.vpDoc); voZoom = null; pintar(); return; }
+      const z = e.target.closest('[data-vp-zoom]'), g = e.target.closest('[data-vp-girar]'); if(!z && !g) return;
+      const doc = d.docs[sel];
+      if(z){ const cv = $('vo-visor').querySelector('canvas'), base = voZoom || (cv ? Number(cv.dataset.escala) : 1) || 1;
+        voZoom = z.dataset.vpZoom === 'fit' ? null : Math.min(4, Math.max(0.2, base * (z.dataset.vpZoom === '+' ? 1.25 : 0.8))); }
+      if(g) doc.giro = ((doc.giro || 0) + 90) % 360;   // solo en esta pantalla
+      voPintarVisor(doc);
+    });
+    pintar();
+  };
+  // Si ya lo escribió en esta pestaña, no se le vuelve a pedir.
+  let previo = null; try{ previo = sessionStorage.getItem('vo-acceso-' + token); }catch(e){}
+  if(previo) entrar(previo, true); else pedir('');
 }
 // pdf.js se carga con "defer": se espera a que el documento termine de cargar.
 if(VO_TOKEN_PUBLICO){ if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ()=> voPaginaPublica(VO_TOKEN_PUBLICO)); else voPaginaPublica(VO_TOKEN_PUBLICO); }
+// -------- Anular comprobante (si se subió por error) --------
+// Solo administrador o con permiso de editar. Se BORRAN de Storage el PDF del comprobante y todos sus
+// vouchers; el registro queda con estado ANULADO, motivo, usuario, fecha y los nombres de los archivos
+// borrados (filtro "Ver anulados"). El link del cliente queda como "anulado". Se puede volver a subir.
+async function voAnular(){
+  const c = voLista.find(x=> x.id === voSel); if(!c) return;
+  if(!voPuedeEditar()){ showToast('No tienes permiso para anular.', 'err'); return; }
+  const motivo = ($('vo-anular-motivo').value || '').trim();
+  if(motivo.length < 3){ showToast('Escribe el motivo de la anulación.', 'err'); $('vo-anular-motivo').focus(); return; }
+  $('btn-vo-anular-ok').disabled = true;
+  const archivos = [...(c.pdf_path ? [{ nombre: c.archivo || `${c.id}.pdf`, path: c.pdf_path, tipo: 'comprobante' }] : []), ...(c.vouchers || []).map(v=> ({ nombre: v.nombre, path: v.path, tipo: 'voucher' }))];
+  const datos = { estado:'ANULADO', anulado_por: currentUserAlias, anulado_en: new Date().toISOString(), anulado_motivo: motivo,
+    pdf_url: null, pdf_path: null, vouchers: [], archivos_borrados: archivos.map(a=> ({ nombre: a.nombre, tipo: a.tipo })) };
+  try{
+    await voComprobantesRef.doc(c.id).update(datos);
+    // Borrar los archivos (si alguno ya no estaba, se sigue con los demás).
+    const res = await Promise.allSettled(archivos.filter(a=> a.path).map(a=> storage.ref().child(a.path).delete()));
+    const noBorrados = res.filter(r=> r.status === 'rejected' && !/object-not-found/.test((r.reason || {}).code || '')).length;
+    if(c.link_token){
+      if(voSoloDigitos(c.doc_numero)) await voPublicoRef.doc(await voHashAcceso(c.link_token, c.doc_numero)).delete().catch(()=>{});
+      await voPublicoRef.doc(c.link_token).set({ anulado: true, actualizado: datos.anulado_en }).catch(err=> console.warn('Link público:', err));
+    }
+    Object.assign(c, datos); voIndexar(c);
+    await logAccion('vo_comprobante_anulado', {detalle:`${c.id} anulado. Motivo: ${motivo}. Archivos borrados: ${archivos.length - noBorrados} de ${archivos.length}`});
+    showToast(noBorrados ? `${c.id} anulado, pero ${noBorrados} archivo(s) no se pudieron borrar.` : `${c.id} anulado y ${archivos.length} PDF/imagen(es) borrado(s).`, noBorrados ? 'err' : 'ok');
+    voSel = null; renderVoLista(); renderVoDetalle();
+  }catch(err){ console.error(err); showToast('No se pudo anular: ' + err.message, 'err'); const b = $('btn-vo-anular-ok'); if(b) b.disabled = false; }
+}
+$('vo-detalle').addEventListener('click', e=>{
+  if(e.target.closest('#btn-vo-anular')){ $('vo-anular-form').hidden = false; $('vo-anular-motivo').focus(); }
+  else if(e.target.closest('#btn-vo-anular-no')) $('vo-anular-form').hidden = true;
+  else if(e.target.closest('#btn-vo-anular-ok')) voAnular();
+});
 // Clave: se escribe en el recuadro fosforescente y se guarda con Enter, al salir o con "Guardar".
 async function voGuardarClave(){
   const inp = $('vo-clave'), c = voLista.find(x=> x.id === voSel); if(!inp || !c) return;
@@ -13344,6 +13451,7 @@ $('btn-vo-pdf').addEventListener('click', ()=>{
   if($('vo-q').value.trim()) filtros.push(`Búsqueda: "${$('vo-q').value.trim()}"`);
   if(voFiltro !== 'todos') filtros.push(voFiltro === 'con' ? 'Con voucher' : 'Sin voucher');
   if(voFiltroDesp !== 'todos') filtros.push(voFiltroDesp === 'con' ? 'Despachados' : 'Sin despacho');
+  if($('vo-estado-f').value) filtros.push('Anulados');
   if($('vo-agencia-f').value) filtros.push(`Agencia: ${$('vo-agencia-f').value === '__SIN' ? 'sin agencia' : $('vo-agencia-f').value}`);
   if($('vo-link-f').value) filtros.push($('vo-link-f').value === 'enviado' ? 'Link enviado' : 'Link por enviar');
   if($('vo-tipo').value) filtros.push($('vo-tipo').value === 'BOLETA' ? 'Boletas' : 'Facturas');
