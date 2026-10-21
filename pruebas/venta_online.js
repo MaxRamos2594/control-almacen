@@ -144,14 +144,11 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
   // Permiso "solo Subir voucher" (área comercial), asignado desde Usuarios.
   await page.evaluate(()=> switchTab('usuarios'));
   await page.fill('#us-email', 'comercial@ejemplo.com'); await page.fill('#us-alias', 'comercial');
-  await page.check('#us-vo-vouchers');
+  await page.click('[data-us-plantilla="comercial"]');
   await page.click('#btn-guardar-usuario');
   await page.waitForFunction(()=> /Permisos guardados/.test($('us-msg').textContent), null, { timeout: 10000 });
   const perm = await page.evaluate(async ()=> (await usuariosRef.doc('comercial@ejemplo.com').get()).data().permisos);
-  verificar(perm.vo_vouchers === true && !perm.campanas && !perm.admin, 'Usuarios: se guarda el permiso "Solo Subir voucher"');
-  await page.fill('#us-email', 'comercial@ejemplo.com'); await page.dispatchEvent('#us-email', 'change'); await page.dispatchEvent('#us-email', 'blur');
-  await page.waitForTimeout(800);
-  verificar(await page.isChecked('#us-vo-vouchers'), 'Usuarios: al escribir el correo se carga el permiso marcado');
+  verificar(perm.venta_online === true && JSON.stringify(perm.subs) === '{"ventaonline":["vosub-vouchers"]}' && !perm.campanas && !perm.rotulos && !perm.admin, 'Usuarios: plantilla "Área comercial" guarda solo Venta Online → Subir voucher');
   await browser.close();
 
   const com = await abrirApp({ usuario: { email:'comercial@ejemplo.com', pass:'prueba123' } });

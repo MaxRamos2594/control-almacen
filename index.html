@@ -110,6 +110,37 @@
   .view.active{display:block;}
 
   .panel{background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:16px;}
+  /* Usuarios y permisos */
+  .us-layout{display:grid; grid-template-columns:minmax(240px, 320px) minmax(0, 1fr); gap:14px; align-items:start; max-width:1180px;}
+  @media (max-width:820px){ .us-layout{grid-template-columns:1fr;} }
+  .us-lista-cab{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;} .us-lista-cab h3{margin:0;}
+  #us-buscar{width:100%; margin-bottom:8px;}
+  .us-lista{display:flex; flex-direction:column; gap:6px; max-height:70vh; overflow:auto;}
+  .us-item{display:block; width:100%; text-align:left; border:1px solid var(--line); background:#fff; border-radius:8px; padding:8px 10px; cursor:pointer; font:inherit;}
+  .us-item:hover{border-color:var(--blue);} .us-item.sel{border-color:var(--blue); background:#eef4fb; box-shadow:inset 3px 0 0 var(--blue);}
+  .us-item b{display:block; font-size:13px;} .us-item small{display:block; color:var(--ink-soft); font-size:11px; overflow:hidden; text-overflow:ellipsis;}
+  .us-item .us-tags{margin-top:4px; display:flex; gap:4px; flex-wrap:wrap;}
+  .us-tag{font-size:10px; font-weight:700; padding:1px 7px; border-radius:10px; background:#eef1f5; color:var(--ink-soft);} .us-tag.admin{background:#2B4C6F; color:#fff;} .us-tag.sin{background:#FBEAEA; color:#8A332A;}
+  .us-ident{display:grid; grid-template-columns:1fr 1fr; gap:10px;} @media (max-width:600px){ .us-ident{grid-template-columns:1fr;} }
+  .us-plantillas{display:flex; gap:6px; flex-wrap:wrap; align-items:center; font-size:12px; color:var(--ink-soft); margin-bottom:10px;}
+  .us-plantillas button{border:1px dashed var(--line-strong); background:#fff; border-radius:14px; padding:4px 10px; font-size:12px; cursor:pointer;} .us-plantillas button:hover{border-color:var(--blue); color:var(--blue);}
+  .us-admin, .us-extra{display:flex; gap:8px; align-items:center; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:#fafbfc; cursor:pointer; font-size:13px;}
+  .us-admin input, .us-extra input, .us-arbol input{width:auto; margin:0;}
+  .us-extra{margin:12px 0;}
+  .us-arbol{display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:10px;}
+  .us-arbol.bloqueado{opacity:.45; pointer-events:none;}
+  .us-grupo{border:1px solid var(--line); border-radius:10px; overflow:hidden;}
+  .us-grupo-cab{display:flex; justify-content:space-between; align-items:center; background:#1B2430; color:#fff; padding:7px 12px; font-size:11px; letter-spacing:.06em; text-transform:uppercase; font-weight:700;}
+  .us-grupo-cab label{display:flex; gap:8px; align-items:center; cursor:pointer;} .us-grupo-cab .us-cuenta{font-weight:500; opacity:.8; text-transform:none; letter-spacing:0;}
+  .us-tab{border-top:1px solid var(--line); padding:8px 12px;} .us-tab:first-of-type{border-top:none;}
+  .us-tab > label{display:flex; gap:8px; align-items:center; cursor:pointer; font-weight:600; font-size:13px;}
+  .us-tab > label .us-sub-cuenta{margin-left:auto; font-weight:500; font-size:11px; color:var(--ink-soft);}
+  .us-subs{margin:6px 0 2px 24px; display:flex; flex-direction:column; gap:5px;} .us-tab:not(.on) .us-subs{display:none;}
+  .us-subgrupo-t{font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); font-weight:700;}
+  .us-chips{display:flex; flex-wrap:wrap; gap:5px;}
+  .us-chip{display:inline-flex; gap:5px; align-items:center; border:1px solid var(--line-strong); border-radius:14px; padding:3px 9px; font-size:12px; cursor:pointer; background:#fff; user-select:none;}
+  .us-chip:has(input:checked){background:#eef4fb; border-color:var(--blue); color:#1E3A5A; font-weight:600;}
+  .us-resumen{font-size:12px; color:var(--ink-soft); background:#f6f8fa; border-radius:8px; padding:8px 10px; margin-bottom:10px; line-height:1.5;}
   .panel h3{margin:0 0 12px; font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); font-weight:600; display:flex; justify-content:space-between; align-items:center;}
   .panel.collapsed h3{margin-bottom:0;}
   .panel.collapsed > *:not(h3){display:none !important;}
@@ -3285,32 +3316,33 @@
 
 <!-- USUARIOS -->
 <div class="view" id="view-usuarios">
-  <div class="panel" style="max-width:520px;">
-    <h3>Asignar permisos a un usuario</h3>
-    <p class="hint" style="margin-bottom:12px;">Primero crea la cuenta en Firebase Console → Authentication → Add user. Luego asigna aquí sus permisos.</p>
-    <div class="field"><label>Correo del usuario</label><input type="email" id="us-email" placeholder="empleado@empresa.com"></div>
-    <div class="field"><label>Alias / nombre para mostrar</label><input type="text" id="us-alias" class="upper" placeholder="EJ. JUAN P."></div>
-    <p class="hint" style="margin:10px 0 4px;">Acceso por módulo (pestaña):</p>
-    <div class="field"><label><input type="checkbox" id="us-diseno" style="width:auto; margin-right:6px;">Diseño de Layout</label></div>
-    <div class="field"><label><input type="checkbox" id="us-movimientos" style="width:auto; margin-right:6px;">Movimientos</label></div>
-    <div class="field"><label><input type="checkbox" id="us-productos" style="width:auto; margin-right:6px;">Productos</label></div>
-    <div class="field"><label><input type="checkbox" id="us-inventario" style="width:auto; margin-right:6px;">Inventario</label></div>
-    <div class="field"><label><input type="checkbox" id="us-pallets" style="width:auto; margin-right:6px;">Pallets</label></div>
-    <div class="field"><label><input type="checkbox" id="us-retiros" style="width:auto; margin-right:6px;">Retiros Campaña</label></div>
-    <div class="field"><label><input type="checkbox" id="us-campanas" style="width:auto; margin-right:6px;">Campañas (PDF)</label></div>
-    <div class="field"><label><input type="checkbox" id="us-venta-online" style="width:auto; margin-right:6px;">Venta Online (comprobantes y vouchers)</label></div>
-    <div class="field" style="margin-left:22px;"><label><input type="checkbox" id="us-vo-vouchers" style="width:auto; margin-right:6px;">Solo Venta Online → Subir voucher <span class="hint">(área comercial: no carga comprobantes)</span></label></div>
-    <div class="field"><label><input type="checkbox" id="us-toma-inventario" style="width:auto; margin-right:6px;">Toma de Inventario</label></div>
-    <div class="field"><label><input type="checkbox" id="us-kardex" style="width:auto; margin-right:6px;">Kardex</label></div>
-    <div class="field"><label><input type="checkbox" id="us-merma" style="width:auto; margin-right:6px;">Merma</label></div>
-    <div class="field"><label><input type="checkbox" id="us-reportes" style="width:auto; margin-right:6px;">Reportes</label></div>
-    <div class="field"><label><input type="checkbox" id="us-bitacora" style="width:auto; margin-right:6px;">Bitácora</label></div>
-    <p class="hint" style="margin:10px 0 4px;">Permiso adicional (aplica dentro de los módulos ya marcados):</p>
-    <div class="field"><label><input type="checkbox" id="us-eliminar" style="width:auto; margin-right:6px;">Puede editar/eliminar/bloquear registros</label></div>
-    <div class="field"><label><input type="checkbox" id="us-admin" style="width:auto; margin-right:6px;"><b>Administrador (acceso total a todo, incluida esta pestaña)</b></label></div>
-    <p class="hint" id="us-load-hint" style="margin-bottom:8px;">Al escribir un correo ya existente, sus permisos actuales se cargan automáticamente aquí para que no se sobreescriban por accidente.</p>
-    <button class="btn btn-primary" id="btn-guardar-usuario" style="width:100%;">Guardar permisos</button>
-    <div class="msg" id="us-msg"></div>
+  <div class="us-layout">
+    <div class="panel us-lista-panel">
+      <div class="us-lista-cab"><h3>Usuarios</h3><button class="btn btn-primary btn-sm" id="btn-us-nuevo" type="button">+ Nuevo</button></div>
+      <input type="search" id="us-buscar" placeholder="Buscar por nombre o correo…" autocomplete="off">
+      <div class="us-lista" id="us-lista"><div class="hint">Cargando…</div></div>
+    </div>
+    <div class="panel us-editor">
+      <h3 id="us-titulo">Nuevo usuario</h3>
+      <p class="hint" style="margin-bottom:10px;">Primero crea la cuenta en Firebase Console → Authentication → Add user. Luego asigna aquí sus permisos.</p>
+      <div class="us-ident">
+        <div class="field"><label>Correo del usuario</label><input type="email" id="us-email" placeholder="empleado@empresa.com"></div>
+        <div class="field"><label>Alias / nombre para mostrar</label><input type="text" id="us-alias" class="upper" placeholder="EJ. JUAN P."></div>
+      </div>
+      <p class="hint" id="us-load-hint" style="margin-bottom:10px;"></p>
+      <div class="us-plantillas"><span>Plantillas rápidas:</span>
+        <button type="button" data-us-plantilla="comercial">🛍 Área comercial (solo Subir voucher)</button>
+        <button type="button" data-us-plantilla="todo">Todo (sin administrador)</button>
+        <button type="button" data-us-plantilla="nada">Quitar todo</button>
+      </div>
+      <label class="us-admin"><input type="checkbox" id="us-admin"> <b>Administrador</b> — ve y hace todo, incluida esta pestaña</label>
+      <p class="hint" style="margin:12px 0 6px;">Qué puede ver: marca las opciones del menú y, dentro de cada una, sus secciones.</p>
+      <div class="us-arbol" id="us-arbol"></div>
+      <label class="us-extra"><input type="checkbox" id="us-eliminar"> Puede editar / eliminar / bloquear registros <span class="hint">(solo dentro de lo que puede ver)</span></label>
+      <div class="us-resumen" id="us-resumen"></div>
+      <button class="btn btn-primary" id="btn-guardar-usuario" style="width:100%;">Guardar permisos</button>
+      <div class="msg" id="us-msg"></div>
+    </div>
   </div>
 </div>
 
@@ -3368,8 +3400,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v194';
-const APP_UPDATED = '21/10/2026 19:30';
+const APP_VERSION = 'v195';
+const APP_UPDATED = '21/10/2026 21:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3588,28 +3620,41 @@ async function loadPermisos(user){
   showToast('Login correcto.','ok');
 }
 
+// Permisos: clave en usuarios/{correo}.permisos de cada opción del menú.
+const PERM_TAB_CLAVE = { diseno:'diseno', mov:'movimientos', pallets:'pallets', productos:'productos', inventario:'inventario', toma_inventario:'toma_inventario',
+  kardex:'kardex', merma:'merma', retiros:'retiros', campanas:'campanas', rotulos:'rotulos', ventaonline:'venta_online', reportes:'reportes', bitacora:'bitacora' };
+// Opciones con secciones que se permiten una por una: permisos.subs[opción] = ids de las
+// secciones permitidas (sin lista = todas, como antes).
+const PERM_SUB_TABS = ['campanas', 'ventaonline', 'rotulos', 'merma'];
+const permSubBotones = tab=> [...document.querySelectorAll(`#view-${tab} .subtabs button[id]`)];
+function permTabPermitida(p, tab){
+  if(p.admin) return true;
+  if(tab === 'usuarios') return false;
+  if(tab === 'ventaonline') return !!(p.venta_online || p.vo_vouchers);
+  if(tab === 'rotulos' && p.rotulos === undefined) return !p.vo_vouchers;   // antes Rótulos lo veían todos
+  return !!p[PERM_TAB_CLAVE[tab]];
+}
+function permSubsPermitidas(p, tab){
+  if(p.admin) return null;
+  const lista = (p.subs || {})[tab];
+  if(Array.isArray(lista)) return lista;
+  if(tab === 'ventaonline' && p.vo_vouchers) return ['vosub-vouchers'];   // permiso antiguo "Solo Subir voucher"
+  return null;
+}
 function applyPermisosUI(){
   const p = currentPermisos;
   const admin = !!p.admin;
-  // Acceso solo a Venta Online → Subir voucher (área comercial).
-  const soloVoucher = !admin && !p.venta_online && !!p.vo_vouchers;
-  const map = {
-    diseno: admin || !!p.diseno,
-    mov: admin || !!p.movimientos,
-    productos: admin || !!p.productos,
-    inventario: admin || !!p.inventario,
-    pallets: admin || !!p.pallets,
-    retiros: admin || !!p.retiros,
-    campanas: admin || !!p.campanas,
-    toma_inventario: admin || !!p.toma_inventario,
-    kardex: admin || !!p.kardex,
-    merma: admin || !!p.merma,
-    reportes: admin || !!p.reportes,
-    bitacora: admin || !!p.bitacora,
-    rotulos: !soloVoucher,
-    ventaonline: admin || !!p.venta_online || !!p.vo_vouchers,
-    usuarios: admin
-  };
+  const map = {};
+  document.querySelectorAll('nav.tabs button[data-tab]').forEach(b=> map[b.dataset.tab] = permTabPermitida(p, b.dataset.tab));
+  // Secciones dentro de cada opción: se ocultan las no permitidas y se abre la primera permitida.
+  PERM_SUB_TABS.forEach(tab=>{
+    const lista = permSubsPermitidas(p, tab), btns = permSubBotones(tab);
+    btns.forEach(b=> b.classList.toggle('hidden-perm', !!lista && !lista.includes(b.id)));
+    const visibles = btns.filter(b=> !b.classList.contains('hidden-perm'));
+    if(!visibles.length) map[tab] = false;
+    else if(map[tab] && !visibles.some(b=> b.classList.contains('active'))) visibles[0].click();
+  });
+  document.querySelectorAll('#view-campanas .subgrupo').forEach(g=> g.classList.toggle('hidden-perm', ![...g.querySelectorAll('button')].some(b=> !b.classList.contains('hidden-perm'))));
   Object.entries(map).forEach(([tab, allowed])=>{
     const btn = $('tab-'+tab);
     if(btn) btn.classList.toggle('hidden-perm', !allowed);
@@ -3619,8 +3664,6 @@ function applyPermisosUI(){
     const visibles = [...g.querySelectorAll('button[data-tab]')].some(b=>!b.classList.contains('hidden-perm'));
     g.classList.toggle('hidden-perm', !visibles);
   });
-  $('vosub-cargar').classList.toggle('hidden-perm', soloVoucher);
-  if(soloVoucher) setVoSubtab('vouchers');
   $('op-panel').classList.toggle('hidden-perm', !map.mov);
   $('prod-form-panel').classList.toggle('hidden-perm', !map.productos);
   $('fusion-panel').classList.toggle('hidden-perm', !(admin || !!p.eliminar));
@@ -17557,70 +17600,161 @@ inactivityTimer = setInterval(async ()=>{
   document.addEventListener(evt, resetInactivityTimer, {passive:true});
 });
 
-const US_CHECK_IDS = ['us-diseno','us-movimientos','us-productos','us-inventario','us-pallets','us-retiros','us-campanas','us-venta-online','us-vo-vouchers','us-toma-inventario','us-kardex','us-merma','us-reportes','us-bitacora','us-eliminar','us-admin'];
-function limpiarFormularioUsuario(){
-  $('us-email').value=''; $('us-alias').value='';
-  US_CHECK_IDS.forEach(id=>{ $(id).checked=false; });
-  $('us-load-hint').textContent = 'Al escribir un correo ya existente, sus permisos actuales se cargan automáticamente aquí para que no se sobreescriban por accidente.';
-  $('us-load-hint').style.color = '';
+// -------- Usuarios: lista y permisos a detalle (menú → opción → sección) --------
+let usLista = [], usSel = null;
+const usTabs = ()=> [...document.querySelectorAll('#us-arbol [data-us-tab]')];
+const usSubs = tab=> [...document.querySelectorAll(`#us-arbol [data-us-sub-de="${tab}"]`)];
+// El árbol se arma con el mismo menú y las mismas secciones de la app: lo que se agregue al menú aparece aquí.
+function usArmarArbol(){
+  $('us-arbol').innerHTML = [...document.querySelectorAll('nav.tabs .drawer-group')].map((g, gi)=>{
+    const tabs = [...g.querySelectorAll('button[data-tab]')].filter(b=> PERM_TAB_CLAVE[b.dataset.tab]);
+    if(!tabs.length) return '';
+    return `<div class="us-grupo"><div class="us-grupo-cab"><label><input type="checkbox" data-us-grupo="${esc(gi)}"> ${esc(g.querySelector('.drawer-group-title').textContent.trim())}</label><span class="us-cuenta"></span></div>` +
+      tabs.map(b=>{
+        const tab = b.dataset.tab, subs = PERM_SUB_TABS.includes(tab) ? permSubBotones(tab) : [];
+        let bloques = '';
+        if(subs.length){
+          const grupos = tab === 'campanas' ? [...document.querySelectorAll('#view-campanas .subgrupo')].map(sg=> [sg.querySelector('.subgrupo-t').textContent.trim(), [...sg.querySelectorAll('button[id]')]]) : [['', subs]];
+          bloques = `<div class="us-subs">` + grupos.map(([t, bs])=> `${t ? `<span class="us-subgrupo-t">${esc(t)}</span>` : ''}<div class="us-chips">` +
+            bs.map(sb=> `<label class="us-chip"><input type="checkbox" data-us-sub="${esc(sb.id)}" data-us-sub-de="${esc(tab)}"> ${esc(sb.textContent.trim())}</label>`).join('') + `</div>`).join('') + `</div>`;
+        }
+        return `<div class="us-tab" data-us-grupo-de="${esc(gi)}"><label><input type="checkbox" data-us-tab="${esc(tab)}"> ${esc(b.textContent.trim())}${subs.length ? '<span class="us-sub-cuenta"></span>' : ''}</label>${bloques}</div>`;
+      }).join('') + `</div>`;
+  }).join('');
 }
+function usRefrescar(){
+  const admin = $('us-admin').checked;
+  $('us-arbol').classList.toggle('bloqueado', admin);
+  usTabs().forEach(cb=>{
+    const fila = cb.closest('.us-tab'); fila.classList.toggle('on', cb.checked);
+    const subs = usSubs(cb.dataset.usTab), n = subs.filter(x=> x.checked).length, ct = fila.querySelector('.us-sub-cuenta');
+    if(ct) ct.textContent = cb.checked ? (n === subs.length ? 'todas las secciones' : `${n} de ${subs.length} secciones`) : '';
+  });
+  document.querySelectorAll('#us-arbol [data-us-grupo]').forEach(g=>{
+    const cbs = usTabs().filter(cb=> cb.closest('.us-tab').dataset.usGrupoDe === g.dataset.usGrupo), n = cbs.filter(x=> x.checked).length;
+    g.checked = n === cbs.length; g.indeterminate = n > 0 && n < cbs.length;
+    g.closest('.us-grupo').querySelector('.us-cuenta').textContent = `${n} de ${cbs.length}`;
+  });
+  // Resumen en palabras de lo que verá el usuario.
+  const partes = usTabs().filter(cb=> cb.checked).map(cb=>{
+    const nombre = cb.parentElement.textContent.trim().replace(/(todas las secciones|\d+ de \d+ secciones)$/, '').trim();
+    const subs = usSubs(cb.dataset.usTab), on = subs.filter(x=> x.checked);
+    return subs.length && on.length < subs.length ? `<b>${esc(nombre)}</b> (${on.map(x=> esc(x.parentElement.textContent.trim())).join(', ')})` : `<b>${esc(nombre)}</b>`;
+  });
+  $('us-resumen').innerHTML = admin ? '👑 <b>Administrador:</b> ve y hace todo, incluida la pestaña Usuarios.' :
+    partes.length ? `👁 Verá: ${partes.join(' · ')}${$('us-eliminar').checked ? ' — y puede editar/eliminar.' : ' — solo ver y cargar, sin eliminar.'}` : '⚠ Sin acceso a ninguna opción: no podrá entrar.';
+}
+function usLlenar(p){
+  const base = Object.assign({}, p, { admin:false });
+  $('us-admin').checked = !!p.admin; $('us-eliminar').checked = !!p.eliminar;
+  usTabs().forEach(cb=>{
+    const tab = cb.dataset.usTab; cb.checked = !!p.admin || permTabPermitida(base, tab);
+    const lista = p.admin ? null : permSubsPermitidas(base, tab);
+    usSubs(tab).forEach(x=> x.checked = !lista || lista.includes(x.dataset.usSub));
+  });
+  usRefrescar();
+}
+function usLeer(){
+  const permisos = { admin: $('us-admin').checked, eliminar: $('us-eliminar').checked, vo_vouchers: false, subs: {} };
+  usTabs().forEach(cb=>{
+    const tab = cb.dataset.usTab; permisos[PERM_TAB_CLAVE[tab]] = cb.checked;
+    const subs = usSubs(tab), on = subs.filter(x=> x.checked).map(x=> x.dataset.usSub);
+    if(cb.checked && subs.length && on.length < subs.length) permisos.subs[tab] = on;
+  });
+  return permisos;
+}
+function limpiarFormularioUsuario(){
+  usSel = null;
+  $('us-email').value = ''; $('us-alias').value = ''; $('us-titulo').textContent = 'Nuevo usuario';
+  usLlenar({ rotulos:false });
+  $('us-load-hint').textContent = 'Al escribir un correo ya existente, sus permisos actuales se cargan aquí para que no se sobreescriban por accidente.';
+  $('us-load-hint').style.color = '';
+  renderUsLista();
+}
+function usResumenCorto(p){
+  if(p.admin) return '<span class="us-tag admin">Administrador</span>';
+  const tabs = Object.keys(PERM_TAB_CLAVE).filter(t=> permTabPermitida(p, t));
+  if(!tabs.length) return '<span class="us-tag sin">Sin acceso</span>';
+  return tabs.slice(0, 4).map(t=> `<span class="us-tag">${esc(($('tab-'+t) || {}).textContent || t)}${permSubsPermitidas(p, t) ? ' (parcial)' : ''}</span>`).join('') + (tabs.length > 4 ? `<span class="us-tag">+${esc(tabs.length - 4)}</span>` : '');
+}
+function renderUsLista(){
+  const q = normalizarTexto($('us-buscar').value || '');
+  const L = usLista.filter(u=> !q || normalizarTexto(`${u.alias || ''} ${u.id}`).includes(q));
+  $('us-lista').innerHTML = L.length ? L.map(u=> `<button type="button" class="us-item${u.id === usSel ? ' sel' : ''}" data-us-email="${esc(u.id)}"><b>${esc(u.alias || u.id)}</b><small>${esc(u.id)}</small><div class="us-tags">${usResumenCorto(u.permisos || {})}</div></button>`).join('')
+    : '<div class="hint">Sin usuarios que coincidan.</div>';
+}
+async function cargarUsuarios(){
+  try{ usLista = (await usuariosRef.get()).docs.map(d=> Object.assign({ id: d.id }, d.data())).sort((a, b)=> (a.alias || a.id).localeCompare(b.alias || b.id)); }
+  catch(err){ console.error(err); $('us-lista').innerHTML = `<div class="hint">No se pudo leer la lista: ${esc(err.message)}</div>`; return; }
+  renderUsLista();
+}
+function usAbrir(email){
+  const u = usLista.find(x=> x.id === email);
+  if(!u) return;
+  usSel = email; $('us-email').value = email; $('us-alias').value = u.alias || ''; $('us-titulo').textContent = u.alias || email;
+  usLlenar(u.permisos || {});
+  $('us-load-hint').textContent = `✓ Permisos actuales de ${email}. Cambia lo que necesites y guarda.`; $('us-load-hint').style.color = '#245C46';
+  renderUsLista();
+}
+usArmarArbol(); usLlenar({ rotulos:false });
+$('tab-usuarios').addEventListener('click', cargarUsuarios);
+$('us-buscar').addEventListener('input', renderUsLista);
+$('btn-us-nuevo').addEventListener('click', ()=>{ limpiarFormularioUsuario(); $('us-email').focus(); });
+$('us-lista').addEventListener('click', e=>{ const b = e.target.closest('[data-us-email]'); if(b) usAbrir(b.dataset.usEmail); });
+$('us-admin').addEventListener('change', usRefrescar);
+$('us-eliminar').addEventListener('change', usRefrescar);
+$('us-arbol').addEventListener('change', e=>{
+  const t = e.target;
+  if(t.dataset.usGrupo != null){
+    usTabs().filter(cb=> cb.closest('.us-tab').dataset.usGrupoDe === t.dataset.usGrupo).forEach(cb=>{ cb.checked = t.checked; usSubs(cb.dataset.usTab).forEach(x=> x.checked = t.checked); });
+  }else if(t.dataset.usTab){
+    const subs = usSubs(t.dataset.usTab);
+    if(t.checked && !subs.some(x=> x.checked)) subs.forEach(x=> x.checked = true);
+  }else if(t.dataset.usSubDe){
+    const tab = usTabs().find(cb=> cb.dataset.usTab === t.dataset.usSubDe);
+    if(!usSubs(t.dataset.usSubDe).some(x=> x.checked)) tab.checked = false;
+  }
+  usRefrescar();
+});
+document.querySelector('.us-plantillas').addEventListener('click', e=>{
+  const b = e.target.closest('[data-us-plantilla]'); if(!b) return;
+  const k = b.dataset.usPlantilla;
+  if(k === 'comercial') usLlenar({ venta_online:true, rotulos:false, subs:{ ventaonline:['vosub-vouchers'] } });
+  else if(k === 'todo'){ const p = { rotulos:true }; Object.values(PERM_TAB_CLAVE).forEach(c=> p[c] = true); usLlenar(p); }
+  else usLlenar({ rotulos:false });
+});
 $('us-email').addEventListener('blur', async ()=>{
   const email = $('us-email').value.trim();
-  if(!email) return;
+  if(!email || email === usSel) return;
   try{
     const snap = await usuariosRef.doc(email).get();
     if(snap.exists){
-      const d = snap.data();
-      $('us-alias').value = d.alias || '';
-      const p = d.permisos || {};
-      $('us-diseno').checked = !!p.diseno;
-      $('us-movimientos').checked = !!p.movimientos;
-      $('us-productos').checked = !!p.productos;
-      $('us-inventario').checked = !!p.inventario;
-      $('us-pallets').checked = !!p.pallets;
-      $('us-retiros').checked = !!p.retiros;
-      $('us-campanas').checked = !!p.campanas;
-      $('us-venta-online').checked = !!p.venta_online;
-      $('us-vo-vouchers').checked = !!p.vo_vouchers;
-      $('us-toma-inventario').checked = !!p.toma_inventario;
-      $('us-kardex').checked = !!p.kardex;
-      $('us-merma').checked = !!p.merma;
-      $('us-reportes').checked = !!p.reportes;
-      $('us-bitacora').checked = !!p.bitacora;
-      $('us-eliminar').checked = !!p.eliminar;
-      $('us-admin').checked = !!p.admin;
-      $('us-load-hint').textContent = `✓ Se cargaron los permisos actuales de ${email}. Modifica lo que necesites y guarda.`;
-      $('us-load-hint').style.color = '#245C46';
+      const u = Object.assign({ id: email }, snap.data());
+      if(!usLista.some(x=> x.id === email)) usLista.push(u); else usLista = usLista.map(x=> x.id === email ? u : x);
+      usAbrir(email);
     }else{
+      usSel = null; $('us-titulo').textContent = 'Nuevo usuario';
       $('us-load-hint').textContent = `${email} no existe todavía — se creará con los permisos que marques.`;
       $('us-load-hint').style.color = '';
     }
   }catch(err){ console.error(err); }
 });
-
 $('btn-guardar-usuario').addEventListener('click', async ()=>{
   const email = $('us-email').value.trim();
   const alias = $('us-alias').value.trim().toUpperCase();
   if(!email){ showMsg('us-msg','err','Ingresa el correo del usuario.'); return; }
-  const haciendoseAdminFalse = (email === currentUserEmail) && !$('us-admin').checked && currentPermisos.admin;
-  if(haciendoseAdminFalse && !confirm('Estás a punto de quitarte tu propio acceso de administrador. ¿Seguro que quieres continuar?')) return;
-  const permisos = {
-    diseno: $('us-diseno').checked, movimientos: $('us-movimientos').checked,
-    productos: $('us-productos').checked, inventario: $('us-inventario').checked,
-    pallets: $('us-pallets').checked, retiros: $('us-retiros').checked,
-    campanas: $('us-campanas').checked, venta_online: $('us-venta-online').checked, vo_vouchers: $('us-vo-vouchers').checked,
-    toma_inventario: $('us-toma-inventario').checked,
-    kardex: $('us-kardex').checked, merma: $('us-merma').checked, reportes: $('us-reportes').checked, bitacora: $('us-bitacora').checked,
-    eliminar: $('us-eliminar').checked, admin: $('us-admin').checked
-  };
+  const permisos = usLeer();
+  if(email === currentUserEmail && !permisos.admin && currentPermisos.admin && !confirm('Estás a punto de quitarte tu propio acceso de administrador. ¿Seguro que quieres continuar?')) return;
   try{
     const datos = { email, permisos, actualizado: firebase.firestore.FieldValue.serverTimestamp() };
     if(alias) datos.alias = alias;
-    await usuariosRef.doc(email).set(datos, {merge:true});
+    // mergeFields: los permisos se reemplazan completos (no quedan permisos viejos mezclados).
+    await usuariosRef.doc(email).set(datos, { mergeFields: Object.keys(datos) });
     await logAccion('permisos_actualizados', {detalle:`Permisos actualizados para ${email}${alias?' ('+alias+')':''}`});
     showMsg('us-msg','ok', `Permisos guardados para ${email}.`);
     showToast(`Permisos actualizados para ${email}.`,'ok');
-    limpiarFormularioUsuario();
+    if(email === currentUserEmail){ currentPermisos = permisos; applyPermisosUI(); }
+    await cargarUsuarios(); usAbrir(email);
   }catch(err){ showMsg('us-msg','err', err.message); }
 });
 </script>
