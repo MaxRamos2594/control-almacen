@@ -174,17 +174,64 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
   await com.page.click('#vo-res [data-vo-id="F001-00000045"]');
   await com.page.waitForFunction(()=> !!document.querySelector('#vo-visor canvas.vo-hoja'), null, { timeout: 15000 });
   const sl = await com.page.evaluate(async ()=>{
-    const r = { drop: !!document.querySelector('#vo-drop, #vo-voucher-input'), quitar: !!document.querySelector('[data-vo-quitar]'), aviso: (document.querySelector('.vo-solo-ver') || {}).innerText || '',
+    const r = { desp: !!document.querySelector('#vo-despacho') || !/Pendiente/.test(document.querySelector('.vo-dato.desp').innerText), drop: !!document.querySelector('#vo-drop, #vo-voucher-input'), quitar: !!document.querySelector('[data-vo-quitar]'), aviso: (document.querySelector('.vo-solo-ver') || {}).innerText || '',
       tabs: [...document.querySelectorAll('#vo-detalle .vo-doc')].map(d=> d.innerText.replace(/[↗✕]/g, '').replace(/\s+/g, ' ').trim()).join(' | ') };
     await voSubirVouchers([new File(['x'], 'x.pdf', { type:'application/pdf' })]);
     r.n = (await voComprobantesRef.doc('F001-00000045').get()).data().vouchers.length;
     return r;
   });
-  verificar(!sl.drop && !sl.quitar && /Solo consulta/.test(sl.aviso) && sl.n === 2 && sl.tabs === '🧾 COMPROBANTE | 📄 VOUCHER 1 | 📄 VOUCHER 2',
-    `Usuario sin permiso de editar: solo consulta (sin zona para subir ni quitar; ${sl.tabs})`);
+  verificar(!sl.desp && !sl.drop && !sl.quitar && /Solo consulta/.test(sl.aviso) && sl.n === 2 && sl.tabs === '🧾 COMPROBANTE | 📄 VOUCHER 1 | 📄 VOUCHER 2',
+    `Usuario sin permiso de editar: solo consulta (sin editar despacho, sin zona para subir ni quitar; ${sl.tabs})`);
   await com.page.screenshot({ path: path.join(__dirname, 'salida', 'vo_comercial.png') });
   errores.push(...com.errores);
   await com.browser.close();
+
+  // Despacho, filtros, paginado de 10 y exportar PDF (como administrador).
+  const ad = await abrirApp();
+  await ad.page.evaluate(async ()=>{
+    const lote = db.batch();
+    for(let i = 1; i <= 13; i++){
+      const nro = 'BV02-' + String(i).padStart(8, '0');
+      lote.set(voComprobantesRef.doc(nro), { tipo:'BOLETA', nro, nombre:'CLIENTE ' + i, doc_tipo:'DNI', doc_numero:String(40000000 + i), fecha_emision:`2026-09-${String(i).padStart(2, '0')}`,
+        fecha_texto:'', importe_total: 10 * i, cant_codigos:1, unidades:i, items:[], canal:'AGENCIA', vouchers:[], estado:'ACTIVO', ...(i <= 3 ? { fecha_despacho:`2026-09-2${i}` } : {}) });
+    }
+    await lote.commit();
+    switchTab('ventaonline'); setVoSubtab('vouchers');
+  });
+  await ad.page.waitForFunction(()=> voLista.length === 15 && document.querySelectorAll('#vo-res .vo-fila').length > 0, null, { timeout: 15000 });
+  const pag = ()=> ad.page.evaluate(()=> ({ filas: document.querySelectorAll('#vo-res .vo-fila').length, txt: $('vo-pag-txt').textContent }));
+  let pg = await pag();
+  verificar(pg.filas === 10 && /1–10 de 15 · página 1 de 2/.test(pg.txt), `Lista paginada de 10 en 10: ${pg.txt}`);
+  await ad.page.click('#vo-mas [data-vo-pag="1"]');
+  pg = await pag();
+  verificar(pg.filas === 5 && /11–15 de 15 · página 2 de 2/.test(pg.txt), `Siguiente página: ${pg.txt}`);
+  await ad.page.click('#vo-mas [data-vo-pag="-1"]');
+  await ad.page.click('#vo-res [data-vo-id="BV01-00000721"]').catch(()=>{});
+  await ad.page.evaluate(()=> voAbrir('BV01-00000721'));
+  await ad.page.fill('#vo-despacho', '2026-10-20'); await ad.page.dispatchEvent('#vo-despacho', 'change');
+  await ad.page.waitForFunction(()=> /guardada/.test($('vo-desp-ok').textContent), null, { timeout: 10000 });
+  const dsp = await ad.page.evaluate(async ()=> ({ bd: (await voComprobantesRef.doc('BV01-00000721').get()).data().fecha_despacho, chip: document.querySelector('#vo-res [data-vo-id="BV01-00000721"] .vo-desp').innerText }));
+  verificar(dsp.bd === '2026-10-20' && /20\/10\/2026/.test(dsp.chip), `Fecha de despacho editable en el comprobante y visible en la lista (${dsp.chip})`);
+  await ad.page.click('#vo-seg-desp [data-vo-d="con"]');
+  let ids = await ad.page.evaluate(()=> voFiltrados().map(c=> c.id).join(','));
+  verificar(ids === 'BV01-00000721,BV02-00000003,BV02-00000002,BV02-00000001', `Filtro "Despachados": ${ids}`);
+  await ad.page.click('#vo-seg-desp [data-vo-d="todos"]');
+  await ad.page.selectOption('#vo-fcampo', 'despacho'); await ad.page.fill('#vo-desde', '2026-09-22'); await ad.page.dispatchEvent('#vo-desde', 'change');
+  await ad.page.fill('#vo-hasta', '2026-09-30'); await ad.page.dispatchEvent('#vo-hasta', 'change');
+  ids = await ad.page.evaluate(()=> voFiltrados().map(c=> c.id).join(','));
+  verificar(ids === 'BV02-00000003,BV02-00000002', `Rango por fecha de despacho (22–30/09): ${ids}`);
+  await ad.page.locator('#vosub-panel-vouchers').screenshot({ path: path.join(__dirname, 'salida', 'vo_despacho.png') });
+  const [descarga] = await Promise.all([ad.page.waitForEvent('download'), ad.page.click('#btn-vo-pdf')]);
+  const pdfPath = path.join(__dirname, 'salida', 'vo_export.pdf'); await descarga.saveAs(pdfPath);
+  const texto = await ad.page.evaluate(async b64=>{
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '/lib/pdf.worker.min.js';
+    const d = await pdfjsLib.getDocument({ data: Uint8Array.from(atob(b64), c=> c.charCodeAt(0)) }).promise;
+    return (await (await d.getPage(1)).getTextContent()).items.map(i=> i.str).join(' ');
+  }, fs.readFileSync(pdfPath).toString('base64'));
+  verificar(/Despacho: 22\/09\/2026 a 30\/09\/2026/.test(texto) && /BV02-00000003/.test(texto) && /BV02-00000002/.test(texto) && !/BV02-00000001/.test(texto) && /F\. despacho/.test(texto) && /CLIENTE 3/.test(texto) && /2 comprobante/.test(texto),
+    'Exportar PDF: solo lo filtrado, con los filtros y las mismas columnas de la lista');
+  errores.push(...ad.errores);
+  await ad.browser.close();
 
   if(errores.length) console.log('\nErrores de JavaScript:\n' + [...new Set(errores)].join('\n'));
   console.log(fallas || errores.length ? `\n${fallas} verificación(es) fallida(s).` : '\nTodo correcto.');
