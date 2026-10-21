@@ -180,13 +180,13 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
   await com.page.click('#vo-res [data-vo-id="F001-00000045"]');
   await com.page.waitForFunction(()=> !!document.querySelector('#vo-visor canvas.vo-hoja'), null, { timeout: 15000 });
   const sl = await com.page.evaluate(async ()=>{
-   const r = { clave: !document.querySelector('#vo-clave') && /Sin clave/.test(document.querySelector('.vo-clave').innerText), desp: !!document.querySelector('#vo-despacho') || !/Pendiente/.test(document.querySelector('.vo-dato.desp').innerText), drop: !!document.querySelector('#vo-drop, #vo-voucher-input'), quitar: !!document.querySelector('[data-vo-quitar]'), aviso: (document.querySelector('.vo-solo-ver') || {}).innerText || '',
+   const r = { ag: !document.querySelector('#vo-agencia') && /Pendiente/.test(document.querySelector('.vo-dato.ag').innerText), clave: !document.querySelector('#vo-clave') && /Sin clave/.test(document.querySelector('.vo-clave').innerText), desp: !!document.querySelector('#vo-despacho') || !/Pendiente/.test(document.querySelector('.vo-dato.desp').innerText), drop: !!document.querySelector('#vo-drop, #vo-voucher-input'), quitar: !!document.querySelector('[data-vo-quitar]'), aviso: (document.querySelector('.vo-solo-ver') || {}).innerText || '',
       tabs: [...document.querySelectorAll('#vo-detalle .vo-doc')].map(d=> d.innerText.replace(/[↗✕]/g, '').replace(/\s+/g, ' ').trim()).join(' | ') };
     await voSubirVouchers([new File(['x'], 'x.pdf', { type:'application/pdf' })]);
     r.n = (await voComprobantesRef.doc('F001-00000045').get()).data().vouchers.length;
     return r;
   });
-  verificar(sl.clave && !sl.desp && !sl.drop && !sl.quitar && /Solo consulta/.test(sl.aviso) && sl.n === 2 && sl.tabs === '🧾 COMPROBANTE | 📄 VOUCHER 1 | 📄 VOUCHER 2',
+  verificar(sl.ag && sl.clave && !sl.desp && !sl.drop && !sl.quitar && /Solo consulta/.test(sl.aviso) && sl.n === 2 && sl.tabs === '🧾 COMPROBANTE | 📄 VOUCHER 1 | 📄 VOUCHER 2',
     `Usuario sin permiso de editar: solo consulta (sin editar despacho, sin zona para subir ni quitar; ${sl.tabs})`);
   await com.page.click('#vo-detalle [data-vo-doc="0"]'); await com.page.click('#vo-detalle [data-vo-girar]'); await com.page.waitForTimeout(1000);
   verificar((await com.page.evaluate(async ()=> (await voComprobantesRef.doc('F001-00000045').get()).data().pdf_giro)) === 90, 'Usuario de solo consulta también puede girar y queda guardado (comprobante)');
@@ -239,6 +239,15 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
   await ad.page.fill('#vo-q', 'ab-4521'); await ad.page.waitForTimeout(300);
   verificar((await ad.page.evaluate(()=> voFiltrados().map(c=> c.id).join(','))) === 'BV01-00000721', 'El multibuscador encuentra por clave');
   await ad.page.fill('#vo-q', ''); await ad.page.waitForTimeout(300);
+  await ad.page.selectOption('#vo-agencia', 'SHALOM');
+  await ad.page.waitForFunction(()=> /guardada/.test(($('vo-ag-ok') || {}).textContent || ''), null, { timeout: 10000 });
+  const agc = await ad.page.evaluate(async ()=> ({ bd: (await voComprobantesRef.doc('BV01-00000721').get()).data().agencia_envio, chip: document.querySelector('#vo-res [data-vo-id="BV01-00000721"] .vo-ag').innerText }));
+  await ad.page.selectOption('#vo-agencia-f', 'SHALOM');
+  const agF = await ad.page.evaluate(()=> voFiltrados().map(c=> c.id).join(','));
+  await ad.page.selectOption('#vo-agencia-f', '__SIN');
+  const agS = await ad.page.evaluate(()=> voFiltrados().length);
+  await ad.page.selectOption('#vo-agencia-f', '');
+  verificar(agc.bd === 'SHALOM' && /SHALOM/.test(agc.chip) && agF === 'BV01-00000721' && agS === 14, `Agencia de envío: se elige y guarda (${agc.chip}); filtro SHALOM → ${agF}; sin agencia → ${agS}`);
   await ad.page.click('#vo-seg-desp [data-vo-d="con"]');
   let ids = await ad.page.evaluate(()=> voFiltrados().map(c=> c.id).join(','));
   verificar(ids === 'BV01-00000721,BV02-00000003,BV02-00000002,BV02-00000001', `Filtro "Despachados": ${ids}`);
@@ -259,7 +268,7 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
     const d = await pdfjsLib.getDocument({ data: Uint8Array.from(atob(b64), c=> c.charCodeAt(0)) }).promise;
     return (await (await d.getPage(1)).getTextContent()).items.map(i=> i.str).join(' ');
   }, fs.readFileSync(pdfPath).toString('base64'));
-  verificar(/Despacho: 22\/09\/2026 a 30\/09\/2026/.test(texto) && /BV02-00000003/.test(texto) && /BV02-00000002/.test(texto) && !/BV02-00000001/.test(texto) && /F\. despacho/.test(texto) && /Clave/.test(texto) && /CLIENTE 3/.test(texto) && /2 comprobante/.test(texto),
+  verificar(/Despacho: 22\/09\/2026 a 30\/09\/2026/.test(texto) && /BV02-00000003/.test(texto) && /BV02-00000002/.test(texto) && !/BV02-00000001/.test(texto) && /F\. despacho/.test(texto) && /Agencia/.test(texto) && /Clave/.test(texto) && /CLIENTE 3/.test(texto) && /2 comprobante/.test(texto),
     'Exportar PDF: solo lo filtrado, con los filtros y las mismas columnas de la lista');
   // Link público para el cliente: solo se copia con el botón y queda como "enviado".
   await ad.context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'http://127.0.0.1:5055' });
@@ -275,6 +284,9 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
   verificar(lk.clip === `http://127.0.0.1:5055/?envio=${lk.c.link_token}` && lk.c.link_token.length === 32 && lk.c.link_enviado === true && lk.c.link_copias === 1 && lk.chip && lk.pub.clave === 'AB-4521',
     `Botón "Copiar link": copia el link (código de ${lk.c.link_token.length} caracteres) y marca "Link enviado"`);
   await ad.page.click('#btn-vo-link'); await ad.page.waitForTimeout(800);
+  await ad.page.waitForFunction(()=> /Última copia: Administrador/i.test(($('vo-link-ultima') || {}).innerText || ''), null, { timeout: 10000 });
+  const ult = await ad.page.evaluate(async ()=> ({ txt: $('vo-link-ultima').innerText, bd: (await voComprobantesRef.doc('BV01-00000721').get()).data() }));
+  verificar(/Última copia: Administrador · \d/.test(ult.txt) && ult.bd.link_ultima_copia_por === 'Administrador' && !!ult.bd.link_ultima_copia, `Debajo del link: ${ult.txt}`);
   const copias = await ad.page.evaluate(async ()=> (await voComprobantesRef.doc('BV01-00000721').get()).data().link_copias);
   await ad.page.selectOption('#vo-link-f', 'enviado');
   const envs = await ad.page.evaluate(()=> voFiltrados().map(c=> c.id).join(','));
@@ -294,7 +306,7 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
     let privado = 'permitido'; try{ await voComprobantesRef.doc('BV01-00000721').get(); }catch(e){ privado = 'bloqueado'; }
     return { txt: $('vo-publico').innerText, login: getComputedStyle($('login-screen')).display, sesion: !!auth.currentUser, lista, privado };
   });
-  verificar(/BV01-00000721/.test(vpub.txt) && /AB-4521/.test(vpub.txt) && /20\/10\/2026/.test(vpub.txt) && /COMPROBANTE/.test(vpub.txt) && vpub.login === "none" && !vpub.sesion,
+  verificar(/BV01-00000721/.test(vpub.txt) && /AB-4521/.test(vpub.txt) && /20\/10\/2026/.test(vpub.txt) && /COMPROBANTE/.test(vpub.txt) && /SHALOM/.test(vpub.txt) && vpub.login === "none" && !vpub.sesion,
     'El cliente abre el link sin iniciar sesión: ve N°, clave, fecha de despacho y sus documentos');
   verificar(vpub.lista === "bloqueado" && vpub.privado === "bloqueado", 'Seguro: sin sesión no se puede listar los links ni leer los datos internos');
   await pub.screenshot({ path: path.join(__dirname, 'salida', 'vo_link_cliente.png'), fullPage: true });
