@@ -36,15 +36,20 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
   const { browser, page, errores } = await abrirApp();
   await page.setViewportSize({ width: 1500, height: 950 });
   await page.waitForFunction(()=> $('status-text').textContent === 'Sincronizado en vivo', null, { timeout: 20000 });
-  await page.evaluate(()=> switchTab('campanas'));
-  const g = await page.evaluate(()=> [...document.querySelectorAll('#view-campanas .subgrupo')].map(x=> x.querySelector('.subgrupo-t').innerText + ':' + x.innerText.replace(/\s+/g, ' ')).pop());
-  verificar(/VENTA ONLINE/i.test(g) && /Comprobantes Agencia/.test(g) && /Subir voucher/.test(g), `Apartado "Venta Online" con sus dos subapartados: ${g}`);
+  const g = await page.evaluate(()=> { const b = $('tab-ventaonline'), grupo = b.closest('.drawer-group');
+    return grupo.querySelector('.drawer-group-title').innerText + ': ' + [...grupo.querySelectorAll('button[data-tab]')].map(x=> x.innerText).join(', '); });
+  verificar(/^CAMPAÑAS: .*Rótulos PDF, Venta Online$/i.test(g), `"Venta Online" está en el menú, dentro de Campañas: ${g}`);
+  await page.click('#btn-menu'); await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(__dirname, 'salida', 'vo_menu.png'), clip: { x:0, y:0, width:340, height:900 } });
+  await page.click('#tab-ventaonline');
+  const subs = await page.evaluate(()=> [...document.querySelectorAll('#view-ventaonline .subtabs button')].map(b=> b.innerText.trim()).join(' | ') + (document.querySelector('#view-campanas [id^="campsub-vo-"]') ? ' (sigue en Campañas)' : ''));
+  verificar(subs === '🧾 Comprobantes Agencia | 📎 Subir voucher', `Venta Online con sus dos subapartados (${subs}) y ya no dentro de Campañas (PDF)`);
 
   const b1 = comprobante({ tipo:'BOLETA', nro:'BV01-00000721', nombre:'ANA PRUEBA TORRES', docLabel:'DNI:', doc:'12345678', fecha:'13/10/2026 03:56:27', total:'17.40',
     items: [['08SZ-60337','LUCES CON SENSORES',1,10.59],['0019','CINTA DOBLE CONTACTO/KB-9',1,3.31],['XDYH-0010','LUPA/2XDYH-0010',2,0.85]] });
   const f1 = comprobante({ tipo:'FACTURA', nro:'F001-00000045', nombre:'COMERCIAL EJEMPLO EIRL', docLabel:'RUC:', doc:'20999888777', fecha:'15/10/2026 10:00:00', total:'1,250.00',
     items: [['M161','AUDIFONO BLUT',10,1000]] });
-  await page.click('#campsub-vo-cargar');
+  await page.click('#vosub-cargar');
   await page.setInputFiles('#vo-pdf-input', [b1, f1]);
   await page.click('#btn-vo-procesar');
   await page.waitForFunction(()=> !$('btn-vo-procesar').disabled && $('vo-batch-wrap').style.display === 'block', null, { timeout: 30000 });
@@ -60,10 +65,10 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
   await page.click('#btn-vo-procesar');
   await page.waitForFunction(()=> !$('btn-vo-procesar').disabled && $('vo-batch-wrap').style.display === 'block', null, { timeout: 30000 });
   verificar(/Ya está cargado \(BV01-00000721\)/.test(await page.textContent('#vo-batch-body')), 'Volver a subir el mismo comprobante avisa que ya está cargado');
-  await page.locator('#campsub-panel-vo-cargar').screenshot({ path: path.join(__dirname, 'salida', 'vo_cargar.png') });
+  await page.locator('#vosub-panel-cargar').screenshot({ path: path.join(__dirname, 'salida', 'vo_cargar.png') });
 
   // Subir voucher: multibuscador
-  await page.click('#campsub-vo-vouchers');
+  await page.click('#vosub-vouchers');
   await page.waitForFunction(()=> document.querySelectorAll('#vo-res .vo-fila').length === 2, null, { timeout: 15000 });
   const buscar = async q=>{ await page.fill('#vo-q', q); await page.waitForTimeout(250); return page.evaluate(()=> [...document.querySelectorAll('#vo-res .vo-fila')].map(b=> b.dataset.voId).join(',')); };
   const casos = [['12345678','BV01-00000721'],['comercial','F001-00000045'],['lupa','BV01-00000721'],['m161','F001-00000045'],['17.40','BV01-00000721'],['1250','F001-00000045'],['15/10/2026','F001-00000045'],['agencia','F001-00000045,BV01-00000721'],['ana boleta','BV01-00000721']];
@@ -95,7 +100,7 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
   verificar(await buscar('voucher_prueba') === 'F001-00000045', 'Filtro "Con voucher" y búsqueda por nombre del voucher');
   await page.click('#vo-detalle [data-vo-doc="1"]');
   verificar(await page.evaluate(()=> /voucher/.test(decodeURIComponent((document.querySelector('#vo-detalle iframe') || {}).src || ''))), 'Clic en un voucher PDF lo muestra en el visor');
-  await page.locator('#campsub-panel-vo-vouchers').screenshot({ path: path.join(__dirname, 'salida', 'vo_vouchers.png') });
+  await page.locator('#vosub-panel-vouchers').screenshot({ path: path.join(__dirname, 'salida', 'vo_vouchers.png') });
   await page.click('#vo-detalle .vo-doc[data-vo-doc="2"] [data-vo-quitar]');
   await page.waitForFunction(()=> (voLista.find(c=> c.id === 'F001-00000045').vouchers || []).length === 1, null, { timeout: 10000 });
   verificar((await page.evaluate(async ()=> (await voComprobantesRef.doc('F001-00000045').get()).data().vouchers.length)) === 1, 'Quitar un voucher');
@@ -116,14 +121,13 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
   await browser.close();
 
   const com = await abrirApp({ usuario: { email:'comercial@ejemplo.com', pass:'prueba123' } });
-  await com.page.waitForFunction(()=> $('view-campanas').classList.contains('active') && voLista.length === 2, null, { timeout: 20000 });
+  await com.page.waitForFunction(()=> $('view-ventaonline').classList.contains('active') && voLista.length === 2, null, { timeout: 20000 });
   const vista = await com.page.evaluate(()=> ({
     tabs: [...document.querySelectorAll('nav.tabs button[data-tab]')].filter(b=> b.offsetParent).map(b=> b.dataset.tab).join(','),
-    subs: [...document.querySelectorAll('#view-campanas .subtabs button')].filter(b=> b.offsetParent).map(b=> b.id).join(','),
-    grupos: [...document.querySelectorAll('#view-campanas .subgrupo')].filter(g=> g.offsetParent).map(g=> g.querySelector('.subgrupo-t').innerText).join(','),
-    panel: $('campsub-panel-vo-vouchers').style.display, otros: $('campsub-panel-cargar-campana').style.display }));
-  verificar(vista.tabs === 'campanas' && vista.subs === 'campsub-vo-vouchers' && /venta online/i.test(vista.grupos) && !/,/.test(vista.grupos) && vista.panel === 'block' && vista.otros === 'none',
-    `Usuario comercial: solo ve Campañas → Venta Online → Subir voucher (${vista.tabs} / ${vista.subs})`);
+    subs: [...document.querySelectorAll('#view-ventaonline .subtabs button')].filter(b=> b.offsetParent).map(b=> b.id).join(','),
+    panel: $('vosub-panel-vouchers').style.display, otros: $('vosub-panel-cargar').style.display }));
+  verificar(vista.tabs === 'ventaonline' && vista.subs === 'vosub-vouchers' && vista.panel === 'block' && vista.otros === 'none',
+    `Usuario comercial: solo ve Venta Online → Subir voucher (${vista.tabs} / ${vista.subs})`);
   await com.page.click('#vo-seg [data-vo-f="todos"]');
   await com.page.click('#vo-res [data-vo-id="BV01-00000721"]');
   await com.page.waitForFunction(()=> !!document.querySelector('#vo-detalle .vo-visor'), null, { timeout: 5000 });

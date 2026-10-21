@@ -1650,6 +1650,7 @@
     <button data-tab="retiros" id="tab-retiros">Retiros Campaña</button>
     <button data-tab="campanas" id="tab-campanas">Campañas (PDF)</button>
     <button data-tab="rotulos" id="tab-rotulos">Rótulos PDF</button>
+    <button data-tab="ventaonline" id="tab-ventaonline">Venta Online</button>
   </div>
   <div class="drawer-group">
     <div class="drawer-group-title">Administración</div>
@@ -2101,10 +2102,6 @@
       <button id="campsub-vouchers">📦 Vouchers Agencia</button>
       <button id="campsub-participantes">👥 Participantes</button>
     </div></div>
-    <div class="subgrupo"><span class="subgrupo-t">Venta Online</span><div class="subgrupo-b">
-      <button id="campsub-vo-cargar">🧾 Comprobantes Agencia</button>
-      <button id="campsub-vo-vouchers">📎 Subir voucher</button>
-    </div></div>
   </div>
 
   <div id="campsub-panel-cargar-campana">
@@ -2202,43 +2199,6 @@
     </div>
     <div class="hist-wrap"><table class="reg-tabla sin-anim"><thead><tr><th>Correlativo</th><th>Concepto</th><th>N° guía</th><th>Fecha traslado</th><th>Campaña</th><th class="num">Ítems</th><th class="num">Unidades</th><th>Usuario</th><th></th></tr></thead><tbody id="rgz-lista-body"></tbody></table>
       <div class="empty-state" id="rgz-lista-vacio" style="display:none;">Aún no hay regularizaciones.</div></div>
-  </div>
-  </div>
-
-  <div id="campsub-panel-vo-cargar" style="display:none;">
-  <div class="panel" style="margin-bottom:14px;">
-    <h3>Cargar comprobantes de Agencia</h3>
-    <p class="hint" style="margin-bottom:10px;">Sube las boletas o facturas electrónicas en PDF (puedes elegir varias). De cada una se lee <b>fecha de emisión, DNI o RUC, nombre o razón social, cantidad de códigos, importe total, N° y tipo de comprobante</b>, y se guarda con el canal <span class="vo-canal">AGENCIA</span>. El PDF también se guarda para verlo en "Subir voucher".</p>
-    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
-      <div class="field" style="margin:0; max-width:420px;"><label>Comprobantes en PDF — puedes elegir varios</label><input type="file" id="vo-pdf-input" accept="application/pdf" multiple></div>
-      <button class="btn btn-primary" id="btn-vo-procesar" type="button">Procesar PDF(s)</button>
-    </div>
-    <div class="msg" id="vo-msg"></div>
-    <div id="vo-batch-wrap" style="display:none; margin-top:14px;">
-      <p class="hint" id="vo-batch-resumen" style="margin-bottom:10px;"></p>
-      <div class="hist-wrap" style="max-height:560px;">
-        <table class="reg-tabla sin-anim"><thead><tr><th>Archivo</th><th>Tipo</th><th>N° comprobante</th><th>Fecha emisión</th><th>DNI / RUC</th><th>Nombre / Razón social</th><th class="num">Códigos</th><th class="num">Importe</th><th>Canal</th><th>Estado</th></tr></thead><tbody id="vo-batch-body"></tbody></table>
-      </div>
-      <button class="btn btn-primary" id="btn-vo-guardar" type="button" style="margin-top:12px;">Guardar comprobantes</button>
-    </div>
-  </div>
-  </div>
-
-  <div id="campsub-panel-vo-vouchers" style="display:none;">
-  <div class="vo-layout">
-    <div class="panel vo-lista">
-      <div class="vo-buscar"><span class="ico">🔍</span><input type="search" id="vo-q" placeholder="Busca por cliente, DNI/RUC, N° de comprobante, código, producto, importe o fecha…" autocomplete="off"><kbd>/</kbd></div>
-      <div class="vo-filtros">
-        <div class="vo-seg" id="vo-seg"><button type="button" data-vo-f="todos" class="activo">Todos</button><button type="button" data-vo-f="sin">Sin voucher</button><button type="button" data-vo-f="con">Con voucher</button></div>
-        <select id="vo-tipo"><option value="">Boletas y facturas</option><option value="BOLETA">Boletas</option><option value="FACTURA">Facturas</option></select>
-        <label>Desde <input type="date" id="vo-desde"></label><label>Hasta <input type="date" id="vo-hasta"></label>
-        <button type="button" class="btn btn-ghost btn-sm" id="btn-vo-limpiar" style="display:none;">✕ Limpiar</button>
-      </div>
-      <div class="vo-kpis" id="vo-kpis"></div>
-      <div class="vo-res" id="vo-res" role="listbox" aria-label="Comprobantes"></div>
-      <div id="vo-mas"></div>
-    </div>
-    <div class="panel vo-detalle" id="vo-detalle"><div class="vo-vacio">📄<b>Elige un comprobante</b>Busca por cualquier dato y haz clic en un comprobante para ver su detalle, su PDF y sus vouchers.</div></div>
   </div>
   </div>
 
@@ -2722,6 +2682,51 @@
       <table><thead><tr><th>Participante</th><th>Campañas</th><th>Guías</th><th>Zona sugerida</th><th></th></tr></thead><tbody id="pm-nuevos-body"></tbody></table>
       <div class="empty-state" id="pm-nuevos-empty" style="display:none;">Todos los participantes del módulo ya están en el maestro.</div>
     </div>
+  </div>
+  </div>
+</div>
+
+<!-- VENTA ONLINE -->
+<div class="view" id="view-ventaonline">
+  <div class="subtabs">
+    <button class="active" id="vosub-cargar">🧾 Comprobantes Agencia</button>
+    <button id="vosub-vouchers">📎 Subir voucher</button>
+  </div>
+
+  <div id="vosub-panel-cargar">
+  <div class="panel" style="margin-bottom:14px;">
+    <h3>Cargar comprobantes de Agencia</h3>
+    <p class="hint" style="margin-bottom:10px;">Sube las boletas o facturas electrónicas en PDF (puedes elegir varias). De cada una se lee <b>fecha de emisión, DNI o RUC, nombre o razón social, cantidad de códigos, importe total, N° y tipo de comprobante</b>, y se guarda con el canal <span class="vo-canal">AGENCIA</span>. El PDF también se guarda para verlo en "Subir voucher".</p>
+    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
+      <div class="field" style="margin:0; max-width:420px;"><label>Comprobantes en PDF — puedes elegir varios</label><input type="file" id="vo-pdf-input" accept="application/pdf" multiple></div>
+      <button class="btn btn-primary" id="btn-vo-procesar" type="button">Procesar PDF(s)</button>
+    </div>
+    <div class="msg" id="vo-msg"></div>
+    <div id="vo-batch-wrap" style="display:none; margin-top:14px;">
+      <p class="hint" id="vo-batch-resumen" style="margin-bottom:10px;"></p>
+      <div class="hist-wrap" style="max-height:560px;">
+        <table class="reg-tabla sin-anim"><thead><tr><th>Archivo</th><th>Tipo</th><th>N° comprobante</th><th>Fecha emisión</th><th>DNI / RUC</th><th>Nombre / Razón social</th><th class="num">Códigos</th><th class="num">Importe</th><th>Canal</th><th>Estado</th></tr></thead><tbody id="vo-batch-body"></tbody></table>
+      </div>
+      <button class="btn btn-primary" id="btn-vo-guardar" type="button" style="margin-top:12px;">Guardar comprobantes</button>
+    </div>
+  </div>
+  </div>
+
+  <div id="vosub-panel-vouchers" style="display:none;">
+  <div class="vo-layout">
+    <div class="panel vo-lista">
+      <div class="vo-buscar"><span class="ico">🔍</span><input type="search" id="vo-q" placeholder="Busca por cliente, DNI/RUC, N° de comprobante, código, producto, importe o fecha…" autocomplete="off"><kbd>/</kbd></div>
+      <div class="vo-filtros">
+        <div class="vo-seg" id="vo-seg"><button type="button" data-vo-f="todos" class="activo">Todos</button><button type="button" data-vo-f="sin">Sin voucher</button><button type="button" data-vo-f="con">Con voucher</button></div>
+        <select id="vo-tipo"><option value="">Boletas y facturas</option><option value="BOLETA">Boletas</option><option value="FACTURA">Facturas</option></select>
+        <label>Desde <input type="date" id="vo-desde"></label><label>Hasta <input type="date" id="vo-hasta"></label>
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-vo-limpiar" style="display:none;">✕ Limpiar</button>
+      </div>
+      <div class="vo-kpis" id="vo-kpis"></div>
+      <div class="vo-res" id="vo-res" role="listbox" aria-label="Comprobantes"></div>
+      <div id="vo-mas"></div>
+    </div>
+    <div class="panel vo-detalle" id="vo-detalle"><div class="vo-vacio">📄<b>Elige un comprobante</b>Busca por cualquier dato y haz clic en un comprobante para ver su detalle, su PDF y sus vouchers.</div></div>
   </div>
   </div>
 </div>
@@ -3292,7 +3297,8 @@
     <div class="field"><label><input type="checkbox" id="us-pallets" style="width:auto; margin-right:6px;">Pallets</label></div>
     <div class="field"><label><input type="checkbox" id="us-retiros" style="width:auto; margin-right:6px;">Retiros Campaña</label></div>
     <div class="field"><label><input type="checkbox" id="us-campanas" style="width:auto; margin-right:6px;">Campañas (PDF)</label></div>
-    <div class="field" style="margin-left:22px;"><label><input type="checkbox" id="us-vo-vouchers" style="width:auto; margin-right:6px;">Solo Campañas → Venta Online → Subir voucher <span class="hint">(área comercial: no ve el resto de Campañas)</span></label></div>
+    <div class="field"><label><input type="checkbox" id="us-venta-online" style="width:auto; margin-right:6px;">Venta Online (comprobantes y vouchers)</label></div>
+    <div class="field" style="margin-left:22px;"><label><input type="checkbox" id="us-vo-vouchers" style="width:auto; margin-right:6px;">Solo Venta Online → Subir voucher <span class="hint">(área comercial: no carga comprobantes)</span></label></div>
     <div class="field"><label><input type="checkbox" id="us-toma-inventario" style="width:auto; margin-right:6px;">Toma de Inventario</label></div>
     <div class="field"><label><input type="checkbox" id="us-kardex" style="width:auto; margin-right:6px;">Kardex</label></div>
     <div class="field"><label><input type="checkbox" id="us-merma" style="width:auto; margin-right:6px;">Merma</label></div>
@@ -3361,8 +3367,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v191';
-const APP_UPDATED = '21/10/2026 15:00';
+const APP_VERSION = 'v192';
+const APP_UPDATED = '21/10/2026 17:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3584,8 +3590,8 @@ async function loadPermisos(user){
 function applyPermisosUI(){
   const p = currentPermisos;
   const admin = !!p.admin;
-  // Acceso solo a Venta Online → Subir voucher: el resto de la app y de Campañas se oculta.
-  const soloVoucher = !admin && !p.campanas && !!p.vo_vouchers;
+  // Acceso solo a Venta Online → Subir voucher (área comercial).
+  const soloVoucher = !admin && !p.venta_online && !!p.vo_vouchers;
   const map = {
     diseno: admin || !!p.diseno,
     mov: admin || !!p.movimientos,
@@ -3593,13 +3599,14 @@ function applyPermisosUI(){
     inventario: admin || !!p.inventario,
     pallets: admin || !!p.pallets,
     retiros: admin || !!p.retiros,
-    campanas: admin || !!p.campanas || !!p.vo_vouchers,
+    campanas: admin || !!p.campanas,
     toma_inventario: admin || !!p.toma_inventario,
     kardex: admin || !!p.kardex,
     merma: admin || !!p.merma,
     reportes: admin || !!p.reportes,
     bitacora: admin || !!p.bitacora,
     rotulos: !soloVoucher,
+    ventaonline: admin || !!p.venta_online || !!p.vo_vouchers,
     usuarios: admin
   };
   Object.entries(map).forEach(([tab, allowed])=>{
@@ -3611,9 +3618,8 @@ function applyPermisosUI(){
     const visibles = [...g.querySelectorAll('button[data-tab]')].some(b=>!b.classList.contains('hidden-perm'));
     g.classList.toggle('hidden-perm', !visibles);
   });
-  document.querySelectorAll('#view-campanas .subtabs button').forEach(b=> b.classList.toggle('hidden-perm', soloVoucher && b.id !== 'campsub-vo-vouchers'));
-  document.querySelectorAll('#view-campanas .subgrupo').forEach(g=> g.classList.toggle('hidden-perm', ![...g.querySelectorAll('button')].some(b=> !b.classList.contains('hidden-perm'))));
-  if(soloVoucher){ setCampanasSubtab('vo-vouchers'); voCargar(); }
+  $('vosub-cargar').classList.toggle('hidden-perm', soloVoucher);
+  if(soloVoucher) setVoSubtab('vouchers');
   $('op-panel').classList.toggle('hidden-perm', !map.mov);
   $('prod-form-panel').classList.toggle('hidden-perm', !map.productos);
   $('fusion-panel').classList.toggle('hidden-perm', !(admin || !!p.eliminar));
@@ -3642,6 +3648,7 @@ function switchTab(name){
     if(name==='diseno') renderRejas('preview-bloques', true);
     if(name==='mov') renderRejas('mov-bloques', false);
   }
+  if(name==='ventaonline' && $('vosub-panel-vouchers').style.display !== 'none') voCargar();
   try{ history.replaceState(null, '', '#tab-'+name); }catch(e){}
 }
 document.querySelectorAll('nav.tabs button').forEach(btn=> btn.addEventListener('click', ()=> switchTab(btn.dataset.tab)));
@@ -3783,7 +3790,7 @@ $('subtab-retirar-campana').addEventListener('click', ()=>setSubtab('retirar-cam
 $('subtab-unir').addEventListener('click', ()=>setSubtab('unir'));
 
 function setCampanasSubtab(name){
-  ['cargar-campana','cargar-guia','compras','regularizaciones','vo-cargar','vo-vouchers','registros','buscar','analisis','repcmp','validadores','vouchers','participantes'].forEach(n=>{
+  ['cargar-campana','cargar-guia','compras','regularizaciones','registros','buscar','analisis','repcmp','validadores','vouchers','participantes'].forEach(n=>{
     $('campsub-'+n).classList.toggle('active', n===name);
     $('campsub-panel-'+n).style.display = (n===name) ? 'block' : 'none';
   });
@@ -3797,12 +3804,21 @@ $('campsub-buscar').addEventListener('click', ()=>setCampanasSubtab('buscar'));
 $('campsub-analisis').addEventListener('click', ()=>{ setCampanasSubtab('analisis'); poblarSelectCampanasAnalisis(); });
 $('campsub-regularizaciones').addEventListener('click', ()=>{ setCampanasSubtab('regularizaciones'); rgzMostrarZona(); renderRgzMerma(); poblarSelectCampanas('rgz-filtro-camp').then(()=>{ const fc = $('rgz-filtro-camp'); fc.options[0].textContent = 'Todas las campañas';
   if(!fc.querySelector('option[value="__SIN"]')) fc.options[0].insertAdjacentHTML('afterend', '<option value="__SIN">Sin campaña</option>'); rgzLlenarCampMerma(); }); cargarListaRegularizaciones(); });
-$('campsub-vo-cargar').addEventListener('click', ()=> setCampanasSubtab('vo-cargar'));
-$('campsub-vo-vouchers').addEventListener('click', ()=>{ setCampanasSubtab('vo-vouchers'); voCargar(); setTimeout(()=> $('vo-q').focus(), 50); });
 $('campsub-repcmp').addEventListener('click', ()=>{ setCampanasSubtab('repcmp'); poblarSelectCampanas('rvc-campana-select'); });
 $('campsub-validadores').addEventListener('click', ()=>{ setCampanasSubtab('validadores'); poblarSelectCampanasValidadores(); calcularPendientesGlobalValidadores(); });
 $('campsub-vouchers').addEventListener('click', ()=>{ setCampanasSubtab('vouchers'); poblarSelectCampanasVouchers(); });
 $('campsub-participantes').addEventListener('click', ()=>{ setCampanasSubtab('participantes'); renderParticipantesMaestro(); escanearParticipantesModulo(false); });
+
+// Venta Online: Comprobantes Agencia / Subir voucher.
+function setVoSubtab(name){
+  ['cargar','vouchers'].forEach(n=>{
+    $('vosub-'+n).classList.toggle('active', n===name);
+    $('vosub-panel-'+n).style.display = (n===name) ? 'block' : 'none';
+  });
+  if(name === 'vouchers'){ voCargar(); setTimeout(()=> $('vo-q').focus(), 50); }
+}
+$('vosub-cargar').addEventListener('click', ()=> setVoSubtab('cargar'));
+$('vosub-vouchers').addEventListener('click', ()=> setVoSubtab('vouchers'));
 
 /* -------------------- Utilidades -------------------- */
 function indexToLetter(n){ n=n+1; let s=''; while(n>0){ n--; s=String.fromCharCode(65+(n%26))+s; n=Math.floor(n/26);} return s; }
@@ -12954,7 +12970,7 @@ $('vo-mas').addEventListener('click', e=>{ if(e.target.closest('#btn-vo-mas')){ 
 $('vo-res').addEventListener('click', e=>{ const b = e.target.closest('[data-vo-id]'); if(b) voAbrir(b.dataset.voId); });
 // Teclado: "/" busca, ↑/↓ recorren la lista, Enter abre.
 document.addEventListener('keydown', e=>{
-  if($('campsub-panel-vo-vouchers').style.display === 'none' || !$('view-campanas').classList.contains('active')) return;
+  if($('vosub-panel-vouchers').style.display === 'none' || !$('view-ventaonline').classList.contains('active')) return;
   const enCampo = /INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || '') && document.activeElement !== $('vo-q');
   if(e.key === '/' && !enCampo && document.activeElement !== $('vo-q')){ e.preventDefault(); $('vo-q').focus(); $('vo-q').select(); return; }
   if(enCampo || !['ArrowDown','ArrowUp','Enter'].includes(e.key)) return;
@@ -17472,7 +17488,7 @@ inactivityTimer = setInterval(async ()=>{
   document.addEventListener(evt, resetInactivityTimer, {passive:true});
 });
 
-const US_CHECK_IDS = ['us-diseno','us-movimientos','us-productos','us-inventario','us-pallets','us-retiros','us-campanas','us-vo-vouchers','us-toma-inventario','us-kardex','us-merma','us-reportes','us-bitacora','us-eliminar','us-admin'];
+const US_CHECK_IDS = ['us-diseno','us-movimientos','us-productos','us-inventario','us-pallets','us-retiros','us-campanas','us-venta-online','us-vo-vouchers','us-toma-inventario','us-kardex','us-merma','us-reportes','us-bitacora','us-eliminar','us-admin'];
 function limpiarFormularioUsuario(){
   $('us-email').value=''; $('us-alias').value='';
   US_CHECK_IDS.forEach(id=>{ $(id).checked=false; });
@@ -17495,6 +17511,7 @@ $('us-email').addEventListener('blur', async ()=>{
       $('us-pallets').checked = !!p.pallets;
       $('us-retiros').checked = !!p.retiros;
       $('us-campanas').checked = !!p.campanas;
+      $('us-venta-online').checked = !!p.venta_online;
       $('us-vo-vouchers').checked = !!p.vo_vouchers;
       $('us-toma-inventario').checked = !!p.toma_inventario;
       $('us-kardex').checked = !!p.kardex;
@@ -17522,7 +17539,7 @@ $('btn-guardar-usuario').addEventListener('click', async ()=>{
     diseno: $('us-diseno').checked, movimientos: $('us-movimientos').checked,
     productos: $('us-productos').checked, inventario: $('us-inventario').checked,
     pallets: $('us-pallets').checked, retiros: $('us-retiros').checked,
-    campanas: $('us-campanas').checked, vo_vouchers: $('us-vo-vouchers').checked,
+    campanas: $('us-campanas').checked, venta_online: $('us-venta-online').checked, vo_vouchers: $('us-vo-vouchers').checked,
     toma_inventario: $('us-toma-inventario').checked,
     kardex: $('us-kardex').checked, merma: $('us-merma').checked, reportes: $('us-reportes').checked, bitacora: $('us-bitacora').checked,
     eliminar: $('us-eliminar').checked, admin: $('us-admin').checked
