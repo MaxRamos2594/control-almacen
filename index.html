@@ -3292,6 +3292,7 @@
     <div class="field"><label><input type="checkbox" id="us-pallets" style="width:auto; margin-right:6px;">Pallets</label></div>
     <div class="field"><label><input type="checkbox" id="us-retiros" style="width:auto; margin-right:6px;">Retiros Campaña</label></div>
     <div class="field"><label><input type="checkbox" id="us-campanas" style="width:auto; margin-right:6px;">Campañas (PDF)</label></div>
+    <div class="field" style="margin-left:22px;"><label><input type="checkbox" id="us-vo-vouchers" style="width:auto; margin-right:6px;">Solo Campañas → Venta Online → Subir voucher <span class="hint">(área comercial: no ve el resto de Campañas)</span></label></div>
     <div class="field"><label><input type="checkbox" id="us-toma-inventario" style="width:auto; margin-right:6px;">Toma de Inventario</label></div>
     <div class="field"><label><input type="checkbox" id="us-kardex" style="width:auto; margin-right:6px;">Kardex</label></div>
     <div class="field"><label><input type="checkbox" id="us-merma" style="width:auto; margin-right:6px;">Merma</label></div>
@@ -3360,8 +3361,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v190';
-const APP_UPDATED = '21/10/2026 12:00';
+const APP_VERSION = 'v191';
+const APP_UPDATED = '21/10/2026 15:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3583,6 +3584,8 @@ async function loadPermisos(user){
 function applyPermisosUI(){
   const p = currentPermisos;
   const admin = !!p.admin;
+  // Acceso solo a Venta Online → Subir voucher: el resto de la app y de Campañas se oculta.
+  const soloVoucher = !admin && !p.campanas && !!p.vo_vouchers;
   const map = {
     diseno: admin || !!p.diseno,
     mov: admin || !!p.movimientos,
@@ -3590,12 +3593,13 @@ function applyPermisosUI(){
     inventario: admin || !!p.inventario,
     pallets: admin || !!p.pallets,
     retiros: admin || !!p.retiros,
-    campanas: admin || !!p.campanas,
+    campanas: admin || !!p.campanas || !!p.vo_vouchers,
     toma_inventario: admin || !!p.toma_inventario,
     kardex: admin || !!p.kardex,
     merma: admin || !!p.merma,
     reportes: admin || !!p.reportes,
     bitacora: admin || !!p.bitacora,
+    rotulos: !soloVoucher,
     usuarios: admin
   };
   Object.entries(map).forEach(([tab, allowed])=>{
@@ -3607,6 +3611,9 @@ function applyPermisosUI(){
     const visibles = [...g.querySelectorAll('button[data-tab]')].some(b=>!b.classList.contains('hidden-perm'));
     g.classList.toggle('hidden-perm', !visibles);
   });
+  document.querySelectorAll('#view-campanas .subtabs button').forEach(b=> b.classList.toggle('hidden-perm', soloVoucher && b.id !== 'campsub-vo-vouchers'));
+  document.querySelectorAll('#view-campanas .subgrupo').forEach(g=> g.classList.toggle('hidden-perm', ![...g.querySelectorAll('button')].some(b=> !b.classList.contains('hidden-perm'))));
+  if(soloVoucher){ setCampanasSubtab('vo-vouchers'); voCargar(); }
   $('op-panel').classList.toggle('hidden-perm', !map.mov);
   $('prod-form-panel').classList.toggle('hidden-perm', !map.productos);
   $('fusion-panel').classList.toggle('hidden-perm', !(admin || !!p.eliminar));
@@ -17465,7 +17472,7 @@ inactivityTimer = setInterval(async ()=>{
   document.addEventListener(evt, resetInactivityTimer, {passive:true});
 });
 
-const US_CHECK_IDS = ['us-diseno','us-movimientos','us-productos','us-inventario','us-pallets','us-retiros','us-campanas','us-toma-inventario','us-kardex','us-merma','us-reportes','us-bitacora','us-eliminar','us-admin'];
+const US_CHECK_IDS = ['us-diseno','us-movimientos','us-productos','us-inventario','us-pallets','us-retiros','us-campanas','us-vo-vouchers','us-toma-inventario','us-kardex','us-merma','us-reportes','us-bitacora','us-eliminar','us-admin'];
 function limpiarFormularioUsuario(){
   $('us-email').value=''; $('us-alias').value='';
   US_CHECK_IDS.forEach(id=>{ $(id).checked=false; });
@@ -17488,6 +17495,7 @@ $('us-email').addEventListener('blur', async ()=>{
       $('us-pallets').checked = !!p.pallets;
       $('us-retiros').checked = !!p.retiros;
       $('us-campanas').checked = !!p.campanas;
+      $('us-vo-vouchers').checked = !!p.vo_vouchers;
       $('us-toma-inventario').checked = !!p.toma_inventario;
       $('us-kardex').checked = !!p.kardex;
       $('us-merma').checked = !!p.merma;
@@ -17514,7 +17522,7 @@ $('btn-guardar-usuario').addEventListener('click', async ()=>{
     diseno: $('us-diseno').checked, movimientos: $('us-movimientos').checked,
     productos: $('us-productos').checked, inventario: $('us-inventario').checked,
     pallets: $('us-pallets').checked, retiros: $('us-retiros').checked,
-    campanas: $('us-campanas').checked,
+    campanas: $('us-campanas').checked, vo_vouchers: $('us-vo-vouchers').checked,
     toma_inventario: $('us-toma-inventario').checked,
     kardex: $('us-kardex').checked, merma: $('us-merma').checked, reportes: $('us-reportes').checked, bitacora: $('us-bitacora').checked,
     eliminar: $('us-eliminar').checked, admin: $('us-admin').checked
