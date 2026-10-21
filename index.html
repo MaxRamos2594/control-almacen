@@ -647,6 +647,49 @@
   .cmp-q-prod tr:hover td{background:#f2f6fb;}
   .cmp-q-prod mark{background:#ffe58a; color:inherit; border-radius:2px; padding:0 1px;}
   .cmp-q-prod .mas{padding:6px 12px; font-size:11.5px; color:var(--ink-soft); background:#fafbfc;}
+  /* Venta Online: comprobantes de Agencia y vouchers */
+  .vo-canal{display:inline-block; padding:1px 8px; border-radius:999px; background:#1F8A8A; color:#fff; font-size:10.5px; font-weight:700; letter-spacing:.04em;}
+  .vo-tipo{display:inline-block; padding:1px 7px; border-radius:6px; font-size:10.5px; font-weight:700;} .vo-tipo.BOLETA{background:#e8f1fb; color:#24578a;} .vo-tipo.FACTURA{background:#f3ecfb; color:#5d3a8f;}
+  .vo-layout{display:grid; grid-template-columns:minmax(360px, 42%) 1fr; gap:14px; align-items:start;}
+  @media (max-width: 1000px){ .vo-layout{grid-template-columns:1fr;} }
+  .vo-lista{position:sticky; top:8px;}
+  .vo-buscar{display:flex; align-items:center; gap:8px; border:2px solid var(--line-strong); border-radius:12px; padding:2px 10px; background:#fff; transition:border-color .15s, box-shadow .15s;}
+  .vo-buscar:focus-within{border-color:var(--blue); box-shadow:0 0 0 4px rgba(46,95,138,.12);}
+  .vo-buscar input{border:none; outline:none; box-shadow:none; flex:1; font-size:15px; padding:10px 2px; background:transparent;}
+  .vo-buscar .ico{font-size:16px; opacity:.6;} .vo-buscar kbd{font-family:var(--mono); font-size:11px; color:var(--ink-soft); border:1px solid var(--line-strong); border-radius:5px; padding:1px 6px;}
+  .vo-filtros{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:10px 0;}
+  .vo-filtros select{width:auto;} .vo-filtros label{display:flex; gap:5px; align-items:center; font-size:11.5px; font-weight:600; color:var(--ink-soft); margin:0;} .vo-filtros input[type=date]{width:auto; padding:4px 6px;}
+  .vo-seg{display:inline-flex; border:1px solid var(--line-strong); border-radius:999px; overflow:hidden;}
+  .vo-seg button{border:none; background:#fff; padding:6px 12px; font-size:12px; font-weight:600; color:var(--ink-soft); cursor:pointer;}
+  .vo-seg button + button{border-left:1px solid var(--line-strong);} .vo-seg button.activo{background:var(--blue); color:#fff;}
+  .vo-kpis{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;}
+  .vo-kpi{flex:1 1 90px; padding:7px 10px; border-radius:10px; background:#f6f8fb; border:1px solid var(--line);} .vo-kpi b{display:block; font-family:var(--mono); font-size:16px;} .vo-kpi span{font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft);}
+  .vo-kpi.alerta b{color:#b5651d;} .vo-kpi.ok b{color:#1f7a4a;}
+  .vo-res{display:flex; flex-direction:column; gap:6px; max-height:calc(100vh - 330px); min-height:200px; overflow:auto; padding:2px;}
+  .vo-fila{display:grid; grid-template-columns:1fr auto; gap:2px 10px; text-align:left; width:100%; padding:9px 12px; border:1px solid var(--line); border-left:4px solid #d08a12; border-radius:10px; background:#fff; cursor:pointer; font:inherit; color:var(--ink); transition:background .12s, box-shadow .12s;}
+  .vo-fila.con{border-left-color:#2e8b57;}
+  .vo-fila:hover{background:#f6f9fd;} .vo-fila.sel{background:#eaf1fb; box-shadow:0 0 0 2px var(--blue);}
+  .vo-fila .t{font-weight:700; font-size:13px; display:flex; gap:6px; align-items:center; flex-wrap:wrap;} .vo-fila .t .nro{font-family:var(--mono);}
+  .vo-fila .s{font-size:12px; color:var(--ink-soft); grid-column:1;} .vo-fila .imp{font-family:var(--mono); font-weight:700; font-size:14px; text-align:right;} .vo-fila .f{font-size:11px; color:var(--ink-soft); text-align:right;}
+  .vo-fila mark{background:#ffe58a; color:inherit; border-radius:2px; padding:0 1px;}
+  .vo-est{font-size:10.5px; font-weight:700; padding:1px 7px; border-radius:999px;} .vo-est.sin{background:#fff1dc; color:#8a5a0a;} .vo-est.con{background:#e2f4ea; color:#1f7a4a;}
+  .vo-vacio{padding:60px 20px; text-align:center; color:var(--ink-soft); font-size:13px;} .vo-vacio b{display:block; font-size:16px; color:var(--ink); margin:6px 0 4px;}
+  .vo-cab{display:flex; gap:12px; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; margin-bottom:12px;}
+  .vo-cab h2{margin:0; font-family:var(--mono); font-size:20px;} .vo-cab .imp{font-family:var(--mono); font-size:24px; font-weight:800;}
+  .vo-datos{display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:8px; margin-bottom:12px;}
+  .vo-dato{padding:8px 10px; border-radius:8px; background:#f6f8fb;} .vo-dato span{display:block; font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft);} .vo-dato b{font-size:13px;}
+  .vo-drop{display:block; width:100%; box-sizing:border-box; border:2px dashed var(--line-strong); border-radius:12px; padding:16px; text-align:center; color:var(--ink-soft); cursor:pointer; transition:border-color .15s, background .15s; margin-bottom:10px;}
+  .vo-drop:hover, .vo-drop.encima{border-color:var(--blue); background:#eef4fb; color:var(--ink);} .vo-drop b{display:block; color:var(--ink); font-size:14px; margin-bottom:2px;}
+  .vo-docs{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;}
+  .vo-doc{display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border:1px solid var(--line-strong); border-radius:8px; background:#fff; cursor:pointer; font:inherit; font-size:12px; max-width:260px;}
+  .vo-doc span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;} .vo-doc.activo{border-color:var(--blue); background:#eaf1fb; box-shadow:0 0 0 1px var(--blue);}
+  .vo-doc .x{border:none; background:none; color:var(--ink-soft); cursor:pointer; padding:0 2px;} .vo-doc .x:hover{color:#b3402f;}
+  .vo-visor{border:1px solid var(--line-strong); border-radius:10px; overflow:hidden; background:#525659; height:70vh; min-height:420px; display:flex; align-items:center; justify-content:center;}
+  .vo-visor iframe{width:100%; height:100%; border:none; background:#fff;} .vo-visor img{max-width:100%; max-height:100%; object-fit:contain;}
+  .vo-visor .vo-vacio{color:#d6d9dd;} .vo-visor .vo-vacio b{color:#fff;}
+  .vo-subiendo{font-size:12px; margin:6px 0;} .vo-subiendo .barra{height:6px; border-radius:3px; background:#e5e9ee; overflow:hidden; margin-top:3px;} .vo-subiendo .barra i{display:block; height:100%; background:var(--blue); transition:width .2s;}
+  .vo-items{width:100%; border-collapse:collapse; font-size:12px; margin-bottom:12px;} .vo-items th{text-align:left; font-size:10px; text-transform:uppercase; color:var(--ink-soft); border-bottom:1px solid var(--line); padding:4px 6px;}
+  .vo-items td{padding:4px 6px; border-bottom:1px solid #f0f2f5;} .vo-items td.num{text-align:right; font-family:var(--mono);}
   /* Regularizaciones */
   .rgz-conceptos{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;}
   .rgz-concepto{display:flex; gap:10px; align-items:center; padding:10px 16px; border:2px solid var(--line); border-radius:12px; cursor:pointer; background:#fff; margin:0; font-weight:400; transition:border-color .15s, background .15s;}
@@ -2058,6 +2101,10 @@
       <button id="campsub-vouchers">📦 Vouchers Agencia</button>
       <button id="campsub-participantes">👥 Participantes</button>
     </div></div>
+    <div class="subgrupo"><span class="subgrupo-t">Venta Online</span><div class="subgrupo-b">
+      <button id="campsub-vo-cargar">🧾 Comprobantes Agencia</button>
+      <button id="campsub-vo-vouchers">📎 Subir voucher</button>
+    </div></div>
   </div>
 
   <div id="campsub-panel-cargar-campana">
@@ -2155,6 +2202,43 @@
     </div>
     <div class="hist-wrap"><table class="reg-tabla sin-anim"><thead><tr><th>Correlativo</th><th>Concepto</th><th>N° guía</th><th>Fecha traslado</th><th>Campaña</th><th class="num">Ítems</th><th class="num">Unidades</th><th>Usuario</th><th></th></tr></thead><tbody id="rgz-lista-body"></tbody></table>
       <div class="empty-state" id="rgz-lista-vacio" style="display:none;">Aún no hay regularizaciones.</div></div>
+  </div>
+  </div>
+
+  <div id="campsub-panel-vo-cargar" style="display:none;">
+  <div class="panel" style="margin-bottom:14px;">
+    <h3>Cargar comprobantes de Agencia</h3>
+    <p class="hint" style="margin-bottom:10px;">Sube las boletas o facturas electrónicas en PDF (puedes elegir varias). De cada una se lee <b>fecha de emisión, DNI o RUC, nombre o razón social, cantidad de códigos, importe total, N° y tipo de comprobante</b>, y se guarda con el canal <span class="vo-canal">AGENCIA</span>. El PDF también se guarda para verlo en "Subir voucher".</p>
+    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
+      <div class="field" style="margin:0; max-width:420px;"><label>Comprobantes en PDF — puedes elegir varios</label><input type="file" id="vo-pdf-input" accept="application/pdf" multiple></div>
+      <button class="btn btn-primary" id="btn-vo-procesar" type="button">Procesar PDF(s)</button>
+    </div>
+    <div class="msg" id="vo-msg"></div>
+    <div id="vo-batch-wrap" style="display:none; margin-top:14px;">
+      <p class="hint" id="vo-batch-resumen" style="margin-bottom:10px;"></p>
+      <div class="hist-wrap" style="max-height:560px;">
+        <table class="reg-tabla sin-anim"><thead><tr><th>Archivo</th><th>Tipo</th><th>N° comprobante</th><th>Fecha emisión</th><th>DNI / RUC</th><th>Nombre / Razón social</th><th class="num">Códigos</th><th class="num">Importe</th><th>Canal</th><th>Estado</th></tr></thead><tbody id="vo-batch-body"></tbody></table>
+      </div>
+      <button class="btn btn-primary" id="btn-vo-guardar" type="button" style="margin-top:12px;">Guardar comprobantes</button>
+    </div>
+  </div>
+  </div>
+
+  <div id="campsub-panel-vo-vouchers" style="display:none;">
+  <div class="vo-layout">
+    <div class="panel vo-lista">
+      <div class="vo-buscar"><span class="ico">🔍</span><input type="search" id="vo-q" placeholder="Busca por cliente, DNI/RUC, N° de comprobante, código, producto, importe o fecha…" autocomplete="off"><kbd>/</kbd></div>
+      <div class="vo-filtros">
+        <div class="vo-seg" id="vo-seg"><button type="button" data-vo-f="todos" class="activo">Todos</button><button type="button" data-vo-f="sin">Sin voucher</button><button type="button" data-vo-f="con">Con voucher</button></div>
+        <select id="vo-tipo"><option value="">Boletas y facturas</option><option value="BOLETA">Boletas</option><option value="FACTURA">Facturas</option></select>
+        <label>Desde <input type="date" id="vo-desde"></label><label>Hasta <input type="date" id="vo-hasta"></label>
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-vo-limpiar" style="display:none;">✕ Limpiar</button>
+      </div>
+      <div class="vo-kpis" id="vo-kpis"></div>
+      <div class="vo-res" id="vo-res" role="listbox" aria-label="Comprobantes"></div>
+      <div id="vo-mas"></div>
+    </div>
+    <div class="panel vo-detalle" id="vo-detalle"><div class="vo-vacio">📄<b>Elige un comprobante</b>Busca por cualquier dato y haz clic en un comprobante para ver su detalle, su PDF y sus vouchers.</div></div>
   </div>
   </div>
 
@@ -3276,8 +3360,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v189';
-const APP_UPDATED = '21/10/2026 09:00';
+const APP_VERSION = 'v190';
+const APP_UPDATED = '21/10/2026 12:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3692,7 +3776,7 @@ $('subtab-retirar-campana').addEventListener('click', ()=>setSubtab('retirar-cam
 $('subtab-unir').addEventListener('click', ()=>setSubtab('unir'));
 
 function setCampanasSubtab(name){
-  ['cargar-campana','cargar-guia','compras','regularizaciones','registros','buscar','analisis','repcmp','validadores','vouchers','participantes'].forEach(n=>{
+  ['cargar-campana','cargar-guia','compras','regularizaciones','vo-cargar','vo-vouchers','registros','buscar','analisis','repcmp','validadores','vouchers','participantes'].forEach(n=>{
     $('campsub-'+n).classList.toggle('active', n===name);
     $('campsub-panel-'+n).style.display = (n===name) ? 'block' : 'none';
   });
@@ -3706,6 +3790,8 @@ $('campsub-buscar').addEventListener('click', ()=>setCampanasSubtab('buscar'));
 $('campsub-analisis').addEventListener('click', ()=>{ setCampanasSubtab('analisis'); poblarSelectCampanasAnalisis(); });
 $('campsub-regularizaciones').addEventListener('click', ()=>{ setCampanasSubtab('regularizaciones'); rgzMostrarZona(); renderRgzMerma(); poblarSelectCampanas('rgz-filtro-camp').then(()=>{ const fc = $('rgz-filtro-camp'); fc.options[0].textContent = 'Todas las campañas';
   if(!fc.querySelector('option[value="__SIN"]')) fc.options[0].insertAdjacentHTML('afterend', '<option value="__SIN">Sin campaña</option>'); rgzLlenarCampMerma(); }); cargarListaRegularizaciones(); });
+$('campsub-vo-cargar').addEventListener('click', ()=> setCampanasSubtab('vo-cargar'));
+$('campsub-vo-vouchers').addEventListener('click', ()=>{ setCampanasSubtab('vo-vouchers'); voCargar(); setTimeout(()=> $('vo-q').focus(), 50); });
 $('campsub-repcmp').addEventListener('click', ()=>{ setCampanasSubtab('repcmp'); poblarSelectCampanas('rvc-campana-select'); });
 $('campsub-validadores').addEventListener('click', ()=>{ setCampanasSubtab('validadores'); poblarSelectCampanasValidadores(); calcularPendientesGlobalValidadores(); });
 $('campsub-vouchers').addEventListener('click', ()=>{ setCampanasSubtab('vouchers'); poblarSelectCampanasVouchers(); });
@@ -12669,6 +12755,278 @@ $('btn-analizar').addEventListener('click', async ()=>{
     proc.fin();
     $('btn-analizar').disabled = false;
   }
+});
+
+// -------- Venta Online: comprobantes de Agencia (boletas/facturas en PDF) y sus vouchers --------
+const voComprobantesRef = db.collection('vo_comprobantes');   // id = N° de comprobante (BV01-00000721)
+let voBatch = [], voLista = [], voLeidos = false, voSel = null, voDocSel = 0, voFiltro = 'todos', voMostrar = 60, voQTimer = null;
+const voSoles = n=> 'S/ ' + (Number(n) || 0).toLocaleString('es-PE', { minimumFractionDigits:2, maximumFractionDigits:2 });
+const voNumero = t=> { const n = Number(String(t || '').replace(/[^\d.\-]/g, '')); return Number.isFinite(n) ? n : null; };
+// Lee una boleta o factura electrónica (formato Bizlinks/SUNAT) ya separada en líneas.
+function parseComprobantePDF(paginas){
+  const lineas = paginas.flat();
+  const textoLinea = g=> g.items.map(txtItem).join(' ').replace(/\s+/g, ' ').trim();
+  const todo = lineas.map(textoLinea).join('\n');
+  const tipo = /FACTURA/i.test(todo) ? 'FACTURA' : /BOLETA/i.test(todo) ? 'BOLETA' : '';
+  const mNro = todo.match(/\b([BF][A-Z0-9]{3})\s*-\s*(\d{1,8})\b/i);
+  const nro = mNro ? `${mNro[1].toUpperCase()}-${mNro[2].padStart(8, '0')}` : '';
+  // Valor que sigue a una etiqueta en la misma línea (hasta la siguiente etiqueta "Algo:").
+  // La etiqueta puede venir sola ("DNI:") o pegada a su valor ("DNI: 41458420").
+  const tras = (etiqueta, conDosPuntos)=>{
+    const re = new RegExp('^(' + etiqueta + ')\\s*' + (conDosPuntos ? ':' : ':?') + '\\s*(.*)$', 'i');
+    for(const g of lineas){
+      let m = null; const i = g.items.findIndex(it=> (m = txtItem(it).match(re)));
+      if(i < 0) continue;
+      const v = m[2] ? [m[2].trim()] : [];
+      for(const it of g.items.slice(i + 1)){ const t = txtItem(it); if(/:\s*$/.test(t) || /^[A-Za-zÁÉÍÓÚáéíóúñÑ.\/ ]{2,30}:\s/.test(t)) break; if(t) v.push(t); }
+      if(v.length) return { valor: v.join(' ').trim(), etiqueta: m[1] };
+    }
+    return { valor:'', etiqueta:'' };
+  };
+  const nombre = tras('Nombre\\s*\\/\\s*Raz[oó]n\\s*Social|Raz[oó]n\\s*Social|Se[ñn]or\\(?e?s?\\)?|Cliente|Adquiriente').valor;
+  const d = tras('DNI|RUC|R\\.U\\.C\\.?|N°\\s*Doc\\.?[^:]*|Doc\\.?\\s*Identidad', true);
+  const docNum = (d.valor.match(/\d{8,11}/) || [''])[0];
+  const doc_tipo = /DNI/i.test(d.etiqueta) ? 'DNI' : /R\.?U\.?C/i.test(d.etiqueta) || docNum.length === 11 ? 'RUC' : (docNum ? 'DNI' : '');
+  const fechaTxt = tras('Fecha\\s*(?:de\\s*)?Emisi[oó]n').valor;
+  const mF = fechaTxt.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  const moneda = tras('Moneda').valor;
+  const lImp = lineas.find(g=> /Importe\s*Total/i.test(textoLinea(g)));
+  const importe = lImp ? voNumero(txtItem(lImp.items.filter(it=> /\d/.test(txtItem(it))).slice(-1)[0])) : null;
+  // Ítems: entre la fila de títulos (Código · Descripción · Cantidad) y los totales.
+  const items = [];
+  const iCab = lineas.findIndex(g=> /Descripci/i.test(textoLinea(g)) && /Cantidad/i.test(textoLinea(g)));
+  if(iCab >= 0){
+    const cab = lineas[iCab].items, xDe = re=> (cab.find(it=> re.test(txtItem(it))) || {}).x;
+    const xItem = xDe(/^[ÍI]tem$/i) ?? cab[0].x, xUnd = xDe(/^Und|^Unid/i) ?? xDe(/^Cantidad/i), xCod = xDe(/^C[óo]digo/i);
+    for(const g of lineas.slice(iCab + 1)){
+      const t = textoLinea(g);
+      if(/Op\.\s*Gravada|Importe\s*Total|Sub\s*Total|Total\s*Venta/i.test(t)) break;
+      const toks = g.items.filter(it=> txtItem(it));
+      if(!toks.length) continue;
+      const antes = toks.filter(it=> it.x < xUnd - 5), despues = toks.filter(it=> it.x >= xUnd - 5);
+      if(/^\d+$/.test(txtItem(antes[0])) && antes[0].x < xItem + 20){
+        let textos = antes.slice(1).map(txtItem);
+        // Código y descripción en un solo texto, empezando en la columna Código: la primera palabra es el código.
+        if(textos.length === 1 && xCod != null && antes[1].x < xCod + 15 && / /.test(textos[0])) textos = [textos[0].split(' ')[0], textos[0].split(' ').slice(1).join(' ')];
+        const nums = despues.map(txtItem).filter(v=> /^-?[\d,]+(\.\d+)?$/.test(v)).map(voNumero);
+        items.push({ item: Number(txtItem(antes[0])), codigo: textos.length >= 2 ? textos[0] : '', descripcion: (textos.length >= 2 ? textos.slice(1) : textos).join(' '),
+          cantidad: nums.length ? nums[0] : null, total: nums.length > 1 ? nums[nums.length - 1] : null });
+      }else if(items.length && antes.length && !despues.some(it=> /\d/.test(txtItem(it)))){
+        items[items.length - 1].descripcion += ' ' + antes.map(txtItem).join(' ');   // descripción en 2 líneas
+      }
+    }
+  }
+  return { tipo, nro, nombre: nombre.toUpperCase(), doc_tipo, doc_numero: docNum, fecha_texto: fechaTxt, fecha_emision: mF ? `${mF[3]}-${mF[2]}-${mF[1]}` : '',
+    moneda, importe_total: importe, items, cant_codigos: items.length, unidades: items.reduce((s, it)=> s + (it.cantidad || 0), 0) };
+}
+$('btn-vo-procesar').addEventListener('click', async ()=>{
+  const files = [...$('vo-pdf-input').files];
+  if(!files.length){ showMsg('vo-msg','err','Selecciona al menos un comprobante en PDF.'); return; }
+  const noPdf = files.find(f=> !/\.pdf$/i.test(f.name) && f.type !== 'application/pdf');
+  if(noPdf){ showMsg('vo-msg','err',`"${noPdf.name}" no es un PDF.`); return; }
+  $('btn-vo-procesar').disabled = true; voBatch = []; $('vo-batch-wrap').style.display = 'none';
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const proc = relojProceso('vo-msg');
+  try{
+    const vistos = new Set();
+    for(let i = 0; i < files.length; i++){
+      const file = files[i];
+      proc.paso(`Procesando… leyendo ${files.length > 1 ? `${i + 1} de ${files.length} (${file.name})` : file.name}`);
+      try{
+        const c = parseComprobantePDF(await extractGuiaLineGroups(await file.arrayBuffer()));
+        const x = { file, fileName: file.name, c };
+        if(!c.nro) x.error = 'No se encontró el N° de comprobante.';
+        else if(!c.tipo) x.error = 'No se reconoce si es boleta o factura.';
+        else if(c.importe_total == null) x.error = 'No se encontró el importe total.';
+        else{
+          const ya = await voComprobantesRef.doc(c.nro).get();
+          if(ya.exists && ya.data().estado !== 'ANULADO') x.duplicado = `Ya está cargado (${c.nro})`;
+          else if(vistos.has(c.nro)) x.duplicado = 'Repetido en este mismo lote';
+          vistos.add(c.nro);
+        }
+        voBatch.push(x);
+      }catch(err){ console.error(err); voBatch.push({ fileName: file.name, error: err.message }); }
+    }
+    renderVoBatch();
+    $('vo-batch-wrap').style.display = 'block';
+    showMsg('vo-msg','ok', `Se procesaron ${voBatch.length} comprobante(s)${proc.seg()}. Revisa y presiona "Guardar comprobantes".`);
+  }finally{ proc.fin(); $('btn-vo-procesar').disabled = false; }
+});
+function renderVoBatch(){
+  $('vo-batch-body').innerHTML = voBatch.map(x=>{
+    if(!x.c) return `<tr><td>${esc(x.fileName)}</td><td colspan="8"></td><td style="color:#8A332A;">⚠ ${esc(x.error)}</td></tr>`;
+    const c = x.c, problema = x.error || x.duplicado;
+    return `<tr><td>${esc(x.fileName)}</td><td><span class="vo-tipo ${esc(c.tipo)}">${esc(c.tipo || '—')}</span></td><td><b>${esc(c.nro || '—')}</b></td><td>${esc(c.fecha_texto || '—')}</td>` +
+      `<td>${esc(c.doc_tipo)} ${esc(c.doc_numero || '—')}</td><td>${esc(c.nombre || '—')}</td><td class="num">${esc(c.cant_codigos)}</td><td class="num">${esc(c.importe_total == null ? '—' : voSoles(c.importe_total))}</td>` +
+      `<td><span class="vo-canal">AGENCIA</span></td><td>${problema ? `<span style="color:#8A332A;">⚠ ${esc(problema)}</span>` : '✓ Listo para guardar'}</td></tr>`;
+  }).join('');
+  const ok = voBatch.filter(x=> x.c && !x.error && !x.duplicado).length;
+  $('vo-batch-resumen').textContent = `${voBatch.length} archivo(s): ${ok} para guardar${voBatch.length - ok ? `, ${voBatch.length - ok} con aviso` : ''}.`;
+}
+$('btn-vo-guardar').addEventListener('click', async ()=>{
+  const listos = voBatch.filter(x=> x.c && !x.error && !x.duplicado);
+  if(!listos.length){ showMsg('vo-msg','err','No hay comprobantes para guardar.'); return; }
+  $('btn-vo-guardar').disabled = true;
+  const proc = relojProceso('vo-msg'); let n = 0;
+  try{
+    for(const x of listos){
+      proc.paso(`Guardando ${++n} de ${listos.length}: ${x.c.nro}…`);
+      const ref = storage.ref().child(`vo_comprobantes/${x.c.nro}.pdf`);
+      await ref.put(x.file, { contentType:'application/pdf' });
+      const pdf_url = await ref.getDownloadURL();
+      await voComprobantesRef.doc(x.c.nro).set(Object.assign({}, x.c, { canal:'AGENCIA', pdf_url, pdf_path: ref.fullPath, archivo: x.fileName, vouchers: [],
+        estado:'ACTIVO', usuario: currentUserAlias, fecha_carga: firebase.firestore.FieldValue.serverTimestamp() }));
+      await logAccion('vo_comprobante_cargado', {detalle:`${x.c.tipo} ${x.c.nro} · ${x.c.doc_tipo} ${x.c.doc_numero} · ${voSoles(x.c.importe_total)} (Agencia)`});
+      x.guardado = true;
+    }
+    proc.fin();
+    showMsg('vo-msg','ok', `¡Guardado! ${listos.length} comprobante(s) con canal AGENCIA: ${listos.map(x=> x.c.nro).join(', ')}.`);
+    showToast(`${listos.length} comprobante(s) guardado(s)`, 'ok');
+    voBatch = []; $('vo-batch-wrap').style.display = 'none'; $('vo-pdf-input').value = '';
+    voLeidos = false;
+  }catch(err){ proc.fin(); console.error(err); showMsg('vo-msg','err','Error al guardar: '+err.message); }
+  finally{ $('btn-vo-guardar').disabled = false; }
+});
+
+// ---- Subir voucher: buscador, lista, detalle, visor de PDF y vouchers ----
+async function voCargar(forzar){
+  if(voLeidos && !forzar){ renderVoLista(); return; }
+  $('vo-res').innerHTML = '<div class="vo-vacio">⏳<b>Cargando comprobantes…</b></div>';
+  try{
+    voLista = (await voComprobantesRef.get()).docs.map(d=> Object.assign({ id: d.id }, d.data())).filter(c=> c.estado !== 'ANULADO')
+      .sort((a, b)=> (b.fecha_emision || '').localeCompare(a.fecha_emision || '') || b.id.localeCompare(a.id));
+    voLista.forEach(voIndexar);
+    voLeidos = true;
+  }catch(err){ console.error(err); $('vo-res').innerHTML = `<div class="vo-vacio">⚠<b>No se pudieron leer los comprobantes</b>${esc(err.message)}</div>`; return; }
+  renderVoLista();
+}
+// Texto donde busca el multibuscador: todos los datos del comprobante, sus códigos, productos y vouchers.
+function voIndexar(c){
+  const f = (c.fecha_emision || '').split('-').reverse().join('/');
+  c._txt = normalizarTexto([c.id, c.tipo, c.nombre, c.doc_tipo, c.doc_numero, f, c.fecha_texto, c.canal, c.moneda,
+    c.importe_total != null ? `${Number(c.importe_total).toFixed(2)} ${String(c.importe_total).replace('.', ',')}` : '',
+    ...(c.items || []).map(it=> `${it.codigo} ${it.descripcion}`), ...(c.vouchers || []).map(v=> v.nombre), (c.vouchers || []).length ? 'CON VOUCHER' : 'SIN VOUCHER'].join(' '));
+}
+const voTokens = ()=> normalizarTexto($('vo-q').value).split(/\s+/).filter(Boolean);
+function voFiltrados(){
+  const tk = voTokens(), tipo = $('vo-tipo').value, d = $('vo-desde').value, h = $('vo-hasta').value;
+  return voLista.filter(c=>{
+    const nv = (c.vouchers || []).length;
+    if(voFiltro === 'sin' && nv) return false;
+    if(voFiltro === 'con' && !nv) return false;
+    if(tipo && c.tipo !== tipo) return false;
+    if(d && (c.fecha_emision || '') < d) return false;
+    if(h && (c.fecha_emision || '') > h) return false;
+    return tk.every(t=> c._txt.includes(t));
+  });
+}
+function renderVoLista(){
+  const L = voFiltrados(), tk = voTokens();
+  const con = L.filter(c=> (c.vouchers || []).length).length;
+  $('btn-vo-limpiar').style.display = tk.length || $('vo-tipo').value || $('vo-desde').value || $('vo-hasta').value || voFiltro !== 'todos' ? '' : 'none';
+  $('vo-kpis').innerHTML = `<div class="vo-kpi"><b>${esc(anFmt(L.length))}</b><span>Comprobantes</span></div><div class="vo-kpi ok"><b>${esc(anFmt(con))}</b><span>Con voucher</span></div>` +
+    `<div class="vo-kpi alerta"><b>${esc(anFmt(L.length - con))}</b><span>Sin voucher</span></div><div class="vo-kpi"><b>${esc(voSoles(L.reduce((s, c)=> s + (Number(c.importe_total) || 0), 0)))}</b><span>Importe</span></div>`;
+  if(!L.length){ $('vo-res').innerHTML = `<div class="vo-vacio">🔍<b>${voLista.length ? 'Nada coincide con la búsqueda' : 'Aún no hay comprobantes'}</b>${voLista.length ? 'Prueba con otra palabra o quita los filtros.' : 'Cárgalos en Venta Online → Comprobantes Agencia.'}</div>`; $('vo-mas').innerHTML = ''; return; }
+  $('vo-res').innerHTML = L.slice(0, voMostrar).map(c=>{ const nv = (c.vouchers || []).length;
+    const coincide = tk.length ? (c.items || []).filter(it=> tk.some(t=> normalizarTexto(`${it.codigo} ${it.descripcion}`).includes(t))).slice(0, 2) : [];
+    return `<button type="button" role="option" class="vo-fila${nv ? ' con' : ''}${voSel === c.id ? ' sel' : ''}" data-vo-id="${esc(c.id)}" aria-selected="${voSel === c.id}">` +
+      `<span class="t"><span class="nro">${cmpMarcar(c.id, tk)}</span><span class="vo-tipo ${esc(c.tipo)}">${esc(c.tipo)}</span><span class="vo-est ${nv ? 'con' : 'sin'}">${nv ? `📎 ${esc(nv)} voucher${nv > 1 ? 's' : ''}` : 'Sin voucher'}</span></span>` +
+      `<span class="imp">${esc(voSoles(c.importe_total))}</span>` +
+      `<span class="s">${cmpMarcar(c.nombre || '—', tk)} · ${esc(c.doc_tipo || '')} ${cmpMarcar(c.doc_numero || '', tk)}${coincide.length ? ` · ${coincide.map(it=> cmpMarcar(`${it.codigo} ${it.descripcion}`.trim(), tk)).join(' · ')}` : ''}</span>` +
+      `<span class="f">${esc((c.fecha_emision || '').split('-').reverse().join('/'))} · ${esc(c.cant_codigos || 0)} cód.</span></button>`; }).join('');
+  $('vo-mas').innerHTML = L.length > voMostrar ? `<button type="button" class="btn btn-ghost btn-sm" id="btn-vo-mas" style="width:100%; margin-top:8px;">Ver ${esc(Math.min(60, L.length - voMostrar))} más (de ${esc(L.length)})</button>` : '';
+}
+function voBuscar(){ voMostrar = 60; renderVoLista(); }
+$('vo-q').addEventListener('input', ()=>{ clearTimeout(voQTimer); voQTimer = setTimeout(voBuscar, 90); });
+['vo-tipo','vo-desde','vo-hasta'].forEach(id=> $(id).addEventListener('change', voBuscar));
+$('vo-seg').addEventListener('click', e=>{ const b = e.target.closest('[data-vo-f]'); if(!b) return; voFiltro = b.dataset.voF;
+  document.querySelectorAll('#vo-seg button').forEach(x=> x.classList.toggle('activo', x === b)); voBuscar(); });
+$('btn-vo-limpiar').addEventListener('click', ()=>{ $('vo-q').value = ''; $('vo-tipo').value = ''; $('vo-desde').value = ''; $('vo-hasta').value = ''; voFiltro = 'todos';
+  document.querySelectorAll('#vo-seg button').forEach(x=> x.classList.toggle('activo', x.dataset.voF === 'todos')); voBuscar(); $('vo-q').focus(); });
+$('vo-mas').addEventListener('click', e=>{ if(e.target.closest('#btn-vo-mas')){ voMostrar += 60; renderVoLista(); } });
+$('vo-res').addEventListener('click', e=>{ const b = e.target.closest('[data-vo-id]'); if(b) voAbrir(b.dataset.voId); });
+// Teclado: "/" busca, ↑/↓ recorren la lista, Enter abre.
+document.addEventListener('keydown', e=>{
+  if($('campsub-panel-vo-vouchers').style.display === 'none' || !$('view-campanas').classList.contains('active')) return;
+  const enCampo = /INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || '') && document.activeElement !== $('vo-q');
+  if(e.key === '/' && !enCampo && document.activeElement !== $('vo-q')){ e.preventDefault(); $('vo-q').focus(); $('vo-q').select(); return; }
+  if(enCampo || !['ArrowDown','ArrowUp','Enter'].includes(e.key)) return;
+  const L = voFiltrados().slice(0, voMostrar); if(!L.length) return;
+  const i = L.findIndex(c=> c.id === voSel);
+  if(e.key === 'Enter'){ if(document.activeElement === $('vo-q')){ e.preventDefault(); voAbrir((L[i] || L[0]).id); } return; }
+  e.preventDefault();
+  const j = e.key === 'ArrowDown' ? Math.min(L.length - 1, i + 1) : Math.max(0, i - 1);
+  voAbrir(L[j].id, true);
+});
+function voAbrir(id, desdeTeclado){
+  voSel = id; voDocSel = 0;
+  document.querySelectorAll('#vo-res .vo-fila').forEach(b=>{ const s = b.dataset.voId === id; b.classList.toggle('sel', s); b.setAttribute('aria-selected', s); if(s && desdeTeclado) b.scrollIntoView({ block:'nearest' }); });
+  renderVoDetalle();
+}
+const voDocs = c=> [{ nombre:`Comprobante ${c.id}`, url: c.pdf_url, tipo:'application/pdf', comprobante:true }, ...(c.vouchers || [])].filter(d=> d.url);
+function renderVoDetalle(){
+  const c = voLista.find(x=> x.id === voSel), box = $('vo-detalle');
+  if(!c){ box.innerHTML = '<div class="vo-vacio">📄<b>Elige un comprobante</b>Busca por cualquier dato y haz clic en un comprobante para ver su detalle, su PDF y sus vouchers.</div>'; return; }
+  const docs = voDocs(c), nv = (c.vouchers || []).length, puede = currentPermisos.admin || currentPermisos.eliminar;
+  if(voDocSel >= docs.length) voDocSel = docs.length - 1;
+  const d = docs[voDocSel];
+  box.innerHTML = `<div class="vo-cab"><div><div style="display:flex; gap:6px; align-items:center; margin-bottom:4px;"><span class="vo-tipo ${esc(c.tipo)}">${esc(c.tipo)}</span><span class="vo-canal">${esc(c.canal || 'AGENCIA')}</span><span class="vo-est ${nv ? 'con' : 'sin'}">${nv ? `📎 ${esc(nv)} voucher${nv > 1 ? 's' : ''}` : 'Sin voucher'}</span></div><h2>${esc(c.id)}</h2></div>` +
+    `<div style="text-align:right;"><div class="imp">${esc(voSoles(c.importe_total))}</div><div class="hint">${esc(c.fecha_texto || '')}</div></div></div>` +
+    `<div class="vo-datos"><div class="vo-dato"><span>Nombre / Razón social</span><b>${esc(c.nombre || '—')}</b></div><div class="vo-dato"><span>${esc(c.doc_tipo || 'Documento')}</span><b>${esc(c.doc_numero || '—')}</b></div>` +
+    `<div class="vo-dato"><span>Fecha de emisión</span><b>${esc((c.fecha_emision || '').split('-').reverse().join('/'))}</b></div><div class="vo-dato"><span>Códigos · unidades</span><b>${esc(c.cant_codigos || 0)} · ${esc(anFmt(c.unidades || 0))}</b></div></div>` +
+    `<label class="vo-drop" id="vo-drop"><input type="file" id="vo-voucher-input" accept="application/pdf,image/*" multiple hidden><b>📎 Arrastra aquí los vouchers o haz clic para elegirlos</b>PDF o imagen · puedes subir varios para este comprobante</label><div id="vo-subidas"></div>` +
+    `<div class="vo-docs">${docs.map((x, i)=> `<span class="vo-doc${i === voDocSel ? ' activo' : ''}" data-vo-doc="${i}" title="${esc(x.nombre)}">${x.comprobante ? '🧾' : /pdf/.test(x.tipo || '') ? '📄' : '🖼'} <span>${esc(x.comprobante ? 'Comprobante' : x.nombre)}</span>` +
+      `${!x.comprobante ? `<a href="${esc(x.url)}" target="_blank" rel="noopener" title="Abrir en otra pestaña" class="x">↗</a>${puede ? `<button type="button" class="x" data-vo-quitar="${esc(x.path)}" title="Quitar este voucher">✕</button>` : ''}` : ''}</span>`).join('')}</div>` +
+    `<div class="vo-visor">${d ? (/pdf/.test(d.tipo || '') ? `<iframe src="${esc(d.url)}" title="${esc(d.nombre)}"></iframe>` : `<img src="${esc(d.url)}" alt="${esc(d.nombre)}">`) : '<div class="vo-vacio">📄<b>Sin documentos</b></div>'}</div>` +
+    `<details style="margin-top:10px;"><summary class="hint" style="cursor:pointer;">Ver los ${esc(c.cant_codigos || 0)} código(s) del comprobante</summary><table class="vo-items"><thead><tr><th>Código</th><th>Descripción</th><th class="num">Cant.</th><th class="num">Total</th></tr></thead><tbody>` +
+    (c.items || []).map(it=> `<tr><td><b>${esc(it.codigo || '—')}</b></td><td>${esc(it.descripcion || '')}</td><td class="num">${esc(it.cantidad ?? '')}</td><td class="num">${esc(it.total == null ? '' : Number(it.total).toFixed(2))}</td></tr>`).join('') + '</tbody></table></details>';
+}
+async function voSubirVouchers(files){
+  const c = voLista.find(x=> x.id === voSel); if(!c || !files.length) return;
+  const malos = files.filter(f=> !/pdf|image\//.test(f.type));
+  if(malos.length){ showToast(`Solo PDF o imágenes: ${malos.map(f=> f.name).join(', ')}`, 'err'); return; }
+  const box = $('vo-subidas');
+  for(const f of files){
+    const fila = document.createElement('div'); fila.className = 'vo-subiendo'; fila.innerHTML = `Subiendo <b>${esc(f.name)}</b>… <span>0%</span><div class="barra"><i style="width:0%"></i></div>`; box.appendChild(fila);
+    try{
+      const path = `vo_vouchers/${c.id}/${Date.now()}_${f.name.replace(/[^\w.\-]+/g, '_')}`;
+      const ref = storage.ref().child(path);
+      const tarea = ref.put(f, { contentType: f.type });
+      tarea.on('state_changed', snap=>{ const p = Math.round(snap.bytesTransferred / snap.totalBytes * 100); fila.querySelector('span').textContent = p + '%'; fila.querySelector('i').style.width = p + '%'; });
+      await tarea;
+      const v = { nombre: f.name, url: await ref.getDownloadURL(), path, tipo: f.type, tam: f.size, subido_por: currentUserAlias, subido_en: new Date().toISOString() };
+      await voComprobantesRef.doc(c.id).update({ vouchers: firebase.firestore.FieldValue.arrayUnion(v) });
+      c.vouchers = (c.vouchers || []).concat(v); voIndexar(c);
+      await logAccion('vo_voucher_subido', {detalle:`${c.id}: ${f.name}`});
+      fila.remove();
+    }catch(err){ console.error(err); fila.innerHTML = `⚠ No se pudo subir <b>${esc(f.name)}</b>: ${esc(err.message)}`; }
+  }
+  showToast(`Voucher(s) agregado(s) a ${c.id}`, 'ok');
+  voDocSel = voDocs(c).length - 1;
+  renderVoLista(); renderVoDetalle();
+}
+$('vo-detalle').addEventListener('change', e=>{ if(e.target.id === 'vo-voucher-input'){ voSubirVouchers([...e.target.files]); e.target.value = ''; } });
+$('vo-detalle').addEventListener('dragover', e=>{ const z = e.target.closest('#vo-drop'); if(z){ e.preventDefault(); z.classList.add('encima'); } });
+$('vo-detalle').addEventListener('dragleave', e=>{ const z = e.target.closest('#vo-drop'); if(z) z.classList.remove('encima'); });
+$('vo-detalle').addEventListener('drop', e=>{ const z = e.target.closest('#vo-drop'); if(!z) return; e.preventDefault(); z.classList.remove('encima'); voSubirVouchers([...e.dataTransfer.files]); });
+$('vo-detalle').addEventListener('click', async e=>{
+  const q = e.target.closest('[data-vo-quitar]');
+  if(q){
+    e.preventDefault(); e.stopPropagation();
+    const c = voLista.find(x=> x.id === voSel), v = c && (c.vouchers || []).find(x=> x.path === q.dataset.voQuitar); if(!v) return;
+    if(!confirm(`¿Quitar el voucher "${v.nombre}" de ${c.id}?`)) return;
+    try{
+      const resto = c.vouchers.filter(x=> x.path !== v.path);
+      await voComprobantesRef.doc(c.id).update({ vouchers: resto });
+      storage.ref().child(v.path).delete().catch(err=> console.warn('No se pudo borrar el archivo', err));
+      c.vouchers = resto; voIndexar(c); voDocSel = 0;
+      await logAccion('vo_voucher_quitado', {detalle:`${c.id}: ${v.nombre}`});
+      showToast('Voucher quitado', 'ok'); renderVoLista(); renderVoDetalle();
+    }catch(err){ console.error(err); showToast('No se pudo quitar: ' + err.message, 'err'); }
+    return;
+  }
+  if(e.target.closest('a')) return;
+  const d = e.target.closest('[data-vo-doc]'); if(d){ voDocSel = Number(d.dataset.voDoc); renderVoDetalle(); }
 });
 
 // -------- Regularizaciones: devolución de venta virtual y saldos de campaña (guías en PDF) y merma (pegada desde Excel) --------
