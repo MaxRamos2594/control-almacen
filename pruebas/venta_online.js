@@ -124,6 +124,23 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
   const log = await page.evaluate(async ()=> (await movimientosRef.get()).docs.map(d=> d.data().tipo).filter(t=> /^vo_/.test(t)).sort().join(','));
   verificar(log === 'vo_comprobante_cargado,vo_comprobante_cargado,vo_voucher_quitado,vo_voucher_subido,vo_voucher_subido', `Bitácora: ${log}`);
 
+  // Reductor de tamaño: un voucher pesado (foto/escaneo en PDF de 2 páginas) se comprime antes de subir.
+  const red = await page.evaluate(async ()=>{
+    const cv = document.createElement('canvas'); cv.width = 1800; cv.height = 2500; const ctx = cv.getContext('2d'), im = ctx.createImageData(cv.width, cv.height);
+    for(let i = 0; i < im.data.length; i += 4){ const v = 120 + Math.random() * 120 | 0; im.data[i] = v; im.data[i+1] = v; im.data[i+2] = v; im.data[i+3] = 255; }
+    ctx.putImageData(im, 0, 0); ctx.fillStyle = '#000'; ctx.font = 'bold 120px sans-serif'; ctx.fillText('VOUCHER 1250.00', 200, 400);
+    const jpg = cv.toDataURL('image/jpeg', 1);
+    const pdf = new jspdf.jsPDF({ unit:'pt', format:'a4' }); pdf.addImage(jpg, 'JPEG', 0, 0, 595, 842); pdf.addPage(); pdf.addImage(jpg, 'JPEG', 0, 0, 595, 842);
+    const f = new File([pdf.output('blob')], 'voucher_pesado.pdf', { type:'application/pdf' });
+    await voSubirVouchers([f]);
+    const v = (await voComprobantesRef.doc('F001-00000045').get()).data().vouchers.find(x=> x.nombre === 'voucher_pesado.pdf');
+    const doc = await pdfjsLib.getDocument({ data: await (await fetch(v.url)).arrayBuffer() }).promise;
+    const chico = new File([new Uint8Array(1000)], 'chico.pdf', { type:'application/pdf' });
+    return { antes: f.size, tam: v.tam, orig: v.tam_original, paginas: doc.numPages, intacto: (await voReducir(chico)) === chico };
+  });
+  verificar(red.orig === red.antes && red.tam < red.antes * 0.6 && red.paginas === 2 && red.intacto,
+    `Voucher pesado reducido antes de subir: ${(red.antes/1048576).toFixed(1)} MB → ${(red.tam/1048576).toFixed(2)} MB, ${red.paginas} páginas; uno liviano se sube tal cual`);
+
   // Permiso "solo Subir voucher" (área comercial), asignado desde Usuarios.
   await page.evaluate(()=> switchTab('usuarios'));
   await page.fill('#us-email', 'comercial@ejemplo.com'); await page.fill('#us-alias', 'comercial');

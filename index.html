@@ -3368,8 +3368,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v193';
-const APP_UPDATED = '21/10/2026 18:30';
+const APP_VERSION = 'v194';
+const APP_UPDATED = '21/10/2026 19:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -13025,6 +13025,49 @@ function renderVoDetalle(){
     `<details style="margin-top:10px;"><summary class="hint" style="cursor:pointer;">Ver los ${esc(c.cant_codigos || 0)} código(s) del comprobante</summary><table class="vo-items"><thead><tr><th>Código</th><th>Descripción</th><th class="num">Cant.</th><th class="num">Total</th></tr></thead><tbody>` +
     (c.items || []).map(it=> `<tr><td><b>${esc(it.codigo || '—')}</b></td><td>${esc(it.descripcion || '')}</td><td class="num">${esc(it.cantidad ?? '')}</td><td class="num">${esc(it.total == null ? '' : Number(it.total).toFixed(2))}</td></tr>`).join('') + '</tbody></table></details>';
 }
+// Reductor de tamaño: los vouchers pesados (escaneos, fotos) se comprimen antes de subir.
+// PDF: cada página se vuelve imagen JPEG (≈200 ppp en A4, se lee bien) y se arma de nuevo con
+// jsPDF. Imagen: se achica a 2000 px como máximo. Solo se usa si queda más liviano.
+const VO_REDUCIR_DESDE = 700 * 1024, VO_LADO_MAX = 2000;
+const voMB = b=> (b / 1048576).toFixed(b < 1048576 ? 2 : 1) + ' MB';
+function voCanvasJpeg(canvas, calidad){ return new Promise(ok=> canvas.toBlob(ok, 'image/jpeg', calidad)); }
+async function voReducir(f, avance){
+  if(f.size <= VO_REDUCIR_DESDE) return f;
+  try{
+    let blob, nombre = f.name;
+    if(/pdf/.test(f.type)){
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const doc = await pdfjsLib.getDocument({ data: await f.arrayBuffer() }).promise;
+      if(doc.numPages > 40) return f;
+      let pdf = null;
+      for(let i = 1; i <= doc.numPages; i++){
+        if(avance) avance(`Reduciendo página ${i} de ${doc.numPages}…`);
+        const pag = await doc.getPage(i), v1 = pag.getViewport({ scale: 1 });
+        const vp = pag.getViewport({ scale: Math.min(3, VO_LADO_MAX / Math.max(v1.width, v1.height)) });
+        const cv = document.createElement('canvas'); cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+        const ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height);
+        await pag.render({ canvasContext: ctx, viewport: vp }).promise;
+        const jpg = new Uint8Array(await (await voCanvasJpeg(cv, 0.72)).arrayBuffer());
+        const fmt = [v1.width, v1.height], ori = v1.width > v1.height ? 'l' : 'p';
+        if(!pdf) pdf = new jspdf.jsPDF({ unit:'pt', format: fmt, orientation: ori, compress: true });
+        else pdf.addPage(fmt, ori);
+        pdf.addImage(jpg, 'JPEG', 0, 0, v1.width, v1.height);
+        cv.width = cv.height = 0;
+      }
+      blob = pdf.output('blob');
+    }else if(/^image\//.test(f.type)){
+      if(avance) avance('Reduciendo imagen…');
+      const img = await createImageBitmap(f), k = Math.min(1, VO_LADO_MAX / Math.max(img.width, img.height));
+      const cv = document.createElement('canvas'); cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
+      const ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height); ctx.drawImage(img, 0, 0, cv.width, cv.height);
+      blob = await voCanvasJpeg(cv, 0.8); nombre = f.name.replace(/\.[^.]+$/, '') + '.jpg';
+    }
+    if(!blob || blob.size >= f.size * 0.9) return f;
+    const r = new File([blob], nombre, { type: /pdf/.test(f.type) ? 'application/pdf' : 'image/jpeg' });
+    r.tamOriginal = f.size;
+    return r;
+  }catch(err){ console.warn('No se pudo reducir', f.name, err); return f; }
+}
 async function voSubirVouchers(files){
   const c = voLista.find(x=> x.id === voSel); if(!c || !files.length) return;
   const malos = files.filter(f=> !/pdf|image\//.test(f.type));
@@ -13033,15 +13076,20 @@ async function voSubirVouchers(files){
   for(const f of files){
     const fila = document.createElement('div'); fila.className = 'vo-subiendo'; fila.innerHTML = `Subiendo <b>${esc(f.name)}</b>… <span>0%</span><div class="barra"><i style="width:0%"></i></div>`; box.appendChild(fila);
     try{
-      const path = `vo_vouchers/${c.id}/${Date.now()}_${f.name.replace(/[^\w.\-]+/g, '_')}`;
+      const ff = await voReducir(f, txt=> { fila.firstChild.textContent = txt + ' '; });
+      const reducido = ff.tamOriginal ? ` (${voMB(ff.tamOriginal)} → ${voMB(ff.size)})` : '';
+      fila.firstChild.textContent = `Subiendo${reducido} `;
+      const path = `vo_vouchers/${c.id}/${Date.now()}_${ff.name.replace(/[^\w.\-]+/g, '_')}`;
       const ref = storage.ref().child(path);
-      const tarea = ref.put(f, { contentType: f.type });
+      const tarea = ref.put(ff, { contentType: ff.type });
       tarea.on('state_changed', snap=>{ const p = Math.round(snap.bytesTransferred / snap.totalBytes * 100); fila.querySelector('span').textContent = p + '%'; fila.querySelector('i').style.width = p + '%'; });
       await tarea;
-      const v = { nombre: f.name, url: await ref.getDownloadURL(), path, tipo: f.type, tam: f.size, subido_por: currentUserAlias, subido_en: new Date().toISOString() };
+      const v = { nombre: ff.name, url: await ref.getDownloadURL(), path, tipo: ff.type, tam: ff.size, subido_por: currentUserAlias, subido_en: new Date().toISOString() };
+      if(ff.tamOriginal) v.tam_original = ff.tamOriginal;
       await voComprobantesRef.doc(c.id).update({ vouchers: firebase.firestore.FieldValue.arrayUnion(v) });
       c.vouchers = (c.vouchers || []).concat(v); voIndexar(c);
-      await logAccion('vo_voucher_subido', {detalle:`${c.id}: ${f.name}`});
+      await logAccion('vo_voucher_subido', {detalle:`${c.id}: ${ff.name}${reducido}`});
+      if(reducido) showToast(`${ff.name} reducido${reducido}`, 'ok');
       fila.remove();
     }catch(err){ console.error(err); fila.innerHTML = `⚠ No se pudo subir <b>${esc(f.name)}</b>: ${esc(err.message)}`; }
   }
