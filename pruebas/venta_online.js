@@ -123,6 +123,12 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
   const t0 = await tam();
   await page.click('#vo-detalle [data-vo-girar]'); await page.waitForTimeout(600);
   const t1 = await tam();
+  await page.waitForTimeout(800);
+  const giroBd = await page.evaluate(async ()=> (await voComprobantesRef.doc('F001-00000045').get()).data().vouchers.find(v=> v.nombre === 'voucher_prueba.pdf').giro);
+  await page.evaluate(async ()=>{ await voCargar(true); voAbrir('F001-00000045'); voDocSel = 1; renderVoDetalle(); });
+  await page.waitForTimeout(800);
+  const tR = await tam();
+  verificar(giroBd === 90 && tR[0] > tR[1], `El giro queda guardado: al volver a abrir el voucher sigue girado (${giroBd}°)`);
   await page.click('#vo-detalle [data-vo-zoom="+"]'); await page.waitForTimeout(600);
   const t2 = await tam(), zl = await page.textContent('#vo-vb-zoom');
   await page.click('#vo-detalle [data-vo-zoom="fit"]'); await page.waitForTimeout(600);
@@ -174,14 +180,16 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
   await com.page.click('#vo-res [data-vo-id="F001-00000045"]');
   await com.page.waitForFunction(()=> !!document.querySelector('#vo-visor canvas.vo-hoja'), null, { timeout: 15000 });
   const sl = await com.page.evaluate(async ()=>{
-    const r = { desp: !!document.querySelector('#vo-despacho') || !/Pendiente/.test(document.querySelector('.vo-dato.desp').innerText), drop: !!document.querySelector('#vo-drop, #vo-voucher-input'), quitar: !!document.querySelector('[data-vo-quitar]'), aviso: (document.querySelector('.vo-solo-ver') || {}).innerText || '',
+   const r = { clave: !document.querySelector('#vo-clave') && /Sin clave/.test(document.querySelector('.vo-clave').innerText), desp: !!document.querySelector('#vo-despacho') || !/Pendiente/.test(document.querySelector('.vo-dato.desp').innerText), drop: !!document.querySelector('#vo-drop, #vo-voucher-input'), quitar: !!document.querySelector('[data-vo-quitar]'), aviso: (document.querySelector('.vo-solo-ver') || {}).innerText || '',
       tabs: [...document.querySelectorAll('#vo-detalle .vo-doc')].map(d=> d.innerText.replace(/[↗✕]/g, '').replace(/\s+/g, ' ').trim()).join(' | ') };
     await voSubirVouchers([new File(['x'], 'x.pdf', { type:'application/pdf' })]);
     r.n = (await voComprobantesRef.doc('F001-00000045').get()).data().vouchers.length;
     return r;
   });
-  verificar(!sl.desp && !sl.drop && !sl.quitar && /Solo consulta/.test(sl.aviso) && sl.n === 2 && sl.tabs === '🧾 COMPROBANTE | 📄 VOUCHER 1 | 📄 VOUCHER 2',
+  verificar(sl.clave && !sl.desp && !sl.drop && !sl.quitar && /Solo consulta/.test(sl.aviso) && sl.n === 2 && sl.tabs === '🧾 COMPROBANTE | 📄 VOUCHER 1 | 📄 VOUCHER 2',
     `Usuario sin permiso de editar: solo consulta (sin editar despacho, sin zona para subir ni quitar; ${sl.tabs})`);
+  await com.page.click('#vo-detalle [data-vo-doc="0"]'); await com.page.click('#vo-detalle [data-vo-girar]'); await com.page.waitForTimeout(1000);
+  verificar((await com.page.evaluate(async ()=> (await voComprobantesRef.doc('F001-00000045').get()).data().pdf_giro)) === 90, 'Usuario de solo consulta también puede girar y queda guardado (comprobante)');
   await com.page.screenshot({ path: path.join(__dirname, 'salida', 'vo_comercial.png') });
   errores.push(...com.errores);
   await com.browser.close();
@@ -212,6 +220,14 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
   await ad.page.waitForFunction(()=> /guardada/.test($('vo-desp-ok').textContent), null, { timeout: 10000 });
   const dsp = await ad.page.evaluate(async ()=> ({ bd: (await voComprobantesRef.doc('BV01-00000721').get()).data().fecha_despacho, chip: document.querySelector('#vo-res [data-vo-id="BV01-00000721"] .vo-desp').innerText }));
   verificar(dsp.bd === '2026-10-20' && /20\/10\/2026/.test(dsp.chip), `Fecha de despacho editable en el comprobante y visible en la lista (${dsp.chip})`);
+  await ad.page.fill('#vo-clave', 'ab-4521'); await ad.page.press('#vo-clave', 'Enter');
+  await ad.page.waitForFunction(()=> /Clave guardada/.test(($('vo-clave-ok') || {}).textContent || ''), null, { timeout: 10000 });
+  const clv = await ad.page.evaluate(async ()=> ({ bd: (await voComprobantesRef.doc('BV01-00000721').get()).data().clave, chip: document.querySelector('#vo-res [data-vo-id="BV01-00000721"] .vo-clave-chip').innerText,
+    caja: getComputedStyle($('vo-clave-box')).backgroundColor }));
+  verificar(clv.bd === 'AB-4521' && /AB-4521/.test(clv.chip) && clv.caja === 'rgb(223, 255, 0)', `Clave guardada en mayúsculas, a la vista en la lista y en fosforescente (${clv.chip})`);
+  await ad.page.fill('#vo-q', 'ab-4521'); await ad.page.waitForTimeout(300);
+  verificar((await ad.page.evaluate(()=> voFiltrados().map(c=> c.id).join(','))) === 'BV01-00000721', 'El multibuscador encuentra por clave');
+  await ad.page.fill('#vo-q', ''); await ad.page.waitForTimeout(300);
   await ad.page.click('#vo-seg-desp [data-vo-d="con"]');
   let ids = await ad.page.evaluate(()=> voFiltrados().map(c=> c.id).join(','));
   verificar(ids === 'BV01-00000721,BV02-00000003,BV02-00000002,BV02-00000001', `Filtro "Despachados": ${ids}`);
@@ -221,6 +237,10 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
   ids = await ad.page.evaluate(()=> voFiltrados().map(c=> c.id).join(','));
   verificar(ids === 'BV02-00000003,BV02-00000002', `Rango por fecha de despacho (22–30/09): ${ids}`);
   await ad.page.locator('#vosub-panel-vouchers').screenshot({ path: path.join(__dirname, 'salida', 'vo_despacho.png') });
+  await ad.page.evaluate(()=>{ $('vo-desde').value = ''; $('vo-hasta').value = ''; $('vo-fcampo').value = 'emision'; voBuscar(); voAbrir('BV01-00000721'); });
+  await ad.page.waitForTimeout(500);
+  await ad.page.locator('#vosub-panel-vouchers').screenshot({ path: path.join(__dirname, 'salida', 'vo_clave.png') });
+  await ad.page.evaluate(()=>{ $('vo-fcampo').value = 'despacho'; $('vo-desde').value = '2026-09-22'; $('vo-hasta').value = '2026-09-30'; voBuscar(); });
   const [descarga] = await Promise.all([ad.page.waitForEvent('download'), ad.page.click('#btn-vo-pdf')]);
   const pdfPath = path.join(__dirname, 'salida', 'vo_export.pdf'); await descarga.saveAs(pdfPath);
   const texto = await ad.page.evaluate(async b64=>{
@@ -228,7 +248,7 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
     const d = await pdfjsLib.getDocument({ data: Uint8Array.from(atob(b64), c=> c.charCodeAt(0)) }).promise;
     return (await (await d.getPage(1)).getTextContent()).items.map(i=> i.str).join(' ');
   }, fs.readFileSync(pdfPath).toString('base64'));
-  verificar(/Despacho: 22\/09\/2026 a 30\/09\/2026/.test(texto) && /BV02-00000003/.test(texto) && /BV02-00000002/.test(texto) && !/BV02-00000001/.test(texto) && /F\. despacho/.test(texto) && /CLIENTE 3/.test(texto) && /2 comprobante/.test(texto),
+  verificar(/Despacho: 22\/09\/2026 a 30\/09\/2026/.test(texto) && /BV02-00000003/.test(texto) && /BV02-00000002/.test(texto) && !/BV02-00000001/.test(texto) && /F\. despacho/.test(texto) && /Clave/.test(texto) && /CLIENTE 3/.test(texto) && /2 comprobante/.test(texto),
     'Exportar PDF: solo lo filtrado, con los filtros y las mismas columnas de la lista');
   errores.push(...ad.errores);
   await ad.browser.close();
