@@ -3276,8 +3276,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v188';
-const APP_UPDATED = '20/10/2026 09:00';
+const APP_VERSION = 'v189';
+const APP_UPDATED = '21/10/2026 09:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -12002,22 +12002,38 @@ function generarPDFMerma(formato){
   doc.text('DATOS DE LAS GUIAS', margin+logoColW+(contentW-logoColW)/2, headerTop+rowTitleH+rowSubH/2+2.5, {align:'center'});
   doc.setTextColor(0);
 
+  // La sede va una sola vez, en la cabecera (no en cada fila).
+  const sedes = [...new Set((formato.filas||[]).map(f=> String(f.sede||'').trim()).filter(Boolean))];
+  const sedeTexto = formato.sede || sedes.join(' / ');
+  const sedeLabelW = 16;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+  const sedeLineas = doc.splitTextToSize(sedeTexto || '—', contentW - sedeLabelW - 4);
+  const sedeTop = headerTop + headerH + 2, sedeH = Math.max(7, sedeLineas.length * 3.8 + 3);
+  doc.setDrawColor(90,90,90); doc.setLineWidth(0.3);
+  doc.setFillColor(30,58,95); doc.rect(margin, sedeTop, sedeLabelW, sedeH, 'FD');
+  doc.setFillColor(245,247,250); doc.rect(margin+sedeLabelW, sedeTop, contentW-sedeLabelW, sedeH, 'FD');
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(255);
+  doc.text('SEDE', margin+sedeLabelW/2, sedeTop+sedeH/2+1.2, {align:'center'});
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(0);
+  doc.text(sedeLineas, margin+sedeLabelW+2.5, sedeTop + (sedeH - sedeLineas.length*3.8)/2 + 2.9);
+
   const filas = (formato.filas||[]).map(f=>[
-    f.nro, f.sede||'', f.nro_guia||'', f.codigo||'', f.descripcion||'',
+    f.nro, f.nro_guia||'', f.codigo||'', f.descripcion||'',
     f.cantidad ?? '', f.total_unidades ?? '', f.diferencia || '', f.no_apta_venta ?? '', f.observacion || ''
   ]);
 
   doc.autoTable({
       rowPageBreak: 'avoid', // una fila nunca se parte entre dos páginas
-    startY: headerTop+headerH+3,
-    head: [['Nº','SEDE','N° GUIA','CODIGO','DESCRIPCION','CNTD.GUIA','TOTAL DE\nUNIDADES','DIFERENCIAS','NO APTA PARA\nLA VENTA','OBSERVACION']],
+    startY: sedeTop+sedeH+3,
+    head: [['Nº','N° GUIA','CODIGO','DESCRIPCION','CNTD.\nGUIA','TOTAL DE\nUNIDADES','DIFEREN-\nCIAS','NO APTA PARA\nLA VENTA','OBSERVA-\nCION']],
     body: filas,
     styles: { fontSize: 7.5, cellPadding: 1.6, valign:'middle', halign:'center', lineColor:[120,120,120], lineWidth:0.15 },
-    headStyles: { fillColor: [30,58,95], textColor: 255, fontStyle:'bold', halign:'center', valign:'middle' },
+    headStyles: { fillColor: [30,58,95], textColor: 255, fontStyle:'bold', halign:'center', valign:'middle', fontSize: 6.5 },
+    // Sin la columna SEDE, la descripción gana el espacio (≈ 54 mm en vez de ≈ 28 mm).
     columnStyles: {
-      0: {cellWidth:8}, 1: {cellWidth:24}, 2: {cellWidth:24}, 3: {cellWidth:20},
-      4: {cellWidth:'auto', halign:'left'}, 5: {cellWidth:16}, 6: {cellWidth:16},
-      7: {cellWidth:18}, 8: {cellWidth:18}, 9: {cellWidth:18}
+      0: {cellWidth:8}, 1: {cellWidth:24}, 2: {cellWidth:22},
+      3: {cellWidth:'auto', halign:'left'}, 4: {cellWidth:15}, 5: {cellWidth:15},
+      6: {cellWidth:17}, 7: {cellWidth:17}, 8: {cellWidth:18}
     },
     margin: { left: margin, right: margin },
     didDrawPage: (data)=>{
