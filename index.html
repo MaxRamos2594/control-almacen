@@ -730,6 +730,11 @@
   .vp-dato{background:#fff; border-radius:12px; padding:12px 14px; border:1px solid var(--line);} .vp-dato span{display:block; font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-soft);} .vp-dato b{font-size:16px;}
   .vp-dato.clave{background:#dfff00; border:2px solid #b8d400; box-shadow:0 0 14px rgba(214,255,0,.8);} .vp-dato.clave b{font-family:var(--mono); font-size:24px; letter-spacing:.12em; color:#1b1b00;}
   .vp-panel{background:#fff; border-radius:14px; padding:12px; border:1px solid var(--line);}
+  /* Agencia de envío */
+  .vo-ag{font-size:10.5px; font-weight:800; padding:1px 8px; border-radius:10px; letter-spacing:.03em;}
+  .vo-ag.SHALOM{background:#fff0dc; color:#b35900;} .vo-ag.MARVISUR{background:#fde3e6; color:#b0182c;} .vo-ag.FLORES{background:#e1efff; color:#1659a8;} .vo-ag.sin{background:#f1f2f4; color:#8a9099; font-weight:600;}
+  .vo-dato.ag{background:#f3effb; border:1px solid #ddd2f3;} .vo-dato.ag.vacio{background:#fff7e8; border-color:#f0d9a8;}
+  .vo-dato select{width:100%; padding:3px 6px; font-size:13px; font-weight:700; margin-top:2px;}
   .vo-desp{font-size:10.5px; font-weight:700; padding:1px 7px; border-radius:10px;} .vo-desp.con{background:#e3eef8; color:#1d5f8a;} .vo-desp.sin{background:#f1f2f4; color:#8a9099; font-weight:600;}
   .vo-pag{display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:8px; font-size:12px; color:var(--ink-soft);}
   .vo-pag button{border:1px solid var(--line-strong); background:#fff; border-radius:6px; padding:4px 10px; font-size:12px; cursor:pointer; font-weight:600;} .vo-pag button:disabled{opacity:.4; cursor:default;}
@@ -2797,6 +2802,7 @@
       <div class="vo-filtros">
         <div class="vo-seg" id="vo-seg"><button type="button" data-vo-f="todos" class="activo">Todos</button><button type="button" data-vo-f="sin">Sin voucher</button><button type="button" data-vo-f="con">Con voucher</button></div>
         <div class="vo-seg" id="vo-seg-desp"><button type="button" data-vo-d="todos" class="activo">Todos</button><button type="button" data-vo-d="sin">Sin despacho</button><button type="button" data-vo-d="con">🚚 Despachados</button></div>
+        <select id="vo-agencia-f" title="Agencia de envío"><option value="">Agencia: todas</option><option value="__SIN">Sin agencia</option><option value="SHALOM">SHALOM</option><option value="MARVISUR">MARVISUR</option><option value="FLORES">FLORES</option></select>
         <select id="vo-link-f" title="Estado del link enviado al cliente"><option value="">Link: todos</option><option value="pendiente">🔗 Link por enviar</option><option value="enviado">📨 Link enviado</option></select>
         <select id="vo-tipo"><option value="">Boletas y facturas</option><option value="BOLETA">Boletas</option><option value="FACTURA">Facturas</option></select>
         <select id="vo-fcampo" title="Qué fecha filtran Desde / Hasta"><option value="emision">Fecha de emisión</option><option value="despacho">Fecha de despacho</option></select>
@@ -3450,8 +3456,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v202';
-const APP_UPDATED = '22/10/2026 17:00';
+const APP_VERSION = 'v203';
+const APP_UPDATED = '22/10/2026 18:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -13045,12 +13051,12 @@ function voIndexar(c){
   c._txt = normalizarTexto([c.id, c.tipo, c.nombre, c.doc_tipo, c.doc_numero, f, c.fecha_texto, c.canal, c.moneda,
     c.importe_total != null ? `${Number(c.importe_total).toFixed(2)} ${String(c.importe_total).replace('.', ',')}` : '',
     ...(c.items || []).map(it=> `${it.codigo} ${it.descripcion}`), ...(c.vouchers || []).map(v=> v.nombre), (c.vouchers || []).length ? 'CON VOUCHER' : 'SIN VOUCHER',
-    c.fecha_despacho ? `DESPACHO DESPACHADO ${voFechaTxt(c.fecha_despacho)}` : 'SIN DESPACHO', c.clave ? `CLAVE ${c.clave}` : 'SIN CLAVE', c.link_enviado ? 'LINK ENVIADO' : 'LINK PENDIENTE'].join(' '));
+    c.fecha_despacho ? `DESPACHO DESPACHADO ${voFechaTxt(c.fecha_despacho)}` : 'SIN DESPACHO', c.clave ? `CLAVE ${c.clave}` : 'SIN CLAVE', c.link_enviado ? 'LINK ENVIADO' : 'LINK PENDIENTE', c.agencia_envio ? `AGENCIA ${c.agencia_envio}` : 'SIN AGENCIA'].join(' '));
 }
 const voFechaTxt = iso=> (iso || '').split('-').reverse().join('/');
 const voTokens = ()=> normalizarTexto($('vo-q').value).split(/\s+/).filter(Boolean);
 function voFiltrados(){
-  const tk = voTokens(), tipo = $('vo-tipo').value, d = $('vo-desde').value, h = $('vo-hasta').value, campo = $('vo-fcampo').value === 'despacho' ? 'fecha_despacho' : 'fecha_emision', lnk = $('vo-link-f').value;
+  const tk = voTokens(), tipo = $('vo-tipo').value, d = $('vo-desde').value, h = $('vo-hasta').value, campo = $('vo-fcampo').value === 'despacho' ? 'fecha_despacho' : 'fecha_emision', lnk = $('vo-link-f').value, ag = $('vo-agencia-f').value;
   return voLista.filter(c=>{
     const nv = (c.vouchers || []).length;
     if(voFiltro === 'sin' && nv) return false;
@@ -13059,6 +13065,8 @@ function voFiltrados(){
     if(voFiltroDesp === 'con' && !c.fecha_despacho) return false;
     if(lnk === 'enviado' && !c.link_enviado) return false;
     if(lnk === 'pendiente' && c.link_enviado) return false;
+    if(ag === '__SIN' && c.agencia_envio) return false;
+    if(ag && ag !== '__SIN' && c.agencia_envio !== ag) return false;
     if(tipo && c.tipo !== tipo) return false;
     if((d || h) && !c[campo]) return false;
     if(d && c[campo] < d) return false;
@@ -13070,7 +13078,7 @@ function renderVoLista(){
   const L = voFiltrados(), tk = voTokens();
   const con = L.filter(c=> (c.vouchers || []).length).length;
   const desp = L.filter(c=> c.fecha_despacho).length;
-  $('btn-vo-limpiar').style.display = tk.length || $('vo-tipo').value || $('vo-desde').value || $('vo-hasta').value || voFiltro !== 'todos' || voFiltroDesp !== 'todos' || $('vo-link-f').value ? '' : 'none';
+  $('btn-vo-limpiar').style.display = tk.length || $('vo-tipo').value || $('vo-desde').value || $('vo-hasta').value || voFiltro !== 'todos' || voFiltroDesp !== 'todos' || $('vo-link-f').value || $('vo-agencia-f').value ? '' : 'none';
   $('vo-kpis').innerHTML = `<div class="vo-kpi"><b>${esc(anFmt(L.length))}</b><span>Comprobantes</span></div><div class="vo-kpi ok"><b>${esc(anFmt(con))}</b><span>Con voucher</span></div>` +
     `<div class="vo-kpi alerta"><b>${esc(anFmt(L.length - con))}</b><span>Sin voucher</span></div><div class="vo-kpi desp"><b>${esc(anFmt(desp))}</b><span>Despachados</span></div><div class="vo-kpi"><b>${esc(anFmt(L.filter(c=> c.link_enviado).length))}</b><span>Links enviados</span></div><div class="vo-kpi"><b>${esc(voSoles(L.reduce((s, c)=> s + (Number(c.importe_total) || 0), 0)))}</b><span>Importe</span></div>`;
   if(!L.length){ $('vo-res').innerHTML = `<div class="vo-vacio">🔍<b>${voLista.length ? 'Nada coincide con la búsqueda' : 'Aún no hay comprobantes'}</b>${voLista.length ? 'Prueba con otra palabra o quita los filtros.' : 'Cárgalos en Venta Online → Comprobantes Agencia.'}</div>`; $('vo-mas').innerHTML = ''; return; }
@@ -13081,6 +13089,7 @@ function renderVoLista(){
     return `<button type="button" role="option" class="vo-fila${nv ? ' con' : ''}${voSel === c.id ? ' sel' : ''}" data-vo-id="${esc(c.id)}" aria-selected="${voSel === c.id}">` +
       `<span class="t"><span class="nro">${cmpMarcar(c.id, tk)}</span><span class="vo-tipo ${esc(c.tipo)}">${esc(c.tipo)}</span><span class="vo-est ${nv ? 'con' : 'sin'}">${nv ? `📎 ${esc(nv)} voucher${nv > 1 ? 's' : ''}` : 'Sin voucher'}</span>` +
       `${c.clave ? `<span class="vo-clave-chip" title="Clave">🔑 ${cmpMarcar(c.clave, tk)}</span>` : '<span class="vo-clave-chip sin">Sin clave</span>'}` +
+      `${c.agencia_envio ? `<span class="vo-ag ${esc(c.agencia_envio)}">🏢 ${cmpMarcar(c.agencia_envio, tk)}</span>` : '<span class="vo-ag sin">Sin agencia</span>'}` +
       `${c.link_enviado ? '<span class="vo-link-chip">📨 Link enviado</span>' : ''}` +
       `${c.fecha_despacho ? `<span class="vo-desp con">🚚 ${cmpMarcar(voFechaTxt(c.fecha_despacho), tk)}</span>` : '<span class="vo-desp sin">Sin despacho</span>'}</span>` +
       `<span class="imp">${esc(voSoles(c.importe_total))}</span>` +
@@ -13093,12 +13102,12 @@ function renderVoLista(){
 }
 function voBuscar(){ voPagina = 0; renderVoLista(); }
 $('vo-q').addEventListener('input', ()=>{ clearTimeout(voQTimer); voQTimer = setTimeout(voBuscar, 90); });
-['vo-link-f','vo-tipo','vo-fcampo','vo-desde','vo-hasta'].forEach(id=> $(id).addEventListener('change', voBuscar));
+['vo-agencia-f','vo-link-f','vo-tipo','vo-fcampo','vo-desde','vo-hasta'].forEach(id=> $(id).addEventListener('change', voBuscar));
 $('vo-seg-desp').addEventListener('click', e=>{ const b = e.target.closest('[data-vo-d]'); if(!b) return; voFiltroDesp = b.dataset.voD;
   document.querySelectorAll('#vo-seg-desp button').forEach(x=> x.classList.toggle('activo', x === b)); voBuscar(); });
 $('vo-seg').addEventListener('click', e=>{ const b = e.target.closest('[data-vo-f]'); if(!b) return; voFiltro = b.dataset.voF;
   document.querySelectorAll('#vo-seg button').forEach(x=> x.classList.toggle('activo', x === b)); voBuscar(); });
-$('btn-vo-limpiar').addEventListener('click', ()=>{ $('vo-q').value = ''; $('vo-tipo').value = ''; $('vo-fcampo').value = 'emision'; $('vo-link-f').value = ''; $('vo-desde').value = ''; $('vo-hasta').value = ''; voFiltro = 'todos'; voFiltroDesp = 'todos';
+$('btn-vo-limpiar').addEventListener('click', ()=>{ $('vo-q').value = ''; $('vo-tipo').value = ''; $('vo-fcampo').value = 'emision'; $('vo-link-f').value = ''; $('vo-agencia-f').value = ''; $('vo-desde').value = ''; $('vo-hasta').value = ''; voFiltro = 'todos'; voFiltroDesp = 'todos';
   document.querySelectorAll('#vo-seg button').forEach(x=> x.classList.toggle('activo', x.dataset.voF === 'todos'));
   document.querySelectorAll('#vo-seg-desp button').forEach(x=> x.classList.toggle('activo', x.dataset.voD === 'todos')); voBuscar(); $('vo-q').focus(); });
 $('vo-mas').addEventListener('click', e=>{ const b = e.target.closest('[data-vo-pag]'); if(b && !b.disabled){ voPagina += Number(b.dataset.voPag); renderVoLista(); $('vo-res').scrollTop = 0; } });
@@ -13145,7 +13154,10 @@ function renderVoDetalle(){
     `<div class="vo-dato"><span>Fecha de emisión</span><b>${esc((c.fecha_emision || '').split('-').reverse().join('/'))}</b></div><div class="vo-dato"><span>Códigos · unidades</span><b>${esc(c.cant_codigos || 0)} · ${esc(anFmt(c.unidades || 0))}</b></div>` +
     `<div class="vo-dato desp${c.fecha_despacho ? '' : ' vacio'}"><span>🚚 Fecha de despacho <i class="ok" id="vo-desp-ok"></i></span>${puede
       ? `<input type="date" id="vo-despacho" value="${esc(c.fecha_despacho || '')}" title="Elige la fecha en que se despachó (bórrala para quitarla)">`
-      : `<b>${esc(c.fecha_despacho ? voFechaTxt(c.fecha_despacho) : 'Pendiente')}</b>`}</div></div>` +
+      : `<b>${esc(c.fecha_despacho ? voFechaTxt(c.fecha_despacho) : 'Pendiente')}</b>`}</div>` +
+    `<div class="vo-dato ag${c.agencia_envio ? '' : ' vacio'}"><span>🏢 Agencia de envío <i class="ok" id="vo-ag-ok"></i></span>${puede
+      ? `<select id="vo-agencia" title="Elige la agencia con la que se envió"><option value="">— Elegir —</option>${VO_AGENCIAS.map(a=> `<option value="${esc(a)}"${c.agencia_envio === a ? ' selected' : ''}>${esc(a)}</option>`).join('')}</select>`
+      : `<b>${esc(c.agencia_envio || 'Pendiente')}</b>`}</div></div>` +
     (puede ? `<label class="vo-drop" id="vo-drop"><input type="file" id="vo-voucher-input" accept="application/pdf,image/*" multiple hidden><b>📎 Arrastra aquí los vouchers o haz clic para elegirlos</b>PDF o imagen · puedes subir varios para este comprobante</label><div id="vo-subidas"></div>`
       : `<div class="vo-solo-ver">👁 Solo consulta: puedes ver el comprobante y sus vouchers. Para subir vouchers se necesita el permiso "Puede editar / eliminar".</div>`) +
     `<div class="vo-docs">${docs.map((x, i)=> `<span class="vo-doc${i === voDocSel ? ' activo' : ''}" data-vo-doc="${i}" title="${esc(x.nombre)}">${x.comprobante ? '🧾' : /pdf/.test(x.tipo || '') ? '📄' : '🖼'} <span>${esc(x.comprobante ? 'COMPROBANTE' : nv > 1 ? `VOUCHER ${c.vouchers.indexOf(x) + 1}` : 'VOUCHER')}</span>` +
@@ -13186,7 +13198,7 @@ const voLinkUrl = token=> `${location.origin}${location.pathname}?envio=${token}
 function voNuevoToken(){ const b = new Uint8Array(24); crypto.getRandomValues(b); return btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
 function voDatosPublicos(c){
   const nv = (c.vouchers || []).length;
-  return { nro: c.id, tipo: c.tipo || '', nombre: c.nombre || '', fecha_emision: c.fecha_emision || '', fecha_despacho: c.fecha_despacho || null, clave: c.clave || null,
+  return { nro: c.id, tipo: c.tipo || '', nombre: c.nombre || '', fecha_emision: c.fecha_emision || '', fecha_despacho: c.fecha_despacho || null, agencia_envio: c.agencia_envio || null, clave: c.clave || null,
     docs: [...(c.vouchers || []).map((v, i)=> ({ etiqueta: nv > 1 ? `VOUCHER ${i + 1}` : 'VOUCHER', url: v.url, tipo: v.tipo || '', giro: v.giro || 0 })),
       ...(c.pdf_url ? [{ etiqueta: 'COMPROBANTE', url: c.pdf_url, tipo: 'application/pdf', giro: c.pdf_giro || 0 }] : [])],
     actualizado: new Date().toISOString() };
@@ -13241,6 +13253,7 @@ async function voPaginaPublica(token){
     const doc = d.docs[sel];
     caja.innerHTML = `<div class="vp-cab"><small>Seguimiento de tu pedido</small><h1>${esc(d.nro)}</h1><div class="nom">${esc(d.nombre)}</div></div>` +
       `<div class="vp-datos">${d.clave ? `<div class="vp-dato clave"><span>🔑 Clave</span><b>${esc(d.clave)}</b></div>` : ''}` +
+      `${d.agencia_envio ? `<div class="vp-dato"><span>🏢 Agencia de envío</span><b>${esc(d.agencia_envio)}</b></div>` : ''}` +
       `<div class="vp-dato"><span>🚚 Fecha de despacho</span><b>${esc(d.fecha_despacho ? voFechaTxt(d.fecha_despacho) : 'Por despachar')}</b></div>` +
       `<div class="vp-dato"><span>Fecha de emisión</span><b>${esc(voFechaTxt(d.fecha_emision))}</b></div></div>` +
       `<div class="vp-panel">${d.docs.length ? `<div class="vo-docs">${d.docs.map((x, i)=> `<span class="vo-doc${i === sel ? ' activo' : ''}" data-vp-doc="${esc(i)}">${/pdf/.test(x.tipo) ? '📄' : '🖼'} <span>${esc(x.etiqueta)}</span><a href="${esc(x.url)}" target="_blank" rel="noopener" class="x" title="Descargar">⬇</a></span>`).join('')}</div>` +
@@ -13285,6 +13298,23 @@ $('vo-detalle').addEventListener('click', e=>{
     if(c && c.clave) navigator.clipboard.writeText(c.clave).then(()=> showToast(`Clave ${c.clave} copiada`, 'ok'), ()=> showToast('No se pudo copiar', 'err'));
   }
 });
+// Agencia de envío: se elige en el detalle y se guarda al instante (solo quien puede editar).
+const VO_AGENCIAS = ['SHALOM', 'MARVISUR', 'FLORES'];
+$('vo-detalle').addEventListener('change', async e=>{
+  if(e.target.id !== 'vo-agencia') return;
+  const c = voLista.find(x=> x.id === voSel); if(!c) return;
+  if(!voPuedeEditar()){ showToast('No tienes permiso para editar.', 'err'); return; }
+  const nueva = e.target.value || null, antes = c.agencia_envio || null;
+  if(nueva === antes) return;
+  try{
+    await voComprobantesRef.doc(c.id).update({ agencia_envio: nueva, agencia_por: currentUserAlias, agencia_en: new Date().toISOString() });
+    c.agencia_envio = nueva; voIndexar(c); voSyncPublico(c);
+    await logAccion('vo_agencia', {detalle:`${c.id}: agencia de envío ${nueva || 'quitada'}${antes ? ` (antes ${antes})` : ''}`});
+    e.target.closest('.vo-dato').classList.toggle('vacio', !nueva);
+    $('vo-ag-ok').textContent = nueva ? '✓ guardada' : '✓ quitada';
+    renderVoLista();
+  }catch(err){ console.error(err); e.target.value = antes || ''; showToast('No se pudo guardar la agencia: ' + err.message, 'err'); }
+});
 // Fecha de despacho: se guarda al elegirla (solo quien puede editar).
 $('vo-detalle').addEventListener('change', async e=>{
   if(e.target.id !== 'vo-despacho') return;
@@ -13309,6 +13339,7 @@ $('btn-vo-pdf').addEventListener('click', ()=>{
   if($('vo-q').value.trim()) filtros.push(`Búsqueda: "${$('vo-q').value.trim()}"`);
   if(voFiltro !== 'todos') filtros.push(voFiltro === 'con' ? 'Con voucher' : 'Sin voucher');
   if(voFiltroDesp !== 'todos') filtros.push(voFiltroDesp === 'con' ? 'Despachados' : 'Sin despacho');
+  if($('vo-agencia-f').value) filtros.push(`Agencia: ${$('vo-agencia-f').value === '__SIN' ? 'sin agencia' : $('vo-agencia-f').value}`);
   if($('vo-link-f').value) filtros.push($('vo-link-f').value === 'enviado' ? 'Link enviado' : 'Link por enviar');
   if($('vo-tipo').value) filtros.push($('vo-tipo').value === 'BOLETA' ? 'Boletas' : 'Facturas');
   if($('vo-desde').value || $('vo-hasta').value) filtros.push(`${$('vo-fcampo').value === 'despacho' ? 'Despacho' : 'Emisión'}: ${$('vo-desde').value ? voFechaTxt($('vo-desde').value) : '…'} a ${$('vo-hasta').value ? voFechaTxt($('vo-hasta').value) : '…'}`);
@@ -13322,12 +13353,12 @@ $('btn-vo-pdf').addEventListener('click', ()=>{
   doc.setTextColor(0);
   doc.autoTable({
     startY: 76, margin:{ left:32, right:32 }, styles:{ fontSize:8, cellPadding:3 }, headStyles:{ fillColor:[43, 76, 111] },
-    head: [['N° comprobante', 'Clave', 'Tipo', 'Nombre / Razón social', 'DNI / RUC', 'F. emisión', 'F. despacho', 'Códigos', 'Unid.', 'Importe', 'Vouchers', 'Link', 'Canal']],
-    body: L.map(c=> [c.id, c.clave || '—', c.tipo || '', c.nombre || '', `${c.doc_tipo || ''} ${c.doc_numero || ''}`.trim(), voFechaTxt(c.fecha_emision), c.fecha_despacho ? voFechaTxt(c.fecha_despacho) : 'Pendiente',
+    head: [['N° comprobante', 'Clave', 'Tipo', 'Nombre / Razón social', 'DNI / RUC', 'F. emisión', 'F. despacho', 'Agencia', 'Códigos', 'Unid.', 'Importe', 'Vouchers', 'Link', 'Canal']],
+    body: L.map(c=> [c.id, c.clave || '—', c.tipo || '', c.nombre || '', `${c.doc_tipo || ''} ${c.doc_numero || ''}`.trim(), voFechaTxt(c.fecha_emision), c.fecha_despacho ? voFechaTxt(c.fecha_despacho) : 'Pendiente', c.agencia_envio || '—',
       String(c.cant_codigos || 0), anFmt(c.unidades || 0), voSoles(c.importe_total), String((c.vouchers || []).length || '—'), c.link_enviado ? `Enviado ${voFechaTxt((c.link_enviado_en || '').slice(0, 10))}` : 'Por enviar', c.canal || 'AGENCIA']),
-    foot: [['TOTAL', '', '', `${L.length} comprobante(s)`, '', '', `${desp} despachado(s)`, '', '', voSoles(total), String(conV), `${L.filter(c=> c.link_enviado).length} enviado(s)`, '']],
+    foot: [['TOTAL', '', '', `${L.length} comprobante(s)`, '', '', `${desp} despachado(s)`, '', '', '', voSoles(total), String(conV), `${L.filter(c=> c.link_enviado).length} enviado(s)`, '']],
     footStyles:{ fillColor:[234, 241, 251], textColor:20, fontStyle:'bold' },
-    columnStyles:{ 0:{ fontStyle:'bold' }, 1:{ fontStyle:'bold', fillColor:[223, 255, 0], textColor:[27, 27, 0] }, 7:{ halign:'right' }, 8:{ halign:'right' }, 9:{ halign:'right' }, 10:{ halign:'center' } },
+    columnStyles:{ 0:{ fontStyle:'bold' }, 1:{ fontStyle:'bold', fillColor:[223, 255, 0], textColor:[27, 27, 0] }, 8:{ halign:'right' }, 9:{ halign:'right' }, 10:{ halign:'right' }, 11:{ halign:'center' } },
     didDrawPage: d=> { doc.setFontSize(8); doc.setTextColor(120); doc.text(`Página ${doc.internal.getNumberOfPages()}`, W - 32, doc.internal.pageSize.getHeight() - 16, { align:'right' }); doc.setTextColor(0); }
   });
   doc.save(`venta_online_${new Date().toISOString().slice(0, 10)}.pdf`);
