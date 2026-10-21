@@ -102,8 +102,39 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
   const log = await page.evaluate(async ()=> (await movimientosRef.get()).docs.map(d=> d.data().tipo).filter(t=> /^vo_/.test(t)).sort().join(','));
   verificar(log === 'vo_comprobante_cargado,vo_comprobante_cargado,vo_voucher_quitado,vo_voucher_subido,vo_voucher_subido', `Bitácora: ${log}`);
 
+  // Permiso "solo Subir voucher" (área comercial), asignado desde Usuarios.
+  await page.evaluate(()=> switchTab('usuarios'));
+  await page.fill('#us-email', 'comercial@ejemplo.com'); await page.fill('#us-alias', 'comercial');
+  await page.check('#us-vo-vouchers');
+  await page.click('#btn-guardar-usuario');
+  await page.waitForFunction(()=> /Permisos guardados/.test($('us-msg').textContent), null, { timeout: 10000 });
+  const perm = await page.evaluate(async ()=> (await usuariosRef.doc('comercial@ejemplo.com').get()).data().permisos);
+  verificar(perm.vo_vouchers === true && !perm.campanas && !perm.admin, 'Usuarios: se guarda el permiso "Solo Subir voucher"');
+  await page.fill('#us-email', 'comercial@ejemplo.com'); await page.dispatchEvent('#us-email', 'change'); await page.dispatchEvent('#us-email', 'blur');
+  await page.waitForTimeout(800);
+  verificar(await page.isChecked('#us-vo-vouchers'), 'Usuarios: al escribir el correo se carga el permiso marcado');
+  await browser.close();
+
+  const com = await abrirApp({ usuario: { email:'comercial@ejemplo.com', pass:'prueba123' } });
+  await com.page.waitForFunction(()=> $('view-campanas').classList.contains('active') && voLista.length === 2, null, { timeout: 20000 });
+  const vista = await com.page.evaluate(()=> ({
+    tabs: [...document.querySelectorAll('nav.tabs button[data-tab]')].filter(b=> b.offsetParent).map(b=> b.dataset.tab).join(','),
+    subs: [...document.querySelectorAll('#view-campanas .subtabs button')].filter(b=> b.offsetParent).map(b=> b.id).join(','),
+    grupos: [...document.querySelectorAll('#view-campanas .subgrupo')].filter(g=> g.offsetParent).map(g=> g.querySelector('.subgrupo-t').innerText).join(','),
+    panel: $('campsub-panel-vo-vouchers').style.display, otros: $('campsub-panel-cargar-campana').style.display }));
+  verificar(vista.tabs === 'campanas' && vista.subs === 'campsub-vo-vouchers' && /venta online/i.test(vista.grupos) && !/,/.test(vista.grupos) && vista.panel === 'block' && vista.otros === 'none',
+    `Usuario comercial: solo ve Campañas → Venta Online → Subir voucher (${vista.tabs} / ${vista.subs})`);
+  await com.page.click('#vo-seg [data-vo-f="todos"]');
+  await com.page.click('#vo-res [data-vo-id="BV01-00000721"]');
+  await com.page.waitForFunction(()=> !!document.querySelector('#vo-detalle .vo-visor'), null, { timeout: 5000 });
+  await com.page.setInputFiles('#vo-voucher-input', [vpdf]);
+  await com.page.waitForFunction(()=> (voLista.find(c=> c.id === 'BV01-00000721').vouchers || []).length === 1 && !document.querySelector('#vo-subidas .vo-subiendo'), null, { timeout: 30000 });
+  verificar(!(await com.page.$('#vo-detalle [data-vo-quitar]')), 'Usuario comercial: puede subir vouchers, pero no quitarlos');
+  await com.page.screenshot({ path: path.join(__dirname, 'salida', 'vo_comercial.png') });
+  errores.push(...com.errores);
+  await com.browser.close();
+
   if(errores.length) console.log('\nErrores de JavaScript:\n' + [...new Set(errores)].join('\n'));
   console.log(fallas || errores.length ? `\n${fallas} verificación(es) fallida(s).` : '\nTodo correcto.');
-  await browser.close();
   process.exit(fallas || errores.length ? 1 : 0);
 })().catch(e=>{ console.error(e); process.exit(1); });
