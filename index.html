@@ -3416,8 +3416,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v198';
-const APP_UPDATED = '22/10/2026 12:00';
+const APP_VERSION = 'v199';
+const APP_UPDATED = '22/10/2026 13:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -13086,7 +13086,7 @@ function voAbrir(id, desdeTeclado){
 }
 // Subir y quitar vouchers: solo administrador o con permiso "Puede editar / eliminar"; el resto solo ve.
 const voPuedeEditar = ()=> !!(currentPermisos.admin || currentPermisos.eliminar);
-const voDocs = c=> [{ nombre:`Comprobante ${c.id}`, url: c.pdf_url, tipo:'application/pdf', comprobante:true }, ...(c.vouchers || [])].filter(d=> d.url);
+const voDocs = c=> [{ nombre:`Comprobante ${c.id}`, url: c.pdf_url, tipo:'application/pdf', comprobante:true, giro: c.pdf_giro || 0 }, ...(c.vouchers || [])].filter(d=> d.url);
 function renderVoDetalle(){
   const c = voLista.find(x=> x.id === voSel), box = $('vo-detalle');
   if(!c){ box.innerHTML = '<div class="vo-vacio">📄<b>Elige un comprobante</b>Busca por cualquier dato y haz clic en un comprobante para ver su detalle, su PDF y sus vouchers.</div>'; return; }
@@ -13110,6 +13110,23 @@ function renderVoDetalle(){
     `<details style="margin-top:10px;"><summary class="hint" style="cursor:pointer;">Ver los ${esc(c.cant_codigos || 0)} código(s) del comprobante</summary><table class="vo-items"><thead><tr><th>Código</th><th>Descripción</th><th class="num">Cant.</th><th class="num">Total</th></tr></thead><tbody>` +
     (c.items || []).map(it=> `<tr><td><b>${esc(it.codigo || '—')}</b></td><td>${esc(it.descripcion || '')}</td><td class="num">${esc(it.cantidad ?? '')}</td><td class="num">${esc(it.total == null ? '' : Number(it.total).toFixed(2))}</td></tr>`).join('') + '</tbody></table></details>';
   voPintarVisor(d);
+}
+// El giro de cada documento se guarda (pdf_giro del comprobante, giro de cada voucher) para que
+// todos lo vean ya derecho. Es solo cómo se muestra: lo puede guardar cualquiera que lo vea.
+let voGiroCola = Promise.resolve();
+function voGuardarGiro(c, d){
+  const giro = d.giro, ref = voComprobantesRef.doc(c.id);
+  if(d.comprobante) c.pdf_giro = giro;
+  voGiroCola = voGiroCola.then(async ()=>{
+    try{
+      if(d.comprobante) await ref.update({ pdf_giro: giro });
+      else await db.runTransaction(async tx=>{
+        const snap = await tx.get(ref), lista = (snap.data().vouchers || []).map(v=> v.path === d.path ? Object.assign({}, v, { giro }) : v);
+        tx.update(ref, { vouchers: lista });
+      });
+      const el = $('vo-vb-info'); if(el && $('vo-visor') && $('vo-visor').dataset.url === d.url) el.textContent += ' · ✓ giro guardado';
+    }catch(err){ console.error(err); showToast('No se pudo guardar el giro: ' + err.message, 'err'); }
+  });
 }
 // Fecha de despacho: se guarda al elegirla (solo quien puede editar).
 $('vo-detalle').addEventListener('change', async e=>{
@@ -13160,7 +13177,7 @@ $('btn-vo-pdf').addEventListener('click', ()=>{
 });
 // Visor propio (pdf.js): no depende del visor de PDF del navegador, que a veces se queda
 // cargando dentro de la página y no existe en celulares. Permite acercar y girar (fotos de lado).
-const voPdfCache = new Map(), voGiros = new Map();
+const voPdfCache = new Map();
 let voZoom = null, voVisorUrl = null, voVisorTurno = 0;
 function voPdfDoc(url){
   if(!voPdfCache.has(url)){
@@ -13178,7 +13195,7 @@ function voImagen(url){
 async function voPintarVisor(d){
   const caja = $('vo-visor'); if(!caja || !d) return;
   if(d.url !== voVisorUrl){ voVisorUrl = d.url; voZoom = null; }
-  const turno = ++voVisorTurno, giro = voGiros.get(d.url) || 0, ancho = Math.max(200, caja.clientWidth - 28);
+  const turno = ++voVisorTurno, giro = d.giro || 0, ancho = Math.max(200, caja.clientWidth - 28);
   const info = txt=> { const el = $('vo-vb-info'); if(el) el.textContent = txt; };
   $('vo-vb-zoom').textContent = voZoom ? Math.round(voZoom * 100) + '%' : 'Ajustado';
   const hoja = (w, h)=>{ const cv = document.createElement('canvas'), k = Math.min(2, window.devicePixelRatio || 1);
@@ -13219,7 +13236,7 @@ $('vo-detalle').addEventListener('click', e=>{
     const cv = $('vo-visor').querySelector('canvas'), base = voZoom || (cv ? Number(cv.dataset.escala) : 1) || 1;
     voZoom = z.dataset.voZoom === 'fit' ? null : Math.min(4, Math.max(0.2, base * (z.dataset.voZoom === '+' ? 1.25 : 0.8)));
   }
-  if(g) voGiros.set(d.url, ((voGiros.get(d.url) || 0) + 90) % 360);
+  if(g){ d.giro = ((d.giro || 0) + 90) % 360; voGuardarGiro(c, d); }
   voPintarVisor(d);
 });
 let voResizeTimer = null;

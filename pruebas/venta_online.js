@@ -123,6 +123,12 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
   const t0 = await tam();
   await page.click('#vo-detalle [data-vo-girar]'); await page.waitForTimeout(600);
   const t1 = await tam();
+  await page.waitForTimeout(800);
+  const giroBd = await page.evaluate(async ()=> (await voComprobantesRef.doc('F001-00000045').get()).data().vouchers.find(v=> v.nombre === 'voucher_prueba.pdf').giro);
+  await page.evaluate(async ()=>{ await voCargar(true); voAbrir('F001-00000045'); voDocSel = 1; renderVoDetalle(); });
+  await page.waitForTimeout(800);
+  const tR = await tam();
+  verificar(giroBd === 90 && tR[0] > tR[1], `El giro queda guardado: al volver a abrir el voucher sigue girado (${giroBd}°)`);
   await page.click('#vo-detalle [data-vo-zoom="+"]'); await page.waitForTimeout(600);
   const t2 = await tam(), zl = await page.textContent('#vo-vb-zoom');
   await page.click('#vo-detalle [data-vo-zoom="fit"]'); await page.waitForTimeout(600);
@@ -182,6 +188,8 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
   });
   verificar(!sl.desp && !sl.drop && !sl.quitar && /Solo consulta/.test(sl.aviso) && sl.n === 2 && sl.tabs === '🧾 COMPROBANTE | 📄 VOUCHER 1 | 📄 VOUCHER 2',
     `Usuario sin permiso de editar: solo consulta (sin editar despacho, sin zona para subir ni quitar; ${sl.tabs})`);
+  await com.page.click('#vo-detalle [data-vo-doc="0"]'); await com.page.click('#vo-detalle [data-vo-girar]'); await com.page.waitForTimeout(1000);
+  verificar((await com.page.evaluate(async ()=> (await voComprobantesRef.doc('F001-00000045').get()).data().pdf_giro)) === 90, 'Usuario de solo consulta también puede girar y queda guardado (comprobante)');
   await com.page.screenshot({ path: path.join(__dirname, 'salida', 'vo_comercial.png') });
   errores.push(...com.errores);
   await com.browser.close();
