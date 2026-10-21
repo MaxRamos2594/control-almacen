@@ -297,6 +297,12 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
   await ad.page.locator('#vo-detalle').screenshot({ path: path.join(__dirname, 'salida', 'vo_link.png'), clip: undefined }).catch(()=>{});
   await ad.page.evaluate(()=> voAbrir('BV01-00000721')); await ad.page.waitForTimeout(400);
   await ad.page.screenshot({ path: path.join(__dirname, 'salida', 'vo_link.png') });
+  // Pantalla angosta: la lista ya no queda fija encima, así el detalle (clave, link) no se cruza.
+  await ad.page.setViewportSize({ width: 820, height: 900 }); await ad.page.waitForTimeout(300);
+  const angosta = await ad.page.evaluate(()=>{ const l = document.querySelector('.vo-lista').getBoundingClientRect(), d = $('vo-detalle').getBoundingClientRect();
+    return { pos: getComputedStyle(document.querySelector('.vo-lista')).position, ancho: document.documentElement.scrollWidth, debajo: d.top >= l.bottom - 1 }; });
+  await ad.page.setViewportSize({ width: 1440, height: 900 });
+  verificar(angosta.pos === 'static' && angosta.ancho <= 820 && angosta.debajo, `Responsive: en 820 px la lista no queda fija y el detalle va debajo, sin cruzarse (${JSON.stringify(angosta)})`);
   // El cliente abre el link sin iniciar sesión.
   const pub = await (await ad.browser.newContext({ viewport:{ width: 430, height: 900 } })).newPage();
   await pub.goto(lk.clip);

@@ -684,8 +684,9 @@
   .vo-canal{display:inline-block; padding:1px 8px; border-radius:999px; background:#1F8A8A; color:#fff; font-size:10.5px; font-weight:700; letter-spacing:.04em;}
   .vo-tipo{display:inline-block; padding:1px 7px; border-radius:6px; font-size:10.5px; font-weight:700;} .vo-tipo.BOLETA{background:#e8f1fb; color:#24578a;} .vo-tipo.FACTURA{background:#f3ecfb; color:#5d3a8f;}
   .vo-layout{display:grid; grid-template-columns:minmax(360px, 42%) 1fr; gap:14px; align-items:start;}
-  @media (max-width: 1000px){ .vo-layout{grid-template-columns:1fr;} }
   .vo-lista{position:sticky; top:8px;}
+  /* En una sola columna la lista no queda fija: si no, el detalle (link, clave) se cruzaba encima al bajar. */
+  @media (max-width: 1000px){ .vo-layout{grid-template-columns:1fr;} .vo-lista{position:static;} .vo-layout .vo-res{max-height:none;} }
   .vo-buscar{display:flex; align-items:center; gap:8px; border:2px solid var(--line-strong); border-radius:12px; padding:2px 10px; background:#fff; transition:border-color .15s, box-shadow .15s;}
   .vo-buscar:focus-within{border-color:var(--blue); box-shadow:0 0 0 4px rgba(46,95,138,.12);}
   .vo-buscar input{border:none; outline:none; box-shadow:none; flex:1; font-size:15px; padding:10px 2px; background:transparent;}
@@ -3457,8 +3458,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v204';
-const APP_UPDATED = '22/10/2026 19:30';
+const APP_VERSION = 'v205';
+const APP_UPDATED = '22/10/2026 20:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -13130,6 +13131,8 @@ document.addEventListener('keydown', e=>{
 });
 function voAbrir(id, desdeTeclado){
   voSel = id; voDocSel = 0;
+  // En pantallas angostas el detalle está debajo de la lista: se baja hasta él al elegir.
+  if(!desdeTeclado && window.matchMedia('(max-width: 1000px)').matches) setTimeout(()=> $('vo-detalle').scrollIntoView({ behavior:'smooth', block:'start' }), 50);
   document.querySelectorAll('#vo-res .vo-fila').forEach(b=>{ const s = b.dataset.voId === id; b.classList.toggle('sel', s); b.setAttribute('aria-selected', s); if(s && desdeTeclado) b.scrollIntoView({ block:'nearest' }); });
   renderVoDetalle();
 }
