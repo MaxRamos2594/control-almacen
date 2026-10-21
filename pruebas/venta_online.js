@@ -280,8 +280,9 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
   await ad.page.click('#btn-vo-link');
   await ad.page.waitForFunction(()=> /Enviado el/.test(($('vo-link-box') || {}).innerText || ''), null, { timeout: 10000 });
   lk = await ad.page.evaluate(async ()=>{ const c = (await voComprobantesRef.doc('BV01-00000721').get()).data();
-    return { clip: await navigator.clipboard.readText(), c, chip: !!document.querySelector('#vo-res [data-vo-id="BV01-00000721"] .vo-link-chip'), pub: (await voPublicoRef.doc(c.link_token).get()).data() }; });
-  verificar(lk.clip === `http://127.0.0.1:5055/?envio=${lk.c.link_token}` && lk.c.link_token.length === 32 && lk.c.link_enviado === true && lk.c.link_copias === 1 && lk.chip && lk.pub.clave === 'AB-4521',
+    return { clip: await navigator.clipboard.readText(), c, chip: !!document.querySelector('#vo-res [data-vo-id="BV01-00000721"] .vo-link-chip'),
+      portada: (await voPublicoRef.doc(c.link_token).get()).data(), pub: (await voPublicoRef.doc(await voHashAcceso(c.link_token, c.doc_numero)).get()).data() }; });
+  verificar(lk.clip === `http://127.0.0.1:5055/?envio=${lk.c.link_token}` && lk.c.link_token.length === 32 && lk.c.link_enviado === true && lk.c.link_copias === 1 && lk.chip && lk.pub.clave === 'AB-4521' && lk.portada.pide === 'DNI' && !lk.portada.clave && !lk.portada.docs,
     `Botón "Copiar link": copia el link (código de ${lk.c.link_token.length} caracteres) y marca "Link enviado"`);
   await ad.page.click('#btn-vo-link'); await ad.page.waitForTimeout(800);
   await ad.page.waitForFunction(()=> /Última copia: Administrador/i.test(($('vo-link-ultima') || {}).innerText || ''), null, { timeout: 10000 });
@@ -306,6 +307,13 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
   // El cliente abre el link sin iniciar sesión.
   const pub = await (await ad.browser.newContext({ viewport:{ width: 430, height: 900 } })).newPage();
   await pub.goto(lk.clip);
+  await pub.waitForSelector('#vp-doc', { timeout: 20000 });
+  const sinDni = await pub.evaluate(()=> $('vo-publico').innerText);
+  await pub.screenshot({ path: path.join(__dirname, 'salida', 'vo_link_dni.png') });
+  await pub.fill('#vp-doc', '87654321'); await pub.click('#vp-entrar');
+  await pub.waitForFunction(()=> /no coincide/.test(($('vp-error') || {}).textContent || ''), null, { timeout: 10000 });
+  verificar(/Acceso protegido/.test(sinDni) && /DNI/.test(sinDni) && !/AB-4521|ANA PRUEBA/.test(sinDni), 'El link pide el DNI antes de mostrar algo; con un DNI equivocado no muestra nada');
+  await pub.fill('#vp-doc', '12345678'); await pub.click('#vp-entrar');
   await pub.waitForFunction(()=> !!document.querySelector('#vo-publico canvas.vo-hoja'), null, { timeout: 20000 });
   const vpub = await pub.evaluate(async ()=> {
     let lista = 'permitido'; try{ await voPublicoRef.get(); }catch(e){ lista = 'bloqueado'; }
@@ -313,46 +321,46 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
     return { txt: $('vo-publico').innerText, login: getComputedStyle($('login-screen')).display, sesion: !!auth.currentUser, lista, privado };
   });
   verificar(/BV01-00000721/.test(vpub.txt) && /AB-4521/.test(vpub.txt) && /20\/10\/2026/.test(vpub.txt) && /COMPROBANTE/.test(vpub.txt) && /SHALOM/.test(vpub.txt) && vpub.login === "none" && !vpub.sesion,
-    'El cliente abre el link sin iniciar sesión: ve N°, clave, fecha de despacho y sus documentos');
+    'Con su DNI, el cliente ve N°, clave, agencia, fecha de despacho y sus documentos (sin iniciar sesión)');
   verificar(vpub.lista === "bloqueado" && vpub.privado === "bloqueado", 'Seguro: sin sesión no se puede listar los links ni leer los datos internos');
   await pub.screenshot({ path: path.join(__dirname, 'salida', 'vo_link_cliente.png'), fullPage: true });
   await pub.goto('http://127.0.0.1:5055/?envio=noexiste123');
   await pub.waitForFunction(()=> /Enlace no válido/.test($('vo-publico').innerText), null, { timeout: 10000 });
   verificar(true, 'Un link inventado muestra "Enlace no válido"');
 
-  // Anular (con motivo obligatorio), ver anulados, link del cliente anulado, restaurar y volver a subir.
-  await ad.page.evaluate(()=>{ $('vo-estado-f').value = ''; voBuscar(); voAbrir('BV01-00000721'); });
+  // Anular (con motivo obligatorio): borra los PDF, se ve en "Ver anulados", el link queda anulado y se puede volver a subir.
+  await ad.page.evaluate(async ()=>{ $('vo-estado-f').value = ''; voBuscar(); voAbrir('BV01-00000721');
+    await voSubirVouchers([new File([new Uint8Array([137,80,78,71,13,10,26,10])], 'voucher_a_borrar.png', { type:'image/png' })]); });
+  const antes = await ad.page.evaluate(async ()=>{ const c = (await voComprobantesRef.doc('BV01-00000721').get()).data(); return { pdf: c.pdf_url, vou: c.vouchers.map(v=> v.url) }; });
   await ad.page.click('#btn-vo-anular');
   await ad.page.click('#btn-vo-anular-ok');
   await ad.page.waitForTimeout(500);
   const sinMotivo = await ad.page.evaluate(async ()=> (await voComprobantesRef.doc('BV01-00000721').get()).data().estado);
   await ad.page.fill('#vo-anular-motivo', 'Se subió por error');
-  await ad.page.locator('#vo-detalle').screenshot({ path: path.join(__dirname, 'salida', 'vo_anular.png'), clip: undefined }).catch(()=>{});
   await ad.page.screenshot({ path: path.join(__dirname, 'salida', 'vo_anular.png'), clip: { x: 600, y: 0, width: 840, height: 520 } });
   await ad.page.click('#btn-vo-anular-ok');
   await ad.page.waitForFunction(()=> !voFiltrados().some(c=> c.id === 'BV01-00000721'), null, { timeout: 10000 });
-  const an = await ad.page.evaluate(async ()=> ({ bd: (await voComprobantesRef.doc('BV01-00000721').get()).data(), log: (await movimientosRef.get()).docs.some(d=> d.data().tipo === 'vo_comprobante_anulado') }));
+  const an = await ad.page.evaluate(async (antes)=>{
+    const existe = async url=> { try{ await storage.refFromURL(url).getMetadata(); return true; }catch(e){ return false; } };
+    return { bd: (await voComprobantesRef.doc('BV01-00000721').get()).data(), log: (await movimientosRef.get()).docs.some(d=> d.data().tipo === 'vo_comprobante_anulado'),
+      pdf: await existe(antes.pdf), vou: await Promise.all(antes.vou.map(existe)) };
+  }, antes);
   await ad.page.selectOption('#vo-estado-f', 'anulados');
   const anL = await ad.page.evaluate(()=> voFiltrados().map(c=> c.id).join(','));
   await ad.page.evaluate(()=> voAbrir('BV01-00000721'));
   await ad.page.waitForTimeout(400);
   await ad.page.screenshot({ path: path.join(__dirname, 'salida', 'vo_anulado.png'), clip: { x: 0, y: 0, width: 1440, height: 560 } });
-  const banner = await ad.page.evaluate(()=> ({ txt: (document.querySelector('.vo-anulado-box') || {}).innerText || '', link: !!$('vo-link-box'), clave: !!$('vo-clave') }));
-  verificar(sinMotivo !== 'ANULADO' && an.bd.estado === 'ANULADO' && an.bd.anulado_motivo === 'Se subió por error' && an.log && anL === 'BV01-00000721' && /Motivo: Se subió por error/.test(banner.txt) && !banner.link && !banner.clave,
+  const banner = await ad.page.evaluate(()=> ({ txt: (document.querySelector('.vo-anulado-box') || {}).innerText || '', link: !!$('vo-link-box'), clave: !!$('vo-clave'), restaurar: !!$('btn-vo-restaurar') }));
+  verificar(sinMotivo !== 'ANULADO' && an.bd.estado === 'ANULADO' && an.bd.anulado_motivo === 'Se subió por error' && an.log && anL === 'BV01-00000721' && /Motivo: Se subió por error/.test(banner.txt) && !banner.link && !banner.clave && !banner.restaurar,
     'Anular: pide motivo, sale de la lista, se ve en "Ver anulados" con el motivo y queda en la bitácora');
+  verificar(antes.vou.length === 1 && !an.pdf && an.vou.every(x=> !x) && !an.bd.pdf_url && an.bd.vouchers.length === 0 && an.bd.archivos_borrados.length === 2 && /voucher_a_borrar\.png/.test(banner.txt),
+    `Al anular se borran de la base el PDF del comprobante y sus vouchers (${an.bd.archivos_borrados.map(a=> a.nombre).join(", ")})`);
   await pub.goto(lk.clip);
   await pub.waitForFunction(()=> /Este envío fue anulado/.test($('vo-publico').innerText), null, { timeout: 10000 });
-  verificar(true, 'El link del cliente de un comprobante anulado muestra "Este envío fue anulado"');
-  await ad.page.click('#btn-vo-restaurar');
-  await ad.page.waitForFunction(()=> voLista.find(c=> c.id === 'BV01-00000721').estado === 'ACTIVO', null, { timeout: 10000 });
-  await pub.goto(lk.clip);
-  await pub.waitForFunction(()=> /AB-4521/.test($('vo-publico').innerText), null, { timeout: 15000 });
+  const datosPub = await pub.evaluate(async t=> (await voPublicoRef.doc(await voHashAcceso(t, '12345678')).get()).exists, lk.c.link_token);
+  verificar(!datosPub, 'El link del cliente de un comprobante anulado muestra "Este envío fue anulado" y sus datos ya no existen');
   await ad.page.selectOption('#vo-estado-f', '');
-  verificar(await ad.page.evaluate(()=> voFiltrados().some(c=> c.id === 'BV01-00000721')), 'Restaurar: vuelve a la lista y el link del cliente vuelve a mostrar sus datos');
   // Un comprobante anulado se puede volver a subir (no cuenta como duplicado).
-  await ad.page.evaluate(()=> voAbrir('BV01-00000721'));
-  await ad.page.click('#btn-vo-anular'); await ad.page.fill('#vo-anular-motivo', 'PDF equivocado'); await ad.page.click('#btn-vo-anular-ok');
-  await ad.page.waitForFunction(()=> voLista.find(c=> c.id === 'BV01-00000721').estado === 'ANULADO', null, { timeout: 10000 });
   await ad.page.click('#vosub-cargar');
   await ad.page.setInputFiles('#vo-pdf-input', [b1]);
   await ad.page.click('#btn-vo-procesar');
