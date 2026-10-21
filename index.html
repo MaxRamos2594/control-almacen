@@ -648,6 +648,7 @@
   .cmp-q-prod mark{background:#ffe58a; color:inherit; border-radius:2px; padding:0 1px;}
   .cmp-q-prod .mas{padding:6px 12px; font-size:11.5px; color:var(--ink-soft); background:#fafbfc;}
   /* Venta Online: comprobantes de Agencia y vouchers */
+  #vo-batch-body tr.vo-dup td{background:#FBEAEA; color:#8A332A; text-decoration:line-through;} #vo-batch-body tr.vo-dup td:last-child{text-decoration:none; font-weight:700;}
   .vo-canal{display:inline-block; padding:1px 8px; border-radius:999px; background:#1F8A8A; color:#fff; font-size:10.5px; font-weight:700; letter-spacing:.04em;}
   .vo-tipo{display:inline-block; padding:1px 7px; border-radius:6px; font-size:10.5px; font-weight:700;} .vo-tipo.BOLETA{background:#e8f1fb; color:#24578a;} .vo-tipo.FACTURA{background:#f3ecfb; color:#5d3a8f;}
   .vo-layout{display:grid; grid-template-columns:minmax(360px, 42%) 1fr; gap:14px; align-items:start;}
@@ -3367,8 +3368,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v192';
-const APP_UPDATED = '21/10/2026 17:00';
+const APP_VERSION = 'v193';
+const APP_UPDATED = '21/10/2026 18:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -12872,41 +12873,61 @@ $('btn-vo-procesar').addEventListener('click', async ()=>{
     }
     renderVoBatch();
     $('vo-batch-wrap').style.display = 'block';
-    showMsg('vo-msg','ok', `Se procesaron ${voBatch.length} comprobante(s)${proc.seg()}. Revisa y presiona "Guardar comprobantes".`);
+    const nuevos = voBatch.filter(x=> x.c && !x.error && !x.duplicado).length;
+    if(nuevos) showMsg('vo-msg','ok', `Se procesaron ${voBatch.length} comprobante(s)${proc.seg()}. Revisa y presiona "Guardar comprobantes".`);
+    else showMsg('vo-msg','err', `No hay comprobantes nuevos para guardar: ${voBatch.some(x=> x.duplicado) ? 'ya están cargados o repetidos.' : 'revisa los errores.'}`);
   }finally{ proc.fin(); $('btn-vo-procesar').disabled = false; }
 });
 function renderVoBatch(){
   $('vo-batch-body').innerHTML = voBatch.map(x=>{
     if(!x.c) return `<tr><td>${esc(x.fileName)}</td><td colspan="8"></td><td style="color:#8A332A;">⚠ ${esc(x.error)}</td></tr>`;
     const c = x.c, problema = x.error || x.duplicado;
-    return `<tr><td>${esc(x.fileName)}</td><td><span class="vo-tipo ${esc(c.tipo)}">${esc(c.tipo || '—')}</span></td><td><b>${esc(c.nro || '—')}</b></td><td>${esc(c.fecha_texto || '—')}</td>` +
+    return `<tr${x.duplicado ? ' class="vo-dup"' : ''}><td>${esc(x.fileName)}</td><td><span class="vo-tipo ${esc(c.tipo)}">${esc(c.tipo || '—')}</span></td><td><b>${esc(c.nro || '—')}</b></td><td>${esc(c.fecha_texto || '—')}</td>` +
       `<td>${esc(c.doc_tipo)} ${esc(c.doc_numero || '—')}</td><td>${esc(c.nombre || '—')}</td><td class="num">${esc(c.cant_codigos)}</td><td class="num">${esc(c.importe_total == null ? '—' : voSoles(c.importe_total))}</td>` +
-      `<td><span class="vo-canal">AGENCIA</span></td><td>${problema ? `<span style="color:#8A332A;">⚠ ${esc(problema)}</span>` : '✓ Listo para guardar'}</td></tr>`;
+      `<td><span class="vo-canal">AGENCIA</span></td><td>${problema ? `<span style="color:#8A332A;">${x.duplicado ? '⛔ Duplicado: no se guardará — ' : '⚠ '}${esc(problema)}</span>` : '✓ Listo para guardar'}</td></tr>`;
   }).join('');
   const ok = voBatch.filter(x=> x.c && !x.error && !x.duplicado).length;
-  $('vo-batch-resumen').textContent = `${voBatch.length} archivo(s): ${ok} para guardar${voBatch.length - ok ? `, ${voBatch.length - ok} con aviso` : ''}.`;
+  const dup = voBatch.filter(x=> x.duplicado).length;
+  $('vo-batch-resumen').textContent = `${voBatch.length} archivo(s): ${ok} para guardar${dup ? `, ${dup} duplicado(s) que no se guardarán` : ''}${voBatch.length - ok - dup ? `, ${voBatch.length - ok - dup} con error` : ''}.`;
+  $('btn-vo-guardar').style.display = ok ? '' : 'none';
 }
 $('btn-vo-guardar').addEventListener('click', async ()=>{
   const listos = voBatch.filter(x=> x.c && !x.error && !x.duplicado);
   if(!listos.length){ showMsg('vo-msg','err','No hay comprobantes para guardar.'); return; }
   $('btn-vo-guardar').disabled = true;
   const proc = relojProceso('vo-msg'); let n = 0;
+  const yaCargado = snap=> snap.exists && snap.data().estado !== 'ANULADO';
   try{
     for(const x of listos){
       proc.paso(`Guardando ${++n} de ${listos.length}: ${x.c.nro}…`);
-      const ref = storage.ref().child(`vo_comprobantes/${x.c.nro}.pdf`);
+      // Se vuelve a revisar al guardar: otro usuario (u otra pestaña) pudo cargarlo después de procesar.
+      const docRef = voComprobantesRef.doc(x.c.nro);
+      if(yaCargado(await docRef.get())){ x.duplicado = `Ya está cargado (${x.c.nro})`; continue; }
+      // Nombre único: un duplicado nunca reemplaza el PDF de un comprobante ya cargado.
+      const ref = storage.ref().child(`vo_comprobantes/${x.c.nro}_${Date.now()}.pdf`);
       await ref.put(x.file, { contentType:'application/pdf' });
       const pdf_url = await ref.getDownloadURL();
-      await voComprobantesRef.doc(x.c.nro).set(Object.assign({}, x.c, { canal:'AGENCIA', pdf_url, pdf_path: ref.fullPath, archivo: x.fileName, vouchers: [],
-        estado:'ACTIVO', usuario: currentUserAlias, fecha_carga: firebase.firestore.FieldValue.serverTimestamp() }));
+      const guardado = await db.runTransaction(async tx=>{
+        if(yaCargado(await tx.get(docRef))) return false;
+        tx.set(docRef, Object.assign({}, x.c, { canal:'AGENCIA', pdf_url, pdf_path: ref.fullPath, archivo: x.fileName, vouchers: [],
+          estado:'ACTIVO', usuario: currentUserAlias, fecha_carga: firebase.firestore.FieldValue.serverTimestamp() }));
+        return true;
+      });
+      if(!guardado){ x.duplicado = `Ya está cargado (${x.c.nro})`; ref.delete().catch(()=>{}); continue; }
       await logAccion('vo_comprobante_cargado', {detalle:`${x.c.tipo} ${x.c.nro} · ${x.c.doc_tipo} ${x.c.doc_numero} · ${voSoles(x.c.importe_total)} (Agencia)`});
       x.guardado = true;
     }
     proc.fin();
+    const ok = listos.filter(x=> x.guardado), dup = listos.filter(x=> x.duplicado);
+    voLeidos = false;
+    if(dup.length){
+      showMsg('vo-msg', ok.length ? 'ok' : 'err', `${ok.length ? `Guardado(s) ${ok.length}: ${ok.map(x=> x.c.nro).join(', ')}. ` : ''}No se guardaron ${dup.length} porque ya estaban cargados: ${dup.map(x=> x.c.nro).join(', ')}.`);
+      voBatch = voBatch.filter(x=> !x.guardado); renderVoBatch();
+      return;
+    }
     showMsg('vo-msg','ok', `¡Guardado! ${listos.length} comprobante(s) con canal AGENCIA: ${listos.map(x=> x.c.nro).join(', ')}.`);
     showToast(`${listos.length} comprobante(s) guardado(s)`, 'ok');
     voBatch = []; $('vo-batch-wrap').style.display = 'none'; $('vo-pdf-input').value = '';
-    voLeidos = false;
   }catch(err){ proc.fin(); console.error(err); showMsg('vo-msg','err','Error al guardar: '+err.message); }
   finally{ $('btn-vo-guardar').disabled = false; }
 });

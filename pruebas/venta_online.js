@@ -65,6 +65,23 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
   await page.click('#btn-vo-procesar');
   await page.waitForFunction(()=> !$('btn-vo-procesar').disabled && $('vo-batch-wrap').style.display === 'block', null, { timeout: 30000 });
   verificar(/Ya está cargado \(BV01-00000721\)/.test(await page.textContent('#vo-batch-body')), 'Volver a subir el mismo comprobante avisa que ya está cargado');
+  verificar(await page.evaluate(()=> !!document.querySelector('#vo-batch-body tr.vo-dup') && /Duplicado: no se guardará/.test($('vo-batch-body').textContent) && $('btn-vo-guardar').style.display === 'none'),
+    'El duplicado sale en rojo y, si no hay nada nuevo, no aparece el botón Guardar');
+  // Mismo comprobante dos veces en el lote + otro usuario lo guarda antes de presionar Guardar.
+  const b2 = comprobante({ tipo:'BOLETA', nro:'BV01-00000722', nombre:'LUIS PRUEBA', docLabel:'DNI:', doc:'87654321', fecha:'14/10/2026 09:00:00', total:'5.00', items: [['0019','CINTA',1,5]] });
+  await page.setInputFiles('#vo-pdf-input', [b2, b2]);
+  await page.click('#btn-vo-procesar');
+  await page.waitForFunction(()=> !$('btn-vo-procesar').disabled && $('vo-batch-wrap').style.display === 'block', null, { timeout: 30000 });
+  verificar(/Repetido en este mismo lote/.test(await page.textContent('#vo-batch-body')) && /1 para guardar, 1 duplicado/.test(await page.textContent('#vo-batch-resumen')), 'El mismo PDF dos veces en el lote: solo uno se guardaría');
+  await page.evaluate(()=> voComprobantesRef.doc('BV01-00000722').set({ tipo:'BOLETA', nombre:'CARGADO POR OTRO', estado:'ACTIVO', importe_total:5, vouchers:[] }));
+  await page.click('#btn-vo-guardar');
+  await page.waitForFunction(()=> /No se guardaron 1 porque ya estaban cargados: BV01-00000722/.test($('vo-msg').textContent), null, { timeout: 30000 });
+  const otro = await page.evaluate(async ()=> (await voComprobantesRef.doc('BV01-00000722').get()).data().nombre);
+  verificar(otro === 'CARGADO POR OTRO', 'Si otro usuario lo cargó mientras tanto, al guardar no se duplica ni se sobrescribe');
+  await page.evaluate(()=> voComprobantesRef.doc('BV01-00000722').delete());
+  await page.setInputFiles('#vo-pdf-input', [b1]);
+  await page.click('#btn-vo-procesar');
+  await page.waitForFunction(()=> !$('btn-vo-procesar').disabled && $('vo-batch-wrap').style.display === 'block', null, { timeout: 30000 });
   await page.locator('#vosub-panel-cargar').screenshot({ path: path.join(__dirname, 'salida', 'vo_cargar.png') });
 
   // Subir voucher: multibuscador
