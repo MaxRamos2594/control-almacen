@@ -3426,8 +3426,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v200';
-const APP_UPDATED = '22/10/2026 14:00';
+const APP_VERSION = 'v201';
+const APP_UPDATED = '22/10/2026 15:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -12975,7 +12975,7 @@ $('btn-vo-guardar').addEventListener('click', async ()=>{
       if(yaCargado(await docRef.get())){ x.duplicado = `Ya está cargado (${x.c.nro})`; continue; }
       // Nombre único: un duplicado nunca reemplaza el PDF de un comprobante ya cargado.
       const ref = storage.ref().child(`vo_comprobantes/${x.c.nro}_${Date.now()}.pdf`);
-      await ref.put(x.file, { contentType:'application/pdf' });
+      await ref.put(x.file, { contentType:'application/pdf', cacheControl:'private, max-age=31536000' });
       const pdf_url = await ref.getDownloadURL();
       const guardado = await db.runTransaction(async tx=>{
         if(yaCargado(await tx.get(docRef))) return false;
@@ -13124,7 +13124,9 @@ function renderVoDetalle(){
     `<details style="margin-top:10px;"><summary class="hint" style="cursor:pointer;">Ver los ${esc(c.cant_codigos || 0)} código(s) del comprobante</summary><table class="vo-items"><thead><tr><th>Código</th><th>Descripción</th><th class="num">Cant.</th><th class="num">Total</th></tr></thead><tbody>` +
     (c.items || []).map(it=> `<tr><td><b>${esc(it.codigo || '—')}</b></td><td>${esc(it.descripcion || '')}</td><td class="num">${esc(it.cantidad ?? '')}</td><td class="num">${esc(it.total == null ? '' : Number(it.total).toFixed(2))}</td></tr>`).join('') + '</tbody></table></details>';
   voPintarVisor(d);
+  clearTimeout(voPrecargaTimer); voPrecargaTimer = setTimeout(voPrecargar, 400);
 }
+let voPrecargaTimer = null;
 // El giro de cada documento se guarda (pdf_giro del comprobante, giro de cada voucher) para que
 // todos lo vean ya derecho. Es solo cómo se muestra: lo puede guardar cualquiera que lo vea.
 let voGiroCola = Promise.resolve();
@@ -13217,15 +13219,46 @@ $('btn-vo-pdf').addEventListener('click', ()=>{
 // cargando dentro de la página y no existe en celulares. Permite acercar y girar (fotos de lado).
 const voPdfCache = new Map();
 let voZoom = null, voVisorUrl = null, voVisorTurno = 0;
+// Para que cargue rápido: un solo "worker" de pdf.js para todo el visor (antes se creaba uno nuevo,
+// con su script de ~1 MB, por cada PDF), el archivo se baja en una sola descarga (no por pedazos),
+// los últimos 8 quedan en memoria y se adelanta la descarga de lo que probablemente se abra después.
+let voPdfWorker = null;
+const voAvances = new Map();
+function voWorker(){
+  if(!voPdfWorker){
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    voPdfWorker = new pdfjsLib.PDFWorker({ name: 'vo-visor' });
+  }
+  return voPdfWorker;
+}
+async function voDescargar(url){
+  const r = await fetch(url);
+  if(!r.ok) throw new Error('HTTP ' + r.status);
+  const total = Number(r.headers.get('content-length')) || 0;
+  if(!r.body || !total) return new Uint8Array(await r.arrayBuffer());
+  const lector = r.body.getReader(), partes = []; let n = 0;
+  for(;;){
+    const { done, value } = await lector.read(); if(done) break;
+    partes.push(value); n += value.length;
+    const fn = voAvances.get(url); if(fn) fn(Math.min(99, Math.round(n / total * 100)), total);
+  }
+  const out = new Uint8Array(n); let o = 0; partes.forEach(p=> { out.set(p, o); o += p.length; });
+  return out;
+}
 function voPdfDoc(url){
   if(!voPdfCache.has(url)){
-    if(voPdfCache.size > 6) voPdfCache.delete(voPdfCache.keys().next().value);
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    const pr = pdfjsLib.getDocument({ url }).promise;
+    if(voPdfCache.size >= 8){ const [k, viejo] = voPdfCache.entries().next().value; voPdfCache.delete(k); viejo.then(d=> d.destroy()).catch(()=>{}); }
+    const pr = voDescargar(url).then(data=> pdfjsLib.getDocument({ data, worker: voWorker() }).promise);
     pr.catch(()=> voPdfCache.delete(url));
     voPdfCache.set(url, pr);
-  }
+  }else{ const pr = voPdfCache.get(url); voPdfCache.delete(url); voPdfCache.set(url, pr); }   // el más usado queda al final
   return voPdfCache.get(url);
+}
+// Adelanta (sin mostrar) los documentos del comprobante abierto y el comprobante siguiente de la lista.
+function voPrecargar(){
+  const L = voFiltrados(), i = L.findIndex(c=> c.id === voSel);
+  const docs = [...(i >= 0 ? voDocs(L[i]) : []), ...(L[i + 1] ? voDocs(L[i + 1]).slice(0, 1) : [])];
+  docs.forEach(d=>{ if(/pdf/.test(d.tipo || '')) voPdfDoc(d.url).catch(()=>{}); else { const im = new Image(); im.crossOrigin = 'anonymous'; im.src = d.url; } });
 }
 function voImagen(url){
   return new Promise((ok, mal)=>{ const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = ()=> ok(im); im.onerror = ()=> mal(new Error('No se pudo cargar la imagen')); im.src = url; });
@@ -13240,7 +13273,8 @@ async function voPintarVisor(d){
     cv.width = Math.round(w * k); cv.height = Math.round(h * k); cv.style.width = Math.round(w) + 'px'; cv.style.height = Math.round(h) + 'px'; cv.className = 'vo-hoja'; return [cv, k]; };
   try{
     if(/pdf/.test(d.tipo || '')){
-      const doc = await voPdfDoc(d.url); if(turno !== voVisorTurno) return;
+      if(!voPdfCache.has(d.url)) voAvances.set(d.url, (p, total)=>{ if(turno === voVisorTurno) caja.innerHTML = `<div class="vo-vacio">⏳<b>Descargando… ${esc(p)}%</b>${esc(voMB(total))}</div>`; });
+      const doc = await voPdfDoc(d.url); voAvances.delete(d.url); if(turno !== voVisorTurno) return;
       const n = Math.min(doc.numPages, 30), cont = document.createElement('div'); cont.className = 'vo-paginas';
       info(`${doc.numPages} página${doc.numPages > 1 ? 's' : ''}`);
       for(let i = 1; i <= n; i++){
@@ -13294,8 +13328,8 @@ async function voReducir(f, avance){
     let blob, nombre = f.name;
     if(/pdf/.test(f.type)){
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-      const doc = await pdfjsLib.getDocument({ data: await f.arrayBuffer() }).promise;
-      if(doc.numPages > 40) return f;
+      const doc = await pdfjsLib.getDocument({ data: await f.arrayBuffer(), worker: voWorker() }).promise;
+      if(doc.numPages > 40){ doc.destroy(); return f; }
       let pdf = null;
       for(let i = 1; i <= doc.numPages; i++){
         if(avance) avance(`Reduciendo página ${i} de ${doc.numPages}…`);
@@ -13311,7 +13345,7 @@ async function voReducir(f, avance){
         pdf.addImage(jpg, 'JPEG', 0, 0, v1.width, v1.height);
         cv.width = cv.height = 0;
       }
-      blob = pdf.output('blob');
+      blob = pdf.output('blob'); doc.destroy();
     }else if(/^image\//.test(f.type)){
       if(avance) avance('Reduciendo imagen…');
       const img = await createImageBitmap(f), k = Math.min(1, VO_LADO_MAX / Math.max(img.width, img.height));
@@ -13339,7 +13373,8 @@ async function voSubirVouchers(files){
       fila.firstChild.textContent = `Subiendo${reducido} `;
       const path = `vo_vouchers/${c.id}/${Date.now()}_${ff.name.replace(/[^\w.\-]+/g, '_')}`;
       const ref = storage.ref().child(path);
-      const tarea = ref.put(ff, { contentType: ff.type });
+      // Nombre único: el archivo nunca cambia, así el navegador lo guarda y la próxima vez abre al instante.
+      const tarea = ref.put(ff, { contentType: ff.type, cacheControl:'private, max-age=31536000' });
       tarea.on('state_changed', snap=>{ const p = Math.round(snap.bytesTransferred / snap.totalBytes * 100); fila.querySelector('span').textContent = p + '%'; fila.querySelector('i').style.width = p + '%'; });
       await tarea;
       const v = { nombre: ff.name, url: await ref.getDownloadURL(), path, tipo: ff.type, tam: ff.size, subido_por: currentUserAlias, subido_en: new Date().toISOString() };

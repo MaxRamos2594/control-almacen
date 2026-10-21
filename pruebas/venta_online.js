@@ -195,7 +195,7 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
   await com.browser.close();
 
   // Despacho, filtros, paginado de 10 y exportar PDF (como administrador).
-  const ad = await abrirApp();
+  const ad = await abrirApp({ scriptInicial: ()=>{ const W = window.Worker; window.__workers = 0; window.Worker = function(...a){ window.__workers++; return new W(...a); }; window.Worker.prototype = W.prototype; } });
   await ad.page.evaluate(async ()=>{
     const lote = db.batch();
     for(let i = 1; i <= 13; i++){
@@ -220,6 +220,17 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
   await ad.page.waitForFunction(()=> /guardada/.test($('vo-desp-ok').textContent), null, { timeout: 10000 });
   const dsp = await ad.page.evaluate(async ()=> ({ bd: (await voComprobantesRef.doc('BV01-00000721').get()).data().fecha_despacho, chip: document.querySelector('#vo-res [data-vo-id="BV01-00000721"] .vo-desp').innerText }));
   verificar(dsp.bd === '2026-10-20' && /20\/10\/2026/.test(dsp.chip), `Fecha de despacho editable en el comprobante y visible en la lista (${dsp.chip})`);
+  // Rapidez: varios PDF abiertos usan un solo worker de pdf.js y lo ya visto abre al instante.
+  for(const id of ['F001-00000045', 'BV01-00000721', 'F001-00000045', 'BV01-00000721']){
+    await ad.page.evaluate(id=> voAbrir(id), id);
+    await ad.page.waitForFunction(()=> !!document.querySelector('#vo-visor canvas.vo-hoja'), null, { timeout: 15000 });
+  }
+  const t0v = Date.now(); await ad.page.evaluate(()=> voAbrir('F001-00000045'));
+  await ad.page.waitForFunction(()=> !!document.querySelector('#vo-visor canvas.vo-hoja') && $('vo-visor').dataset.url.includes('F001'), null, { timeout: 15000 });
+  const rap = { ms: Date.now() - t0v, workers: await ad.page.evaluate(()=> window.__workers) };
+  verificar(rap.workers === 1 && rap.ms < 1500, `Visor rápido: ${rap.workers} worker de pdf.js para todos los PDF; uno ya visto abre en ${rap.ms} ms`);
+  await ad.page.evaluate(()=> voAbrir('BV01-00000721'));
+  await ad.page.waitForFunction(()=> !!document.querySelector('#vo-clave'), null, { timeout: 15000 });
   await ad.page.fill('#vo-clave', 'ab-4521'); await ad.page.press('#vo-clave', 'Enter');
   await ad.page.waitForFunction(()=> /Clave guardada/.test(($('vo-clave-ok') || {}).textContent || ''), null, { timeout: 10000 });
   const clv = await ad.page.evaluate(async ()=> ({ bd: (await voComprobantesRef.doc('BV01-00000721').get()).data().clave, chip: document.querySelector('#vo-res [data-vo-id="BV01-00000721"] .vo-clave-chip').innerText,
