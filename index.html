@@ -112,6 +112,52 @@
   .view.active{display:block;}
 
   .panel{background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:16px;}
+  /* Registro fotográfico */
+  .rf-cab-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px;}
+  .rf-cab-grid input[readonly]{background:#f3f5f8; color:var(--ink-soft);}
+  .rf-foto-box{margin-top:6px;} .rf-lbl{display:block; font-size:12px; font-weight:700; margin-bottom:6px;}
+  .rf-fotos{display:flex; flex-wrap:wrap; gap:8px;}
+  .rf-thumb{position:relative; width:88px; height:88px; border-radius:10px; overflow:hidden; border:1px solid var(--line-strong); background:#eef1f5; cursor:zoom-in;}
+  .rf-thumb img{width:100%; height:100%; object-fit:cover; display:block;}
+  .rf-thumb .rf-quitar{position:absolute; top:3px; right:3px; width:22px; height:22px; border:none; border-radius:50%; background:rgba(0,0,0,.65); color:#fff; font-size:12px; cursor:pointer; line-height:22px; padding:0;}
+  .rf-add-foto{width:88px; height:88px; border:2px dashed #7aa7d6; border-radius:10px; background:#f3f8fd; color:#2b4c6f; font-weight:800; font-size:12px; cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;}
+  .rf-add-foto span{font-size:24px;} .rf-add-foto:hover{background:#e6f0fb;}
+  .rf-item{border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-bottom:10px; background:#fbfcfd;}
+  .rf-item-cab{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;} .rf-item-cab b{font-size:12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.05em;}
+  .rf-item-grid{display:grid; grid-template-columns:minmax(120px, 1fr) minmax(180px, 2fr) 110px; gap:8px; margin-bottom:8px;}
+  @media (max-width:640px){ .rf-item-grid{grid-template-columns:1fr 1fr;} .rf-item-grid .rf-desc{grid-column:1 / -1; order:3;} }
+  .rf-item-grid label{font-size:11px; font-weight:700; color:var(--ink-soft); display:block; margin-bottom:2px;} .rf-item-grid input{width:100%; box-sizing:border-box;}
+  .rf-item .rf-del{border:none; background:none; color:#8A332A; font-weight:700; cursor:pointer; font-size:12px;}
+  .rf-acciones{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; position:sticky; bottom:0; background:var(--bg); padding:10px 0; z-index:5;}
+  .rf-acciones .btn{min-width:200px;}
+  .rf-filtros{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px;} .rf-filtros input[type=search]{flex:1 1 260px;}
+  .rf-filtros label{display:flex; gap:5px; align-items:center; font-size:11.5px; font-weight:600; color:var(--ink-soft); margin:0;} .rf-filtros input[type=date]{width:auto;}
+  .rf-lista{display:flex; flex-direction:column; gap:8px;}
+  .rf-fila{display:grid; grid-template-columns:64px 1fr auto; gap:10px; align-items:center; text-align:left; width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:10px; background:#fff; cursor:pointer; font:inherit; color:var(--ink);}
+  .rf-fila:hover{background:#f6f9fd;} .rf-fila.sel{box-shadow:0 0 0 2px var(--blue); background:#eef4fb;}
+  .rf-fila img, .rf-fila .sin{width:64px; height:64px; border-radius:8px; object-fit:cover; background:#eef1f5; display:block;}
+  .rf-fila .t{font-weight:800; font-family:var(--mono);} .rf-fila .s{font-size:12px; color:var(--ink-soft);} .rf-fila .n{text-align:right; font-size:12px; color:var(--ink-soft);} .rf-fila .n b{display:block; font-size:15px; color:var(--ink);}
+  .rf-fila mark{background:#ffe58a; color:inherit; border-radius:2px;}
+  .rf-det-cab{display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:flex-start; margin-bottom:10px;} .rf-det-cab h2{margin:0; font-family:var(--mono);}
+  .rf-det-datos{display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:8px; margin-bottom:12px;}
+  .rf-det-datos div{background:#f6f8fb; border-radius:8px; padding:8px 10px;} .rf-det-datos span{display:block; font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft);} .rf-det-datos b{font-size:13px;}
+  .rf-det-items{width:100%; border-collapse:collapse;} .rf-det-items td, .rf-det-items th{padding:8px 6px; border-bottom:1px solid var(--line); vertical-align:top; text-align:left;}
+  .rf-det-items .rf-fotos .rf-thumb{width:64px; height:64px;}
+  .cam-modal{position:fixed; inset:0; background:rgba(10,14,20,.88); z-index:9000; display:flex; align-items:center; justify-content:center; padding:10px;}
+  .cam-modal[hidden], .rf-lightbox[hidden]{display:none;}
+  .cam-caja{background:#11161d; color:#fff; border-radius:16px; width:min(720px, 100%); max-height:100%; display:flex; flex-direction:column; overflow:hidden;}
+  .cam-cab{display:flex; justify-content:space-between; align-items:center; padding:10px 14px;} .cam-x{border:none; background:#2b4c6f; color:#fff; font-weight:800; border-radius:8px; padding:7px 14px; cursor:pointer;}
+  .cam-vista{position:relative; background:#000; aspect-ratio:4/3; max-height:62vh;} .cam-vista video{width:100%; height:100%; object-fit:contain; display:block;}
+  .cam-msg{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; padding:20px; font-size:14px; color:#d6d9dd; pointer-events:none;} .cam-msg:empty{display:none;}
+  .cam-vista.flash::after{content:''; position:absolute; inset:0; background:#fff; animation:camflash .25s ease-out forwards;} @keyframes camflash{from{opacity:.9} to{opacity:0}}
+  .cam-barra{display:flex; align-items:center; justify-content:space-around; padding:12px;}
+  .cam-barra button, .cam-archivo{border:none; background:#2a3542; color:#fff; border-radius:30px; padding:10px 16px; font-size:15px; cursor:pointer; font-weight:700;}
+  .cam-disparo{width:72px; height:72px; border-radius:50% !important; font-size:30px !important; background:#fff !important; color:#000 !important; box-shadow:0 0 0 4px rgba(255,255,255,.35);}
+  .cam-disparo:disabled{opacity:.4;}
+  .cam-tomadas{display:flex; gap:6px; padding:0 12px 12px; overflow-x:auto;} .cam-tomadas img{width:52px; height:52px; object-fit:cover; border-radius:6px; border:2px solid #fff;}
+  .rf-lightbox{position:fixed; inset:0; background:rgba(0,0,0,.92); z-index:9100; display:flex; align-items:center; justify-content:center; flex-direction:column; cursor:zoom-out;}
+  .rf-lightbox img{max-width:96vw; max-height:86vh; object-fit:contain;} .rf-lb-pie{color:#ddd; font-size:13px; margin-top:8px;}
+  .rf-lb-x{position:absolute; top:12px; right:12px; border:none; background:#2a3542; color:#fff; border-radius:50%; width:40px; height:40px; font-size:18px; cursor:pointer;}
   /* Usuarios y permisos */
   .us-layout{display:grid; grid-template-columns:minmax(240px, 320px) minmax(0, 1fr); gap:14px; align-items:start; max-width:1180px;}
   @media (max-width:820px){ .us-layout{grid-template-columns:1fr;} }
@@ -1741,6 +1787,7 @@
     <button data-tab="productos" id="tab-productos">Productos</button>
     <button data-tab="inventario" id="tab-inventario">Inventario</button>
     <button data-tab="toma_inventario" id="tab-toma_inventario">Toma de Inventario</button>
+    <button data-tab="regfoto" id="tab-regfoto">Registro fotográfico</button>
     <button data-tab="kardex" id="tab-kardex">Kardex</button>
     <button data-tab="merma" id="tab-merma">Merma</button>
   </div>
@@ -3119,6 +3166,63 @@
   <input type="file" id="ti-img-input-global" accept="image/*" style="display:none;">
 </div>
 
+<!-- REGISTRO FOTOGRÁFICO -->
+<div class="view" id="view-regfoto">
+  <div class="subtabs">
+    <button class="active" id="rfsub-nuevo">📸 Nuevo registro</button>
+    <button id="rfsub-lista">🗂 Registros</button>
+  </div>
+
+  <div id="rfsub-panel-nuevo">
+    <div class="panel" style="margin-bottom:12px;">
+      <h3>Datos de cabecera</h3>
+      <div class="rf-cab-grid">
+        <div class="field"><label>Participante</label><input type="text" id="rf-participante" class="upper" list="rf-participantes" value="CD VENEZUELA" autocomplete="off"></div>
+        <div class="field"><label>Fecha de creación</label><input type="text" id="rf-fecha" readonly></div>
+        <div class="field"><label>Correlativo</label><input type="text" id="rf-correlativo" readonly value="Se asigna al guardar"></div>
+        <div class="field"><label>Posición *</label><input type="text" id="rf-posicion" class="upper" list="rf-posiciones" placeholder="Ej. A01" autocomplete="off"></div>
+      </div>
+      <div class="rf-foto-box"><span class="rf-lbl">📷 Foto de la posición *</span><div class="rf-fotos" id="rf-pos-fotos"></div></div>
+    </div>
+    <div class="panel" style="margin-bottom:12px;">
+      <h3>Detalle</h3>
+      <div id="rf-items"></div>
+      <button type="button" class="btn btn-ghost" id="btn-rf-add" style="width:100%; margin-top:8px;">+ Agregar producto</button>
+    </div>
+    <div class="rf-acciones"><span class="hint" id="rf-resumen"></span><button type="button" class="btn btn-primary" id="btn-rf-guardar">💾 Guardar registro</button></div>
+    <div class="msg" id="rf-msg"></div>
+  </div>
+
+  <div id="rfsub-panel-lista" style="display:none;">
+    <div class="panel" style="margin-bottom:12px;">
+      <div class="rf-filtros">
+        <input type="search" id="rf-q" placeholder="Buscar por correlativo, posición, participante, SKU, descripción o usuario…" autocomplete="off">
+        <label>Desde <input type="date" id="rf-desde"></label><label>Hasta <input type="date" id="rf-hasta"></label>
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-rf-recargar">↻ Actualizar</button>
+      </div>
+      <div class="rf-lista" id="rf-lista"></div>
+      <div id="rf-pag"></div>
+    </div>
+    <div class="panel" id="rf-detalle" style="display:none;"></div>
+  </div>
+  <datalist id="rf-participantes"></datalist><datalist id="rf-posiciones"></datalist><datalist id="rf-skus"></datalist>
+</div>
+
+<!-- Cámara del navegador (celular o PC) y visor de fotos -->
+<div class="cam-modal" id="cam-modal" hidden>
+  <div class="cam-caja">
+    <div class="cam-cab"><b id="cam-titulo">Tomar foto</b><button type="button" id="cam-cerrar" class="cam-x">✕ Listo</button></div>
+    <div class="cam-vista"><video id="cam-video" autoplay playsinline muted></video><div class="cam-msg" id="cam-msg"></div></div>
+    <div class="cam-barra">
+      <button type="button" id="cam-cambiar" title="Cambiar de cámara">🔄</button>
+      <button type="button" id="cam-disparar" class="cam-disparo" title="Tomar foto">📸</button>
+      <label class="cam-archivo" title="Elegir una foto guardada">🖼 Galería<input type="file" id="cam-file" accept="image/*" multiple hidden></label>
+    </div>
+    <div class="cam-tomadas" id="cam-tomadas"></div>
+  </div>
+</div>
+<div class="rf-lightbox" id="rf-lightbox" hidden><img id="rf-lightbox-img" alt=""><div class="rf-lb-pie" id="rf-lightbox-pie"></div><button type="button" class="rf-lb-x" id="rf-lightbox-x">✕</button></div>
+
 <!-- MERMA -->
 <div class="view" id="view-merma">
   <div class="subtabs">
@@ -3473,8 +3577,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v208';
-const APP_UPDATED = '23/10/2026 12:00';
+const APP_VERSION = 'v209';
+const APP_UPDATED = '23/10/2026 15:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3695,7 +3799,7 @@ async function loadPermisos(user){
 }
 
 // Permisos: clave en usuarios/{correo}.permisos de cada opción del menú.
-const PERM_TAB_CLAVE = { diseno:'diseno', mov:'movimientos', pallets:'pallets', productos:'productos', inventario:'inventario', toma_inventario:'toma_inventario',
+const PERM_TAB_CLAVE = { diseno:'diseno', mov:'movimientos', pallets:'pallets', productos:'productos', inventario:'inventario', toma_inventario:'toma_inventario', regfoto:'reg_fotos',
   kardex:'kardex', merma:'merma', retiros:'retiros', campanas:'campanas', rotulos:'rotulos', ventaonline:'venta_online', reportes:'reportes', bitacora:'bitacora' };
 // Opciones con secciones que se permiten una por una: permisos.subs[opción] = ids de las
 // secciones permitidas (sin lista = todas, como antes).
@@ -3974,6 +4078,7 @@ function moduloOf(tipo){
 }
 function tipoLabel(tipo){
   const map = {
+    reg_foto_creado:'Registro fotográfico creado', reg_foto_eliminado:'Registro fotográfico eliminado',
     ingreso:'Entrada de pallet', movimiento:'Movimiento', retiro:'Salida (pallet completo)',
     retiro_campana:'Salida (campaña)', retiro_campana_revertido:'↺ Retiro de campaña revertido', producto_agregado:'Adición de producto', transferencia:'Transferencia entre pallets',
     bloqueo:'Bloqueo de posición', desbloqueo:'Desbloqueo de posición',
@@ -18113,6 +18218,243 @@ inactivityTimer = setInterval(async ()=>{
 }, 30000);
 ['mousemove','keydown','click','scroll','touchstart'].forEach(evt=>{
   document.addEventListener(evt, resetInactivityTimer, {passive:true});
+});
+
+// -------- Registro fotográfico (Productos e inventario) --------
+// Cabecera: participante, fecha de creación, correlativo (RF-00001…), posición y foto de la posición.
+// Detalle: SKU, descripción, cantidad y una o varias fotos del producto. Las fotos se toman con la
+// cámara del navegador (celular o PC) o se eligen de la galería; se achican antes de subir.
+const registrosFotoRef = db.collection('registros_foto');
+const RF_POR_PAGINA = 10, RF_LADO_MAX = 1600;
+let rfPosFotos = [], rfItems = [], rfLista = [], rfLeidos = false, rfPagina = 0, rfSel = null;
+const rfNuevoItem = ()=> ({ sku:'', descripcion:'', cantidad:'', fotos:[] });
+function setRfSubtab(name){
+  ['nuevo','lista'].forEach(n=>{ $('rfsub-'+n).classList.toggle('active', n===name); $('rfsub-panel-'+n).style.display = n===name ? 'block' : 'none'; });
+  if(name === 'lista') rfCargar();
+  else rfPrepararForm();
+}
+$('rfsub-nuevo').addEventListener('click', ()=> setRfSubtab('nuevo'));
+$('rfsub-lista').addEventListener('click', ()=> setRfSubtab('lista'));
+$('tab-regfoto').addEventListener('click', ()=>{ if($('rfsub-panel-nuevo').style.display !== 'none') rfPrepararForm(); else rfCargar(); });
+
+// ---- Fotos: achicar antes de subir ----
+async function rfComprimir(fuente){
+  const img = fuente instanceof Blob ? await createImageBitmap(fuente) : fuente;
+  const w = img.width || img.videoWidth, h = img.height || img.videoHeight, k = Math.min(1, RF_LADO_MAX / Math.max(w, h));
+  const cv = document.createElement('canvas'); cv.width = Math.round(w * k); cv.height = Math.round(h * k);
+  const ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height); ctx.drawImage(img, 0, 0, cv.width, cv.height);
+  const blob = await new Promise(ok=> cv.toBlob(ok, 'image/jpeg', 0.82));
+  return { blob, url: URL.createObjectURL(blob) };
+}
+
+// ---- Cámara del navegador ----
+// Con getUserMedia se ve la cámara en vivo (trasera en celular, webcam en PC) y se pueden tomar varias
+// fotos seguidas; si el navegador no da permiso o no hay cámara, queda el botón "Galería" (en el
+// celular ese botón también ofrece abrir la cámara).
+let camStream = null, camFrontal = false, camAlTomar = null, camMax = 99, camCuenta = 0;
+async function camIniciar(){
+  camDetener();
+  $('cam-msg').textContent = 'Abriendo cámara…';
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ $('cam-msg').textContent = 'Este navegador no permite usar la cámara aquí. Usa "🖼 Galería" para elegir o tomar la foto.'; $('cam-disparar').disabled = true; return; }
+  try{
+    camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: camFrontal ? 'user' : 'environment', width: { ideal: 1920 }, height: { ideal: 1440 } }, audio: false });
+    $('cam-video').srcObject = camStream; $('cam-msg').textContent = ''; $('cam-disparar').disabled = false;
+  }catch(err){
+    console.warn('Cámara:', err);
+    $('cam-msg').textContent = /NotAllowed|Permission/i.test(err.name || err.message) ? 'No se dio permiso para usar la cámara. Actívalo en el candado de la barra de direcciones o usa "🖼 Galería".' : 'No se encontró una cámara. Usa "🖼 Galería" para elegir la foto.';
+    $('cam-disparar').disabled = true;
+  }
+}
+function camDetener(){ if(camStream){ camStream.getTracks().forEach(t=> t.stop()); camStream = null; } $('cam-video').srcObject = null; }
+function abrirCamara(titulo, max, alTomar){
+  camAlTomar = alTomar; camMax = max; camCuenta = 0;
+  $('cam-titulo').textContent = titulo; $('cam-tomadas').innerHTML = '';
+  $('cam-modal').hidden = false; camIniciar();
+}
+function cerrarCamara(){ camDetener(); $('cam-modal').hidden = true; camAlTomar = null; }
+async function camAgregar(tomada){
+  camCuenta++;
+  $('cam-tomadas').insertAdjacentHTML('beforeend', `<img src="${esc(tomada.url)}" alt="">`);
+  if(camAlTomar) camAlTomar(tomada);
+  if(camCuenta >= camMax) cerrarCamara();
+}
+$('cam-disparar').addEventListener('click', async ()=>{
+  const v = $('cam-video'); if(!camStream || !v.videoWidth) return;
+  $('cam-disparar').disabled = true;
+  const vista = v.parentElement; vista.classList.remove('flash'); void vista.offsetWidth; vista.classList.add('flash');
+  try{ await camAgregar(await rfComprimir(v)); }finally{ if(!$('cam-modal').hidden) $('cam-disparar').disabled = false; }
+});
+$('cam-cambiar').addEventListener('click', ()=>{ camFrontal = !camFrontal; camIniciar(); });
+$('cam-cerrar').addEventListener('click', cerrarCamara);
+$('cam-file').addEventListener('change', async e=>{
+  const files = [...e.target.files].filter(f=> /^image\//.test(f.type)); e.target.value = '';
+  for(const f of files){ if($('cam-modal').hidden) break; try{ await camAgregar(await rfComprimir(f)); }catch(err){ console.error(err); showToast(`No se pudo leer ${f.name}`, 'err'); } }
+});
+
+// ---- Formulario: cabecera y detalle ----
+function rfPrepararForm(){
+  $('rf-fecha').value = new Date().toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' });
+  $('rf-participantes').innerHTML = Object.values(participantesMaestroCache || {}).map(p=> `<option value="${esc(p.nombre)}">`).join('');
+  $('rf-posiciones').innerHTML = Object.keys(posiciones || {}).sort().slice(0, 3000).map(k=> `<option value="${esc(k)}">`).join('');
+  $('rf-skus').innerHTML = Object.keys(productos || {}).sort().slice(0, 5000).map(k=> `<option value="${esc(k)}">${esc(productos[k].descripcion || '')}</option>`).join('');
+  if(!rfItems.length) rfItems.push(rfNuevoItem());
+  renderRfForm();
+}
+function rfThumbs(fotos, clave, max){
+  return fotos.map((f, i)=> `<div class="rf-thumb" data-rf-ver="${esc(f.url)}"><img src="${esc(f.url)}" alt=""><button type="button" class="rf-quitar" data-rf-quitar="${esc(clave)}" data-rf-i="${esc(i)}" title="Quitar foto">✕</button></div>`).join('') +
+    (fotos.length < max ? `<button type="button" class="rf-add-foto" data-rf-camara="${esc(clave)}"><span>📷</span>${fotos.length ? 'Otra foto' : 'Tomar foto'}</button>` : '');
+}
+function renderRfForm(){
+  $('rf-pos-fotos').innerHTML = rfThumbs(rfPosFotos, 'pos', 1);
+  $('rf-items').innerHTML = rfItems.map((it, i)=> `<div class="rf-item" data-rf-item="${esc(i)}"><div class="rf-item-cab"><b>Producto ${esc(i + 1)}</b>${rfItems.length > 1 ? `<button type="button" class="rf-del" data-rf-del="${esc(i)}">✕ Quitar</button>` : ''}</div>` +
+    `<div class="rf-item-grid"><div><label>SKU *</label><input type="text" class="upper" data-rf-campo="sku" value="${esc(it.sku)}" list="rf-skus" autocomplete="off" placeholder="Código"></div>` +
+    `<div class="rf-desc"><label>Descripción</label><input type="text" data-rf-campo="descripcion" value="${esc(it.descripcion)}" placeholder="Se completa con el SKU si existe"></div>` +
+    `<div><label>Cantidad *</label><input type="number" min="0" step="1" inputmode="numeric" data-rf-campo="cantidad" value="${esc(it.cantidad)}"></div></div>` +
+    `<span class="rf-lbl">📷 Fotos del producto * <span class="hint">(una o varias)</span></span><div class="rf-fotos">${rfThumbs(it.fotos, 'item:' + i, 20)}</div></div>`).join('');
+  const und = rfItems.reduce((s, it)=> s + (Number(it.cantidad) || 0), 0), nf = rfPosFotos.length + rfItems.reduce((s, it)=> s + it.fotos.length, 0);
+  $('rf-resumen').textContent = `${rfItems.length} producto(s) · ${anFmt(und)} unidad(es) · ${nf} foto(s)`;
+}
+$('rf-items').addEventListener('input', e=>{
+  const campo = e.target.dataset.rfCampo; if(!campo) return;
+  const it = rfItems[Number(e.target.closest('[data-rf-item]').dataset.rfItem)];
+  it[campo] = campo === 'sku' ? e.target.value.toUpperCase() : e.target.value;
+  if(campo === 'sku'){
+    const p = productos[it.sku.trim()];
+    if(p && p.descripcion){ it.descripcion = p.descripcion; e.target.closest('.rf-item').querySelector('[data-rf-campo="descripcion"]').value = p.descripcion; }
+  }
+  if(campo === 'cantidad'){ const und = rfItems.reduce((s, x)=> s + (Number(x.cantidad) || 0), 0); $('rf-resumen').textContent = $('rf-resumen').textContent.replace(/· [\d,.]+ unidad/, `· ${anFmt(und)} unidad`); }
+});
+$('btn-rf-add').addEventListener('click', ()=>{ rfItems.push(rfNuevoItem()); renderRfForm(); const u = [...document.querySelectorAll('#rf-items .rf-item')].pop(); if(u){ u.scrollIntoView({ behavior:'smooth', block:'center' }); u.querySelector('input').focus(); } });
+$('view-regfoto').addEventListener('click', e=>{
+  const cam = e.target.closest('[data-rf-camara]'), qui = e.target.closest('[data-rf-quitar]'), del = e.target.closest('[data-rf-del]'), ver = e.target.closest('[data-rf-ver]');
+  if(cam){
+    const clave = cam.dataset.rfCamara;
+    if(clave === 'pos') abrirCamara('Foto de la posición', 1, f=>{ rfPosFotos = [f]; renderRfForm(); });
+    else { const it = rfItems[Number(clave.split(':')[1])]; abrirCamara(`Fotos del producto ${it.sku || ''}`.trim(), 20 - it.fotos.length, f=>{ it.fotos.push(f); renderRfForm(); }); }
+  }else if(qui){
+    e.stopPropagation();
+    const lista = qui.dataset.rfQuitar === 'pos' ? rfPosFotos : rfItems[Number(qui.dataset.rfQuitar.split(':')[1])].fotos;
+    const [f] = lista.splice(Number(qui.dataset.rfI), 1); if(f && f.blob) URL.revokeObjectURL(f.url);
+    renderRfForm();
+  }else if(del){
+    rfItems[Number(del.dataset.rfDel)].fotos.forEach(f=> URL.revokeObjectURL(f.url));
+    rfItems.splice(Number(del.dataset.rfDel), 1); renderRfForm();
+  }else if(ver) rfVerFoto(ver.dataset.rfVer, ver.dataset.rfPie || '');
+});
+function rfVerFoto(url, pie){ $('rf-lightbox-img').src = url; $('rf-lightbox-pie').textContent = pie; $('rf-lightbox').hidden = false; }
+$('rf-lightbox').addEventListener('click', ()=>{ $('rf-lightbox').hidden = true; $('rf-lightbox-img').src = ''; });
+document.addEventListener('keydown', e=>{ if(e.key === 'Escape'){ if(!$('rf-lightbox').hidden) $('rf-lightbox').click(); else if(!$('cam-modal').hidden) cerrarCamara(); } });
+
+async function generarCorrelativoRegFoto(){
+  const ref = contadoresRef.doc('registros_foto');
+  const n = await db.runTransaction(async tx=>{ const snap = await tx.get(ref); const nuevo = (snap.exists ? (snap.data().ultimo || 0) : 0) + 1; tx.set(ref, { ultimo: nuevo }, { merge:true }); return nuevo; });
+  return 'RF-' + String(n).padStart(5, '0');
+}
+$('btn-rf-guardar').addEventListener('click', async ()=>{
+  const participante = $('rf-participante').value.trim().toUpperCase(), posicion = $('rf-posicion').value.trim().toUpperCase();
+  const items = rfItems.map(it=> Object.assign({}, it, { sku: it.sku.trim().toUpperCase(), descripcion: it.descripcion.trim(), cantidad: Number(it.cantidad) }));
+  let error = '';
+  if(!participante) error = 'Escribe el participante.';
+  else if(!posicion) error = 'Escribe la posición.';
+  else if(!rfPosFotos.length) error = 'Falta la foto de la posición.';
+  else items.forEach((it, i)=>{ if(error) return;
+    if(!it.sku) error = `Producto ${i + 1}: falta el SKU.`;
+    else if(!(it.cantidad > 0)) error = `Producto ${i + 1} (${it.sku}): la cantidad debe ser mayor a 0.`;
+    else if(!it.fotos.length) error = `Producto ${i + 1} (${it.sku}): falta al menos una foto.`; });
+  if(error){ showMsg('rf-msg', 'err', error); return; }
+  $('btn-rf-guardar').disabled = true;
+  const proc = relojProceso('rf-msg');
+  try{
+    const corr = await generarCorrelativoRegFoto();
+    const total = 1 + items.reduce((s, it)=> s + it.fotos.length, 0); let n = 0;
+    const subir = async (f, nombre)=>{
+      proc.paso(`Subiendo fotos ${++n} de ${total}…`);
+      const ref = storage.ref().child(`registros_foto/${corr}/${nombre}.jpg`);
+      await ref.put(f.blob, { contentType:'image/jpeg', cacheControl:'private, max-age=31536000' });
+      return { url: await ref.getDownloadURL(), path: ref.fullPath, tam: f.blob.size };
+    };
+    const fotoPos = await subir(rfPosFotos[0], 'posicion');
+    const detalle = [];
+    for(let i = 0; i < items.length; i++){
+      const fotos = [];
+      for(let j = 0; j < items[i].fotos.length; j++) fotos.push(await subir(items[i].fotos[j], `item${i + 1}_${j + 1}`));
+      detalle.push({ sku: items[i].sku, descripcion: items[i].descripcion, cantidad: items[i].cantidad, fotos });
+    }
+    const ahora = new Date();
+    await registrosFotoRef.doc(corr).set({ correlativo: corr, participante, posicion, foto_posicion: fotoPos, items: detalle,
+      cant_items: detalle.length, unidades: detalle.reduce((s, it)=> s + it.cantidad, 0), skus: detalle.map(it=> it.sku),
+      fecha_creacion: ahora.toISOString(), creado_en: firebase.firestore.FieldValue.serverTimestamp(), usuario: currentUserAlias, estado:'ACTIVO' });
+    await logAccion('reg_foto_creado', {detalle:`${corr} · ${participante} · posición ${posicion} · ${detalle.length} producto(s), ${total} foto(s)`});
+    proc.fin();
+    showToast(`Registro ${corr} guardado.`, 'ok');
+    [...rfPosFotos, ...rfItems.flatMap(it=> it.fotos)].forEach(f=> URL.revokeObjectURL(f.url));
+    rfPosFotos = []; rfItems = []; $('rf-posicion').value = ''; rfLeidos = false; rfSel = corr;
+    showMsg('rf-msg', 'ok', `¡Guardado! Registro ${corr}.`);
+    setRfSubtab('lista');
+  }catch(err){ proc.fin(); console.error(err); showMsg('rf-msg', 'err', 'No se pudo guardar: ' + err.message + '. Tus datos y fotos siguen aquí; vuelve a intentar.'); }
+  finally{ $('btn-rf-guardar').disabled = false; }
+});
+
+// ---- Registros: lista, búsqueda, detalle ----
+async function rfCargar(forzar){
+  if(rfLeidos && !forzar){ renderRfLista(); return; }
+  $('rf-lista').innerHTML = '<div class="hint">⏳ Cargando registros…</div>';
+  try{
+    rfLista = (await registrosFotoRef.get()).docs.map(d=> Object.assign({ id: d.id }, d.data())).sort((a, b)=> b.id.localeCompare(a.id));
+    rfLista.forEach(r=> { r._txt = normalizarTexto([r.id, r.participante, r.posicion, r.usuario, ...(r.items || []).map(it=> `${it.sku} ${it.descripcion}`)].join(' ')); });
+    rfLeidos = true;
+  }catch(err){ console.error(err); $('rf-lista').innerHTML = `<div class="hint">⚠ No se pudieron leer los registros: ${esc(err.message)}</div>`; return; }
+  rfPagina = 0; renderRfLista();
+  if(rfSel) rfAbrir(rfSel);
+}
+function rfFiltrados(){
+  const tk = normalizarTexto($('rf-q').value).split(/\s+/).filter(Boolean), d = $('rf-desde').value, h = $('rf-hasta').value;
+  return rfLista.filter(r=>{ const f = (r.fecha_creacion || '').slice(0, 10);
+    if(d && f < d) return false; if(h && f > h) return false; return tk.every(t=> r._txt.includes(t)); });
+}
+function renderRfLista(){
+  const L = rfFiltrados(), tk = normalizarTexto($('rf-q').value).split(/\s+/).filter(Boolean), pags = Math.max(1, Math.ceil(L.length / RF_POR_PAGINA));
+  rfPagina = Math.min(rfPagina, pags - 1);
+  $('rf-lista').innerHTML = L.length ? L.slice(rfPagina * RF_POR_PAGINA, (rfPagina + 1) * RF_POR_PAGINA).map(r=> `<button type="button" class="rf-fila${r.id === rfSel ? ' sel' : ''}" data-rf-abrir="${esc(r.id)}">` +
+      `${r.foto_posicion ? `<img src="${esc(r.foto_posicion.url)}" alt="" loading="lazy">` : '<span class="sin"></span>'}` +
+      `<span><span class="t">${cmpMarcar(r.id, tk)}</span><span class="s"> · ${esc(new Date(r.fecha_creacion).toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }))}</span><br>` +
+      `<span class="s">📍 ${cmpMarcar(r.posicion || '', tk)} · ${cmpMarcar(r.participante || '', tk)} · ${cmpMarcar(r.usuario || '', tk)}</span></span>` +
+      `<span class="n"><b>${esc(anFmt(r.unidades || 0))} und</b>${esc(r.cant_items || 0)} producto(s)</span></button>`).join('')
+    : `<div class="hint">${rfLista.length ? 'Nada coincide con la búsqueda.' : 'Aún no hay registros. Créalos en "📸 Nuevo registro".'}</div>`;
+  $('rf-pag').innerHTML = L.length > RF_POR_PAGINA ? `<div class="vo-pag"><button type="button" data-rf-pag="-1" ${rfPagina ? '' : 'disabled'}>‹ Anterior</button><span>${esc(rfPagina * RF_POR_PAGINA + 1)}–${esc(Math.min(L.length, (rfPagina + 1) * RF_POR_PAGINA))} de ${esc(L.length)}</span><button type="button" data-rf-pag="1" ${rfPagina < pags - 1 ? '' : 'disabled'}>Siguiente ›</button></div>` : '';
+}
+$('rf-q').addEventListener('input', ()=>{ rfPagina = 0; renderRfLista(); });
+['rf-desde','rf-hasta'].forEach(id=> $(id).addEventListener('change', ()=>{ rfPagina = 0; renderRfLista(); }));
+$('btn-rf-recargar').addEventListener('click', ()=> rfCargar(true));
+$('rf-pag').addEventListener('click', e=>{ const b = e.target.closest('[data-rf-pag]'); if(b && !b.disabled){ rfPagina += Number(b.dataset.rfPag); renderRfLista(); } });
+$('rf-lista').addEventListener('click', e=>{ const b = e.target.closest('[data-rf-abrir]'); if(b) rfAbrir(b.dataset.rfAbrir); });
+function rfAbrir(id){
+  const r = rfLista.find(x=> x.id === id); if(!r) return;
+  rfSel = id; document.querySelectorAll('#rf-lista .rf-fila').forEach(b=> b.classList.toggle('sel', b.dataset.rfAbrir === id));
+  const puede = currentPermisos.admin || currentPermisos.eliminar, box = $('rf-detalle'); box.style.display = 'block';
+  const foto = (f, pie)=> `<div class="rf-thumb" data-rf-ver="${esc(f.url)}" data-rf-pie="${esc(pie)}"><img src="${esc(f.url)}" alt="" loading="lazy"></div>`;
+  box.innerHTML = `<div class="rf-det-cab"><div><span class="hint">Registro fotográfico</span><h2>${esc(r.id)}</h2></div>${puede ? '<button type="button" class="btn btn-ghost btn-sm" id="btn-rf-eliminar" style="color:#8A332A;">🗑 Eliminar</button>' : ''}</div>` +
+    `<div class="rf-det-datos"><div><span>Participante</span><b>${esc(r.participante)}</b></div><div><span>Fecha de creación</span><b>${esc(new Date(r.fecha_creacion).toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }))}</b></div>` +
+    `<div><span>Correlativo</span><b>${esc(r.id)}</b></div><div><span>Posición</span><b>📍 ${esc(r.posicion)}</b></div><div><span>Registrado por</span><b>${esc(r.usuario || '')}</b></div></div>` +
+    `<span class="rf-lbl">📷 Foto de la posición</span><div class="rf-fotos" style="margin-bottom:12px;">${r.foto_posicion ? foto(r.foto_posicion, `Posición ${r.posicion}`).replace('class="rf-thumb"', 'class="rf-thumb" style="width:160px; height:160px;"') : '—'}</div>` +
+    `<table class="rf-det-items"><thead><tr><th>SKU</th><th>Descripción</th><th class="num">Cantidad</th><th>Fotos</th></tr></thead><tbody>` +
+    (r.items || []).map(it=> `<tr><td><b>${esc(it.sku)}</b></td><td>${esc(it.descripcion || '')}</td><td class="num">${esc(anFmt(it.cantidad))}</td><td><div class="rf-fotos">${(it.fotos || []).map(f=> foto(f, `${it.sku} · ${it.descripcion || ''}`)).join('')}</div></td></tr>`).join('') +
+    `</tbody><tfoot><tr><th colspan="2">Total</th><th class="num">${esc(anFmt(r.unidades || 0))}</th><th></th></tr></tfoot></table>`;
+  if(window.matchMedia('(max-width: 1000px)').matches) box.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+$('rf-detalle').addEventListener('click', async e=>{
+  if(!e.target.closest('#btn-rf-eliminar')) return;
+  const r = rfLista.find(x=> x.id === rfSel); if(!r) return;
+  if(!(currentPermisos.admin || currentPermisos.eliminar)){ showToast('No tienes permiso para eliminar.', 'err'); return; }
+  if(!confirm(`¿Eliminar el registro ${r.id}? Se borrarán también todas sus fotos. No se puede deshacer.`)) return;
+  try{
+    const paths = [r.foto_posicion && r.foto_posicion.path, ...(r.items || []).flatMap(it=> (it.fotos || []).map(f=> f.path))].filter(Boolean);
+    await registrosFotoRef.doc(r.id).delete();
+    await Promise.allSettled(paths.map(p=> storage.ref().child(p).delete()));
+    await logAccion('reg_foto_eliminado', {detalle:`${r.id} · posición ${r.posicion} · ${paths.length} foto(s) borrada(s)`});
+    rfLista = rfLista.filter(x=> x.id !== r.id); rfSel = null; $('rf-detalle').style.display = 'none';
+    showToast(`Registro ${r.id} eliminado.`, 'ok'); renderRfLista();
+  }catch(err){ console.error(err); showToast('No se pudo eliminar: ' + err.message, 'err'); }
 });
 
 // -------- Usuarios: lista y permisos a detalle (menú → opción → sección) --------
