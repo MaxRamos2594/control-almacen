@@ -140,7 +140,17 @@
   .rf-ok{background:#e9f8ef; border:2px solid #2e8b57; color:#1d5e3b; border-radius:12px; padding:10px 14px; margin-bottom:10px; font-size:14px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
   .rf-ok[hidden]{display:none;} .rf-ok button{margin-left:auto; border:none; background:#2e8b57; color:#fff; font-weight:800; border-radius:8px; padding:6px 14px; cursor:pointer;}
   .rf-item.completo{border-color:#9fd8b8; background:#f5fcf7;} .rf-item.completo .rf-item-cab b{color:#1f7a4a;}
-  .rf-sku-box{position:relative;}
+  .rf-sku-box{position:relative;} .rf-sku-fila{display:flex; gap:6px;} .rf-sku-fila input{flex:1; min-width:0;}
+  .rf-scan{flex:none; width:48px; min-height:44px; border:2px solid #2b4c6f; background:#eef4fb; color:#2b4c6f; border-radius:8px; font-size:22px; font-weight:800; cursor:pointer;}
+  .rf-falta{border-color:#d9534f !important; box-shadow:0 0 0 3px rgba(217,83,79,.25) !important; background:#fff7f7 !important;}
+  .rf-fotos.rf-falta{border:2px dashed #d9534f; border-radius:12px; padding:4px;}
+  .cam-mira{display:none; position:absolute; inset:18% 8%; border:3px solid rgba(255,255,255,.85); border-radius:12px; pointer-events:none;}
+  .cam-mira i{position:absolute; left:4%; right:4%; top:50%; height:2px; background:#ff2a2a; box-shadow:0 0 10px #ff2a2a; animation:camscan 1.6s ease-in-out infinite;}
+  @keyframes camscan{0%,100%{top:15%} 50%{top:85%}}
+  .cam-modal.escaneando .cam-mira{display:block;} .cam-modal.escaneando #cam-disparar, .cam-modal.escaneando .cam-archivo{display:none;}
+  .rf-lb-nav{position:absolute; top:50%; transform:translateY(-50%); border:none; background:rgba(42,53,66,.85); color:#fff; width:52px; height:72px; font-size:40px; cursor:pointer; border-radius:10px;}
+  .rf-lb-nav.ant{left:10px;} .rf-lb-nav.sig{right:10px;} .rf-lb-nav[hidden]{display:none;}
+  .rf-det-acc{display:flex; gap:6px; flex-wrap:wrap;}
   .rf-sug{position:absolute; left:0; right:0; top:100%; z-index:20; background:#fff; border:1px solid var(--line-strong); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.18); max-height:300px; overflow:auto;}
   .rf-sug[hidden]{display:none;}
   .rf-sug button{display:block; width:100%; text-align:left; border:none; border-bottom:1px solid var(--line); background:#fff; padding:10px 12px; cursor:pointer; font:inherit;}
@@ -168,7 +178,7 @@
   .rf-det-datos{display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:8px; margin-bottom:12px;}
   .rf-det-datos div{background:#f6f8fb; border-radius:8px; padding:8px 10px;} .rf-det-datos span{display:block; font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft);} .rf-det-datos b{font-size:13px;}
   .rf-det-items{width:100%; border-collapse:collapse;} .rf-det-items td, .rf-det-items th{padding:8px 6px; border-bottom:1px solid var(--line); vertical-align:top; text-align:left;}
-  .rf-det-items .rf-fotos .rf-thumb{width:64px; height:64px;}
+  .rf-det-items .rf-fotos .rf-thumb{width:96px; height:96px;}
   .cam-modal{position:fixed; inset:0; background:rgba(10,14,20,.88); z-index:9000; display:flex; align-items:center; justify-content:center; padding:10px;}
   .cam-modal[hidden], .rf-lightbox[hidden]{display:none;}
   .cam-caja{background:#11161d; color:#fff; border-radius:16px; width:min(720px, 100%); max-height:100%; display:flex; flex-direction:column; overflow:hidden;}
@@ -3227,7 +3237,10 @@
         <input type="search" id="rf-q" placeholder="Buscar por correlativo, posición, participante, SKU, descripción o usuario…" autocomplete="off">
         <label>Desde <input type="date" id="rf-desde"></label><label>Hasta <input type="date" id="rf-hasta"></label>
         <button type="button" class="btn btn-ghost btn-sm" id="btn-rf-recargar">↻ Actualizar</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-rf-excel" title="Matriz de lo filtrado: una fila por producto, sin fotos">⬇ Excel</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-rf-pdf" title="Lo filtrado con sus fotos">⬇ PDF con fotos</button>
       </div>
+      <div class="msg" id="rf-exp-msg"></div>
       <div class="rf-lista" id="rf-lista"></div>
       <div id="rf-pag"></div>
     </div>
@@ -3240,7 +3253,7 @@
 <div class="cam-modal" id="cam-modal" hidden>
   <div class="cam-caja">
     <div class="cam-cab"><b id="cam-titulo">Tomar foto</b><button type="button" id="cam-cerrar" class="cam-x">✕ Listo</button></div>
-    <div class="cam-vista"><video id="cam-video" autoplay playsinline muted></video><div class="cam-msg" id="cam-msg"></div></div>
+    <div class="cam-vista"><video id="cam-video" autoplay playsinline muted></video><div class="cam-mira"><i></i></div><div class="cam-msg" id="cam-msg"></div></div>
     <div class="cam-barra">
       <button type="button" id="cam-cambiar" title="Cambiar de cámara">🔄</button>
       <button type="button" id="cam-disparar" class="cam-disparo" title="Tomar foto">📸</button>
@@ -3249,7 +3262,7 @@
     <div class="cam-tomadas" id="cam-tomadas"></div>
   </div>
 </div>
-<div class="rf-lightbox" id="rf-lightbox" hidden><img id="rf-lightbox-img" alt=""><div class="rf-lb-pie" id="rf-lightbox-pie"></div><button type="button" class="rf-lb-x" id="rf-lightbox-x">✕</button></div>
+<div class="rf-lightbox" id="rf-lightbox" hidden><img id="rf-lightbox-img" alt=""><div class="rf-lb-pie" id="rf-lightbox-pie"></div><button type="button" class="rf-lb-x" id="rf-lightbox-x">✕</button><button type="button" class="rf-lb-nav ant" id="rf-lb-ant" aria-label="Foto anterior">‹</button><button type="button" class="rf-lb-nav sig" id="rf-lb-sig" aria-label="Foto siguiente">›</button></div>
 
 <!-- MERMA -->
 <div class="view" id="view-merma">
@@ -3605,8 +3618,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v210';
-const APP_UPDATED = '23/10/2026 17:00';
+const APP_VERSION = 'v211';
+const APP_UPDATED = '24/10/2026 10:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -18300,6 +18313,7 @@ function abrirCamara(titulo, max, alTomar, alCerrar){
   $('cam-modal').hidden = false; camIniciar();
 }
 function cerrarCamara(){
+  clearTimeout(rfEscTimer); $('cam-modal').classList.remove('escaneando');
   camDetener(); $('cam-modal').hidden = true; camAlTomar = null;
   const fn = camAlCerrar; camAlCerrar = null; if(fn) setTimeout(fn, 50);
 }
@@ -18323,6 +18337,63 @@ $('cam-file').addEventListener('change', async e=>{
   for(const f of files){ if($('cam-modal').hidden) break; try{ await camAgregar(await rfComprimir(f)); }catch(err){ console.error(err); showToast(`No se pudo leer ${f.name}`, 'err'); } }
 });
 
+// ---- Escáner de código de barras (al lado del SKU) ----
+// Usa el lector del propio navegador (BarcodeDetector, en Chrome de Android) y, si no existe, la
+// librería ZXing (se descarga solo la primera vez que se usa). Lee EAN, UPC, Code 128, Code 39, QR…
+const RF_ZXING_URL = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';
+let rfZxingCarga = null, rfEscTimer = null;
+function rfCargarZxing(){
+  if(window.ZXing) return Promise.resolve();
+  if(!rfZxingCarga) rfZxingCarga = new Promise((ok, mal)=>{
+    const sc = document.createElement('script'); sc.src = RF_ZXING_URL; sc.onload = ()=> ok();
+    sc.onerror = ()=>{ rfZxingCarga = null; mal(new Error('No se pudo cargar el lector de códigos (revisa el internet)')); };
+    document.head.appendChild(sc);
+  });
+  return rfZxingCarga;
+}
+async function rfLectorCodigos(){
+  if('BarcodeDetector' in window){
+    try{ const f = await BarcodeDetector.getSupportedFormats();
+      if(f && f.length){ const det = new BarcodeDetector({ formats: f }); return async v=>{ const r = await det.detect(v); return r.length ? r[0].rawValue : null; }; } }catch(e){}
+  }
+  await rfCargarZxing();
+  const lector = new ZXing.MultiFormatReader(), pistas = new Map();
+  pistas.set(ZXing.DecodeHintType.TRY_HARDER, true); lector.setHints(pistas);
+  const cv = document.createElement('canvas');
+  return async v=>{
+    const k = Math.min(1, 1000 / v.videoWidth); cv.width = Math.round(v.videoWidth * k); cv.height = Math.round(v.videoHeight * k);
+    cv.getContext('2d').drawImage(v, 0, 0, cv.width, cv.height);
+    try{ return lector.decode(new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(new ZXing.HTMLCanvasElementLuminanceSource(cv)))).getText(); }catch(e){ return null; }
+  };
+}
+async function abrirEscaner(alLeer){
+  camAlTomar = null; camAlCerrar = null; camMax = 99; camCuenta = 0;
+  $('cam-titulo').textContent = '▦ Escanear código de barras'; $('cam-tomadas').innerHTML = '';
+  $('cam-modal').classList.add('escaneando'); $('cam-modal').hidden = false;
+  await camIniciar();
+  if(!camStream) return;
+  let leer;
+  try{ leer = await rfLectorCodigos(); }catch(err){ $('cam-msg').textContent = err.message + '. Escribe el código a mano.'; return; }
+  const ciclo = async ()=>{
+    if($('cam-modal').hidden || !$('cam-modal').classList.contains('escaneando')) return;
+    const v = $('cam-video'); let cod = null;
+    try{ if(v.videoWidth) cod = await leer(v); }catch(e){}
+    if(cod){ if(navigator.vibrate) navigator.vibrate(80); cerrarCamara(); alLeer(String(cod).trim().toUpperCase()); return; }
+    rfEscTimer = setTimeout(ciclo, 200);
+  };
+  ciclo();
+}
+function rfEscanearSku(i){
+  abrirEscaner(cod=>{
+    const it = rfItems[i]; if(!it) return;
+    it.sku = cod; const p = productos[cod];
+    if(p && p.descripcion) it.descripcion = p.descripcion;
+    else showToast(`Código ${cod} leído. No está en Productos: escribe la descripción.`, 'ok');
+    if(it._faltan) it._faltan = rfFaltan(it);
+    renderRfForm(); rfFoco(i, p ? 'cantidad' : 'descripcion');
+  });
+}
+
 // ---- Formulario: cabecera y detalle ----
 // Pensado para operarios en el celular: pasos a la vista, botones grandes y el flujo avanza solo
 // (posición + Enter → cámara de la posición → SKU → cantidad + Enter → cámara del producto →
@@ -18336,6 +18407,23 @@ function rfPrepararForm(){
 }
 const rfVacio = it=> !it.sku.trim() && !String(it.cantidad).trim() && !it.fotos.length;
 const rfCompleto = it=> it.sku.trim() && Number(it.cantidad) > 0 && it.fotos.length;
+// Un producto solo cuenta con SKU, cantidad mayor a 0 y al menos una foto: lo que falte se marca en rojo.
+const rfFaltan = it=> [!it.sku.trim() && 'sku', !(Number(it.cantidad) > 0) && 'cantidad', !it.fotos.length && 'fotos'].filter(Boolean);
+const RF_FALTA_TXT = { sku:'el SKU', cantidad:'la cantidad (mayor a 0)', fotos:'al menos una foto' };
+function rfAvisarIncompleto(i){
+  const it = rfItems[i]; it._faltan = rfFaltan(it); renderRfForm();
+  showMsg('rf-msg', 'err', `Producto ${i + 1}${it.sku ? ' (' + it.sku + ')' : ''}: falta ${it._faltan.map(f=> RF_FALTA_TXT[f]).join(', ')}. No se agrega sin foto.`);
+  const el = document.querySelector(`#rf-items [data-rf-item="${i}"]`); if(el) el.scrollIntoView({ behavior:'smooth', block:'center' });
+  if(navigator.vibrate) navigator.vibrate([60, 40, 60]);
+}
+// Al corregir, la marca roja se quita sola (sin volver a dibujar, para no perder el cursor).
+function rfActualizarMarcas(i){
+  const it = rfItems[i], caja = document.querySelector(`#rf-items [data-rf-item="${i}"]`); if(!it || !it._faltan || !caja) return;
+  it._faltan = rfFaltan(it).filter(f=> it._faltan.includes(f));
+  caja.querySelector('[data-rf-campo="sku"]').classList.toggle('rf-falta', it._faltan.includes('sku'));
+  caja.querySelector('[data-rf-campo="cantidad"]').classList.toggle('rf-falta', it._faltan.includes('cantidad'));
+  caja.querySelector('.rf-fotos').classList.toggle('rf-falta', it._faltan.includes('fotos'));
+}
 function rfThumbs(fotos, clave, max){
   return fotos.map((f, i)=> `<div class="rf-thumb" data-rf-ver="${esc(f.url)}"><img src="${esc(f.url)}" alt=""><button type="button" class="rf-quitar" data-rf-quitar="${esc(clave)}" data-rf-i="${esc(i)}" title="Quitar foto">✕</button></div>`).join('') +
     (fotos.length < max ? `<button type="button" class="rf-add-foto" data-rf-camara="${esc(clave)}"><span>📷</span>${fotos.length ? 'Otra foto' : 'Tomar foto'}</button>` : '');
@@ -18353,15 +18441,16 @@ function rfPasos(){
 function renderRfForm(){
   $('rf-pos-fotos').innerHTML = rfThumbs(rfPosFotos, 'pos', 1);
   $('rf-items').innerHTML = rfItems.map((it, i)=> `<div class="rf-item${rfCompleto(it) ? ' completo' : ''}" data-rf-item="${esc(i)}"><div class="rf-item-cab"><b>${rfCompleto(it) ? '✓ ' : ''}Producto ${esc(i + 1)}</b>${rfItems.length > 1 && !rfVacio(it) ? `<button type="button" class="rf-del" data-rf-del="${esc(i)}">✕ Quitar</button>` : ''}</div>` +
-    `<div class="rf-item-grid"><div class="rf-sku-box"><label>SKU *</label><input type="text" class="upper" data-rf-campo="sku" value="${esc(it.sku)}" autocomplete="off" autocapitalize="characters" enterkeyhint="next" placeholder="Código o descripción"><div class="rf-sug" hidden></div></div>` +
-    `<div class="rf-cant"><label>Cantidad *</label><div class="rf-stepper"><button type="button" data-rf-paso="-1" aria-label="Menos">−</button><input type="number" min="0" step="1" inputmode="numeric" enterkeyhint="go" data-rf-campo="cantidad" value="${esc(it.cantidad)}" placeholder="0"><button type="button" data-rf-paso="1" aria-label="Más">+</button></div></div>` +
+    `<div class="rf-item-grid"><div class="rf-sku-box"><label>SKU *</label><div class="rf-sku-fila"><input type="text" class="upper${(it._faltan || []).includes('sku') ? ' rf-falta' : ''}" data-rf-campo="sku" value="${esc(it.sku)}" autocomplete="off" autocapitalize="characters" enterkeyhint="next" placeholder="Código o descripción">` +
+      `<button type="button" class="rf-scan" data-rf-scan="${esc(i)}" title="Escanear código de barras con la cámara" aria-label="Escanear código de barras">▦</button></div><div class="rf-sug" hidden></div></div>` +
+    `<div class="rf-cant"><label>Cantidad * <span class="hint">(mayor a 0)</span></label><div class="rf-stepper"><button type="button" data-rf-paso="-1" aria-label="Menos">−</button><input type="number" min="1" step="1" inputmode="numeric" enterkeyhint="go" data-rf-campo="cantidad" value="${esc(it.cantidad)}" placeholder="0" class="${(it._faltan || []).includes('cantidad') ? 'rf-falta' : ''}"><button type="button" data-rf-paso="1" aria-label="Más">+</button></div></div>` +
     `<div class="rf-desc"><label>Descripción</label><input type="text" data-rf-campo="descripcion" value="${esc(it.descripcion)}" placeholder="Se completa con el SKU si existe"></div></div>` +
-    `<span class="rf-lbl">📷 Fotos del producto * <span class="hint">(una o varias)</span></span><div class="rf-fotos">${rfThumbs(it.fotos, 'item:' + i, 20)}</div></div>`).join('');
+    `<span class="rf-lbl">📷 Fotos del producto * <span class="hint">(una o varias)</span></span><div class="rf-fotos${(it._faltan || []).includes('fotos') ? ' rf-falta' : ''}">${rfThumbs(it.fotos, 'item:' + i, 20)}</div></div>`).join('');
   rfPasos();
 }
 // Buscador de SKU propio (en el celular el datalist es incómodo): toca una sugerencia y listo.
 function rfSugerencias(inp){
-  const caja = inp.parentElement.querySelector('.rf-sug'), q = normalizarTexto(inp.value);
+  const caja = inp.closest('.rf-sku-box').querySelector('.rf-sug'), q = normalizarTexto(inp.value);
   if(q.length < 2){ caja.hidden = true; return; }
   const L = [];
   for(const [cod, p] of Object.entries(productos || {})){
@@ -18386,9 +18475,10 @@ function rfCamaraPosicion(){
 }
 function rfCamaraItem(i){
   const it = rfItems[i];
-  abrirCamara(`Fotos de ${it.sku || 'producto ' + (i + 1)}`, 20 - it.fotos.length, f=>{ it.fotos.push(f); renderRfForm(); }, ()=>{
+  abrirCamara(`Fotos de ${it.sku || 'producto ' + (i + 1)}`, 20 - it.fotos.length, f=>{ it.fotos.push(f); if(it._faltan) it._faltan = it._faltan.filter(x=> x !== 'fotos'); renderRfForm(); }, ()=>{
     // Producto listo → aparece el siguiente en blanco con el cursor en el SKU.
     if(rfCompleto(it) && i === rfItems.length - 1){ rfItems.push(rfNuevoItem()); renderRfForm(); rfFoco(rfItems.length - 1, 'sku'); }
+    else if(!rfCompleto(it) && !rfVacio(it)) rfAvisarIncompleto(i);
   });
 }
 $('rf-posicion').addEventListener('input', rfPasos);
@@ -18402,26 +18492,37 @@ $('rf-items').addEventListener('input', e=>{
     if(p && p.descripcion){ it.descripcion = p.descripcion; e.target.closest('.rf-item').querySelector('[data-rf-campo="descripcion"]').value = p.descripcion; }
     rfSugerencias(e.target);
   }
+  rfActualizarMarcas(i);
   rfPasos();
 });
 $('rf-items').addEventListener('keydown', e=>{
   const campo = e.target.dataset.rfCampo; if(!campo || e.key !== 'Enter') return;
   e.preventDefault();
   const i = Number(e.target.closest('[data-rf-item]').dataset.rfItem), it = rfItems[i];
-  if(campo === 'sku'){ const primera = e.target.parentElement.querySelector('[data-rf-sug]'); if(primera && !productos[it.sku.trim()]) rfElegirSku(i, primera.dataset.rfSug); else if(it.sku.trim()) { e.target.parentElement.querySelector('.rf-sug').hidden = true; rfFoco(i, 'cantidad'); } }
-  else if(campo === 'cantidad' && Number(it.cantidad) > 0){ e.target.blur(); if(!it.fotos.length) rfCamaraItem(i); }
+  if(campo === 'sku'){ const primera = e.target.closest('.rf-sku-box').querySelector('[data-rf-sug]'); if(primera && !productos[it.sku.trim()]) rfElegirSku(i, primera.dataset.rfSug); else if(it.sku.trim()) { e.target.closest('.rf-sku-box').querySelector('.rf-sug').hidden = true; rfFoco(i, 'cantidad'); } }
+  else if(campo === 'cantidad'){
+    if(!(Number(it.cantidad) > 0)){ it._faltan = ['cantidad']; rfActualizarMarcas(i); showMsg('rf-msg', 'err', `Producto ${i + 1}: la cantidad debe ser mayor a 0.`); return; }
+    e.target.blur(); if(!it.fotos.length) rfCamaraItem(i);
+  }
   else if(campo === 'descripcion') rfFoco(i, 'cantidad');
 });
-$('rf-items').addEventListener('focusout', e=>{ if(e.target.dataset.rfCampo === 'sku') setTimeout(()=>{ const c = e.target.parentElement && e.target.parentElement.querySelector('.rf-sug'); if(c) c.hidden = true; }, 200); });
-$('btn-rf-add').addEventListener('click', ()=>{ if(!rfItems.length || !rfVacio(rfItems[rfItems.length - 1])) rfItems.push(rfNuevoItem()); renderRfForm(); rfFoco(rfItems.length - 1, 'sku'); });
+$('rf-items').addEventListener('focusout', e=>{ if(e.target.dataset.rfCampo === 'sku') setTimeout(()=>{ const c = e.target.closest('.rf-sku-box') && e.target.closest('.rf-sku-box').querySelector('.rf-sug'); if(c) c.hidden = true; }, 200); });
+// "+ Agregar producto" solo si los anteriores están completos (SKU, cantidad > 0 y foto).
+$('btn-rf-add').addEventListener('click', ()=>{
+  const i = rfItems.findIndex(it=> !rfVacio(it) && !rfCompleto(it));
+  if(i >= 0){ rfAvisarIncompleto(i); return; }
+  if(!rfItems.length || !rfVacio(rfItems[rfItems.length - 1])) rfItems.push(rfNuevoItem());
+  renderRfForm(); rfFoco(rfItems.length - 1, 'sku');
+});
 $('view-regfoto').addEventListener('click', e=>{
   const cam = e.target.closest('[data-rf-camara]'), qui = e.target.closest('[data-rf-quitar]'), del = e.target.closest('[data-rf-del]'), ver = e.target.closest('[data-rf-ver]');
-  const sug = e.target.closest('[data-rf-sug]'), paso = e.target.closest('[data-rf-paso]');
-  if(sug){ rfElegirSku(Number(sug.closest('[data-rf-item]').dataset.rfItem), sug.dataset.rfSug); }
+  const sug = e.target.closest('[data-rf-sug]'), paso = e.target.closest('[data-rf-paso]'), scan = e.target.closest('[data-rf-scan]');
+  if(scan) rfEscanearSku(Number(scan.dataset.rfScan));
+  else if(sug){ rfElegirSku(Number(sug.closest('[data-rf-item]').dataset.rfItem), sug.dataset.rfSug); }
   else if(paso){
     const i = Number(paso.closest('[data-rf-item]').dataset.rfItem), it = rfItems[i];
-    it.cantidad = String(Math.max(0, (Number(it.cantidad) || 0) + Number(paso.dataset.rfPaso)));
-    paso.parentElement.querySelector('input').value = it.cantidad; rfPasos();
+    it.cantidad = String(Math.max(1, (Number(it.cantidad) || 0) + Number(paso.dataset.rfPaso)));
+    paso.parentElement.querySelector('input').value = it.cantidad; rfActualizarMarcas(i); rfPasos();
     if(navigator.vibrate) navigator.vibrate(10);
   }else if(cam){
     const clave = cam.dataset.rfCamara;
@@ -18434,11 +18535,132 @@ $('view-regfoto').addEventListener('click', e=>{
   }else if(del){
     rfItems[Number(del.dataset.rfDel)].fotos.forEach(f=> URL.revokeObjectURL(f.url));
     rfItems.splice(Number(del.dataset.rfDel), 1); if(!rfItems.length) rfItems.push(rfNuevoItem()); renderRfForm();
-  }else if(ver) rfVerFoto(ver.dataset.rfVer, ver.dataset.rfPie || '');
+  }else if(ver){
+    const r = ver.closest('#rf-detalle') && rfLista.find(x=> x.id === rfSel);
+    rfVerFoto(ver.dataset.rfVer, ver.dataset.rfPie || '', r ? rfFotosRegistro(r) : rfFotosFormulario());
+  }
 });
-function rfVerFoto(url, pie){ $('rf-lightbox-img').src = url; $('rf-lightbox-pie').textContent = pie; $('rf-lightbox').hidden = false; }
-$('rf-lightbox').addEventListener('click', ()=>{ $('rf-lightbox').hidden = true; $('rf-lightbox-img').src = ''; });
-document.addEventListener('keydown', e=>{ if(e.key === 'Escape'){ if(!$('rf-lightbox').hidden) $('rf-lightbox').click(); else if(!$('cam-modal').hidden) cerrarCamara(); } });
+// ---- Ver fotos en grande: galería con ‹ › (también con flechas del teclado o deslizando el dedo) ----
+let rfGal = [], rfGalI = 0, rfToqueX = null;
+function rfVerFoto(url, pie, lista){
+  rfGal = lista && lista.length ? lista : [{ url, pie }];
+  rfGalI = Math.max(0, rfGal.findIndex(f=> f.url === url));
+  rfPintarGal(); $('rf-lightbox').hidden = false;
+}
+function rfPintarGal(){
+  const f = rfGal[rfGalI]; $('rf-lightbox-img').src = f.url;
+  $('rf-lightbox-pie').textContent = `${f.pie || ''}${rfGal.length > 1 ? `   ·   ${rfGalI + 1} / ${rfGal.length}` : ''}`;
+  $('rf-lb-ant').hidden = $('rf-lb-sig').hidden = rfGal.length < 2;
+}
+function rfMoverGal(d){ if(rfGal.length < 2) return; rfGalI = (rfGalI + d + rfGal.length) % rfGal.length; rfPintarGal(); }
+function rfCerrarGal(){ $('rf-lightbox').hidden = true; $('rf-lightbox-img').src = ''; }
+$('rf-lightbox').addEventListener('click', e=>{
+  if(e.target.closest('#rf-lb-ant')) rfMoverGal(-1);
+  else if(e.target.closest('#rf-lb-sig')) rfMoverGal(1);
+  else if(e.target.id !== 'rf-lightbox-img') rfCerrarGal();
+});
+$('rf-lightbox').addEventListener('touchstart', e=>{ rfToqueX = e.touches[0].clientX; }, { passive:true });
+$('rf-lightbox').addEventListener('touchend', e=>{ if(rfToqueX == null) return; const dx = e.changedTouches[0].clientX - rfToqueX; rfToqueX = null; if(Math.abs(dx) > 50) rfMoverGal(dx < 0 ? 1 : -1); });
+document.addEventListener('keydown', e=>{
+  if(!$('rf-lightbox').hidden){ if(e.key === 'Escape') rfCerrarGal(); else if(e.key === 'ArrowRight') rfMoverGal(1); else if(e.key === 'ArrowLeft') rfMoverGal(-1); }
+  else if(e.key === 'Escape' && !$('cam-modal').hidden) cerrarCamara();
+});
+// Fotos de un registro guardado (posición + productos) y del formulario en curso, en orden.
+const rfFotosRegistro = r=> [...(r.foto_posicion ? [{ url: r.foto_posicion.url, pie: `Posición ${r.posicion}` }] : []),
+  ...(r.items || []).flatMap(it=> (it.fotos || []).map((f, j)=> ({ url: f.url, pie: `${it.sku} · ${it.descripcion || ''} (foto ${j + 1})` })))];
+const rfFotosFormulario = ()=> [...rfPosFotos.map(f=> ({ url: f.url, pie: 'Posición ' + $('rf-posicion').value.trim().toUpperCase() })),
+  ...rfItems.flatMap((it, i)=> it.fotos.map((f, j)=> ({ url: f.url, pie: `Producto ${i + 1} ${it.sku} (foto ${j + 1})` })))];
+
+// ---- Exportar: Excel (matriz, sin fotos) y PDF (con fotos) de lo filtrado ----
+const rfFechaTxt = iso=> iso ? new Date(iso).toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }) : '';
+$('btn-rf-excel').addEventListener('click', ()=>{
+  const L = rfFiltrados();
+  if(!L.length){ showToast('No hay registros para exportar con estos filtros.', 'err'); return; }
+  const filas = [];
+  L.forEach(r=> (r.items || []).forEach((it, k)=> filas.push({ 'Correlativo': r.id, 'Fecha de creación': rfFechaTxt(r.fecha_creacion), 'Participante': r.participante || '',
+    'Posición': r.posicion || '', 'Registrado por': r.usuario || '', 'N° producto': k + 1, 'SKU': it.sku, 'Descripción': it.descripcion || '', 'Cantidad': Number(it.cantidad) || 0, 'N° fotos': (it.fotos || []).length })));
+  const ws = XLSX.utils.json_to_sheet(filas);
+  ws['!cols'] = [12, 18, 18, 10, 16, 11, 16, 44, 10, 9].map(w=> ({ wch: w }));
+  ws['!autofilter'] = { ref: ws['!ref'] };
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Registro fotográfico');
+  XLSX.writeFile(wb, `registro_fotografico_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  logAccion('reg_foto_exportado', {detalle:`Excel: ${L.length} registro(s), ${filas.length} fila(s)`});
+  showToast(`Excel con ${L.length} registro(s) y ${filas.length} producto(s).`, 'ok');
+});
+// Foto → JPEG chico para el PDF (así el archivo no pesa demasiado).
+const rfImgCache = new Map();
+function rfImagenPdf(url){
+  if(!rfImgCache.has(url)) rfImgCache.set(url, (async ()=>{
+    const r = await fetch(url); if(!r.ok) throw new Error('HTTP ' + r.status);
+    const bmp = await createImageBitmap(await r.blob()), k = Math.min(1, 700 / Math.max(bmp.width, bmp.height));
+    const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
+    const ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height); ctx.drawImage(bmp, 0, 0, cv.width, cv.height);
+    return { data: cv.toDataURL('image/jpeg', 0.75), w: cv.width, h: cv.height };
+  })().catch(err=>{ rfImgCache.delete(url); throw err; }));
+  return rfImgCache.get(url);
+}
+function rfDibujarFoto(doc, img, x, y, maxW, maxH){
+  const k = Math.min(maxW / img.w, maxH / img.h), w = img.w * k, h = img.h * k;
+  doc.addImage(img.data, 'JPEG', x + (maxW - w) / 2, y + (maxH - h) / 2, w, h);
+}
+async function rfExportarPdf(lista){
+  if(!lista.length){ showToast('No hay registros para exportar con estos filtros.', 'err'); return; }
+  if(lista.length > 40 && !confirm(`Vas a exportar ${lista.length} registros con todas sus fotos. Puede tardar unos minutos. ¿Continuar?`)) return;
+  const proc = relojProceso('rf-exp-msg');
+  try{
+    const doc = new jspdf.jsPDF({ unit:'pt', format:'a4' }), W = doc.internal.pageSize.getWidth();
+    const total = lista.reduce((s, r)=> s + rfFotosRegistro(r).length, 0); let n = 0;
+    for(let ri = 0; ri < lista.length; ri++){
+      const r = lista[ri];
+      // Las fotos se preparan antes de dibujar la tabla.
+      const imgs = new Map();
+      for(const f of rfFotosRegistro(r)){ proc.paso(`Preparando PDF… foto ${++n} de ${total}`); try{ imgs.set(f.url, await rfImagenPdf(f.url)); }catch(e){ console.warn('Foto no disponible:', f.url, e); } }
+      if(ri) doc.addPage();
+      doc.setFillColor(27, 36, 48); doc.rect(0, 0, W, 54, 'F');
+      doc.setTextColor(255); doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.text(`Registro fotográfico ${r.id}`, 32, 34);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.text(`${ri + 1} de ${lista.length}`, W - 32, 34, { align:'right' });
+      doc.setTextColor(30); doc.setFontSize(10);
+      const datos = [['Participante', r.participante || ''], ['Fecha de creación', rfFechaTxt(r.fecha_creacion)], ['Correlativo', r.id], ['Posición', r.posicion || ''], ['Registrado por', r.usuario || ''],
+        ['Productos', `${(r.items || []).length} · ${anFmt(r.unidades || 0)} unidad(es)`]];
+      datos.forEach(([k, v], i)=>{ doc.setFont('helvetica', 'bold'); doc.text(k + ':', 32, 80 + i * 16); doc.setFont('helvetica', 'normal'); doc.text(String(v), 130, 80 + i * 16); });
+      const fp = r.foto_posicion && imgs.get(r.foto_posicion.url);
+      doc.setDrawColor(200); doc.rect(W - 32 - 200, 66, 200, 150);
+      if(fp) rfDibujarFoto(doc, fp, W - 32 - 200, 66, 200, 150); else doc.text('Sin foto', W - 132, 145, { align:'center' });
+      doc.setFontSize(8); doc.setTextColor(110); doc.text('Foto de la posición', W - 132, 226, { align:'center' }); doc.setTextColor(30);
+      const filas = (r.items || []).map((it, k)=> [String(k + 1), it.sku, it.descripcion || '', anFmt(it.cantidad), '']);
+      doc.autoTable({
+        startY: 238, margin:{ left:32, right:32 }, styles:{ fontSize:9, cellPadding:4, valign:'middle' }, headStyles:{ fillColor:[43, 76, 111] },
+        head: [['#', 'SKU', 'Descripción', 'Cantidad', 'Fotos del producto']], body: filas,
+        foot: [['', 'TOTAL', '', anFmt(r.unidades || 0), '']], footStyles:{ fillColor:[234, 241, 251], textColor:20, fontStyle:'bold' },
+        columnStyles:{ 0:{ cellWidth:22 }, 1:{ cellWidth:70, fontStyle:'bold' }, 3:{ cellWidth:52, halign:'right' }, 4:{ cellWidth:226, minCellHeight:76 } },
+        didDrawCell: d=>{
+          if(d.section !== 'body' || d.column.index !== 4) return;
+          const fotos = ((r.items || [])[d.row.index] || {}).fotos || [];
+          fotos.slice(0, 3).forEach((f, j)=>{ const im = imgs.get(f.url); if(im) rfDibujarFoto(doc, im, d.cell.x + 4 + j * 74, d.cell.y + 4, 70, d.cell.height - 8); });
+          if(fotos.length > 3){ doc.setFontSize(8); doc.text(`+${fotos.length - 3}`, d.cell.x + d.cell.width - 6, d.cell.y + d.cell.height - 6, { align:'right' }); }
+        }
+      });
+      // Si un producto tiene más de 3 fotos, van todas en una página extra.
+      const extra = (r.items || []).filter(it=> (it.fotos || []).length > 3);
+      if(extra.length){
+        doc.addPage(); doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.text(`${r.id} · fotos adicionales`, 32, 40); let y = 60;
+        for(const it of extra){
+          if(y > 700){ doc.addPage(); y = 40; }
+          doc.setFontSize(10); doc.text(`${it.sku} · ${it.descripcion || ''}`, 32, y); y += 8; let x = 32;
+          for(const f of it.fotos){ const im = imgs.get(f.url); if(!im) continue; if(x > W - 150){ x = 32; y += 130; if(y > 700){ doc.addPage(); y = 40; } } rfDibujarFoto(doc, im, x, y, 120, 120); x += 128; }
+          y += 140;
+        }
+      }
+    }
+    const np = doc.internal.getNumberOfPages();
+    for(let p = 1; p <= np; p++){ doc.setPage(p); doc.setFontSize(8); doc.setTextColor(120); doc.text(`Página ${p} de ${np} · Generado ${new Date().toLocaleString('es-PE')} · ${currentUserAlias || ''}`, W / 2, doc.internal.pageSize.getHeight() - 16, { align:'center' }); }
+    doc.save(lista.length === 1 ? `${lista[0].id}.pdf` : `registro_fotografico_${new Date().toISOString().slice(0, 10)}.pdf`);
+    proc.fin(); showMsg('rf-exp-msg', 'ok', `PDF listo: ${lista.length} registro(s) con ${total} foto(s).`);
+    logAccion('reg_foto_exportado', {detalle:`PDF con fotos: ${lista.length} registro(s), ${total} foto(s)`});
+  }catch(err){ proc.fin(); console.error(err); showMsg('rf-exp-msg', 'err', 'No se pudo generar el PDF: ' + err.message); }
+}
+$('btn-rf-pdf').addEventListener('click', ()=> rfExportarPdf(rfFiltrados()));
+
 
 async function generarCorrelativoRegFoto(){
   const ref = contadoresRef.doc('registros_foto');
@@ -18453,11 +18675,9 @@ $('btn-rf-guardar').addEventListener('click', async ()=>{
   else if(!posicion) error = 'Escribe la posición.';
   else if(!rfPosFotos.length) error = 'Falta la foto de la posición.';
   else if(!items.length) error = 'Agrega al menos un producto (SKU, cantidad y foto).';
-  else items.forEach((it, i)=>{ if(error) return;
-    if(!it.sku) error = `Producto ${i + 1}: falta el SKU.`;
-    else if(!(it.cantidad > 0)) error = `Producto ${i + 1} (${it.sku}): la cantidad debe ser mayor a 0.`;
-    else if(!it.fotos.length) error = `Producto ${i + 1} (${it.sku}): falta al menos una foto.`; });
   if(error){ showMsg('rf-msg', 'err', error); return; }
+  const mal = rfItems.findIndex(it=> !rfVacio(it) && !rfCompleto(it));
+  if(mal >= 0){ rfAvisarIncompleto(mal); return; }
   $('btn-rf-guardar').disabled = true;
   const proc = relojProceso('rf-msg');
   try{
@@ -18533,7 +18753,8 @@ function rfAbrir(id){
   rfSel = id; document.querySelectorAll('#rf-lista .rf-fila').forEach(b=> b.classList.toggle('sel', b.dataset.rfAbrir === id));
   const puede = currentPermisos.admin || currentPermisos.eliminar, box = $('rf-detalle'); box.style.display = 'block';
   const foto = (f, pie)=> `<div class="rf-thumb" data-rf-ver="${esc(f.url)}" data-rf-pie="${esc(pie)}"><img src="${esc(f.url)}" alt="" loading="lazy"></div>`;
-  box.innerHTML = `<div class="rf-det-cab"><div><span class="hint">Registro fotográfico</span><h2>${esc(r.id)}</h2></div>${puede ? '<button type="button" class="btn btn-ghost btn-sm" id="btn-rf-eliminar" style="color:#8A332A;">🗑 Eliminar</button>' : ''}</div>` +
+  box.innerHTML = `<div class="rf-det-cab"><div><span class="hint">Registro fotográfico</span><h2>${esc(r.id)}</h2></div><div class="rf-det-acc"><button type="button" class="btn btn-primary btn-sm" id="btn-rf-ver-todas">🖼 Ver las ${esc(rfFotosRegistro(r).length)} fotos</button>` +
+    `<button type="button" class="btn btn-ghost btn-sm" id="btn-rf-pdf-uno">⬇ PDF</button>${puede ? '<button type="button" class="btn btn-ghost btn-sm" id="btn-rf-eliminar" style="color:#8A332A;">🗑 Eliminar</button>' : ''}</div></div>` +
     `<div class="rf-det-datos"><div><span>Participante</span><b>${esc(r.participante)}</b></div><div><span>Fecha de creación</span><b>${esc(new Date(r.fecha_creacion).toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }))}</b></div>` +
     `<div><span>Correlativo</span><b>${esc(r.id)}</b></div><div><span>Posición</span><b>📍 ${esc(r.posicion)}</b></div><div><span>Registrado por</span><b>${esc(r.usuario || '')}</b></div></div>` +
     `<span class="rf-lbl">📷 Foto de la posición</span><div class="rf-fotos" style="margin-bottom:12px;">${r.foto_posicion ? foto(r.foto_posicion, `Posición ${r.posicion}`).replace('class="rf-thumb"', 'class="rf-thumb" style="width:160px; height:160px;"') : '—'}</div>` +
@@ -18543,6 +18764,11 @@ function rfAbrir(id){
   if(window.matchMedia('(max-width: 1000px)').matches) box.scrollIntoView({ behavior:'smooth', block:'start' });
 }
 $('rf-detalle').addEventListener('click', async e=>{
+  if(e.target.closest('#btn-rf-ver-todas') || e.target.closest('#btn-rf-pdf-uno')){
+    const r = rfLista.find(x=> x.id === rfSel); if(!r) return;
+    if(e.target.closest('#btn-rf-pdf-uno')) rfExportarPdf([r]); else { const fs = rfFotosRegistro(r); if(fs.length) rfVerFoto(fs[0].url, fs[0].pie, fs); }
+    return;
+  }
   if(!e.target.closest('#btn-rf-eliminar')) return;
   const r = rfLista.find(x=> x.id === rfSel); if(!r) return;
   if(!(currentPermisos.admin || currentPermisos.eliminar)){ showToast('No tienes permiso para eliminar.', 'err'); return; }
