@@ -25,7 +25,7 @@ const visibles = (page, sel)=> page.evaluate(sel=> [...document.querySelectorAll
   verificar(lista.some(t=> /ADMINISTRADOR.*Administrador/i.test(t)) && lista.some(t=> /YOLANDA .*Venta Online \(parcial\)/.test(t)) && lista.some(t=> /ANTIGUO .*Merma.*Campañas \(PDF\).*Rótulos PDF/.test(t)),
     `Lista de usuarios con lo que ve cada uno: ${lista.join(' | ')}`);
   const arbol = await page.evaluate(()=> [...document.querySelectorAll('#us-arbol .us-grupo')].map(g=> g.querySelector('.us-grupo-cab label').innerText.trim() + ': ' + [...g.querySelectorAll('[data-us-tab]')].map(cb=> cb.dataset.usTab).join(',')));
-  verificar(arbol.join(' | ') === 'ALMACÉN: diseno,mov,pallets | PRODUCTOS E INVENTARIO: productos,inventario,toma_inventario,kardex,merma | CAMPAÑAS: retiros,campanas,rotulos,ventaonline | ADMINISTRACIÓN: reportes,bitacora' ||
+  verificar(arbol.join(' | ') === 'ALMACÉN: diseno,mov,pallets | PRODUCTOS E INVENTARIO: productos,inventario,toma_inventario,regfoto,kardex,merma | CAMPAÑAS: retiros,campanas,rotulos,ventaonline | ADMINISTRACIÓN: reportes,bitacora' ||
     /CAMPAÑAS: retiros,campanas,rotulos,ventaonline/i.test(arbol.join(' | ')), `Permisos ordenados como el menú: ${arbol.join(' | ')}`);
   const nSubs = await page.evaluate(()=> ['campanas','ventaonline','rotulos','merma'].map(t=> t + ':' + document.querySelectorAll(`[data-us-sub-de="${t}"]`).length).join(' '));
   verificar(nSubs === 'campanas:11 ventaonline:2 rotulos:2 merma:5', `Secciones por opción: ${nSubs}`);
