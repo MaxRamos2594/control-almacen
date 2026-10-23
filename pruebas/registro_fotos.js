@@ -37,56 +37,62 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   const cab = await page.evaluate(()=> ({ part: $('rf-participante').value, fecha: $('rf-fecha').value, corr: $('rf-correlativo').value }));
   verificar(cab.part === 'CD VENEZUELA' && /\d/.test(cab.fecha) && /al guardar/.test(cab.corr), `Cabecera: participante ${cab.part}, fecha ${cab.fecha}, correlativo "${cab.corr}"`);
 
-  // Validaciones antes de guardar.
+  verificar(/Posición/.test(await page.textContent('#rf-pasos')), 'Pasos a la vista: Posición · Foto posición · Productos');
   await page.click('#btn-rf-guardar');
   verificar(/posición/.test(await page.textContent('#rf-msg')), 'Pide la posición');
-  await page.fill('#rf-posicion', 'a01');
-  await page.click('#btn-rf-guardar');
-  verificar(/foto de la posición/.test(await page.textContent('#rf-msg')), 'Pide la foto de la posición');
 
-  // Foto de la posición con la cámara (se cierra sola: es una sola foto).
-  await page.click('#rf-pos-fotos .rf-add-foto');
+  // Flujo del operario: posición + Enter → se abre sola la cámara de la posición.
+  await page.fill('#rf-posicion', 'a01'); await page.press('#rf-posicion', 'Enter');
   await page.waitForFunction(()=> !$('cam-modal').hidden && $('cam-video').videoWidth > 0 && !$('cam-disparar').disabled, null, { timeout: 10000 });
   await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_camara.png') });
   await page.click('#cam-disparar');
-  await page.waitForFunction(()=> $('cam-modal').hidden && document.querySelectorAll('#rf-pos-fotos .rf-thumb').length === 1, null, { timeout: 10000 });
-  verificar(await page.evaluate(()=> rfPosFotos[0].blob.type === 'image/jpeg' && rfPosFotos[0].blob.size > 1000 && !$('cam-video').srcObject), 'Foto de la posición tomada con la cámara (JPEG) y la cámara se apaga al terminar');
+  await page.waitForFunction(()=> $('cam-modal').hidden && document.activeElement && document.activeElement.dataset.rfCampo === 'sku', null, { timeout: 10000 });
+  verificar(await page.evaluate(()=> rfPosFotos[0].blob.type === 'image/jpeg' && !$('cam-video').srcObject && /✓Posición/.test($('rf-pasos').innerText.replace(/\s+/g, '')) ), 'Posición + Enter abre la cámara; tras la foto se apaga y el cursor pasa al SKU');
 
-  // Producto 1: SKU conocido completa la descripción; 2 fotos seguidas.
-  await page.fill('#rf-items [data-rf-item="0"] [data-rf-campo="sku"]', 'p100');
-  const desc = await page.inputValue('#rf-items [data-rf-item="0"] [data-rf-campo="descripcion"]');
-  await page.fill('#rf-items [data-rf-item="0"] [data-rf-campo="cantidad"]', '12');
-  await page.click('#btn-rf-guardar');
-  verificar(desc === 'PELOTA ROJA' && /falta al menos una foto/.test(await page.textContent('#rf-msg')), `SKU conocido completa la descripción (${desc}); pide foto del producto`);
-  await page.click('#rf-items [data-rf-item="0"] .rf-add-foto');
-  await page.waitForFunction(()=> !$('cam-disparar').disabled && $('cam-video').videoWidth > 0, null, { timeout: 10000 });
-  await page.click('#cam-disparar'); await page.waitForTimeout(400);
-  await page.click('#cam-disparar');
+  // SKU por descripción: sugerencias para tocar; Enter elige la primera y pasa a Cantidad.
+  await page.keyboard.type('pelo');
+  await page.waitForSelector('#rf-items [data-rf-item="0"] .rf-sug:not([hidden]) [data-rf-sug="P100"]');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(()=> rfItems[0].sku === 'P100' && rfItems[0].descripcion === 'PELOTA ROJA' && document.activeElement.dataset.rfCampo === 'cantidad', null, { timeout: 5000 });
+  verificar(true, 'Buscar "pelo" sugiere P100 · PELOTA ROJA; Enter la elige, completa la descripción y pasa a Cantidad');
+  // Cantidad con + y −, luego Enter → cámara del producto; 2 fotos y "Listo" → aparece el producto 2.
+  for(let k = 0; k < 4; k++) await page.click('#rf-items [data-rf-item="0"] [data-rf-paso="1"]');
+  await page.click('#rf-items [data-rf-item="0"] [data-rf-paso="-1"]');
+  await page.focus('#rf-items [data-rf-item="0"] [data-rf-campo="cantidad"]'); await page.keyboard.press('Enter');
+  await page.waitForFunction(()=> !$('cam-modal').hidden && !$('cam-disparar').disabled && $('cam-video').videoWidth > 0, null, { timeout: 10000 });
+  await page.click('#cam-disparar'); await page.waitForTimeout(300); await page.click('#cam-disparar');
   await page.waitForFunction(()=> document.querySelectorAll('#cam-tomadas img').length === 2, null, { timeout: 10000 });
   await page.click('#cam-cerrar');
-  // Producto 2: SKU nuevo, descripción a mano, foto desde la galería (con texto malicioso para probar el escape).
-  await page.click('#btn-rf-add');
-  await page.fill('#rf-items [data-rf-item="1"] [data-rf-campo="sku"]', 'x-55');
+  await page.waitForFunction(()=> rfItems.length === 2 && document.activeElement.dataset.rfCampo === 'sku' && document.activeElement.closest('[data-rf-item]').dataset.rfItem === '1', null, { timeout: 5000 });
+  verificar(await page.evaluate(()=> rfItems[0].cantidad === '3' && rfItems[0].fotos.length === 2 && !!document.querySelector('#rf-items [data-rf-item="0"].completo')),
+    'Cantidad con + / − (3); Enter abre la cámara; al terminar las fotos aparece el producto 2 con el cursor en el SKU');
+  // Producto 2: SKU nuevo, descripción a mano (texto malicioso para probar el escape), foto desde la galería.
+  await page.keyboard.type('x-55'); await page.keyboard.press('Enter');
   await page.fill('#rf-items [data-rf-item="1"] [data-rf-campo="descripcion"]', 'CAJA ' + MALICIOSO);
-  await page.fill('#rf-items [data-rf-item="1"] [data-rf-campo="cantidad"]', '3');
-  await page.click('#rf-items [data-rf-item="1"] .rf-add-foto');
+  await page.fill('#rf-items [data-rf-item="1"] [data-rf-campo="cantidad"]', '5'); await page.press('#rf-items [data-rf-item="1"] [data-rf-campo="cantidad"]', 'Enter');
+  await page.waitForFunction(()=> !$('cam-modal').hidden, null, { timeout: 10000 });
   const png = path.join(__dirname, 'salida', 'rf_galeria.png');
   fs.writeFileSync(png, Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64'));
   await page.setInputFiles('#cam-file', [png]);
   await page.waitForFunction(()=> rfItems[1].fotos.length === 1, null, { timeout: 10000 });
   await page.click('#cam-cerrar');
-  const res = await page.textContent('#rf-resumen');
-  verificar(/2 producto\(s\) · 15 unidad\(es\) · 4 foto\(s\)/.test(res), `Resumen antes de guardar: ${res}`);
+  await page.waitForFunction(()=> rfItems.length === 3, null, { timeout: 5000 });
+  const res = await page.textContent('#rf-resumen'), listo = await page.evaluate(()=> $('btn-rf-guardar').classList.contains('listo'));
+  verificar(/2 producto\(s\) listo\(s\) · 8 und · 4 foto\(s\)/.test(res) && listo, `Resumen: ${res}; el botón Guardar se pone verde (el producto 3 en blanco no cuenta)`);
   await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_nuevo.png'), fullPage: true });
-
   await page.click('#btn-rf-guardar');
-  await page.waitForFunction(()=> $('rfsub-panel-lista').style.display === 'block' && !!document.querySelector('#rf-detalle .rf-det-items'), null, { timeout: 30000 });
+  await page.waitForFunction(()=> !$('rf-ok').hidden, null, { timeout: 30000 });
+  const tras = await page.evaluate(()=> ({ ok: $('rf-ok').innerText, panel: $('rfsub-panel-nuevo').style.display, pos: $('rf-posicion').value, foco: document.activeElement.id, items: rfItems.length, part: $('rf-participante').value }));
+  verificar(/RF-00001\s+guardado/.test(tras.ok) && tras.panel !== 'none' && tras.pos === '' && tras.foco === 'rf-posicion' && tras.items === 1 && tras.part === 'CD VENEZUELA',
+    `Al guardar se queda listo para el siguiente: "${tras.ok.replace(/\s+/g, ' ')}", cursor en Posición`);
   const bd = await page.evaluate(async ()=> (await registrosFotoRef.doc('RF-00001').get()).data());
-  verificar(bd && bd.participante === 'CD VENEZUELA' && bd.posicion === 'A01' && /^http/.test(bd.foto_posicion.url) && bd.items.length === 2 && bd.items[0].sku === 'P100' && bd.items[0].cantidad === 12 &&
-    bd.items[0].fotos.length === 2 && bd.items[1].sku === 'X-55' && bd.items[1].fotos.length === 1 && bd.unidades === 15 && !!bd.fecha_creacion,
+  verificar(bd && bd.participante === 'CD VENEZUELA' && bd.posicion === 'A01' && /^http/.test(bd.foto_posicion.url) && bd.items.length === 2 && bd.items[0].sku === 'P100' && bd.items[0].cantidad === 3 &&
+    bd.items[0].fotos.length === 2 && bd.items[1].sku === 'X-55' && bd.items[1].fotos.length === 1 && bd.unidades === 8 && !!bd.fecha_creacion,
     'Guardado RF-00001: cabecera, posición con foto y 2 productos con sus fotos en Storage');
+  await page.click('#btn-rf-ver-ultimo');
+  await page.waitForFunction(()=> !!document.querySelector('#rf-detalle .rf-det-items'), null, { timeout: 15000 });
   const det = await page.evaluate(()=> ({ txt: $('rf-detalle').innerText, fotos: document.querySelectorAll('#rf-detalle .rf-thumb img').length, fila: document.querySelectorAll('#rf-lista .rf-fila').length }));
-  verificar(/RF-00001/.test(det.txt) && /A01/.test(det.txt) && /PELOTA ROJA/.test(det.txt) && det.fotos === 4 && det.fila === 1, `Lista y detalle con ${det.fotos} fotos`);
+  verificar(/RF-00001/.test(det.txt) && /A01/.test(det.txt) && /PELOTA ROJA/.test(det.txt) && det.fotos === 4 && det.fila === 1, `"Ver" abre la lista y el detalle con ${det.fotos} fotos`);
   await page.click('#rf-detalle .rf-thumb >> nth=1');
   verificar(await page.evaluate(()=> !$('rf-lightbox').hidden && /^http/.test($('rf-lightbox-img').src)), 'Clic en una foto la abre en grande');
   await page.click('#rf-lightbox');
@@ -100,12 +106,13 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   await page.fill('#rf-q', '');
   verificar(b1 === 'RF-00001' && b2 === 0, 'Buscador por SKU/descripción');
   await page.click('#rfsub-nuevo');
-  verificar(await page.evaluate(()=> $('rf-posicion').value === '' && rfPosFotos.length === 0 && rfItems.length === 1 && !rfItems[0].sku), 'Después de guardar, el formulario queda limpio para el siguiente');
+  verificar(await page.evaluate(()=> $('rf-posicion').value === '' && rfPosFotos.length === 0 && rfItems.length === 1 && !rfItems[0].sku), 'El formulario sigue limpio para el siguiente');
   await page.fill('#rf-posicion', 'B02');
   await page.evaluate(async ()=>{ const r = await rfComprimir(await (await fetch('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==')).blob());
     rfPosFotos = [r]; rfItems[0] = { sku:'P100', descripcion:'PELOTA ROJA', cantidad:'1', fotos:[await rfComprimir(r.blob)] }; renderRfForm(); });
   await page.click('#btn-rf-guardar');
-  await page.waitForFunction(()=> rfLista.some(r=> r.id === 'RF-00002'), null, { timeout: 30000 });
+  await page.waitForFunction(()=> /RF-00002/.test($('rf-ok').innerText), null, { timeout: 30000 });
+  await page.click('#rfsub-lista'); await page.waitForFunction(()=> rfLista.some(r=> r.id === 'RF-00002'), null, { timeout: 15000 });
   verificar(true, 'Segundo registro con correlativo RF-00002');
 
   // Eliminar (borra también las fotos).
@@ -123,7 +130,12 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   await page.click('#rfsub-nuevo'); await page.waitForTimeout(300);
   const ancho = await page.evaluate(()=> document.documentElement.scrollWidth);
   await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_celular.png') });
-  verificar(ancho <= 390, `En celular entra en la pantalla (${ancho}px)`);
+  await page.click('#rf-pos-fotos .rf-add-foto');
+  await page.waitForFunction(()=> !$('cam-modal').hidden && $('cam-video').videoWidth > 0, null, { timeout: 10000 });
+  const camW = await page.evaluate(()=> document.querySelector('.cam-caja').getBoundingClientRect().width);
+  await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_camara_celular.png') });
+  await page.click('#cam-cerrar');
+  verificar(ancho <= 390 && camW >= 389, `En celular entra en la pantalla (${ancho}px) y la cámara ocupa toda la pantalla (${Math.round(camW)}px)`);
 
   if(errores.length) console.log('\nErrores de JavaScript:\n' + [...new Set(errores)].join('\n'));
   console.log(fallas || errores.length ? `\n${fallas} verificación(es) fallida(s).` : '\nTodo correcto.');
