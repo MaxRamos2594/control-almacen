@@ -22,6 +22,7 @@ const LIBRERIAS = {
   'jspdf.plugin.autotable.min.js': 'jspdf-autotable/dist/jspdf.plugin.autotable.min.js',
   'pdf.min.js': 'pdfjs-dist/build/pdf.min.js',
   'pdf.worker.min.js': 'pdfjs-dist/build/pdf.worker.min.js',
+  'index.min.js': '@zxing/library/umd/index.min.js',   // lector de códigos de barras (Registro fotográfico)
 };
 
 // Solo para pruebas: conecta la app a los emuladores justo después de iniciar Firebase.
@@ -34,7 +35,7 @@ function htmlDePrueba(){
     `\nfirebase.firestore().useEmulator('127.0.0.1', 8080);` +
     `\nfirebase.auth().useEmulator('http://127.0.0.1:9099', {disableWarnings:true});` +
     `\nfirebase.storage().useEmulator('127.0.0.1', 9199);`);
-  html = html.replace(/https:\/\/(www\.gstatic\.com\/firebasejs\/[^"']+|cdnjs\.cloudflare\.com\/ajax\/libs\/[^"']+)/g,
+  html = html.replace(/https:\/\/(www\.gstatic\.com\/firebasejs\/[^"']+|cdnjs\.cloudflare\.com\/ajax\/libs\/[^"']+|cdn\.jsdelivr\.net\/npm\/[^"']+)/g,
     m => '/lib/' + path.basename(m));
   return html;
 }

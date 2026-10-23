@@ -36,8 +36,10 @@
     "regfoto": "node registro_fotos.js"
   },
   "devDependencies": {
+    "@zxing/library": "^0.21.3",
     "acorn": "^8.18.0",
     "acorn-walk": "^8.3.5",
+    "bwip-js": "^4.5.1",
     "firebase": "10.13.0",
     "firebase-tools": "^13.35.1",
     "jspdf": "2.5.1",
