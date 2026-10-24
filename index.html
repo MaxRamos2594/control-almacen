@@ -124,8 +124,12 @@
   .rf-add-foto span{font-size:24px;} .rf-add-foto:hover{background:#e6f0fb;}
   .rf-item{border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-bottom:10px; background:#fbfcfd;}
   .rf-item-cab{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;} .rf-item-cab b{font-size:12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.05em;}
-  .rf-item-grid{display:grid; grid-template-columns:minmax(140px, 1fr) 170px minmax(180px, 2fr); gap:8px; margin-bottom:8px;}
-  @media (max-width:640px){ .rf-item-grid{grid-template-columns:1fr 150px;} .rf-item-grid .rf-desc{grid-column:1 / -1;} }
+  /* Detalle del producto: en PC, SKU · Cantidad · Descripción en una fila; en tablet el SKU va solo
+     arriba (ancho completo, con el escáner) y debajo Cantidad + Descripción; en celular, uno debajo del otro. */
+  .rf-item-grid{display:grid; grid-template-columns:minmax(240px, 1.2fr) 200px minmax(200px, 2fr); gap:10px; margin-bottom:10px;}
+  .rf-cant .rf-stepper input{width:100%;}
+  @media (max-width:1100px){ .rf-item-grid{grid-template-columns:210px 1fr;} .rf-item-grid .rf-sku-box{grid-column:1 / -1;} }
+  @media (max-width:560px){ .rf-item-grid{grid-template-columns:1fr;} .rf-item-grid .rf-sku-box, .rf-item-grid .rf-desc{grid-column:auto;} }
   .rf-item-grid label{font-size:11px; font-weight:700; color:var(--ink-soft); display:block; margin-bottom:2px;} .rf-item-grid input{width:100%; box-sizing:border-box;}
   .rf-item .rf-del{border:none; background:none; color:#8A332A; font-weight:700; cursor:pointer; font-size:12px;}
   .rf-acciones{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; position:sticky; bottom:0; background:var(--bg); padding:10px 0; z-index:5;}
@@ -3660,8 +3664,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v212';
-const APP_UPDATED = '24/10/2026 13:00';
+const APP_VERSION = 'v213';
+const APP_UPDATED = '24/10/2026 19:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;

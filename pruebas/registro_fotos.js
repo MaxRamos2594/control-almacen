@@ -233,6 +233,19 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   verificar(quedan === 0 && log === 'reg_foto_confirmado,reg_foto_confirmado,reg_foto_descartado,reg_foto_eliminado,reg_foto_exportado,reg_foto_exportado,reg_foto_iniciado,reg_foto_iniciado,reg_foto_iniciado,reg_foto_iniciado', `Eliminar borra el registro y sus ${paths.length} fotos; bitácora: ${log}`);
   verificar(!(await page.evaluate(()=> window.__xss || (window.__xssOrigen || []).length)), 'El texto malicioso en la descripción no se ejecutó');
 
+  // Tablet (800 px): el SKU va solo arriba, ancho completo; debajo Cantidad y Descripción en la misma fila.
+  const medir = ()=> page.evaluate(()=>{ const it = document.querySelector('#rf-items .rf-item'), r = sel=> it.querySelector(sel).getBoundingClientRect(), ancho = it.getBoundingClientRect().width;
+    return { sku: r('.rf-sku-box').width / ancho, skuInput: Math.round(r('[data-rf-campo="sku"]').width), cant: r('.rf-cant'), desc: r('.rf-desc'), skuAbajo: r('.rf-sku-box').bottom, scroll: document.documentElement.scrollWidth }; });
+  await page.setViewportSize({ width: 800, height: 1280 });
+  await page.evaluate(()=> rfContinuar('RF-00004')); await page.waitForFunction(()=> !$('rf-form').hidden, null, { timeout: 10000 }); await page.waitForTimeout(300);
+  let m = await medir();
+  await page.locator('#rf-items').screenshot({ path: path.join(__dirname, 'salida', 'rf_tablet.png') });
+  verificar(m.sku > 0.9 && m.skuInput > 550 && Math.abs(m.cant.top - m.desc.top) < 2 && m.cant.top >= m.skuAbajo && m.desc.width > m.cant.width && m.scroll <= 800,
+    `Tablet: SKU con su fila completa (${m.skuInput}px) y debajo Cantidad + Descripción`);
+  await page.setViewportSize({ width: 390, height: 860 }); await page.waitForTimeout(300);
+  m = await medir();
+  verificar(m.sku > 0.9 && m.desc.top > m.cant.top && m.cant.width > 300, 'Celular: SKU, Cantidad y Descripción uno debajo del otro, a lo ancho');
+
   // Celular: sin desplazamiento hacia los lados.
   await page.setViewportSize({ width: 390, height: 860 });
   await page.evaluate(()=> rfContinuar('RF-00004')); await page.waitForFunction(()=> !$('rf-form').hidden, null, { timeout: 10000 }); await page.waitForTimeout(300);
