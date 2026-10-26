@@ -232,8 +232,12 @@
   .rf-rep-card:hover{border-color:var(--blue); background:#f6f9fd;} .rf-rep-card span{grid-row:1 / 3; font-size:30px;} .rf-rep-card b{font-size:15px;} .rf-rep-card small{color:var(--ink-soft); font-size:12px;}
   .rf-rep-resumen{width:100%; border-collapse:collapse; margin-bottom:12px;} .rf-rep-resumen th, .rf-rep-resumen td{padding:7px 8px; border-bottom:1px solid var(--line); text-align:left;}
   .rf-rep-resumen tbody tr{cursor:pointer;} .rf-rep-resumen tbody tr:hover{background:#f6f9fd;}
-  .rf-rep-bloque{margin-bottom:14px;} .rf-rep-bloque-cab{display:flex; justify-content:space-between; align-items:center; gap:8px; width:100%; border:none; background:#1b2430; color:#fff; border-radius:10px; padding:8px 12px; cursor:pointer; font:inherit; font-weight:800; font-size:13px; letter-spacing:.04em; margin-bottom:8px;}
-  .rf-rep-bloque-cab span{font-weight:600; opacity:.85; letter-spacing:0;}
+  .rf-rep-scroll{overflow-x:auto;} .rf-rep-fila.abierta{background:#eef4fb;} .rf-rep-flecha{display:inline-block; width:14px; color:var(--blue);}
+  .rf-rep-exp > td{background:#f8fafc; padding:10px 8px 12px;} .rf-rep-sub{margin:12px 0 6px;} .rf-rep-ocultar{margin-top:8px;}
+  @media (max-width:600px){
+    .rf-rep-resumen{table-layout:fixed; font-size:12.5px;} .rf-rep-resumen th, .rf-rep-resumen td{padding:7px 4px; white-space:normal; overflow-wrap:anywhere;}
+    .rf-rep-resumen th{font-size:10.5px;} .rf-rep-exp > td{padding:8px 4px 10px;} .rf-rep-det{min-width:560px; font-size:12.5px;} .rf-rep-det th, .rf-rep-det td{white-space:nowrap; overflow-wrap:normal;} .rf-rep-tiles{grid-template-columns:repeat(auto-fill, minmax(78px, 1fr));}
+  }
   .rf-rep-tiles{display:grid; grid-template-columns:repeat(auto-fill, minmax(92px, 1fr)); gap:8px;}
   .rf-rep-tile{border:1px solid var(--line); border-radius:10px; padding:8px 6px; text-align:center; cursor:pointer; background:#f3f5f8; font:inherit; color:var(--ink);}
   .rf-rep-tile b{display:block; font-family:var(--mono); font-size:14px;} .rf-rep-tile .c{display:block; font-size:20px; font-weight:800; margin:2px 0;} .rf-rep-tile small{font-size:10.5px; color:var(--ink-soft);}
@@ -3317,13 +3321,16 @@
       <div class="msg" id="rf-exp-msg"></div>
     </div>
     <div class="panel" style="margin-bottom:12px;">
-      <h3>📍 Reporte visual por posición</h3>
-      <p class="hint" style="margin-bottom:8px;">Inventarios (cantidad de RF) por posición y bloque, con los filtros de arriba. Toca una posición o un bloque para ver sus RF.</p>
+      <h3>📦 Reporte por bloque</h3>
+      <p class="hint" style="margin-bottom:8px;">Con los filtros de arriba. Toca un bloque para desplegar sus posiciones y sus RF; vuelve a tocarlo (o «▴ Ocultar») para comprimirlo.</p>
       <div id="rf-rep-resumen"></div>
-      <div id="rf-rep-visual"></div>
-      <div id="rf-rep-tabla"></div>
     </div>
-    <div class="panel" id="rf-rep-detalle" style="display:none;"></div>
+    <div class="panel" style="margin-bottom:12px;">
+      <h3>📍 Reporte por posición</h3>
+      <p class="hint" style="margin-bottom:8px;">Posiciones con inventario. Toca una posición para ver sus RF.</p>
+      <div id="rf-rep-tabla"></div>
+      <div id="rf-rep-pag"></div>
+    </div>
   </div>
   <datalist id="rf-participantes"></datalist><datalist id="rf-posiciones"></datalist><datalist id="rf-skus"></datalist>
 </div>
@@ -3710,8 +3717,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v214';
-const APP_UPDATED = '26/10/2026 10:00';
+const APP_VERSION = 'v215';
+const APP_UPDATED = '26/10/2026 12:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -19014,52 +19021,69 @@ function rfFiltradosReporte(){
     if(d && f < d) return false; if(h && f > h) return false; return tk.every(t=> r._txt.includes(t)); });
 }
 const rfBloqueDe = cod=>{ const p = (posiciones || {})[cod]; if(!p) return 'SIN BLOQUE (fuera del layout)'; return p.tipo === 'mezanine' ? 'MEZANINE' : ((bloques[p.bloque_id] || {}).nombre || 'SIN BLOQUE'); };
-let rfRepSel = null;
+// Bloques y posiciones comprimidos: solo se despliega el que se toca.
+let rfRepBloque = null, rfRepPos = null, rfRepPosEnBloque = null, rfRepPag = 0;
+const RF_REP_POR_PAGINA = 10;
+const rfUnd = rs=> rs.reduce((s, r)=> s + (Number(r.unidades) || 0), 0);
+const rfOrdCod = (a, b)=> String(a).localeCompare(String(b), 'es', { numeric:true });
+function rfRepListaRf(L, conPosicion){
+  return L.length ? `<div class="rf-rep-scroll"><table class="rf-rep-det"><thead><tr><th>Correlativo</th><th>Fecha</th>${conPosicion ? '<th>Posición</th>' : ''}<th>Estado</th><th>Generado por</th><th>Productos</th><th class="num">Unidades</th></tr></thead><tbody>` +
+    L.map(r=> `<tr data-rfr-ver="${esc(r.id)}"><td><b>${esc(r.id)}</b></td><td>${esc(rfFechaTxt(r.fecha_creacion))}</td>${conPosicion ? `<td>${esc(r.posicion || '—')}</td>` : ''}<td><span class="rf-est ${esc(rfEstadoReg(r))}">${esc(rfEstadoReg(r))}</span></td><td>${esc(r.usuario || '')}</td>` +
+      `<td>${esc((r.items || []).map(it=> `${it.sku} ×${it.cantidad}`).join(', '))}</td><td class="num">${esc(anFmt(r.unidades || 0))}</td></tr>`).join('') + '</tbody></table></div><p class="hint" style="margin-top:6px;">Toca un RF para verlo con sus fotos.</p>'
+    : '<div class="hint">Sin registros.</div>';
+}
 function renderRfReportes(){
   const L = rfFiltradosReporte(), porPos = new Map();
   L.forEach(r=>{ const k = r.posicion || '—'; if(!porPos.has(k)) porPos.set(k, []); porPos.get(k).push(r); });
-  const ord = (a, b)=> String(a).localeCompare(String(b), 'es', { numeric:true });
-  const codigos = [...new Set([...Object.keys(posiciones || {}), ...porPos.keys()])];
   const grupos = new Map();
-  codigos.forEach(c=>{ const b = rfBloqueDe(c); if(!grupos.has(b)) grupos.set(b, []); grupos.get(b).push(c); });
+  [...new Set([...Object.keys(posiciones || {}), ...porPos.keys()])].forEach(c=>{ const b = rfBloqueDe(c); if(!grupos.has(b)) grupos.set(b, []); grupos.get(b).push(c); });
   const max = Math.max(1, ...[...porPos.values()].map(x=> x.length));
-  const und = rs=> rs.reduce((s, r)=> s + (Number(r.unidades) || 0), 0);
-  const nb = [...grupos.keys()].sort(ord);
-  // Resumen por bloque.
-  $('rf-rep-resumen').innerHTML = `<table class="rf-rep-resumen"><thead><tr><th>Bloque</th><th class="num">Posiciones con inventario</th><th class="num">Inventarios (RF)</th><th class="num">Unidades</th></tr></thead><tbody>` +
-    nb.map(b=>{ const rs = grupos.get(b).flatMap(c=> porPos.get(c) || []); return `<tr data-rfr-bloque="${esc(b)}"><td><b>${esc(b)}</b></td><td class="num">${esc(grupos.get(b).filter(c=> porPos.has(c)).length)} de ${esc(grupos.get(b).length)}</td><td class="num"><b>${esc(rs.length)}</b></td><td class="num">${esc(anFmt(und(rs)))}</td></tr>`; }).join('') +
-    `</tbody><tfoot><tr><th>Total</th><th class="num">${esc(porPos.size)}</th><th class="num">${esc(L.length)}</th><th class="num">${esc(anFmt(und(L)))}</th></tr></tfoot></table>`;
-  // Mapa de calor: cada posición del layout con su cantidad de RF.
-  $('rf-rep-visual').innerHTML = nb.map(b=>{ const cs = grupos.get(b).sort(ord), n = cs.reduce((s, c)=> s + (porPos.get(c) || []).length, 0);
-    return `<div class="rf-rep-bloque"><button type="button" class="rf-rep-bloque-cab" data-rfr-bloque="${esc(b)}">${esc(b)}<span>${esc(n)} RF</span></button><div class="rf-rep-tiles">` +
-      cs.map(c=>{ const rs = porPos.get(c) || [], h = rs.length ? Math.max(1, Math.ceil(rs.length / max * 5)) : 0;
-        return `<button type="button" class="rf-rep-tile h${h}${rfRepSel === 'p:' + c ? ' sel' : ''}" data-rfr-pos="${esc(c)}"${rs.length ? '' : ' disabled'}><b>${esc(c)}</b><span class="c">${esc(rs.length)}</span><small>${rs.length ? `RF · ${esc(anFmt(und(rs)))} und` : 'sin RF'}</small></button>`; }).join('') + `</div></div>`; }).join('') || '<div class="hint">No hay posiciones ni registros.</div>';
-  // Tabla: Posición · Bloque · Inventarios (RF) · Unidades · Último.
-  const filas = [...porPos.entries()].sort((a, b)=> b[1].length - a[1].length || ord(a[0], b[0]));
-  $('rf-rep-tabla').innerHTML = filas.length ? `<table class="rf-rep-resumen"><thead><tr><th>Posición</th><th>Bloque</th><th class="num">Inventarios (RF)</th><th class="num">Unidades</th><th>Último registro</th></tr></thead><tbody>` +
-    filas.map(([c, rs])=> `<tr data-rfr-pos="${esc(c)}"><td><b>📍 ${esc(c)}</b></td><td>${esc(rfBloqueDe(c))}</td><td class="num"><b>${esc(rs.length)}</b></td><td class="num">${esc(anFmt(und(rs)))}</td><td>${esc(rfFechaTxt(rs.map(r=> r.fecha_creacion).sort().pop()))}</td></tr>`).join('') + '</tbody></table>' : '';
-  if(rfRepSel) rfRepDetalle(rfRepSel, false); else $('rf-rep-detalle').style.display = 'none';
+  const nb = [...grupos.keys()].sort(rfOrdCod);
+  if(rfRepBloque && !grupos.has(rfRepBloque)) rfRepBloque = null;
+  // Reporte por bloque: una fila por bloque; el abierto despliega su mapa de posiciones y sus RF.
+  $('rf-rep-resumen').innerHTML = `<div class="rf-rep-scroll"><table class="rf-rep-resumen"><thead><tr><th>Bloque</th><th class="num">Posiciones con inventario</th><th class="num">Inventarios (RF)</th><th class="num">Unidades</th></tr></thead><tbody>` +
+    nb.map(b=>{ const cs = grupos.get(b).sort(rfOrdCod), rs = cs.flatMap(c=> porPos.get(c) || []), abierto = rfRepBloque === b;
+      let trBloque = `<tr class="rf-rep-fila${abierto ? ' abierta' : ''}" data-rfr-bloque="${esc(b)}"><td><b><span class="rf-rep-flecha">${abierto ? '▾' : '▸'}</span> ${esc(b)}</b></td><td class="num">${esc(cs.filter(c=> porPos.has(c)).length)} de ${esc(cs.length)}</td><td class="num"><b>${esc(rs.length)}</b></td><td class="num">${esc(anFmt(rfUnd(rs)))}</td></tr>`;
+      if(abierto){
+        const enPos = rfRepPosEnBloque && cs.includes(rfRepPosEnBloque) ? rfRepPosEnBloque : null;
+        const sub = enPos ? (porPos.get(enPos) || []) : rs;
+        trBloque += `<tr class="rf-rep-exp"><td colspan="4"><div class="rf-rep-tiles">` +
+          cs.map(c=>{ const x = porPos.get(c) || [], h = x.length ? Math.max(1, Math.ceil(x.length / max * 5)) : 0;
+            return `<button type="button" class="rf-rep-tile h${h}${enPos === c ? ' sel' : ''}" data-rfr-tile="${esc(c)}"${x.length ? '' : ' disabled'}><b>${esc(c)}</b><span class="c">${esc(x.length)}</span><small>${x.length ? `RF · ${esc(anFmt(rfUnd(x)))} und` : 'sin RF'}</small></button>`; }).join('') +
+          `</div><div class="rf-rep-sub"><b>${enPos ? `📍 ${esc(enPos)}` : `Todos los RF de ${esc(b)}`}</b> <span class="hint">${esc(sub.length)} RF · ${esc(anFmt(rfUnd(sub)))} unidades${enPos ? ' · toca la posición otra vez para ver todo el bloque' : ''}</span></div>` +
+          rfRepListaRf(sub, !enPos) + `<button type="button" class="btn btn-ghost btn-sm rf-rep-ocultar" data-rfr-ocultar="b">▴ Ocultar ${esc(b)}</button></td></tr>`;
+      }
+      return trBloque; }).join('') +
+    `</tbody><tfoot><tr><th>Total</th><th class="num">${esc(porPos.size)}</th><th class="num">${esc(L.length)}</th><th class="num">${esc(anFmt(rfUnd(L)))}</th></tr></tfoot></table></div>`;
+  // Reporte por posición: Posición · Bloque · Inventarios (RF) · Unidades · Último, de 10 en 10.
+  const filas = [...porPos.entries()].sort((a, b)=> b[1].length - a[1].length || rfOrdCod(a[0], b[0]));
+  if(rfRepPos && !porPos.has(rfRepPos)) rfRepPos = null;
+  const pags = Math.max(1, Math.ceil(filas.length / RF_REP_POR_PAGINA)); rfRepPag = Math.min(rfRepPag, pags - 1);
+  const pagina = filas.slice(rfRepPag * RF_REP_POR_PAGINA, (rfRepPag + 1) * RF_REP_POR_PAGINA);
+  $('rf-rep-tabla').innerHTML = filas.length ? `<div class="rf-rep-scroll"><table class="rf-rep-resumen"><thead><tr><th>Posición</th><th>Bloque</th><th class="num">Inventarios (RF)</th><th class="num">Unidades</th><th>Último registro</th></tr></thead><tbody>` +
+    pagina.map(([c, rs])=>{ const abierta = rfRepPos === c;
+      return `<tr class="rf-rep-fila${abierta ? ' abierta' : ''}" data-rfr-pos="${esc(c)}"><td><b><span class="rf-rep-flecha">${abierta ? '▾' : '▸'}</span> 📍 ${esc(c)}</b></td><td>${esc(rfBloqueDe(c))}</td><td class="num"><b>${esc(rs.length)}</b></td><td class="num">${esc(anFmt(rfUnd(rs)))}</td><td>${esc(rfFechaTxt(rs.map(r=> r.fecha_creacion).sort().pop()))}</td></tr>` +
+        (abierta ? `<tr class="rf-rep-exp"><td colspan="5">${rfRepListaRf(rs, false)}<button type="button" class="btn btn-ghost btn-sm rf-rep-ocultar" data-rfr-ocultar="p">▴ Ocultar ${esc(c)}</button></td></tr>` : ''); }).join('') + '</tbody></table></div>'
+    : '<div class="hint">No hay posiciones con inventario para estos filtros.</div>';
+  $('rf-rep-pag').innerHTML = filas.length > RF_REP_POR_PAGINA ? `<div class="vo-pag"><button type="button" data-rfr-pag="-1" ${rfRepPag ? '' : 'disabled'}>‹ Anterior</button><span id="rf-rep-pag-txt">${esc(rfRepPag * RF_REP_POR_PAGINA + 1)}–${esc(Math.min(filas.length, (rfRepPag + 1) * RF_REP_POR_PAGINA))} de ${esc(filas.length)} · página ${esc(rfRepPag + 1)} de ${esc(pags)}</span><button type="button" data-rfr-pag="1" ${rfRepPag < pags - 1 ? '' : 'disabled'}>Siguiente ›</button></div>` : '';
 }
-function rfRepDetalle(clave, desplazar){
-  rfRepSel = clave;
-  const [tipo, valor] = [clave.slice(0, 1), clave.slice(2)], L = rfFiltradosReporte().filter(r=> tipo === 'p' ? (r.posicion || '—') === valor : rfBloqueDe(r.posicion || '—') === valor);
-  document.querySelectorAll('#rf-rep-visual .rf-rep-tile').forEach(t=> t.classList.toggle('sel', clave === 'p:' + t.dataset.rfrPos));
-  const box = $('rf-rep-detalle'); box.style.display = 'block';
-  box.innerHTML = `<div class="rf-det-cab"><div><span class="hint">${tipo === 'p' ? 'Posición' : 'Bloque'}</span><h2>${tipo === 'p' ? '📍 ' : ''}${esc(valor)}</h2></div><span class="hint">${esc(L.length)} RF · ${esc(anFmt(L.reduce((s, r)=> s + (Number(r.unidades) || 0), 0)))} unidades</span></div>` +
-    (L.length ? `<table class="rf-rep-det"><thead><tr><th>Correlativo</th><th>Fecha</th>${tipo === 'b' ? '<th>Posición</th>' : ''}<th>Estado</th><th>Generado por</th><th>Productos</th><th class="num">Unidades</th></tr></thead><tbody>` +
-      L.map(r=> `<tr data-rfr-ver="${esc(r.id)}"><td><b>${esc(r.id)}</b></td><td>${esc(rfFechaTxt(r.fecha_creacion))}</td>${tipo === 'b' ? `<td>${esc(r.posicion || '—')}</td>` : ''}<td><span class="rf-est ${esc(rfEstadoReg(r))}">${esc(rfEstadoReg(r))}</span></td><td>${esc(r.usuario || '')}</td>` +
-        `<td>${esc((r.items || []).map(it=> `${it.sku} ×${it.cantidad}`).join(', '))}</td><td class="num">${esc(anFmt(r.unidades || 0))}</td></tr>`).join('') + '</tbody></table><p class="hint" style="margin-top:6px;">Toca un RF para verlo con sus fotos.</p>'
-      : '<div class="hint">Sin registros.</div>');
-  if(desplazar) box.scrollIntoView({ behavior:'smooth', block:'start' });
-}
+// Tras comprimir, deja a la vista la fila que se ocultó.
+function rfRepVerFila(sel){ const f = document.querySelector(sel); if(f && f.getBoundingClientRect().top < 0) f.scrollIntoView({ block:'center' }); }
 $('rfsub-panel-reportes').addEventListener('click', e=>{
-  const pos = e.target.closest('[data-rfr-pos]'), blo = e.target.closest('[data-rfr-bloque]'), ver = e.target.closest('[data-rfr-ver]');
-  if(ver){ setRfSubtab('lista'); rfSel = ver.dataset.rfrVer; setTimeout(()=> rfAbrir(ver.dataset.rfrVer), 50); }
-  else if(pos && !pos.disabled) rfRepDetalle('p:' + pos.dataset.rfrPos, true);
-  else if(blo) rfRepDetalle('b:' + blo.dataset.rfrBloque, true);
+  const ver = e.target.closest('[data-rfr-ver]'), tile = e.target.closest('[data-rfr-tile]'), ocultar = e.target.closest('[data-rfr-ocultar]'),
+        pos = e.target.closest('[data-rfr-pos]'), blo = e.target.closest('[data-rfr-bloque]'), pag = e.target.closest('[data-rfr-pag]');
+  if(ver){ setRfSubtab('lista'); rfSel = ver.dataset.rfrVer; setTimeout(()=> rfAbrir(ver.dataset.rfrVer), 50); return; }
+  if(tile){ if(!tile.disabled){ rfRepPosEnBloque = rfRepPosEnBloque === tile.dataset.rfrTile ? null : tile.dataset.rfrTile; renderRfReportes(); } return; }
+  if(ocultar){ const b = rfRepBloque, p = rfRepPos;
+    if(ocultar.dataset.rfrOcultar === 'b'){ rfRepBloque = null; rfRepPosEnBloque = null; renderRfReportes(); rfRepVerFila(`[data-rfr-bloque="${CSS.escape(b)}"]`); }
+    else { rfRepPos = null; renderRfReportes(); rfRepVerFila(`[data-rfr-pos="${CSS.escape(p)}"]`); }
+    return; }
+  if(pag){ if(!pag.disabled){ rfRepPag += Number(pag.dataset.rfrPag); rfRepPos = null; renderRfReportes(); } return; }
+  if(pos){ rfRepPos = rfRepPos === pos.dataset.rfrPos ? null : pos.dataset.rfrPos; renderRfReportes(); return; }
+  if(blo){ rfRepBloque = rfRepBloque === blo.dataset.rfrBloque ? null : blo.dataset.rfrBloque; rfRepPosEnBloque = null; renderRfReportes(); }
 });
-['rfr-estado', 'rfr-desde', 'rfr-hasta'].forEach(id=> $(id).addEventListener('change', renderRfReportes));
-$('rfr-q').addEventListener('input', renderRfReportes);
+['rfr-estado', 'rfr-desde', 'rfr-hasta'].forEach(id=> $(id).addEventListener('change', ()=>{ rfRepPag = 0; renderRfReportes(); }));
+$('rfr-q').addEventListener('input', ()=>{ rfRepPag = 0; renderRfReportes(); });
 $('btn-rfr-recargar').addEventListener('click', ()=> rfCargar(true));
 
 function rfSiReportes(){ if($('rfsub-panel-reportes').style.display !== 'none') renderRfReportes(); }
