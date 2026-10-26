@@ -223,6 +223,23 @@
   .rf-pos-chip.ocupado{background:#eef6ff; border-color:#9cc2e8;} .rf-pos-chip.bloqueada{background:#fbeaea; border-color:#e3b4b4;}
   .rf-pos-chip.sel{background:#2e8b57; color:#fff; border-color:#2e8b57;} .rf-pos-chip.sel small{color:#e8fff1;}
   .rf-est{font-size:10.5px; font-weight:800; padding:1px 8px; border-radius:10px;} .rf-est.BORRADOR{background:#fff1d6; color:#9a5b00;} .rf-est.CONFIRMADO{background:#dcf3e6; color:#1f7a4a;}
+  .rf-aviso-caja{background:#fff; color:var(--ink); border-radius:16px; padding:22px 22px 18px; width:min(420px, 100%); text-align:center; box-shadow:0 20px 50px rgba(0,0,0,.35); border-top:6px solid #f5a623;}
+  .rf-aviso-ico{font-size:40px; line-height:1; margin-bottom:6px;} .rf-aviso-caja b{display:block; font-size:18px; margin-bottom:6px;} .rf-aviso-caja p{margin:0 0 16px; color:var(--ink-soft); font-size:14px; line-height:1.45;}
+  .rf-aviso-caja button{border:none; background:#2b4c6f; color:#fff; font-weight:800; font-size:16px; border-radius:10px; padding:12px 28px; cursor:pointer; min-width:160px;}
+  .rf-chip-borrador.modif{background:#7a3cff;}
+  .rf-rep-export{display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px; margin-top:6px;}
+  .rf-rep-card{display:grid; grid-template-columns:44px 1fr; grid-template-rows:auto auto; column-gap:10px; align-items:center; text-align:left; border:1px solid var(--line); background:#fff; border-radius:12px; padding:12px 14px; cursor:pointer; font:inherit; color:var(--ink);}
+  .rf-rep-card:hover{border-color:var(--blue); background:#f6f9fd;} .rf-rep-card span{grid-row:1 / 3; font-size:30px;} .rf-rep-card b{font-size:15px;} .rf-rep-card small{color:var(--ink-soft); font-size:12px;}
+  .rf-rep-resumen{width:100%; border-collapse:collapse; margin-bottom:12px;} .rf-rep-resumen th, .rf-rep-resumen td{padding:7px 8px; border-bottom:1px solid var(--line); text-align:left;}
+  .rf-rep-resumen tbody tr{cursor:pointer;} .rf-rep-resumen tbody tr:hover{background:#f6f9fd;}
+  .rf-rep-bloque{margin-bottom:14px;} .rf-rep-bloque-cab{display:flex; justify-content:space-between; align-items:center; gap:8px; width:100%; border:none; background:#1b2430; color:#fff; border-radius:10px; padding:8px 12px; cursor:pointer; font:inherit; font-weight:800; font-size:13px; letter-spacing:.04em; margin-bottom:8px;}
+  .rf-rep-bloque-cab span{font-weight:600; opacity:.85; letter-spacing:0;}
+  .rf-rep-tiles{display:grid; grid-template-columns:repeat(auto-fill, minmax(92px, 1fr)); gap:8px;}
+  .rf-rep-tile{border:1px solid var(--line); border-radius:10px; padding:8px 6px; text-align:center; cursor:pointer; background:#f3f5f8; font:inherit; color:var(--ink);}
+  .rf-rep-tile b{display:block; font-family:var(--mono); font-size:14px;} .rf-rep-tile .c{display:block; font-size:20px; font-weight:800; margin:2px 0;} .rf-rep-tile small{font-size:10.5px; color:var(--ink-soft);}
+  .rf-rep-tile.h0{opacity:.55; cursor:default;} .rf-rep-tile.h1{background:#e6f4ec;} .rf-rep-tile.h2{background:#c7ebd5;} .rf-rep-tile.h3{background:#9fdcb7;} .rf-rep-tile.h4{background:#6cc795; color:#0b3d22;} .rf-rep-tile.h5{background:#2e8b57; color:#fff;} .rf-rep-tile.h5 small{color:#e8fff1;}
+  .rf-rep-tile.sel{box-shadow:0 0 0 3px var(--blue);}
+  .rf-rep-det{width:100%; border-collapse:collapse;} .rf-rep-det th, .rf-rep-det td{padding:8px 6px; border-bottom:1px solid var(--line); text-align:left;} .rf-rep-det tbody tr{cursor:pointer;} .rf-rep-det tbody tr:hover{background:#f6f9fd;}
   /* Usuarios y permisos */
   .us-layout{display:grid; grid-template-columns:minmax(240px, 320px) minmax(0, 1fr); gap:14px; align-items:start; max-width:1180px;}
   @media (max-width:820px){ .us-layout{grid-template-columns:1fr;} }
@@ -3236,6 +3253,7 @@
   <div class="subtabs">
     <button class="active" id="rfsub-nuevo">📸 Nuevo registro</button>
     <button id="rfsub-lista">🗂 Registros</button>
+    <button id="rfsub-reportes">📊 Reportes</button>
   </div>
 
   <div id="rfsub-panel-nuevo">
@@ -3276,14 +3294,36 @@
         <input type="search" id="rf-q" placeholder="Buscar por correlativo, posición, participante, SKU, descripción o usuario…" autocomplete="off">
         <label>Desde <input type="date" id="rf-desde"></label><label>Hasta <input type="date" id="rf-hasta"></label>
         <button type="button" class="btn btn-ghost btn-sm" id="btn-rf-recargar">↻ Actualizar</button>
-        <button type="button" class="btn btn-primary btn-sm" id="btn-rf-excel" title="Matriz de lo filtrado: una fila por producto, sin fotos">⬇ Excel</button>
-        <button type="button" class="btn btn-primary btn-sm" id="btn-rf-pdf" title="Lo filtrado con sus fotos">⬇ PDF con fotos</button>
       </div>
-      <div class="msg" id="rf-exp-msg"></div>
       <div class="rf-lista" id="rf-lista"></div>
       <div id="rf-pag"></div>
     </div>
     <div class="panel" id="rf-detalle" style="display:none;"></div>
+  </div>
+
+  <div id="rfsub-panel-reportes" style="display:none;">
+    <div class="panel" style="margin-bottom:12px;">
+      <h3>📊 Reportes</h3>
+      <div class="rf-filtros">
+        <select id="rfr-estado" title="Estado"><option value="CONFIRMADO">✔ Solo confirmados</option><option value="">Todos</option><option value="BORRADOR">📝 Solo borradores</option></select>
+        <input type="search" id="rfr-q" placeholder="Filtrar por correlativo, posición, SKU, descripción o usuario…" autocomplete="off">
+        <label>Desde <input type="date" id="rfr-desde"></label><label>Hasta <input type="date" id="rfr-hasta"></label>
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-rfr-recargar">↻ Actualizar</button>
+      </div>
+      <div class="rf-rep-export">
+        <button type="button" class="rf-rep-card" id="btn-rf-excel"><span>📗</span><b>Excel</b><small>Matriz: una fila por producto (sin fotos)</small></button>
+        <button type="button" class="rf-rep-card" id="btn-rf-pdf"><span>📕</span><b>PDF con fotos</b><small>Cabecera, foto de la posición y productos con sus fotos</small></button>
+      </div>
+      <div class="msg" id="rf-exp-msg"></div>
+    </div>
+    <div class="panel" style="margin-bottom:12px;">
+      <h3>📍 Reporte visual por posición</h3>
+      <p class="hint" style="margin-bottom:8px;">Inventarios (cantidad de RF) por posición y bloque, con los filtros de arriba. Toca una posición o un bloque para ver sus RF.</p>
+      <div id="rf-rep-resumen"></div>
+      <div id="rf-rep-visual"></div>
+      <div id="rf-rep-tabla"></div>
+    </div>
+    <div class="panel" id="rf-rep-detalle" style="display:none;"></div>
   </div>
   <datalist id="rf-participantes"></datalist><datalist id="rf-posiciones"></datalist><datalist id="rf-skus"></datalist>
 </div>
@@ -3306,6 +3346,12 @@
     <div class="cam-cab"><b>📍 Elegir posición del layout</b><button type="button" class="cam-x" id="btn-rf-pos-cerrar">✕ Cerrar</button></div>
     <div class="rf-pos-buscar"><input type="search" id="rf-pos-q" placeholder="Buscar posición (ej. A01)" autocomplete="off" autocapitalize="characters"></div>
     <div class="rf-pos-lista" id="rf-pos-lista"></div>
+  </div>
+</div>
+<div class="cam-modal" id="rf-aviso" hidden>
+  <div class="rf-aviso-caja" role="alertdialog" aria-labelledby="rf-aviso-tit">
+    <div class="rf-aviso-ico">⚠️</div><b id="rf-aviso-tit"></b><p id="rf-aviso-txt"></p>
+    <button type="button" id="btn-rf-aviso-ok">Entendido</button>
   </div>
 </div>
 <div class="rf-lightbox" id="rf-lightbox" hidden><img id="rf-lightbox-img" alt=""><div class="rf-lb-pie" id="rf-lightbox-pie"></div><button type="button" class="rf-lb-x" id="rf-lightbox-x">✕</button><button type="button" class="rf-lb-nav ant" id="rf-lb-ant" aria-label="Foto anterior">‹</button><button type="button" class="rf-lb-nav sig" id="rf-lb-sig" aria-label="Foto siguiente">›</button></div>
@@ -3664,8 +3710,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v213';
-const APP_UPDATED = '24/10/2026 19:30';
+const APP_VERSION = 'v214';
+const APP_UPDATED = '26/10/2026 10:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3890,7 +3936,7 @@ const PERM_TAB_CLAVE = { diseno:'diseno', mov:'movimientos', pallets:'pallets', 
   kardex:'kardex', merma:'merma', retiros:'retiros', campanas:'campanas', rotulos:'rotulos', ventaonline:'venta_online', reportes:'reportes', bitacora:'bitacora' };
 // Opciones con secciones que se permiten una por una: permisos.subs[opción] = ids de las
 // secciones permitidas (sin lista = todas, como antes).
-const PERM_SUB_TABS = ['campanas', 'ventaonline', 'rotulos', 'merma'];
+const PERM_SUB_TABS = ['campanas', 'ventaonline', 'rotulos', 'merma', 'regfoto'];
 const permSubBotones = tab=> [...document.querySelectorAll(`#view-${tab} .subtabs button[id]`)];
 function permTabPermitida(p, tab){
   if(p.admin) return true;
@@ -4167,6 +4213,7 @@ function tipoLabel(tipo){
   const map = {
     reg_foto_creado:'Registro fotográfico creado', reg_foto_eliminado:'Registro fotográfico eliminado', reg_foto_iniciado:'Registro fotográfico iniciado (borrador)',
     reg_foto_confirmado:'Registro fotográfico confirmado', reg_foto_descartado:'Borrador de registro fotográfico descartado', reg_foto_exportado:'Registro fotográfico exportado',
+    reg_foto_reabierto:'Registro fotográfico abierto para modificar', reg_foto_modificado:'Registro fotográfico modificado', reg_foto_modificacion_cancelada:'Modificación de registro fotográfico cancelada',
     ingreso:'Entrada de pallet', movimiento:'Movimiento', retiro:'Salida (pallet completo)',
     retiro_campana:'Salida (campaña)', retiro_campana_revertido:'↺ Retiro de campaña revertido', producto_agregado:'Adición de producto', transferencia:'Transferencia entre pallets',
     bloqueo:'Bloqueo de posición', desbloqueo:'Desbloqueo de posición',
@@ -18317,12 +18364,13 @@ const RF_POR_PAGINA = 10, RF_LADO_MAX = 1600;
 let rfPosFotos = [], rfItems = [], rfLista = [], rfLeidos = false, rfPagina = 0, rfSel = null;
 const rfNuevoItem = ()=> ({ sku:'', descripcion:'', cantidad:'', fotos:[] });
 function setRfSubtab(name){
-  ['nuevo','lista'].forEach(n=>{ $('rfsub-'+n).classList.toggle('active', n===name); $('rfsub-panel-'+n).style.display = n===name ? 'block' : 'none'; });
-  if(name === 'lista') rfCargar();
+  ['nuevo','lista','reportes'].forEach(n=>{ $('rfsub-'+n).classList.toggle('active', n===name); $('rfsub-panel-'+n).style.display = n===name ? 'block' : 'none'; });
+  if(name === 'lista' || name === 'reportes') rfCargar();
   else rfPrepararForm();
 }
 $('rfsub-nuevo').addEventListener('click', ()=> setRfSubtab('nuevo'));
 $('rfsub-lista').addEventListener('click', ()=> setRfSubtab('lista'));
+$('rfsub-reportes').addEventListener('click', ()=> setRfSubtab('reportes'));
 $('tab-regfoto').addEventListener('click', ()=>{ if($('rfsub-panel-nuevo').style.display !== 'none') rfPrepararForm(); else rfCargar(); });
 
 // ---- Fotos: achicar antes de subir ----
@@ -18457,9 +18505,10 @@ const rfFaltan = it=> [!it.sku.trim() && 'sku', !(Number(it.cantidad) > 0) && 'c
 const RF_FALTA_TXT = { sku:'el SKU', cantidad:'la cantidad (mayor a 0)', fotos:'al menos una foto' };
 function rfAvisarIncompleto(i){
   const it = rfItems[i]; it._faltan = rfFaltan(it); renderRfForm();
-  showMsg('rf-msg', 'err', `Producto ${i + 1}${it.sku ? ' (' + it.sku + ')' : ''}: falta ${it._faltan.map(f=> RF_FALTA_TXT[f]).join(', ')}. No se agrega sin foto.`);
+  const txt = `Producto ${i + 1}${it.sku ? ' (' + it.sku + ')' : ''}: falta ${it._faltan.map(f=> RF_FALTA_TXT[f]).join(', ')}. No se agrega sin foto.`;
+  showMsg('rf-msg', 'err', txt);
   const el = document.querySelector(`#rf-items [data-rf-item="${i}"]`); if(el) el.scrollIntoView({ behavior:'smooth', block:'center' });
-  if(navigator.vibrate) navigator.vibrate([60, 40, 60]);
+  rfAviso(`Completa el producto ${i + 1}`, txt, ()=>{ const f = it._faltan[0]; if(f === 'fotos') rfCamaraItem(i); else rfFoco(i, f); });
 }
 // Al corregir, la marca roja se quita sola (sin volver a dibujar, para no perder el cursor).
 function rfActualizarMarcas(i){
@@ -18555,8 +18604,12 @@ $('rf-items').addEventListener('focusout', e=>{ if(e.target.dataset.rfCampo === 
 $('btn-rf-add').addEventListener('click', ()=>{
   const i = rfItems.findIndex(it=> !rfVacio(it) && !rfCompleto(it));
   if(i >= 0){ rfAvisarIncompleto(i); return; }
-  if(!rfItems.length || !rfVacio(rfItems[rfItems.length - 1])) rfItems.push(rfNuevoItem());
-  renderRfForm(); rfFoco(rfItems.length - 1, 'sku');
+  const u = rfItems.length - 1;
+  if(u >= 0 && rfVacio(rfItems[u])){
+    rfAviso(`Registra el producto ${u + 1}`, `Antes de agregar uno nuevo, registra los datos del producto ${u + 1}: SKU, cantidad (mayor a 0) y al menos una foto.`, ()=> rfFoco(u, 'sku'));
+    return;
+  }
+  rfItems.push(rfNuevoItem()); renderRfForm(); rfFoco(rfItems.length - 1, 'sku');
 });
 $('view-regfoto').addEventListener('click', e=>{
   const cam = e.target.closest('[data-rf-camara]'), qui = e.target.closest('[data-rf-quitar]'), del = e.target.closest('[data-rf-del]'), ver = e.target.closest('[data-rf-ver]');
@@ -18611,6 +18664,7 @@ document.addEventListener('keydown', e=>{
   if(!$('rf-lightbox').hidden){ if(e.key === 'Escape') rfCerrarGal(); else if(e.key === 'ArrowRight') rfMoverGal(1); else if(e.key === 'ArrowLeft') rfMoverGal(-1); }
   else if(e.key === 'Escape' && !$('cam-modal').hidden) cerrarCamara();
   else if(e.key === 'Escape' && !$('rf-pos-modal').hidden) $('rf-pos-modal').hidden = true;
+  else if(e.key === 'Escape' && !$('rf-aviso').hidden) rfCerrarAviso();
 });
 // Fotos de un registro guardado (posición + productos) y del formulario en curso, en orden.
 const rfFotosRegistro = r=> [...(r.foto_posicion ? [{ url: r.foto_posicion.url, pie: `Posición ${r.posicion}` }] : []),
@@ -18621,7 +18675,7 @@ const rfFotosFormulario = ()=> [...rfPosFotos.map(f=> ({ url: f.url, pie: 'Posic
 // ---- Exportar: Excel (matriz, sin fotos) y PDF (con fotos) de lo filtrado ----
 const rfFechaTxt = iso=> iso ? new Date(iso).toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }) : '';
 $('btn-rf-excel').addEventListener('click', ()=>{
-  const L = rfFiltrados();
+  const L = rfFiltradosReporte();
   if(!L.length){ showToast('No hay registros para exportar con estos filtros.', 'err'); return; }
   const filas = [];
   L.forEach(r=> (r.items || []).forEach((it, k)=> filas.push({ 'Correlativo': r.id, 'Fecha de creación': rfFechaTxt(r.fecha_creacion), 'Participante': r.participante || '',
@@ -18707,7 +18761,7 @@ async function rfExportarPdf(lista){
     logAccion('reg_foto_exportado', {detalle:`PDF con fotos: ${lista.length} registro(s), ${total} foto(s)`});
   }catch(err){ proc.fin(); console.error(err); showMsg('rf-exp-msg', 'err', 'No se pudo generar el PDF: ' + err.message); }
 }
-$('btn-rf-pdf').addEventListener('click', ()=> rfExportarPdf(rfFiltrados()));
+$('btn-rf-pdf').addEventListener('click', ()=> rfExportarPdf(rfFiltradosReporte()));
 
 
 // ---- Borrador: correlativo al iniciar, autoguardado y confirmación ----
@@ -18730,7 +18784,7 @@ async function rfListarMisBorradores(){
     const L = (await registrosFotoRef.where('estado', '==', 'BORRADOR').get()).docs.map(d=> Object.assign({ id: d.id }, d.data()))
       .filter(r=> r.usuario_email === currentUserEmail).sort((a, b)=> b.id.localeCompare(a.id));
     if(L.length) caja.innerHTML = `<div class="rf-borradores"><b>Tienes ${esc(L.length)} borrador(es) sin confirmar:</b>` + L.map(r=> `<button type="button" data-rf-continuar="${esc(r.id)}">` +
-      `<b style="display:inline; font-size:14px; color:inherit;">✏ Continuar ${esc(r.id)}</b><span>📍 ${esc(r.posicion || 'sin posición')} · ${esc((r.items || []).length)} producto(s) · ${esc(rfFechaTxt(r.actualizado_en || r.fecha_creacion))}</span></button>`).join('') + '</div>';
+      `<b style="display:inline; font-size:14px; color:inherit;">✏ Continuar ${esc(r.id)}${r.modificando ? ' (modificación)' : ''}</b><span>📍 ${esc(r.posicion || 'sin posición')} · ${esc((r.items || []).length)} producto(s) · ${esc(rfFechaTxt(r.actualizado_en || r.fecha_creacion))}</span></button>`).join('') + '</div>';
   }catch(err){ console.warn('Borradores:', err); }
 }
 function rfDatosBorrador(){
@@ -18765,14 +18819,21 @@ async function rfSubirFoto(f){
 function rfNuevaFoto(tomada, nombre){ return Object.assign(tomada, { id: 'f' + (++rfFotoN), nombre, subiendo: false, error: false }); }
 // Solo cambia la miniatura (no vuelve a dibujar todo: el operario no pierde lo que está escribiendo).
 function rfMarcarFoto(f){ const el = document.querySelector(`#view-regfoto [data-rf-fid="${f.id}"]`); if(el){ el.classList.toggle('subiendo', !!f.subiendo); el.classList.toggle('error', !!f.error); } }
-function rfBorrarArchivo(f){ if(f && f.path) storage.ref().child(f.path).delete().catch(err=> console.warn('No se pudo borrar la foto', err)); if(f && f.blob) URL.revokeObjectURL(f.url); }
+function rfBorrarArchivo(f){
+  // En una modificación, las fotos que ya estaban confirmadas se borran recién al confirmar los cambios.
+  if(f && f.path && rfBorrador && rfBorrador.modificando && rfBorrador.originales.has(f.path)){ if(f.blob) URL.revokeObjectURL(f.url); return; }
+  if(f && f.path) storage.ref().child(f.path).delete().catch(err=> console.warn('No se pudo borrar la foto', err)); if(f && f.blob) URL.revokeObjectURL(f.url); }
 function rfLimpiarForm(){
   [...rfPosFotos, ...rfItems.flatMap(it=> it.fotos)].forEach(f=>{ if(f.blob) URL.revokeObjectURL(f.url); });
   rfBorrador = null; rfPosFotos = []; rfItems = []; clearTimeout(rfGuardarTimer);
 }
 function rfCargarEnForm(r){
-  rfBorrador = { id: r.id, fecha_creacion: r.fecha_creacion };
-  $('rf-bar-corr').textContent = r.id; $('rf-correlativo').value = r.id; $('rf-usuario').value = r.usuario || currentUserAlias;
+  rfBorrador = { id: r.id, fecha_creacion: r.fecha_creacion, modificando: !!r.modificando, originales: new Set(r.respaldo ? rfPathsDe(r.respaldo) : []) };
+  $('rf-bar-corr').textContent = r.id;
+  document.querySelector('.rf-chip-borrador').textContent = r.modificando ? '✏ MODIFICANDO' : '📝 BORRADOR';
+  document.querySelector('.rf-chip-borrador').classList.toggle('modif', !!r.modificando);
+  $('btn-rf-descartar').textContent = r.modificando ? '↩ Cancelar cambios' : '🗑 Descartar';
+  $('btn-rf-guardar').textContent = r.modificando ? '✔ Confirmar cambios' : '✔ Confirmar registro'; $('rf-correlativo').value = r.id; $('rf-usuario').value = r.usuario || currentUserAlias;
   $('rf-fecha').value = rfFechaTxt(r.fecha_creacion); $('rf-participante').value = r.participante || 'CD VENEZUELA'; $('rf-posicion').value = r.posicion || '';
   const foto = (f, nombre)=> ({ id: 'f' + (++rfFotoN), url: f.url, remoto: f.url, path: f.path, tam: f.tam, nombre });
   rfPosFotos = r.foto_posicion ? [foto(r.foto_posicion, 'posicion')] : [];
@@ -18805,6 +18866,7 @@ $('btn-rf-iniciar').addEventListener('click', rfIniciar);
 $('rf-mis-borradores').addEventListener('click', e=>{ const b = e.target.closest('[data-rf-continuar]'); if(b) rfContinuar(b.dataset.rfContinuar); });
 $('rf-participante').addEventListener('input', rfAutoguardar);
 $('btn-rf-descartar').addEventListener('click', async ()=>{
+  if(rfBorrador && rfBorrador.modificando){ rfCancelarModificacion(); return; }
   if(!rfBorrador || !confirm(`¿Descartar el borrador ${rfBorrador.id}? Se borrarán sus fotos. No se puede deshacer.`)) return;
   const id = rfBorrador.id;
   try{
@@ -18858,28 +18920,33 @@ $('btn-rf-guardar').addEventListener('click', async ()=>{
   else if(!posiciones[posicion]) error = `La posición ${posicion} no existe en el layout. Elígela de la lista.`;
   else if(!rfPosFotos.length) error = 'Falta la foto de la posición.';
   else if(!rfItems.some(rfCompleto)) error = 'Agrega al menos un producto (SKU, cantidad y foto).';
-  if(error){ showMsg('rf-msg', 'err', error); return; }
+  if(error){ showMsg('rf-msg', 'err', error); rfAviso('Todavía no se puede confirmar', error); return; }
   const mal = rfItems.findIndex(it=> !rfVacio(it) && !rfCompleto(it));
   if(mal >= 0){ rfAvisarIncompleto(mal); return; }
   const todas = [...rfPosFotos, ...rfItems.flatMap(it=> it.fotos)];
-  if(todas.some(f=> f.subiendo)){ showMsg('rf-msg', 'err', 'Espera un momento: todavía se están subiendo fotos.'); return; }
-  if(todas.some(f=> f.error || !f.path)){ showMsg('rf-msg', 'err', 'Hay fotos que no se subieron (marcadas en rojo). Tócalas para reintentar.'); return; }
+  if(todas.some(f=> f.subiendo)){ rfAviso('Espera un momento', 'Todavía se están subiendo fotos. Vuelve a presionar Confirmar en unos segundos.'); return; }
+  if(todas.some(f=> f.error || !f.path)){ rfAviso('Hay fotos sin subir', 'Las fotos marcadas en rojo no se subieron. Tócalas para reintentar y luego confirma.'); return; }
   $('btn-rf-guardar').disabled = true;
   const proc = relojProceso('rf-msg'); proc.paso('Confirmando…');
   try{
     await rfGuardarAhora();
-    const id = rfBorrador.id, ahora = new Date().toISOString(), datos = rfDatosBorrador();
+    const id = rfBorrador.id, ahora = new Date().toISOString(), datos = rfDatosBorrador(), modif = rfBorrador.modificando ? rfBorrador.originales : null;
     // Transacción: solo se confirma si sigue siendo borrador (nadie lo confirmó o borró mientras tanto).
     await db.runTransaction(async tx=>{
       const ref = registrosFotoRef.doc(id), snap = await tx.get(ref);
       if(!snap.exists) throw new Error('el borrador ya no existe');
       if(snap.data().estado !== 'BORRADOR') throw new Error('ya estaba confirmado');
-      tx.update(ref, Object.assign(datos, { estado:'CONFIRMADO', confirmado_por: currentUserAlias, confirmado_por_email: currentUserEmail, confirmado_en: ahora }));
+      const cambios = { estado:'CONFIRMADO', confirmado_por: currentUserAlias, confirmado_por_email: currentUserEmail, confirmado_en: ahora,
+        modificando: firebase.firestore.FieldValue.delete(), respaldo: firebase.firestore.FieldValue.delete() };
+      if(modif) Object.assign(cambios, { modificado_por: currentUserAlias, modificado_en: ahora, modificaciones: firebase.firestore.FieldValue.arrayUnion({ por: currentUserAlias, email: currentUserEmail || '', en: ahora }) });
+      tx.update(ref, Object.assign(datos, cambios));
     });
     const nf = todas.length;
-    await logAccion('reg_foto_confirmado', {detalle:`${id} confirmado · ${participante} · posición ${posicion} · ${datos.items.length} producto(s), ${datos.unidades} und, ${nf} foto(s)`});
+    // Fotos que se quitaron durante la modificación: recién ahora se borran.
+    if(modif){ const finales = new Set(rfPathsDe(datos)); [...modif].filter(p=> !finales.has(p)).forEach(p=> storage.ref().child(p).delete().catch(()=>{})); }
+    await logAccion(modif ? 'reg_foto_modificado' : 'reg_foto_confirmado', {detalle:`${id} ${modif ? 'modificado y confirmado de nuevo' : 'confirmado'} · ${participante} · posición ${posicion} · ${datos.items.length} producto(s), ${datos.unidades} und, ${nf} foto(s)`});
     proc.fin(); $('rf-msg').className = 'msg'; $('rf-msg').textContent = '';
-    $('rf-ok').innerHTML = `✅ <b>${esc(id)}</b> confirmado · posición ${esc(posicion)} · ${esc(datos.items.length)} producto(s) <button type="button" id="btn-rf-ver-ultimo">Ver</button>`;
+    $('rf-ok').innerHTML = `✅ <b>${esc(id)}</b> ${modif ? 'modificado y confirmado' : 'confirmado'} · posición ${esc(posicion)} · ${esc(datos.items.length)} producto(s) <button type="button" id="btn-rf-ver-ultimo">Ver</button>`;
     $('rf-ok').hidden = false;
     rfLimpiarForm(); rfLeidos = false; rfSel = id; rfMostrarInicio();
     window.scrollTo({ top: 0, behavior:'smooth' }); $('btn-rf-iniciar').focus();
@@ -18887,9 +18954,118 @@ $('btn-rf-guardar').addEventListener('click', async ()=>{
   finally{ $('btn-rf-guardar').disabled = false; }
 });
 
+// ---- Aviso emergente (pop up) para el operario ----
+let rfAvisoAlCerrar = null;
+function rfAviso(titulo, texto, alCerrar){
+  $('rf-aviso-tit').textContent = titulo; $('rf-aviso-txt').textContent = texto; rfAvisoAlCerrar = alCerrar || null;
+  $('rf-aviso').hidden = false; setTimeout(()=> $('btn-rf-aviso-ok').focus(), 30);
+  if(navigator.vibrate) navigator.vibrate([60, 40, 60]);
+}
+function rfCerrarAviso(){ $('rf-aviso').hidden = true; const fn = rfAvisoAlCerrar; rfAvisoAlCerrar = null; if(fn) setTimeout(fn, 30); }
+$('btn-rf-aviso-ok').addEventListener('click', rfCerrarAviso);
+$('rf-aviso').addEventListener('click', e=>{ if(e.target.id === 'rf-aviso') rfCerrarAviso(); });
+
+// ---- Modificar un registro ya confirmado ----
+// Vuelve a la pantalla de registro como borrador "en modificación" (guarda un respaldo de lo confirmado).
+// Al confirmar de nuevo queda CONFIRMADO con quién lo modificó; "Cancelar cambios" deja lo que estaba.
+// Las fotos que se quitan no se borran hasta confirmar (por si se cancela).
+async function rfModificar(id){
+  try{
+    if(rfBorrador && rfBorrador.id !== id){ await rfGuardarAhora(); rfLimpiarForm(); }
+    const ref = registrosFotoRef.doc(id), ahora = new Date().toISOString(); let datos = null;
+    await db.runTransaction(async tx=>{
+      const snap = await tx.get(ref); if(!snap.exists) throw new Error('el registro ya no existe');
+      const d = snap.data(); if(rfEstadoReg(d) !== 'CONFIRMADO') throw new Error('no está confirmado (quizá ya lo están modificando)');
+      const respaldo = { estado: d.estado, participante: d.participante || '', posicion: d.posicion || '', foto_posicion: d.foto_posicion || null, items: d.items || [], cant_items: d.cant_items || 0,
+        unidades: d.unidades || 0, skus: d.skus || [], confirmado_por: d.confirmado_por || null, confirmado_por_email: d.confirmado_por_email || null, confirmado_en: d.confirmado_en || null };
+      const cambios = { estado:'BORRADOR', modificando: true, respaldo, reabierto_por: currentUserAlias, reabierto_en: ahora };
+      tx.update(ref, cambios); datos = Object.assign({}, d, cambios);
+    });
+    await logAccion('reg_foto_reabierto', {detalle:`${id} reabierto para modificar`});
+    rfLeidos = false; setRfSubtab('nuevo'); rfCargarEnForm(Object.assign({ id }, datos));
+    showToast(`${id} abierto para modificar. Al terminar, confirma de nuevo.`, 'ok');
+  }catch(err){ console.error(err); showToast('No se pudo modificar: ' + err.message, 'err'); }
+}
+const rfPathsDe = d=> [d.foto_posicion && d.foto_posicion.path, ...(d.items || []).flatMap(it=> (it.fotos || []).map(f=> f.path))].filter(Boolean);
+async function rfCancelarModificacion(){
+  if(!rfBorrador || !confirm(`¿Cancelar los cambios de ${rfBorrador.id}? Queda como estaba confirmado.`)) return;
+  const id = rfBorrador.id;
+  try{
+    clearTimeout(rfGuardarTimer); await rfGuardando;
+    const ref = registrosFotoRef.doc(id); let nuevas = [];
+    await db.runTransaction(async tx=>{
+      const snap = await tx.get(ref); if(!snap.exists) throw new Error('el registro ya no existe');
+      const d = snap.data(), res = d.respaldo; if(!res) throw new Error('no hay respaldo');
+      const originales = new Set(rfPathsDe(res));
+      nuevas = [...new Set([...rfPathsDe(d), ...[...rfPosFotos, ...rfItems.flatMap(it=> it.fotos)].map(f=> f.path).filter(Boolean)])].filter(p=> !originales.has(p));
+      tx.update(ref, Object.assign({}, res, { modificando: firebase.firestore.FieldValue.delete(), respaldo: firebase.firestore.FieldValue.delete(), actualizado_en: new Date().toISOString() }));
+    });
+    nuevas.forEach(p=> storage.ref().child(p).delete().catch(()=>{}));
+    await logAccion('reg_foto_modificacion_cancelada', {detalle:`${id}: modificación cancelada (queda como estaba)`});
+    rfLimpiarForm(); rfLeidos = false; rfMostrarInicio(); showToast(`Cambios de ${id} cancelados.`, 'ok');
+  }catch(err){ console.error(err); showToast('No se pudo cancelar: ' + err.message, 'err'); }
+}
+
+// ---- Reportes: Excel, PDF y reporte visual por posición ----
+function rfFiltradosReporte(){
+  const tk = normalizarTexto($('rfr-q').value).split(/\s+/).filter(Boolean), d = $('rfr-desde').value, h = $('rfr-hasta').value, est = $('rfr-estado').value;
+  return rfLista.filter(r=>{ const f = (r.fecha_creacion || '').slice(0, 10);
+    if(est && rfEstadoReg(r) !== est) return false;
+    if(d && f < d) return false; if(h && f > h) return false; return tk.every(t=> r._txt.includes(t)); });
+}
+const rfBloqueDe = cod=>{ const p = (posiciones || {})[cod]; if(!p) return 'SIN BLOQUE (fuera del layout)'; return p.tipo === 'mezanine' ? 'MEZANINE' : ((bloques[p.bloque_id] || {}).nombre || 'SIN BLOQUE'); };
+let rfRepSel = null;
+function renderRfReportes(){
+  const L = rfFiltradosReporte(), porPos = new Map();
+  L.forEach(r=>{ const k = r.posicion || '—'; if(!porPos.has(k)) porPos.set(k, []); porPos.get(k).push(r); });
+  const ord = (a, b)=> String(a).localeCompare(String(b), 'es', { numeric:true });
+  const codigos = [...new Set([...Object.keys(posiciones || {}), ...porPos.keys()])];
+  const grupos = new Map();
+  codigos.forEach(c=>{ const b = rfBloqueDe(c); if(!grupos.has(b)) grupos.set(b, []); grupos.get(b).push(c); });
+  const max = Math.max(1, ...[...porPos.values()].map(x=> x.length));
+  const und = rs=> rs.reduce((s, r)=> s + (Number(r.unidades) || 0), 0);
+  const nb = [...grupos.keys()].sort(ord);
+  // Resumen por bloque.
+  $('rf-rep-resumen').innerHTML = `<table class="rf-rep-resumen"><thead><tr><th>Bloque</th><th class="num">Posiciones con inventario</th><th class="num">Inventarios (RF)</th><th class="num">Unidades</th></tr></thead><tbody>` +
+    nb.map(b=>{ const rs = grupos.get(b).flatMap(c=> porPos.get(c) || []); return `<tr data-rfr-bloque="${esc(b)}"><td><b>${esc(b)}</b></td><td class="num">${esc(grupos.get(b).filter(c=> porPos.has(c)).length)} de ${esc(grupos.get(b).length)}</td><td class="num"><b>${esc(rs.length)}</b></td><td class="num">${esc(anFmt(und(rs)))}</td></tr>`; }).join('') +
+    `</tbody><tfoot><tr><th>Total</th><th class="num">${esc(porPos.size)}</th><th class="num">${esc(L.length)}</th><th class="num">${esc(anFmt(und(L)))}</th></tr></tfoot></table>`;
+  // Mapa de calor: cada posición del layout con su cantidad de RF.
+  $('rf-rep-visual').innerHTML = nb.map(b=>{ const cs = grupos.get(b).sort(ord), n = cs.reduce((s, c)=> s + (porPos.get(c) || []).length, 0);
+    return `<div class="rf-rep-bloque"><button type="button" class="rf-rep-bloque-cab" data-rfr-bloque="${esc(b)}">${esc(b)}<span>${esc(n)} RF</span></button><div class="rf-rep-tiles">` +
+      cs.map(c=>{ const rs = porPos.get(c) || [], h = rs.length ? Math.max(1, Math.ceil(rs.length / max * 5)) : 0;
+        return `<button type="button" class="rf-rep-tile h${h}${rfRepSel === 'p:' + c ? ' sel' : ''}" data-rfr-pos="${esc(c)}"${rs.length ? '' : ' disabled'}><b>${esc(c)}</b><span class="c">${esc(rs.length)}</span><small>${rs.length ? `RF · ${esc(anFmt(und(rs)))} und` : 'sin RF'}</small></button>`; }).join('') + `</div></div>`; }).join('') || '<div class="hint">No hay posiciones ni registros.</div>';
+  // Tabla: Posición · Bloque · Inventarios (RF) · Unidades · Último.
+  const filas = [...porPos.entries()].sort((a, b)=> b[1].length - a[1].length || ord(a[0], b[0]));
+  $('rf-rep-tabla').innerHTML = filas.length ? `<table class="rf-rep-resumen"><thead><tr><th>Posición</th><th>Bloque</th><th class="num">Inventarios (RF)</th><th class="num">Unidades</th><th>Último registro</th></tr></thead><tbody>` +
+    filas.map(([c, rs])=> `<tr data-rfr-pos="${esc(c)}"><td><b>📍 ${esc(c)}</b></td><td>${esc(rfBloqueDe(c))}</td><td class="num"><b>${esc(rs.length)}</b></td><td class="num">${esc(anFmt(und(rs)))}</td><td>${esc(rfFechaTxt(rs.map(r=> r.fecha_creacion).sort().pop()))}</td></tr>`).join('') + '</tbody></table>' : '';
+  if(rfRepSel) rfRepDetalle(rfRepSel, false); else $('rf-rep-detalle').style.display = 'none';
+}
+function rfRepDetalle(clave, desplazar){
+  rfRepSel = clave;
+  const [tipo, valor] = [clave.slice(0, 1), clave.slice(2)], L = rfFiltradosReporte().filter(r=> tipo === 'p' ? (r.posicion || '—') === valor : rfBloqueDe(r.posicion || '—') === valor);
+  document.querySelectorAll('#rf-rep-visual .rf-rep-tile').forEach(t=> t.classList.toggle('sel', clave === 'p:' + t.dataset.rfrPos));
+  const box = $('rf-rep-detalle'); box.style.display = 'block';
+  box.innerHTML = `<div class="rf-det-cab"><div><span class="hint">${tipo === 'p' ? 'Posición' : 'Bloque'}</span><h2>${tipo === 'p' ? '📍 ' : ''}${esc(valor)}</h2></div><span class="hint">${esc(L.length)} RF · ${esc(anFmt(L.reduce((s, r)=> s + (Number(r.unidades) || 0), 0)))} unidades</span></div>` +
+    (L.length ? `<table class="rf-rep-det"><thead><tr><th>Correlativo</th><th>Fecha</th>${tipo === 'b' ? '<th>Posición</th>' : ''}<th>Estado</th><th>Generado por</th><th>Productos</th><th class="num">Unidades</th></tr></thead><tbody>` +
+      L.map(r=> `<tr data-rfr-ver="${esc(r.id)}"><td><b>${esc(r.id)}</b></td><td>${esc(rfFechaTxt(r.fecha_creacion))}</td>${tipo === 'b' ? `<td>${esc(r.posicion || '—')}</td>` : ''}<td><span class="rf-est ${esc(rfEstadoReg(r))}">${esc(rfEstadoReg(r))}</span></td><td>${esc(r.usuario || '')}</td>` +
+        `<td>${esc((r.items || []).map(it=> `${it.sku} ×${it.cantidad}`).join(', '))}</td><td class="num">${esc(anFmt(r.unidades || 0))}</td></tr>`).join('') + '</tbody></table><p class="hint" style="margin-top:6px;">Toca un RF para verlo con sus fotos.</p>'
+      : '<div class="hint">Sin registros.</div>');
+  if(desplazar) box.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+$('rfsub-panel-reportes').addEventListener('click', e=>{
+  const pos = e.target.closest('[data-rfr-pos]'), blo = e.target.closest('[data-rfr-bloque]'), ver = e.target.closest('[data-rfr-ver]');
+  if(ver){ setRfSubtab('lista'); rfSel = ver.dataset.rfrVer; setTimeout(()=> rfAbrir(ver.dataset.rfrVer), 50); }
+  else if(pos && !pos.disabled) rfRepDetalle('p:' + pos.dataset.rfrPos, true);
+  else if(blo) rfRepDetalle('b:' + blo.dataset.rfrBloque, true);
+});
+['rfr-estado', 'rfr-desde', 'rfr-hasta'].forEach(id=> $(id).addEventListener('change', renderRfReportes));
+$('rfr-q').addEventListener('input', renderRfReportes);
+$('btn-rfr-recargar').addEventListener('click', ()=> rfCargar(true));
+
+function rfSiReportes(){ if($('rfsub-panel-reportes').style.display !== 'none') renderRfReportes(); }
 // ---- Registros: lista, búsqueda, detalle ----
 async function rfCargar(forzar){
-  if(rfLeidos && !forzar){ renderRfLista(); return; }
+  if(rfLeidos && !forzar){ renderRfLista(); rfSiReportes(); return; }
   $('rf-lista').innerHTML = '<div class="hint">⏳ Cargando registros…</div>';
   try{
     rfLista = (await registrosFotoRef.get()).docs.map(d=> Object.assign({ id: d.id }, d.data())).sort((a, b)=> b.id.localeCompare(a.id));
@@ -18898,6 +19074,7 @@ async function rfCargar(forzar){
   }catch(err){ console.error(err); $('rf-lista').innerHTML = `<div class="hint">⚠ No se pudieron leer los registros: ${esc(err.message)}</div>`; return; }
   rfPagina = 0; renderRfLista();
   if(rfSel) rfAbrir(rfSel);
+  rfSiReportes();
 }
 function rfFiltrados(){
   const tk = normalizarTexto($('rf-q').value).split(/\s+/).filter(Boolean), d = $('rf-desde').value, h = $('rf-hasta').value, est = $('rf-estado-f').value;
@@ -18910,11 +19087,11 @@ function renderRfLista(){
   rfPagina = Math.min(rfPagina, pags - 1);
   $('rf-lista').innerHTML = L.length ? L.slice(rfPagina * RF_POR_PAGINA, (rfPagina + 1) * RF_POR_PAGINA).map(r=> `<button type="button" class="rf-fila${r.id === rfSel ? ' sel' : ''}" data-rf-abrir="${esc(r.id)}">` +
       `${r.foto_posicion ? `<img src="${esc(r.foto_posicion.url)}" alt="" loading="lazy">` : '<span class="sin"></span>'}` +
-      `<span><span class="t">${cmpMarcar(r.id, tk)}</span> <span class="rf-est ${esc(rfEstadoReg(r))}">${rfEstadoReg(r) === 'BORRADOR' ? '📝 BORRADOR' : '✔ CONFIRMADO'}</span><span class="s"> · ${esc(new Date(r.fecha_creacion).toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }))}</span><br>` +
+      `<span><span class="t">${cmpMarcar(r.id, tk)}</span> <span class="rf-est ${esc(rfEstadoReg(r))}">${r.modificando ? '✏ EN MODIFICACIÓN' : rfEstadoReg(r) === 'BORRADOR' ? '📝 BORRADOR' : '✔ CONFIRMADO'}</span><span class="s"> · ${esc(new Date(r.fecha_creacion).toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }))}</span><br>` +
       `<span class="s">📍 ${cmpMarcar(r.posicion || '', tk)} · ${cmpMarcar(r.participante || '', tk)} · ${cmpMarcar(r.usuario || '', tk)}</span></span>` +
       `<span class="n"><b>${esc(anFmt(r.unidades || 0))} und</b>${esc(r.cant_items || 0)} producto(s)</span></button>`).join('')
     : `<div class="hint">${rfLista.length ? 'Nada coincide con la búsqueda.' : 'Aún no hay registros. Créalos en "📸 Nuevo registro".'}</div>`;
-  $('rf-pag').innerHTML = L.length > RF_POR_PAGINA ? `<div class="vo-pag"><button type="button" data-rf-pag="-1" ${rfPagina ? '' : 'disabled'}>‹ Anterior</button><span>${esc(rfPagina * RF_POR_PAGINA + 1)}–${esc(Math.min(L.length, (rfPagina + 1) * RF_POR_PAGINA))} de ${esc(L.length)}</span><button type="button" data-rf-pag="1" ${rfPagina < pags - 1 ? '' : 'disabled'}>Siguiente ›</button></div>` : '';
+  $('rf-pag').innerHTML = L.length ? `<div class="vo-pag"><button type="button" data-rf-pag="-1" ${rfPagina ? '' : 'disabled'}>‹ Anterior</button><span id="rf-pag-txt">${esc(rfPagina * RF_POR_PAGINA + 1)}–${esc(Math.min(L.length, (rfPagina + 1) * RF_POR_PAGINA))} de ${esc(L.length)} · página ${esc(rfPagina + 1)} de ${esc(pags)}</span><button type="button" data-rf-pag="1" ${rfPagina < pags - 1 ? '' : 'disabled'}>Siguiente ›</button></div>` : '';
 }
 $('rf-ok').addEventListener('click', e=>{ if(e.target.closest('#btn-rf-ver-ultimo')) setRfSubtab('lista'); });
 $('rf-q').addEventListener('input', ()=>{ rfPagina = 0; renderRfLista(); });
@@ -18927,8 +19104,9 @@ function rfAbrir(id){
   rfSel = id; document.querySelectorAll('#rf-lista .rf-fila').forEach(b=> b.classList.toggle('sel', b.dataset.rfAbrir === id));
   const puede = currentPermisos.admin || currentPermisos.eliminar, box = $('rf-detalle'); box.style.display = 'block';
   const foto = (f, pie)=> `<div class="rf-thumb" data-rf-ver="${esc(f.url)}" data-rf-pie="${esc(pie)}"><img src="${esc(f.url)}" alt="" loading="lazy"></div>`;
-  box.innerHTML = `<div class="rf-det-cab"><div><span class="hint">Registro fotográfico <span class="rf-est ${esc(rfEstadoReg(r))}">${rfEstadoReg(r) === 'BORRADOR' ? '📝 BORRADOR' : '✔ CONFIRMADO'}</span></span><h2>${esc(r.id)}</h2></div><div class="rf-det-acc">` +
-    `${rfEstadoReg(r) === 'BORRADOR' && (r.usuario_email === currentUserEmail || puede) ? '<button type="button" class="btn btn-primary btn-sm" id="btn-rf-continuar">✏ Continuar borrador</button>' : ''}<button type="button" class="btn btn-primary btn-sm" id="btn-rf-ver-todas">🖼 Ver las ${esc(rfFotosRegistro(r).length)} fotos</button>` +
+  box.innerHTML = `<div class="rf-det-cab"><div><span class="hint">Registro fotográfico <span class="rf-est ${esc(rfEstadoReg(r))}">${r.modificando ? '✏ EN MODIFICACIÓN' : rfEstadoReg(r) === 'BORRADOR' ? '📝 BORRADOR' : '✔ CONFIRMADO'}</span></span><h2>${esc(r.id)}</h2></div><div class="rf-det-acc">` +
+    `${rfEstadoReg(r) === 'BORRADOR' && (r.usuario_email === currentUserEmail || puede) ? `<button type="button" class="btn btn-primary btn-sm" id="btn-rf-continuar">✏ Continuar ${r.modificando ? 'modificación' : 'borrador'}</button>` : ''}` +
+    `${rfEstadoReg(r) === 'CONFIRMADO' && (r.usuario_email === currentUserEmail || puede) ? '<button type="button" class="btn btn-primary btn-sm" id="btn-rf-modificar">✏ Modificar</button>' : ''}<button type="button" class="btn btn-primary btn-sm" id="btn-rf-ver-todas">🖼 Ver las ${esc(rfFotosRegistro(r).length)} fotos</button>` +
     `<button type="button" class="btn btn-ghost btn-sm" id="btn-rf-pdf-uno">⬇ PDF</button>${puede ? '<button type="button" class="btn btn-ghost btn-sm" id="btn-rf-eliminar" style="color:#8A332A;">🗑 Eliminar</button>' : ''}</div></div>` +
     `<div class="rf-det-datos"><div><span>Participante</span><b>${esc(r.participante)}</b></div><div><span>Fecha de creación</span><b>${esc(new Date(r.fecha_creacion).toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }))}</b></div>` +
     `<div><span>Correlativo</span><b>${esc(r.id)}</b></div><div><span>Posición</span><b>📍 ${esc(r.posicion)}</b></div><div><span>Generado por</span><b>${esc(r.usuario || '')}</b></div>` +
@@ -18941,6 +19119,7 @@ function rfAbrir(id){
 }
 $('rf-detalle').addEventListener('click', async e=>{
   if(e.target.closest('#btn-rf-continuar')){ rfContinuar(rfSel); return; }
+  if(e.target.closest('#btn-rf-modificar')){ rfModificar(rfSel); return; }
   if(e.target.closest('#btn-rf-ver-todas') || e.target.closest('#btn-rf-pdf-uno')){
     const r = rfLista.find(x=> x.id === rfSel); if(!r) return;
     if(e.target.closest('#btn-rf-pdf-uno')) rfExportarPdf([r]); else { const fs = rfFotosRegistro(r); if(fs.length) rfVerFoto(fs[0].url, fs[0].pie, fs); }
