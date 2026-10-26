@@ -174,7 +174,7 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   // Los reportes (Excel y PDF) están en la pestaña "Reportes".
   verificar(await page.evaluate(()=> !document.querySelector('#rfsub-panel-lista #btn-rf-excel') && !!document.querySelector('#rfsub-panel-reportes #btn-rf-excel')), 'Excel y PDF migrados a "📊 Reportes"');
   await page.click('#rfsub-reportes');
-  await page.waitForFunction(()=> document.querySelectorAll('#rf-rep-visual .rf-rep-tile').length >= 4, null, { timeout: 10000 });
+  await page.waitForSelector('#rf-rep-resumen [data-rfr-bloque="BLOQUE A"]', { timeout: 10000 });
   const [xl] = await Promise.all([page.waitForEvent('download'), page.click('#btn-rf-excel')]);
   const xlPath = path.join(__dirname, 'salida', 'rf_export.xlsx'); await xl.saveAs(xlPath);
   const filas = XLSX.utils.sheet_to_json(XLSX.readFile(xlPath).Sheets['Registro fotográfico']);
@@ -244,25 +244,34 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   const cont = await page.evaluate(()=> !!$('btn-rf-continuar') && /Pendiente \(borrador\)/.test($('rf-detalle').innerText));
   verificar(borrs === 'RF-00004' && confs === 'RF-00002,RF-00001' && cont, `Filtro por estado: borradores ${borrs} · confirmados ${confs}; el borrador se puede continuar desde su detalle`);
 
-  // Reporte visual: posición · inventarios (cantidad de RF) · bloque; clic → los RF de cada uno.
+  // Reporte por bloque y por posición: comprimidos; al tocar uno se despliegan sus RF y se pueden ocultar.
   await page.click('#rfsub-reportes');
-  await page.waitForFunction(()=> document.querySelectorAll('#rf-rep-visual .rf-rep-tile').length >= 4, null, { timeout: 10000 });
-  const vis = await page.evaluate(()=>{ const t = c=> (document.querySelector(`#rf-rep-visual [data-rfr-pos="${c}"] .c`) || {}).textContent;
-    return { a1: t('A01'), a2: t('A02'), a3: t('A03'), a4: t('A04'), bloque: document.querySelector('#rf-rep-resumen tbody tr').innerText.replace(/\s+/g, ' '), tabla: document.querySelectorAll('#rf-rep-tabla tbody tr').length }; });
-  verificar(vis.a1 === '0' && vis.a2 === '1' && vis.a3 === '1' && vis.a4 === '0' && /BLOQUE A 2 de 4 2/.test(vis.bloque) && vis.tabla === 2,
-    `Reporte visual (solo confirmados): A01 ${vis.a1} · A02 ${vis.a2} · A03 ${vis.a3} · A04 ${vis.a4}; bloque "${vis.bloque}"`);
-  await page.click('#rf-rep-visual [data-rfr-pos="A02"]');
-  const detPos = await page.evaluate(()=> [...document.querySelectorAll('#rf-rep-detalle [data-rfr-ver]')].map(r=> r.dataset.rfrVer).join(','));
-  await page.click('#rf-rep-visual [data-rfr-bloque="BLOQUE A"]');
-  const detBlo = await page.evaluate(()=> [...document.querySelectorAll('#rf-rep-detalle [data-rfr-ver]')].map(r=> r.dataset.rfrVer).sort().join(','));
+  await page.waitForSelector('#rf-rep-resumen [data-rfr-bloque="BLOQUE A"]', { timeout: 10000 });
+  const ids = ()=> page.evaluate(()=> [...document.querySelectorAll('#rfsub-panel-reportes [data-rfr-ver]')].map(r=> r.dataset.rfrVer).sort().join(','));
+  const nTiles = ()=> page.evaluate(()=> document.querySelectorAll('#rfsub-panel-reportes .rf-rep-tile').length);
+  const comprimido = await nTiles() === 0 && await ids() === '';
+  const vis = await page.evaluate(()=> ({ bloque: document.querySelector('#rf-rep-resumen tbody tr').innerText.replace(/\s+/g, ' '), tabla: document.querySelectorAll('#rf-rep-tabla tbody tr').length }));
+  await page.click('#rf-rep-resumen [data-rfr-bloque="BLOQUE A"]');
+  const t = await page.evaluate(()=>{ const t = c=> (document.querySelector(`#rf-rep-resumen [data-rfr-tile="${c}"] .c`) || {}).textContent; return [t('A01'), t('A02'), t('A03'), t('A04')].join(' '); });
+  const detBlo = await ids();
+  await page.click('#rf-rep-resumen [data-rfr-tile="A02"]'); const detTile = await ids();
+  await page.click('#rf-rep-resumen [data-rfr-tile="A02"]'); const detTile2 = await ids();
   await page.selectOption('#rfr-estado', '');
-  const a4Todos = await page.evaluate(()=> document.querySelector('#rf-rep-visual [data-rfr-pos="A04"] .c').textContent);
+  const a4Todos = await page.evaluate(()=> document.querySelector('#rf-rep-resumen [data-rfr-tile="A04"] .c').textContent);
   await page.selectOption('#rfr-estado', 'CONFIRMADO');
-  await page.click('#rf-rep-visual [data-rfr-pos="A02"]');
+  await page.click('#rf-rep-resumen [data-rfr-ocultar]'); const ocultoBtn = await nTiles() === 0 && await ids() === '';
+  await page.click('#rf-rep-resumen [data-rfr-bloque="BLOQUE A"]'); await page.click('#rf-rep-resumen tr[data-rfr-bloque="BLOQUE A"]');
+  const ocultoFila = await nTiles() === 0;
+  verificar(comprimido && /BLOQUE A 2 de 4 2/.test(vis.bloque) && vis.tabla === 2 && t === '0 1 1 0' && detBlo === 'RF-00001,RF-00002' && detTile === 'RF-00001' && detTile2 === detBlo && a4Todos === '1' && ocultoBtn && ocultoFila,
+    `Reporte por bloque comprimido → "${vis.bloque}"; al tocarlo: A01–A04 ${t}, RF ${detBlo}; A02 → ${detTile}; con "Todos" A04 ${a4Todos}; «Ocultar» y tocar de nuevo lo comprimen`);
+  await page.click('#rf-rep-tabla [data-rfr-pos="A02"]'); const detPos = await ids();
   await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_reportes.png'), fullPage: true });
-  await page.click('#rf-rep-detalle [data-rfr-ver="RF-00001"]');
+  await page.click('#rf-rep-tabla [data-rfr-ocultar]'); const posOculta = await ids() === '';
+  await page.click('#rf-rep-tabla [data-rfr-pos="A02"]'); await page.click('#rf-rep-tabla tr[data-rfr-pos="A02"]'); const posOculta2 = await ids() === '';
+  await page.click('#rf-rep-tabla [data-rfr-pos="A02"]');
+  await page.click('#rf-rep-tabla [data-rfr-ver="RF-00001"]');
   await page.waitForFunction(()=> $('rfsub-panel-lista').style.display === 'block' && /RF-00001/.test(($('rf-detalle').querySelector('h2') || {}).textContent || ''), null, { timeout: 10000 });
-  verificar(detPos === 'RF-00001' && detBlo === 'RF-00001,RF-00002' && a4Todos === '1', `Clic en A02 → ${detPos}; clic en BLOQUE A → ${detBlo}; con "Todos" A04 cuenta su borrador; clic en un RF abre su detalle`);
+  verificar(detPos === 'RF-00001' && posOculta && posOculta2, `Reporte por posición: A02 → ${detPos}; se oculta con «Ocultar» o tocándola otra vez; clic en un RF abre su detalle`);
 
   // Modificar un registro confirmado: vuelve a la pantalla de registro y se confirma de nuevo.
   await page.evaluate(()=> rfAbrir('RF-00002'));
@@ -329,6 +338,14 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_camara_celular.png') });
   await page.click('#cam-cerrar');
   verificar(ancho <= 390 && camW >= 389, `En celular entra en la pantalla (${ancho}px) y la cámara ocupa toda la pantalla (${Math.round(camW)}px)`);
+
+  // Celular: Reportes comprimidos; un bloque desplegado entra en la pantalla.
+  await page.click('#rfsub-reportes');
+  await page.waitForSelector('#rf-rep-resumen [data-rfr-bloque="BLOQUE A"]', { timeout: 10000 });
+  await page.click('#rf-rep-resumen [data-rfr-bloque="BLOQUE A"]'); await page.evaluate(()=> $('toast-container').innerHTML = ''); await page.waitForTimeout(200);
+  const anchoRep = await page.evaluate(()=> document.documentElement.scrollWidth);
+  await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_reportes_celular.png'), fullPage: true });
+  verificar(anchoRep <= 390, `Celular: Reportes con un bloque desplegado entra en la pantalla (${anchoRep}px)`);
 
   if(errores.length) console.log('\nErrores de JavaScript:\n' + [...new Set(errores)].join('\n'));
   console.log(fallas || errores.length ? `\n${fallas} verificación(es) fallida(s).` : '\nTodo correcto.');
