@@ -6,7 +6,7 @@ const path = require('path');
 const { abrirApp, limpiarEmuladores } = require('./app');
 
 const PESTANAS = ['diseno','mov','pallets','productos','inventario','toma_inventario','regfoto','kardex','merma',
-  'retiros','campanas','rotulos','ventaonline','reportes','bitacora','usuarios'];
+  'retiros','campanas','rotulos','ventaonline','reportes','bitacora','usuarios','almacenamiento'];
 
 (async ()=>{
   const salida = path.join(__dirname, 'salida');

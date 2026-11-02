@@ -232,6 +232,23 @@
   .rf-rep-card:hover{border-color:var(--blue); background:#f6f9fd;} .rf-rep-card span{grid-row:1 / 3; font-size:30px;} .rf-rep-card b{font-size:15px;} .rf-rep-card small{color:var(--ink-soft); font-size:12px;}
   .rf-rep-resumen{width:100%; border-collapse:collapse; margin-bottom:12px;} .rf-rep-resumen th, .rf-rep-resumen td{padding:7px 8px; border-bottom:1px solid var(--line); text-align:left;}
   .rf-rep-resumen tbody tr{cursor:pointer;} .rf-rep-resumen tbody tr:hover{background:#f6f9fd;}
+  .alm-acciones{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;}
+  .alm-cards{display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:10px; margin-top:10px;}
+  .alm-card{border:1px solid var(--line); border-radius:12px; padding:12px 14px; background:#fff; display:flex; flex-direction:column; gap:4px;}
+  .alm-card span{font-size:12px; font-weight:700; color:var(--ink-soft);} .alm-card b{font-size:22px; font-family:var(--mono);} .alm-card small{font-size:11.5px; color:var(--ink-soft);}
+  .alm-barra{height:8px; border-radius:6px; background:#e7ebf0; overflow:hidden; min-width:60px;} .alm-barra i{display:block; height:100%; background:linear-gradient(90deg, #2e8b57, #1f6fd1); border-radius:6px;}
+  .alm-scroll{overflow-x:auto;} .alm-tabla{width:100%; border-collapse:collapse;} .alm-tabla th, .alm-tabla td{padding:7px 8px; border-bottom:1px solid var(--line); text-align:left; vertical-align:middle;}
+  .alm-tabla .num{text-align:right; white-space:nowrap;} .alm-col-pct{width:26%; min-width:110px;} .alm-col-pct small{font-size:11px; color:var(--ink-soft);}
+  .alm-tabla tbody tr[data-alm-mod]{cursor:pointer;} .alm-tabla tbody tr[data-alm-mod]:hover{background:#f6f9fd;}
+  .alm-carp{display:block; font-family:var(--mono); font-size:11px; color:var(--ink-soft); font-weight:400;} .alm-error{display:block; color:var(--red); font-size:12px; margin-top:6px;}
+  .alm-ruta{font-family:var(--mono); font-size:11.5px; word-break:break-all; max-width:420px;}
+  .alm-dos{display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:12px;} .alm-sec{margin-bottom:12px;}
+  .alm-huerf-res{display:flex; flex-direction:column; gap:2px; margin-bottom:8px;} .alm-ok{color:#1d7a46; font-weight:700;}
+  #btn-alm-borrar-huerfanos{margin-top:10px;} .alm-vacias{margin-top:8px;}
+  @media (max-width:600px){
+    .alm-tabla{font-size:12.5px;} .alm-tabla th, .alm-tabla td{padding:6px 4px;} .alm-col-pct{min-width:80px;} .alm-ruta{max-width:170px;}
+    .alm-dos{grid-template-columns:1fr;} .alm-card b{font-size:19px;}
+  }
   .rf-rep-scroll{overflow-x:auto;} .rf-rep-fila.abierta{background:#eef4fb;} .rf-rep-flecha{display:inline-block; width:14px; color:var(--blue);}
   .rf-rep-exp > td{background:#f8fafc; padding:10px 8px 12px;} .rf-rep-sub{margin:12px 0 6px;} .rf-rep-ocultar{margin-top:8px;}
   @media (max-width:600px){
@@ -1889,6 +1906,7 @@
     <button data-tab="reportes" id="tab-reportes">Reportes</button>
     <button data-tab="bitacora" id="tab-bitacora">Bitácora</button>
     <button data-tab="usuarios" id="tab-usuarios">Usuarios</button>
+    <button data-tab="almacenamiento" id="tab-almacenamiento">Almacenamiento</button>
   </div>
   <div class="drawer-user">
     <b id="user-email-label"></b>
@@ -3663,6 +3681,44 @@
   </div>
 </div>
 
+<!-- ALMACENAMIENTO -->
+<div class="view" id="view-almacenamiento">
+  <div class="panel" style="margin-bottom:12px;">
+    <h3>💾 Gestión de almacenamiento</h3>
+    <p class="hint" style="margin-bottom:10px;">Muestra en qué se gasta el espacio de la cuenta de Firebase: los <b>archivos</b> (fotos y PDFs en Storage) y la <b>base de datos</b> (Firestore), por módulo, carpeta, tipo y mes. Solo lo ven los administradores.</p>
+    <div class="alm-acciones">
+      <button type="button" class="btn btn-primary" id="btn-alm-archivos">🔍 Analizar archivos</button>
+      <button type="button" class="btn btn-ghost" id="btn-alm-base">🗄 Analizar base de datos</button>
+      <button type="button" class="btn btn-ghost" id="btn-alm-excel" disabled>⬇ Excel</button>
+    </div>
+    <div class="msg" id="alm-msg"></div>
+    <div class="alm-cards" id="alm-cards"></div>
+  </div>
+  <div class="panel alm-sec" id="alm-sec-modulos" style="display:none;">
+    <h3>📁 Archivos por módulo</h3>
+    <p class="hint" style="margin-bottom:8px;">Toca un módulo para ver sus carpetas y sus archivos más pesados; vuelve a tocarlo (o «▴ Ocultar») para comprimirlo.</p>
+    <div id="alm-modulos"></div>
+  </div>
+  <div class="alm-dos">
+    <div class="panel alm-sec" id="alm-sec-tipos" style="display:none;"><h3>🧾 Por tipo de archivo</h3><div id="alm-tipos"></div></div>
+    <div class="panel alm-sec" id="alm-sec-meses" style="display:none;"><h3>📅 Por mes de subida</h3><div id="alm-meses"></div></div>
+  </div>
+  <div class="panel alm-sec" id="alm-sec-pesados" style="display:none;">
+    <h3>🏋 Archivos más pesados</h3>
+    <div id="alm-pesados"></div>
+  </div>
+  <div class="panel alm-sec" id="alm-sec-base" style="display:none;">
+    <h3>🗄 Base de datos por colección</h3>
+    <p class="hint" style="margin-bottom:8px;">Tamaño aproximado de los datos guardados (sin contar los índices que Firestore agrega por su cuenta).</p>
+    <div id="alm-base"></div>
+  </div>
+  <div class="panel alm-sec" id="alm-sec-huerfanos" style="display:none;">
+    <h3>🧹 Archivos huérfanos</h3>
+    <p class="hint" style="margin-bottom:8px;">Archivos que ningún registro de la base de datos usa (por ejemplo, fotos de un registro que ya se borró). Ocupan espacio sin servir para nada.</p>
+    <div id="alm-huerfanos"></div>
+  </div>
+</div>
+
 <footer id="app-footer">
   <img src="data:image/jpeg;base64,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" alt="Max Ramos">
   <div class="footer-dev">
@@ -3717,8 +3773,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v215';
-const APP_UPDATED = '26/10/2026 12:30';
+const APP_VERSION = 'v216';
+const APP_UPDATED = '02/11/2026 10:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4218,6 +4274,7 @@ function moduloOf(tipo){
 }
 function tipoLabel(tipo){
   const map = {
+    almacenamiento_huerfanos_eliminados:'Archivos huérfanos eliminados (almacenamiento)',
     reg_foto_creado:'Registro fotográfico creado', reg_foto_eliminado:'Registro fotográfico eliminado', reg_foto_iniciado:'Registro fotográfico iniciado (borrador)',
     reg_foto_confirmado:'Registro fotográfico confirmado', reg_foto_descartado:'Borrador de registro fotográfico descartado', reg_foto_exportado:'Registro fotográfico exportado',
     reg_foto_reabierto:'Registro fotográfico abierto para modificar', reg_foto_modificado:'Registro fotográfico modificado', reg_foto_modificacion_cancelada:'Modificación de registro fotográfico cancelada',
@@ -19320,6 +19377,263 @@ $('btn-guardar-usuario').addEventListener('click', async ()=>{
     await cargarUsuarios(); usAbrir(email);
   }catch(err){ showMsg('us-msg','err', err.message); }
 });
+/* -------------------- Almacenamiento (solo administradores) -------------------- */
+// Cuotas sin costo de Firebase, como referencia: 5 GB de archivos y 1 GiB de base de datos.
+const ALM_CUOTA_ARCHIVOS = 5 * 1024 ** 3, ALM_CUOTA_BASE = 1024 ** 3;
+// Un huérfano recién subido puede ser de un registro que se está llenando: no se borra hasta pasado este margen.
+let ALM_MARGEN_HUERFANO_MS = 24 * 3600 * 1000;
+const ALM_CARPETAS = { registros_foto:'Registro fotográfico', vo_comprobantes:'Venta Online · comprobantes', vo_vouchers:'Venta Online · vouchers',
+  tomas_inventario:'Toma de inventario', vouchers_agencia:'Campañas · vouchers de agencia', merma_formatos:'Merma · formatos',
+  validadores:'Campañas · fotos de validadores', productos:'Productos · imágenes' };
+const ALM_COLECCIONES = { movimientos:'Bitácora / historial', kardex:'Kardex', pallets:'Pallets', posiciones:'Layout · posiciones', bloques:'Layout · bloques',
+  nichos:'Layout · nichos', rejas:'Layout · rejas', productos:'Productos', usuarios:'Usuarios', contadores:'Correlativos',
+  retiros_campana:'Retiros de campaña', campana_items:'Campañas · ítems', campana_registros:'Campañas · registros', guias_registros:'Guías', guia_items:'Guías · ítems',
+  mapeo_destino_participante:'Campañas · destinos', validadores_campana:'Campañas · validadores', participantes_maestro:'Maestro de participantes', validadores_maestro:'Maestro de validadores',
+  vouchers_agencia:'Vouchers de agencia', vouchers_agencia_items:'Vouchers de agencia · ítems', inventario_tomas:'Toma de inventario', inventario_tomas_items:'Toma de inventario · ítems',
+  inventario_observaciones:'Toma de inventario · observaciones', merma_guias:'Merma · guías', merma_guia_items:'Merma · ítems de guías', merma_formatos:'Merma · formatos',
+  merma_auditorias:'Merma · auditorías', compras_cargas:'Compras · cargas', compras_items:'Compras · ítems', compras_totales:'Compras · totales',
+  compras_campana:'Compras de campaña', compras_campana_items:'Compras de campaña · ítems', vo_comprobantes:'Venta Online · comprobantes',
+  regularizaciones:'Regularizaciones', regularizacion_items:'Regularizaciones · ítems', registros_foto:'Registro fotográfico' };
+let almArchivos = null, almArchivosEn = null, almBase = null, almBaseEn = null, almRefs = null, almBaseCompleta = false;
+let almModAbierto = null, almCarpPag = 0, almHuerfPag = 0, almOcupado = false;
+const ALM_POR_PAGINA = 10;
+function almFmt(b){
+  b = Number(b) || 0;
+  if(b < 1024) return `${b} B`;
+  if(b < 1024 ** 2) return `${(b / 1024).toFixed(1)} KB`;
+  if(b < 1024 ** 3) return `${(b / 1024 ** 2).toFixed(b < 10 * 1024 ** 2 ? 2 : 1)} MB`;
+  return `${(b / 1024 ** 3).toFixed(2)} GB`;
+}
+const almPct = (a, b)=> b ? Math.min(100, a / b * 100) : 0;
+const almPctTxt = p=> p >= 10 ? `${Math.round(p)} %` : p >= 0.1 ? `${p.toFixed(1)} %` : p > 0 ? '< 0.1 %' : '0 %';
+const almBarra = p=> `<div class="alm-barra"><i style="width:${esc(Math.max(p > 0 ? 1 : 0, p).toFixed(1))}%"></i></div>`;
+const almModulo = path=> path.includes('/') ? path.split('/')[0] : '(raíz)';
+const almNombreMod = m=> ALM_CARPETAS[m] || m;
+const almCarpeta = path=>{ const s = path.split('/'); return s.length > 2 ? s[1] : '(archivos sueltos)'; };
+function almTipo(f){
+  const t = (f.tipo || '').toLowerCase(), ext = (f.path.split('.').pop() || '').toLowerCase();
+  if(t === 'application/pdf' || ext === 'pdf') return 'PDF';
+  if(t.startsWith('image/') || ['jpg','jpeg','png','webp','gif','heic'].includes(ext)) return 'Imagen ' + (t.split('/')[1] || ext).toUpperCase().replace('JPEG', 'JPG');
+  return 'Otro (' + (t || ext || 'sin tipo') + ')';
+}
+function almEstado(texto, tipo){ if(tipo === 'proceso') msgProceso('alm-msg', texto); else showMsg('alm-msg', tipo || 'ok', texto); }
+const almFecha = d=> new Date(d).toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' });
+
+// ---- Archivos (Storage) ----
+async function almListar(ref, out, avisar){
+  const r = await ref.listAll();
+  out.push(...r.items); avisar(out.length);
+  for(const p of r.prefixes) await almListar(p, out, avisar);
+}
+async function almAnalizarArchivos(){
+  if(almOcupado) return; almOcupado = true; $('btn-alm-archivos').disabled = true;
+  try{
+    almEstado('Buscando archivos…', 'proceso');
+    const refs = [];
+    await almListar(storage.ref(), refs, n=> almEstado(`Buscando archivos… ${n} encontrado(s)`, 'proceso'));
+    const L = []; let i = 0;
+    // Se piden los tamaños de a varios a la vez.
+    await Promise.all(Array.from({ length: 12 }, async ()=>{
+      while(i < refs.length){
+        const ref = refs[i++];
+        try{ const m = await ref.getMetadata(); L.push({ path: ref.fullPath, nombre: ref.name, tam: Number(m.size) || 0, tipo: m.contentType || '', fecha: m.timeCreated || '' }); }
+        catch(err){ L.push({ path: ref.fullPath, nombre: ref.name, tam: 0, tipo: '', fecha: '', error: err.code || err.message }); }
+        if(L.length % 25 === 0) almEstado(`Leyendo tamaños… ${L.length} de ${refs.length}`, 'proceso');
+      }
+    }));
+    almArchivos = L; almArchivosEn = new Date(); almModAbierto = null; almCarpPag = 0; almHuerfPag = 0;
+    almEstado(`Listo: ${L.length} archivo(s) analizados.`);
+    renderAlm();
+  }catch(err){ console.error(err); almEstado('No se pudieron leer los archivos: ' + err.message, 'err'); }
+  finally{ almOcupado = false; $('btn-alm-archivos').disabled = false; }
+}
+
+// ---- Base de datos (Firestore): tamaño según la fórmula de Firestore (nombre del documento + campos + 32 bytes) ----
+const almEnc = new TextEncoder();
+const almB = s=> almEnc.encode(s).length;
+function almTamValor(v){
+  if(v === null || v === undefined || typeof v === 'boolean') return 1;
+  if(typeof v === 'string') return almB(v) + 1;
+  if(typeof v === 'number') return 8;
+  if(v instanceof firebase.firestore.Timestamp) return 8;
+  if(v instanceof firebase.firestore.GeoPoint) return 16;
+  if(v instanceof firebase.firestore.DocumentReference) return almB(v.path) + 16;
+  if(v instanceof firebase.firestore.Blob) return v.toUint8Array().length;
+  if(Array.isArray(v)) return v.reduce((s, x)=> s + almTamValor(x), 0);
+  if(typeof v === 'object') return Object.entries(v).reduce((s, [k, x])=> s + almB(k) + 1 + almTamValor(x), 0);
+  return 8;
+}
+const almTamDoc = (col, id, data)=> almB(col) + 1 + almB(id) + 1 + 16 + almTamValor(data) + 32;
+// Junta las rutas de Storage que usa cada documento (ruta guardada tal cual o dentro de la URL de descarga).
+function almRecolectar(v, set){
+  if(typeof v === 'string'){
+    if(v.length > 2048 || !v.includes('/')) return;
+    set.add(v);
+    const m = v.match(/\/o\/([^?#]+)/);
+    if(m) try{ set.add(decodeURIComponent(m[1])); }catch(e){}
+    return;
+  }
+  if(Array.isArray(v)) v.forEach(x=> almRecolectar(x, set));
+  else if(v && typeof v === 'object' && !(v instanceof firebase.firestore.Timestamp)) Object.values(v).forEach(x=> almRecolectar(x, set));
+}
+async function almAnalizarBase(){
+  if(almOcupado) return;
+  if(!confirm('Analizar la base de datos lee todos los documentos una vez (cuenta como lecturas de Firestore). ¿Continuar?')) return;
+  almOcupado = true; $('btn-alm-base').disabled = true;
+  const res = {}, refs = new Set(), cols = Object.keys(ALM_COLECCIONES);
+  const docId = firebase.firestore.FieldPath.documentId();
+  try{
+    for(const [ci, col] of cols.entries()){
+      let n = 0, bytes = 0, ultimo = null;
+      try{
+        for(;;){
+          let q = db.collection(col).orderBy(docId).limit(1000);
+          if(ultimo) q = q.startAfter(ultimo);
+          const snap = await q.get();
+          snap.docs.forEach(d=>{ const data = d.data(); n++; bytes += almTamDoc(col, d.id, data); almRecolectar(data, refs); });
+          almEstado(`Leyendo base de datos… ${ci + 1} de ${cols.length}: ${ALM_COLECCIONES[col]} (${n} documento(s))`, 'proceso');
+          if(snap.size < 1000) break;
+          ultimo = snap.docs[snap.size - 1];
+        }
+        res[col] = { n, bytes };
+      }catch(err){ console.warn(col, err); res[col] = { n, bytes, error: err.code === 'permission-denied' ? 'sin permiso para leerla' : (err.message || String(err)) }; }
+    }
+    almBase = res; almRefs = refs; almBaseEn = new Date(); almHuerfPag = 0;
+    almBaseCompleta = !Object.values(res).some(r=> r.error);
+    almEstado(`Listo: ${Object.values(res).reduce((s, r)=> s + r.n, 0)} documento(s) en ${cols.length} colecciones.${almArchivos ? '' : ' Analiza también los archivos para encontrar los huérfanos.'}`);
+    renderAlm();
+  }catch(err){ console.error(err); almEstado('No se pudo leer la base de datos: ' + err.message, 'err'); }
+  finally{ almOcupado = false; $('btn-alm-base').disabled = false; }
+}
+const almHuerfanos = ()=> almArchivos && almRefs ? almArchivos.filter(f=> !almRefs.has(f.path)).sort((a, b)=> b.tam - a.tam) : null;
+const almReciente = f=> !f.fecha || Date.now() - new Date(f.fecha).getTime() < ALM_MARGEN_HUERFANO_MS;
+
+// ---- Pantalla ----
+function almTablaArchivos(L, conModulo){
+  return `<div class="alm-scroll"><table class="alm-tabla"><thead><tr><th>Archivo</th>${conModulo ? '<th>Módulo</th>' : ''}<th class="num">Tamaño</th><th>Subido</th><th></th></tr></thead><tbody>` +
+    L.map(f=> `<tr><td class="alm-ruta" title="${esc(f.path)}">${esc(f.path)}</td>${conModulo ? `<td>${esc(almNombreMod(almModulo(f.path)))}</td>` : ''}<td class="num"><b>${esc(almFmt(f.tam))}</b></td><td>${esc(f.fecha ? almFecha(f.fecha) : '—')}</td>` +
+      `<td><button type="button" class="btn btn-ghost btn-sm" data-alm-ver="${esc(f.path)}">👁 Ver</button></td></tr>`).join('') + '</tbody></table></div>';
+}
+function almPaginador(attr, pag, total){
+  const pags = Math.max(1, Math.ceil(total / ALM_POR_PAGINA));
+  return total > ALM_POR_PAGINA ? `<div class="vo-pag"><button type="button" ${attr}="-1" ${pag ? '' : 'disabled'}>‹ Anterior</button><span>${esc(pag * ALM_POR_PAGINA + 1)}–${esc(Math.min(total, (pag + 1) * ALM_POR_PAGINA))} de ${esc(total)} · página ${esc(pag + 1)} de ${esc(pags)}</span><button type="button" ${attr}="1" ${pag < pags - 1 ? '' : 'disabled'}>Siguiente ›</button></div>` : '';
+}
+function renderAlm(){
+  const A = almArchivos, totA = A ? A.reduce((s, f)=> s + f.tam, 0) : 0;
+  const totB = almBase ? Object.values(almBase).reduce((s, r)=> s + r.bytes, 0) : 0;
+  const huerf = almHuerfanos();
+  const tarjeta = (titulo, valor, detalle, pct)=> `<div class="alm-card"><span>${esc(titulo)}</span><b>${esc(valor)}</b>${pct === undefined ? '' : almBarra(pct)}<small>${esc(detalle)}</small></div>`;
+  const porTipo = t=> A ? A.filter(f=> almTipo(f).startsWith(t)).reduce((s, f)=> s + f.tam, 0) : 0;
+  $('alm-cards').innerHTML =
+    tarjeta('📦 Archivos (Storage)', A ? almFmt(totA) : '—', A ? `${A.length} archivo(s) · ${almPctTxt(almPct(totA, ALM_CUOTA_ARCHIVOS))} de 5 GB sin costo · ${almFecha(almArchivosEn)}` : 'Presiona «Analizar archivos»', A ? almPct(totA, ALM_CUOTA_ARCHIVOS) : undefined) +
+    tarjeta('🗄 Base de datos (Firestore)', almBase ? '≈ ' + almFmt(totB) : '—', almBase ? `${Object.values(almBase).reduce((s, r)=> s + r.n, 0)} documento(s) · ${almPctTxt(almPct(totB, ALM_CUOTA_BASE))} de 1 GB sin costo · ${almFecha(almBaseEn)}` : 'Presiona «Analizar base de datos»', almBase ? almPct(totB, ALM_CUOTA_BASE) : undefined) +
+    (A ? tarjeta('📕 PDFs', almFmt(porTipo('PDF')), `${A.filter(f=> almTipo(f) === 'PDF').length} archivo(s) · ${almPctTxt(almPct(porTipo('PDF'), totA))} de los archivos`) +
+         tarjeta('🖼 Imágenes', almFmt(porTipo('Imagen')), `${A.filter(f=> almTipo(f).startsWith('Imagen')).length} archivo(s) · ${almPctTxt(almPct(porTipo('Imagen'), totA))} de los archivos`) : '') +
+    (huerf ? tarjeta('🧹 Huérfanos', almFmt(huerf.reduce((s, f)=> s + f.tam, 0)), `${huerf.length} archivo(s) sin uso`) : '');
+  $('btn-alm-excel').disabled = !A && !almBase;
+  ['modulos', 'tipos', 'meses', 'pesados'].forEach(s=> $('alm-sec-' + s).style.display = A ? 'block' : 'none');
+  $('alm-sec-base').style.display = almBase ? 'block' : 'none';
+  $('alm-sec-huerfanos').style.display = huerf ? 'block' : 'none';
+  if(A) renderAlmArchivos(A, totA);
+  if(almBase) renderAlmBase(totB);
+  if(huerf) renderAlmHuerfanos(huerf);
+}
+function almAgrupar(L, clave){
+  const m = new Map();
+  L.forEach(f=>{ const k = clave(f); const g = m.get(k) || { n: 0, tam: 0, archivos: [] }; g.n++; g.tam += f.tam; g.archivos.push(f); m.set(k, g); });
+  return [...m.entries()].sort((a, b)=> b[1].tam - a[1].tam || String(a[0]).localeCompare(String(b[0])));
+}
+function renderAlmArchivos(A, totA){
+  const mods = almAgrupar(A, f=> almModulo(f.path));
+  if(almModAbierto && !mods.some(([m])=> m === almModAbierto)) almModAbierto = null;
+  $('alm-modulos').innerHTML = mods.length ? `<div class="alm-scroll"><table class="alm-tabla"><thead><tr><th>Módulo</th><th class="num">Archivos</th><th class="num">Tamaño</th><th class="alm-col-pct">% del total</th></tr></thead><tbody>` +
+    mods.map(([m, g])=>{ const abierto = almModAbierto === m, p = almPct(g.tam, totA);
+      let tr = `<tr class="rf-rep-fila${abierto ? ' abierta' : ''}" data-alm-mod="${esc(m)}"><td><b><span class="rf-rep-flecha">${abierto ? '▾' : '▸'}</span> ${esc(almNombreMod(m))}</b><small class="alm-carp">${esc(m)}/</small></td><td class="num">${esc(g.n)}</td><td class="num"><b>${esc(almFmt(g.tam))}</b></td><td class="alm-col-pct">${almBarra(p)}<small>${esc(almPctTxt(p))}</small></td></tr>`;
+      if(abierto){
+        const carps = almAgrupar(g.archivos, f=> almCarpeta(f.path));
+        const pags = Math.max(1, Math.ceil(carps.length / ALM_POR_PAGINA)); almCarpPag = Math.min(almCarpPag, pags - 1);
+        tr += `<tr class="rf-rep-exp"><td colspan="4"><div class="rf-rep-sub"><b>Carpetas de ${esc(almNombreMod(m))}</b> <span class="hint">${esc(carps.length)} carpeta(s), de la más pesada a la más liviana</span></div>` +
+          `<div class="alm-scroll"><table class="alm-tabla"><thead><tr><th>Carpeta</th><th class="num">Archivos</th><th class="num">Tamaño</th><th class="alm-col-pct">% del módulo</th></tr></thead><tbody>` +
+          carps.slice(almCarpPag * ALM_POR_PAGINA, (almCarpPag + 1) * ALM_POR_PAGINA).map(([c, x])=>{ const q = almPct(x.tam, g.tam);
+            return `<tr><td><b>${esc(c)}</b></td><td class="num">${esc(x.n)}</td><td class="num">${esc(almFmt(x.tam))}</td><td class="alm-col-pct">${almBarra(q)}<small>${esc(almPctTxt(q))}</small></td></tr>`; }).join('') +
+          `</tbody></table></div>${almPaginador('data-alm-carp-pag', almCarpPag, carps.length)}` +
+          `<div class="rf-rep-sub"><b>Archivos más pesados de ${esc(almNombreMod(m))}</b></div>${almTablaArchivos([...g.archivos].sort((a, b)=> b.tam - a.tam).slice(0, 10), false)}` +
+          `<button type="button" class="btn btn-ghost btn-sm rf-rep-ocultar" data-alm-ocultar="1">▴ Ocultar ${esc(almNombreMod(m))}</button></td></tr>`;
+      }
+      return tr; }).join('') + `</tbody><tfoot><tr><th>Total</th><th class="num">${esc(A.length)}</th><th class="num">${esc(almFmt(totA))}</th><th></th></tr></tfoot></table></div>`
+    : '<div class="hint">No hay archivos guardados.</div>';
+  const tipos = almAgrupar(A, almTipo);
+  $('alm-tipos').innerHTML = `<div class="alm-scroll"><table class="alm-tabla"><thead><tr><th>Tipo</th><th class="num">Archivos</th><th class="num">Tamaño</th><th class="alm-col-pct">%</th></tr></thead><tbody>` +
+    tipos.map(([t, g])=>{ const p = almPct(g.tam, totA); return `<tr><td><b>${esc(t)}</b></td><td class="num">${esc(g.n)}</td><td class="num">${esc(almFmt(g.tam))}</td><td class="alm-col-pct">${almBarra(p)}<small>${esc(almPctTxt(p))}</small></td></tr>`; }).join('') + '</tbody></table></div>';
+  const meses = almAgrupar(A, f=> (f.fecha || '').slice(0, 7) || 'sin fecha').sort((a, b)=> String(b[0]).localeCompare(String(a[0])));
+  const maxMes = Math.max(1, ...meses.map(([, g])=> g.tam));
+  $('alm-meses').innerHTML = `<div class="alm-scroll"><table class="alm-tabla"><thead><tr><th>Mes</th><th class="num">Archivos</th><th class="num">Tamaño</th><th class="alm-col-pct"></th></tr></thead><tbody>` +
+    meses.map(([mes, g])=> `<tr><td><b>${esc(mes)}</b></td><td class="num">${esc(g.n)}</td><td class="num">${esc(almFmt(g.tam))}</td><td class="alm-col-pct">${almBarra(almPct(g.tam, maxMes))}</td></tr>`).join('') + '</tbody></table></div>';
+  $('alm-pesados').innerHTML = almTablaArchivos([...A].sort((a, b)=> b.tam - a.tam).slice(0, 10), true);
+}
+function renderAlmBase(totB){
+  // Las colecciones vacías (y sin error) se juntan en una línea para no llenar la tabla.
+  const todas = Object.entries(almBase).sort((a, b)=> b[1].bytes - a[1].bytes || b[1].n - a[1].n);
+  const cols = todas.filter(([, r])=> r.n || r.error), vacias = todas.filter(([, r])=> !r.n && !r.error);
+  $('alm-base').innerHTML = `<div class="alm-scroll"><table class="alm-tabla"><thead><tr><th>Colección</th><th class="num">Documentos</th><th class="num">Tamaño aprox.</th><th class="alm-col-pct">% de la base</th></tr></thead><tbody>` +
+    cols.map(([c, r])=>{ const p = almPct(r.bytes, totB);
+      return `<tr data-alm-col="${esc(c)}"><td><b>${esc(ALM_COLECCIONES[c] || c)}</b><small class="alm-carp">${esc(c)}</small>${r.error ? `<small class="alm-error">⚠ ${esc(r.error)}</small>` : ''}</td><td class="num">${esc(anFmt(r.n))}</td><td class="num"><b>${esc(almFmt(r.bytes))}</b></td><td class="alm-col-pct">${almBarra(p)}<small>${esc(almPctTxt(p))}</small></td></tr>`; }).join('') +
+    `</tbody><tfoot><tr><th>Total</th><th class="num">${esc(anFmt(cols.reduce((s, [, r])=> s + r.n, 0)))}</th><th class="num">≈ ${esc(almFmt(totB))}</th><th></th></tr></tfoot></table></div>` +
+    (vacias.length ? `<p class="hint alm-vacias" id="alm-vacias">Sin documentos (${esc(vacias.length)}): ${esc(vacias.map(([c])=> ALM_COLECCIONES[c] || c).join(' · '))}</p>` : '');
+}
+function renderAlmHuerfanos(H){
+  const borrables = H.filter(f=> !almReciente(f)), tam = H.reduce((s, f)=> s + f.tam, 0), tamB = borrables.reduce((s, f)=> s + f.tam, 0);
+  const pags = Math.max(1, Math.ceil(H.length / ALM_POR_PAGINA)); almHuerfPag = Math.min(almHuerfPag, pags - 1);
+  $('alm-huerfanos').innerHTML = !H.length ? '<div class="alm-ok">✔ No hay archivos huérfanos: todo lo guardado está en uso.</div>' :
+    `<div class="alm-huerf-res"><b>${esc(H.length)} archivo(s) sin uso · ${esc(almFmt(tam))}</b>` +
+      (H.length > borrables.length ? `<span class="hint">${esc(H.length - borrables.length)} subido(s) hace menos de 24 horas: se dejan por si son de un registro que se está llenando.</span>` : '') + '</div>' +
+    almTablaArchivos(H.slice(almHuerfPag * ALM_POR_PAGINA, (almHuerfPag + 1) * ALM_POR_PAGINA), true) + almPaginador('data-alm-huerf-pag', almHuerfPag, H.length) +
+    (almBaseCompleta ? (borrables.length ? `<button type="button" class="btn btn-danger" id="btn-alm-borrar-huerfanos">🗑 Eliminar ${esc(borrables.length)} huérfano(s) · liberar ${esc(almFmt(tamB))}</button>` : '')
+      : '<div class="alm-error">⚠ Alguna colección no se pudo leer, así que no se puede asegurar que estos archivos estén sin uso. No se ofrece borrarlos.</div>');
+}
+async function almBorrarHuerfanos(){
+  const H = (almHuerfanos() || []).filter(f=> !almReciente(f));
+  if(!H.length || !almBaseCompleta) return;
+  const tam = H.reduce((s, f)=> s + f.tam, 0);
+  if(!confirm(`Se eliminarán ${H.length} archivo(s) que ningún registro usa (${almFmt(tam)}).\n\nNo se puede deshacer. ¿Continuar?`)) return;
+  $('btn-alm-borrar-huerfanos').disabled = true;
+  almEstado('Eliminando archivos huérfanos…', 'proceso');
+  const res = await Promise.allSettled(H.map(f=> storage.ref().child(f.path).delete()));
+  const ok = H.filter((f, i)=> res[i].status === 'fulfilled'), okTam = ok.reduce((s, f)=> s + f.tam, 0), borrados = new Set(ok.map(f=> f.path));
+  almArchivos = almArchivos.filter(f=> !borrados.has(f.path));
+  await logAccion('almacenamiento_huerfanos_eliminados', { detalle: `${ok.length} archivo(s) huérfano(s) eliminado(s) · ${almFmt(okTam)} liberados` + (ok.length < H.length ? ` · ${H.length - ok.length} no se pudieron borrar` : '') });
+  almEstado(`Se eliminaron ${ok.length} archivo(s) y se liberaron ${almFmt(okTam)}.` + (ok.length < H.length ? ` ${H.length - ok.length} no se pudieron borrar.` : ''), ok.length < H.length ? 'err' : 'ok');
+  renderAlm();
+}
+function almExcel(){
+  const wb = XLSX.utils.book_new(), H = almHuerfanos(), sinUso = new Set((H || []).map(f=> f.path));
+  if(almArchivos) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([...almArchivos].sort((a, b)=> b.tam - a.tam).map(f=> ({
+    'Ruta': f.path, 'Módulo': almNombreMod(almModulo(f.path)), 'Carpeta': almCarpeta(f.path), 'Tipo': almTipo(f), 'Tamaño (bytes)': f.tam,
+    'Tamaño (MB)': Number((f.tam / 1024 ** 2).toFixed(3)), 'Subido': f.fecha ? almFecha(f.fecha) : '', 'En uso': H ? (sinUso.has(f.path) ? 'NO (huérfano)' : 'Sí') : 'Sin analizar' }))), 'Archivos');
+  if(almBase) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(Object.entries(almBase).sort((a, b)=> b[1].bytes - a[1].bytes).map(([c, r])=> ({
+    'Colección': c, 'Módulo': ALM_COLECCIONES[c] || c, 'Documentos': r.n, 'Tamaño aprox. (bytes)': r.bytes, 'Tamaño aprox. (MB)': Number((r.bytes / 1024 ** 2).toFixed(3)), 'Observación': r.error || '' }))), 'Base de datos');
+  XLSX.writeFile(wb, `almacenamiento_${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+$('btn-alm-archivos').addEventListener('click', almAnalizarArchivos);
+$('btn-alm-base').addEventListener('click', almAnalizarBase);
+$('btn-alm-excel').addEventListener('click', almExcel);
+$('view-almacenamiento').addEventListener('click', async e=>{
+  const ver = e.target.closest('[data-alm-ver]'), mod = e.target.closest('[data-alm-mod]'), ocultar = e.target.closest('[data-alm-ocultar]'),
+        cp = e.target.closest('[data-alm-carp-pag]'), hp = e.target.closest('[data-alm-huerf-pag]');
+  if(ver){
+    // La ventana se abre al tocar (si no, el navegador la bloquea) y luego recibe la URL.
+    const w = window.open('', '_blank');
+    try{ const url = await storage.ref().child(ver.dataset.almVer).getDownloadURL(); if(w) w.location = url; else location.href = url; }
+    catch(err){ if(w) w.close(); showToast('No se pudo abrir el archivo: ' + err.message, 'err'); }
+    return;
+  }
+  if(e.target.closest('#btn-alm-borrar-huerfanos')){ almBorrarHuerfanos(); return; }
+  if(cp){ if(!cp.disabled){ almCarpPag += Number(cp.dataset.almCarpPag); renderAlm(); } return; }
+  if(hp){ if(!hp.disabled){ almHuerfPag += Number(hp.dataset.almHuerfPag); renderAlm(); } return; }
+  if(ocultar){ const m = almModAbierto; almModAbierto = null; renderAlm(); const f = document.querySelector(`[data-alm-mod="${CSS.escape(m)}"]`); if(f && f.getBoundingClientRect().top < 0) f.scrollIntoView({ block:'center' }); return; }
+  if(mod){ almModAbierto = almModAbierto === mod.dataset.almMod ? null : mod.dataset.almMod; almCarpPag = 0; renderAlm(); }
+});
+
 </script>
 </body>
 </html>

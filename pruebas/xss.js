@@ -5,7 +5,7 @@ const { cargarDatosEjemplo } = require('./datos');
 
 const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
 const PESTANAS = ['diseno','mov','pallets','productos','inventario','toma_inventario','regfoto','kardex','merma',
-  'retiros','campanas','rotulos','ventaonline','reportes','bitacora','usuarios'];
+  'retiros','campanas','rotulos','ventaonline','reportes','bitacora','usuarios','almacenamiento'];
 
 (async ()=>{
   await limpiarEmuladores();
