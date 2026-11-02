@@ -108,15 +108,21 @@ const MB = b=> (b / 1048576).toFixed(2) + ' MB';
     const f1 = await foto('registros_foto/RF-00001/pos_1.jpg'), f2 = await foto('registros_foto/RF-00001/p1_1.jpg'), f3 = await foto('registros_foto/RF-00002/pos_1.jpg'), f4 = await foto('tomas_inventario/TI-00001/pallet_CD0001_1.jpg');
     await registrosFotoRef.doc('RF-00001').set({ estado:'CONFIRMADO', posicion:'A01', foto_posicion: f1, items:[{ sku:'P100', cantidad:1, fotos:[f2] }], fecha_creacion: new Date().toISOString() });
     await registrosFotoRef.doc('RF-00002').set({ estado:'BORRADOR', posicion:'A02', foto_posicion: f3, items:[], fecha_creacion: new Date().toISOString() });
-    await inventarioTomasRef.doc('TI-00001').set({ correlativo:'TI-00001', imagenes:[{ pallet_codigo:'CD0001', url: f4.url, nombre:'pallet.jpg' }] });
     window.fotosAntes = { f1, f2, f3, f4 };
   });
+  // PDF firmado de la toma, subido antes del compresor (sin marca).
+  await page.evaluate(async b64=>{
+    const bytes = Uint8Array.from(atob(b64), c=> c.charCodeAt(0)), ref = storage.ref().child('tomas_inventario/TI-00001/1700000000000_firmado.pdf');
+    await ref.put(new Blob([bytes], { type:'application/pdf' }), { contentType:'application/pdf' });
+    const f5 = { path: ref.fullPath, url: await ref.getDownloadURL(), tam: bytes.length }; window.fotosAntes.f5 = f5;
+    await inventarioTomasRef.doc('TI-00001').set({ correlativo:'TI-00001', imagenes:[{ pallet_codigo:'CD0001', url: window.fotosAntes.f4.url, nombre:'pallet.jpg' }], pdf_firmado_url: f5.url, pdf_firmado_nombre:'firmado.pdf' });
+  }, pesadoB64);
   await page.click('#btn-alm-archivos');
   await page.waitForFunction(()=> /archivo\(s\) analizados/.test($('alm-msg').textContent), null, { timeout: 30000 });
   const arribaFotos = await page.textContent('#btn-alm-comprimir');
   await page.click('#alm-modulos tr[data-alm-mod="registros_foto"]');
   const cajaRf = await page.evaluate(()=> document.querySelector('#alm-modulos .alm-comprimir').innerText.replace(/\s+/g, ' '));
-  verificar(/^🗜 Comprimir 5 archivo\(s\)/.test(arribaFotos) && /^🗜 3 foto\(s\) de más de 200\.0 KB sin comprimir .*Antes se analiza la base de datos/.test(cajaRf), `Fotos por comprimir: arriba "${arribaFotos}"; en el módulo "${cajaRf.slice(0, 60)}…"`);
+  verificar(/^🗜 Comprimir 6 archivo\(s\)/.test(arribaFotos) && /^🗜 3 foto\(s\) de más de 200\.0 KB sin comprimir .*Antes se analiza la base de datos/.test(cajaRf), `Fotos por comprimir: arriba "${arribaFotos}"; en el módulo "${cajaRf.slice(0, 60)}…"`);
   await page.click('#alm-modulos [data-alm-comprimir="registros_foto"]');
   await page.waitForFunction(()=> /foto\(s\) comprimido\(s\)/.test($('alm-msg').textContent), null, { timeout: 120000 });
   const rf = await page.evaluate(async ()=>{
@@ -131,10 +137,29 @@ const MB = b=> (b / 1048576).toFixed(2) + ' MB';
     `Registro fotográfico: "${rf.msg}" (${(rf.a.f1.tam / 1024).toFixed(0)} KB → ${(rf.tamNuevo / 1024).toFixed(0)} KB por foto); el borrador no se toca`);
   await page.click('#alm-modulos tr[data-alm-mod="tomas_inventario"]');
   await page.click('#alm-modulos [data-alm-comprimir="tomas_inventario"]');
-  await page.waitForFunction(()=> /foto\(s\) comprimido\(s\)/.test($('alm-msg').textContent) && /^1 foto/.test($('alm-msg').textContent), null, { timeout: 60000 });
-  const ti = await page.evaluate(async ()=>{ const d = (await inventarioTomasRef.doc('TI-00001').get()).data(), a = window.fotosAntes.f4;
-    return { url: d.imagenes[0].url, pallet: d.imagenes[0].pallet_codigo, viejo: await storage.ref().child(a.path).getMetadata().then(()=> true, ()=> false), mismo: d.imagenes[0].url === a.url }; });
-  verificar(!ti.mismo && /pallet_CD0001_1_c\d+\.jpg/.test(decodeURIComponent(ti.url)) && ti.pallet === 'CD0001' && !ti.viejo, 'Toma de inventario: la foto del pallet se comprime y se cambia en la toma (por su URL)');
+  await page.waitForFunction(()=> /^2 archivo\(s\) comprimido\(s\)/.test($('alm-msg').textContent), null, { timeout: 120000 });
+  const ti = await page.evaluate(async ()=>{ const d = (await inventarioTomasRef.doc('TI-00001').get()).data(), a = window.fotosAntes.f4, b = window.fotosAntes.f5;
+    const existe = p=> storage.ref().child(p).getMetadata().then(()=> true, ()=> false);
+    return { msg: $('alm-msg').textContent, url: d.imagenes[0].url, pallet: d.imagenes[0].pallet_codigo, viejo: await existe(a.path), mismo: d.imagenes[0].url === a.url,
+      pdf: decodeURIComponent(d.pdf_firmado_url), pdfViejo: await existe(b.path), pdfTam: Number((await vchRefDeUrl(d.pdf_firmado_url).getMetadata()).size), pdfAntes: b.tam }; });
+  verificar(!ti.mismo && /pallet_CD0001_1_c\d+\.jpg/.test(decodeURIComponent(ti.url)) && ti.pallet === 'CD0001' && !ti.viejo &&
+    /1700000000000_firmado_c\d+\.pdf/.test(ti.pdf) && !ti.pdfViejo && ti.pdfTam < ti.pdfAntes * 0.6,
+    `Toma de inventario: foto del pallet y PDF firmado (${MB(ti.pdfAntes)} → ${MB(ti.pdfTam)}) comprimidos y cambiados en la toma: "${ti.msg}"`);
+
+  // 4) Toma de inventario: el PDF firmado se comprime al subirlo y, al reemplazarlo, el anterior se borra.
+  await page.evaluate(()=>{ tiRegAllCache = [{ correlativo:'TI-00002', pdf_firmado_url: null }]; tiSubidaCorrelativoActual = 'TI-00002'; return inventarioTomasRef.doc('TI-00002').set({ correlativo:'TI-00002' }); });
+  await page.setInputFiles('#ti-pdf-input-global', { name:'acta firmada.pdf', mimeType:'application/pdf', buffer: pesado });
+  await esperar(page, async ()=> !!(await inventarioTomasRef.doc('TI-00002').get()).data().pdf_firmado_url, null, 60000);
+  const t1 = await page.evaluate(async ()=>{ const d = (await inventarioTomasRef.doc('TI-00002').get()).data(), ref = vchRefDeUrl(d.pdf_firmado_url), m = await ref.getMetadata();
+    return { path: ref.fullPath, tam: Number(m.size), d, meta: m.customMetadata || {} }; });
+  await page.evaluate(()=>{ tiSubidaCorrelativoActual = 'TI-00002'; });
+  await page.setInputFiles('#ti-pdf-input-global', { name:'acta.pdf', mimeType:'application/pdf', buffer: liviano });
+  await esperar(page, async ()=> (await inventarioTomasRef.doc('TI-00002').get()).data().pdf_firmado_nombre === 'acta.pdf', null, 30000);
+  const t2 = await page.evaluate(async p=> ({ viejo: await storage.ref().child(p).getMetadata().then(()=> true, ()=> false),
+    log: (await movimientosRef.get()).docs.map(x=> x.data()).filter(x=> x.tipo === 'toma_inventario_pdf_subido').map(x=> x.detalle).join(' | ') }), t1.path);
+  verificar(t1.tam < pesado.length * 0.6 && t1.d.pdf_firmado_tam === t1.tam && t1.d.pdf_firmado_tam_original === pesado.length && t1.meta.comprimido === '1' && /^tomas_inventario\/TI-00002\/\d+_acta_firmada\.pdf$/.test(t1.path) &&
+    !t2.viejo && /comprimido de [\d.]+ MB a [\d.]+ MB/.test(t2.log),
+    `Toma de inventario: el PDF firmado se comprime al subir (${MB(pesado.length)} → ${MB(t1.tam)}) y al reemplazarlo se borra el anterior`);
   await page.screenshot({ path: path.join(__dirname, 'salida', 'comprimir_fotos.png'), fullPage: true });
 
   if(errores.length) console.log('\nErrores de JavaScript:\n' + [...new Set(errores)].join('\n'));

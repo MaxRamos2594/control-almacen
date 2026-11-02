@@ -3,7 +3,7 @@
   "private": true,
   "description": "Entorno de pruebas local: emuladores de Firebase + navegador automatizado",
   "scripts": {
-    "emuladores": "firebase emulators:start --project demo-almacen --config ../firebase.json",
+    "emuladores": "env -u JAVA_TOOL_OPTIONS firebase emulators:start --project demo-almacen --config ../firebase.json",
     "humo": "node humo.js",
     "flujo": "node flujo.js",
     "xss": "node xss.js",
