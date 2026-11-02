@@ -3692,6 +3692,7 @@
     <div class="alm-acciones">
       <button type="button" class="btn btn-primary" id="btn-alm-archivos">🔍 Analizar archivos</button>
       <button type="button" class="btn btn-ghost" id="btn-alm-base">🗄 Analizar base de datos</button>
+      <button type="button" class="btn btn-ghost" id="btn-alm-comprimir" title="Comprime los PDFs de los vouchers de agencia y las fotos del registro fotográfico y de la toma de inventario">🗜 Comprimir PDFs y fotos</button>
       <button type="button" class="btn btn-ghost" id="btn-alm-excel" disabled>⬇ Excel</button>
     </div>
     <div class="msg" id="alm-msg"></div>
@@ -3781,8 +3782,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v218';
-const APP_UPDATED = '02/11/2026 15:00';
+const APP_VERSION = 'v219';
+const APP_UPDATED = '02/11/2026 18:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4282,7 +4283,7 @@ function moduloOf(tipo){
 }
 function tipoLabel(tipo){
   const map = {
-    almacenamiento_huerfanos_eliminados:'Archivos huérfanos eliminados (almacenamiento)', almacenamiento_pdfs_comprimidos:'PDFs comprimidos (almacenamiento)',
+    almacenamiento_huerfanos_eliminados:'Archivos huérfanos eliminados (almacenamiento)', almacenamiento_pdfs_comprimidos:'Archivos comprimidos (almacenamiento)',
     reg_foto_creado:'Registro fotográfico creado', reg_foto_eliminado:'Registro fotográfico eliminado', reg_foto_iniciado:'Registro fotográfico iniciado (borrador)',
     reg_foto_confirmado:'Registro fotográfico confirmado', reg_foto_descartado:'Borrador de registro fotográfico descartado', reg_foto_exportado:'Registro fotográfico exportado',
     reg_foto_reabierto:'Registro fotográfico abierto para modificar', reg_foto_modificado:'Registro fotográfico modificado', reg_foto_modificacion_cancelada:'Modificación de registro fotográfico cancelada',
@@ -17169,8 +17170,8 @@ function renderPanelImg(){
 // Comprime una imagen redimensionándola (máx 1600px de lado) y bajando la
 // calidad JPEG hasta que pese menos de ~700KB. Si ya pesa poco, no la toca.
 function comprimirImagenSiPesada(file){
-  const MAX_BYTES = 700*1024;
-  const MAX_DIM = 1600;
+  const MAX_BYTES = 300*1024;
+  const MAX_DIM = 1280;
   return new Promise((resolve)=>{
     if(!file.type || !file.type.startsWith('image/') || file.size <= MAX_BYTES){ resolve(file); return; }
     const reader = new FileReader();
@@ -18449,7 +18450,7 @@ inactivityTimer = setInterval(async ()=>{
 // Detalle: SKU, descripción, cantidad y una o varias fotos del producto. Las fotos se toman con la
 // cámara del navegador (celular o PC) o se eligen de la galería; se achican antes de subir.
 const registrosFotoRef = db.collection('registros_foto');
-const RF_POR_PAGINA = 10, RF_LADO_MAX = 1600;
+const RF_POR_PAGINA = 10, RF_LADO_MAX = 1280;
 let rfPosFotos = [], rfItems = [], rfLista = [], rfLeidos = false, rfPagina = 0, rfSel = null;
 const rfNuevoItem = ()=> ({ sku:'', descripcion:'', cantidad:'', fotos:[] });
 function setRfSubtab(name){
@@ -18468,7 +18469,7 @@ async function rfComprimir(fuente){
   const w = img.width || img.videoWidth, h = img.height || img.videoHeight, k = Math.min(1, RF_LADO_MAX / Math.max(w, h));
   const cv = document.createElement('canvas'); cv.width = Math.round(w * k); cv.height = Math.round(h * k);
   const ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height); ctx.drawImage(img, 0, 0, cv.width, cv.height);
-  const blob = await new Promise(ok=> cv.toBlob(ok, 'image/jpeg', 0.82));
+  const blob = await new Promise(ok=> cv.toBlob(ok, 'image/jpeg', 0.72));
   return { blob, url: URL.createObjectURL(blob) };
 }
 
@@ -19494,7 +19495,13 @@ function almTamValor(v){
 }
 const almTamDoc = (col, id, data)=> almB(col) + 1 + almB(id) + 1 + 16 + almTamValor(data) + 32;
 // Junta las rutas de Storage que usa cada documento (ruta guardada tal cual o dentro de la URL de descarga).
-function almRecolectar(v, set, esperados, col){
+// Anota qué documentos usan cada archivo (para avisar faltantes y para reemplazarlo al comprimir).
+function almAnotar(esperados, ruta, bucket, col, id){
+  let x = esperados.get(ruta);
+  if(!x){ x = { col, bucket, docs: [] }; esperados.set(ruta, x); }
+  if(id && !x.docs.some(d=> d.col === col && d.id === id)) x.docs.push({ col, id });
+}
+function almRecolectar(v, set, esperados, col, id){
   if(typeof v === 'string'){
     if(v.length > 2048 || !v.includes('/')) return;
     set.add(v);
@@ -19502,12 +19509,12 @@ function almRecolectar(v, set, esperados, col){
     if(m){
       let ruta = null; try{ ruta = decodeURIComponent(m[1]); set.add(ruta); }catch(e){}
       const b = v.match(/\/b\/([^/]+)\/o\//);
-      if(ruta && esperados && !esperados.has(ruta)) esperados.set(ruta, { col, bucket: b ? b[1] : '' });
-    }else if(esperados && ALM_CARPETAS[v.split('/')[0]] && /\.[a-z0-9]{2,5}$/i.test(v) && !esperados.has(v)) esperados.set(v, { col, bucket: '' });
+      if(ruta && esperados) almAnotar(esperados, ruta, b ? b[1] : '', col, id);
+    }else if(esperados && ALM_CARPETAS[v.split('/')[0]] && /\.[a-z0-9]{2,5}$/i.test(v)) almAnotar(esperados, v, '', col, id);
     return;
   }
-  if(Array.isArray(v)) v.forEach(x=> almRecolectar(x, set, esperados, col));
-  else if(v && typeof v === 'object' && !(v instanceof firebase.firestore.Timestamp)) Object.values(v).forEach(x=> almRecolectar(x, set, esperados, col));
+  if(Array.isArray(v)) v.forEach(x=> almRecolectar(x, set, esperados, col, id));
+  else if(v && typeof v === 'object' && !(v instanceof firebase.firestore.Timestamp)) Object.values(v).forEach(x=> almRecolectar(x, set, esperados, col, id));
 }
 async function almAnalizarBase(){
   if(almOcupado) return;
@@ -19523,7 +19530,7 @@ async function almAnalizarBase(){
           let q = db.collection(col).orderBy(docId).limit(1000);
           if(ultimo) q = q.startAfter(ultimo);
           const snap = await q.get();
-          snap.docs.forEach(d=>{ const data = d.data(); n++; bytes += almTamDoc(col, d.id, data); almRecolectar(data, refs, esperados, col); });
+          snap.docs.forEach(d=>{ const data = d.data(); n++; bytes += almTamDoc(col, d.id, data); almRecolectar(data, refs, esperados, col, d.id); });
           almEstado(`Leyendo base de datos… ${ci + 1} de ${cols.length}: ${ALM_COLECCIONES[col]} (${n} documento(s))`, 'proceso');
           if(snap.size < 1000) break;
           ultimo = snap.docs[snap.size - 1];
@@ -19572,6 +19579,11 @@ function renderAlm(){
          tarjeta('🖼 Imágenes', almFmt(porTipo('Imagen')), `${A.filter(f=> almTipo(f).startsWith('Imagen')).length} archivo(s) · ${almPctTxt(almPct(porTipo('Imagen'), totA))} de los archivos`) : '') +
     (huerf ? tarjeta('🧹 Huérfanos', almFmt(huerf.reduce((s, f)=> s + f.tam, 0)), `${huerf.length} archivo(s) sin uso`) : '');
   $('btn-alm-excel').disabled = !A && !almBase;
+  // Atajo arriba: cuántos PDFs faltan comprimir en los módulos que se pueden comprimir.
+  const porComp = A ? almPorComprimir(A.filter(f=> ALM_COMPRIMIBLES[almModulo(f.path)])) : null;
+  $('btn-alm-comprimir').textContent = !porComp ? '🗜 Comprimir PDFs y fotos' : porComp.length ? `🗜 Comprimir ${porComp.length} archivo(s) · ${almFmt(porComp.reduce((s, f)=> s + f.tam, 0))}` : '🗜 Todo comprimido';
+  $('btn-alm-comprimir').disabled = !!porComp && !porComp.length;
+  $('btn-alm-comprimir').classList.toggle('btn-primary', !!(porComp && porComp.length)); $('btn-alm-comprimir').classList.toggle('btn-ghost', !(porComp && porComp.length));
   ['modulos', 'tipos', 'meses', 'pesados'].forEach(s=> $('alm-sec-' + s).style.display = A ? 'block' : 'none');
   $('alm-sec-base').style.display = almBase ? 'block' : 'none';
   $('alm-sec-huerfanos').style.display = huerf ? 'block' : 'none';
@@ -19587,53 +19599,122 @@ function almAgrupar(L, clave){
   L.forEach(f=>{ const k = clave(f); const g = m.get(k) || { n: 0, tam: 0, archivos: [] }; g.n++; g.tam += f.tam; g.archivos.push(f); m.set(k, g); });
   return [...m.entries()].sort((a, b)=> b[1].tam - a[1].tam || String(a[0]).localeCompare(String(b[0])));
 }
-// ---- Compresor de PDFs ya subidos (vouchers de agencia) ----
-// Cada PDF se baja, se pasa por el mismo reductor que al subir, se sube como archivo nuevo, se actualiza
-// la guía que lo usa y recién entonces se borra el original. Los que no bajan de tamaño quedan marcados.
-const ALM_COMPRIMIBLES = { vouchers_agencia: true };
-const almPorComprimir = L=> L.filter(f=> almTipo(f) === 'PDF' && !f.comprimido && f.tam > VO_REDUCIR_DESDE).sort((a, b)=> b.tam - a.tam);
+// ---- Compresor de archivos ya subidos ----
+// Cada archivo se baja, se comprime, se sube como archivo nuevo, se actualiza el registro que lo usa y
+// recién entonces se borra el original. Los que no bajan de tamaño quedan marcados.
+// Qué se comprime en cada módulo: PDFs de las guías de agencia (sin analizar la base de datos) y fotos
+// del registro fotográfico y de la toma de inventario (necesita la base de datos para saber qué registro usa cada foto).
+const ALM_COMPRIMIBLES = { vouchers_agencia: 'pdf', registros_foto: 'foto', tomas_inventario: 'foto' };
+const ALM_FOTO_DESDE = 200 * 1024, ALM_FOTO_LADO = 1280, ALM_FOTO_CALIDAD = 0.72;
+function almComprimible(f){
+  const t = ALM_COMPRIMIBLES[almModulo(f.path)];
+  if(!t || f.comprimido || f.sinGuia) return false;
+  if(almRefs && !almRefs.has(f.path)) return false;   // huérfano: no se comprime, se limpia en "Archivos huérfanos"
+  return t === 'pdf' ? almTipo(f) === 'PDF' && f.tam > VO_REDUCIR_DESDE : almTipo(f).startsWith('Imagen') && f.tam > ALM_FOTO_DESDE;
+}
+const almPorComprimir = L=> L.filter(almComprimible).sort((a, b)=> b.tam - a.tam);
+const almQue = (m, n)=> ALM_COMPRIMIBLES[m] === 'pdf' ? `${n} PDF(s)` : `${n} foto(s)`;
 function almCajaComprimir(m, archivos){
   if(!ALM_COMPRIMIBLES[m]) return '';
-  const L = almPorComprimir(archivos), tam = L.reduce((s, f)=> s + f.tam, 0);
+  const L = almPorComprimir(archivos), tam = L.reduce((s, f)=> s + f.tam, 0), pdf = ALM_COMPRIMIBLES[m] === 'pdf';
   return `<div class="alm-comprimir">` + (L.length
-    ? `<div><b>🗜 ${esc(L.length)} PDF(s) de más de ${esc(voMB(VO_REDUCIR_DESDE))} sin comprimir · ${esc(almFmt(tam))}</b><span class="hint">Se comprimen como al subirlos (las páginas quedan como imagen, se leen bien). Se reemplaza el archivo en su guía y se borra el original.</span></div>` +
-      `<button type="button" class="btn btn-primary btn-sm" data-alm-comprimir="${esc(m)}">🗜 Comprimir PDFs</button>`
-    : `<div class="alm-ok">✔ Todos los PDFs de este módulo ya están comprimidos o son livianos.</div>`) + `</div>`;
+    ? `<div><b>🗜 ${esc(almQue(m, L.length))} de más de ${esc(almFmt(pdf ? VO_REDUCIR_DESDE : ALM_FOTO_DESDE))} sin comprimir · ${esc(almFmt(tam))}</b><span class="hint">` +
+        (pdf ? 'Se comprimen como al subirlos (las páginas quedan como imagen, se leen bien). Se reemplaza el archivo en su guía y se borra el original.'
+             : `Se achican a ${esc(ALM_FOTO_LADO)} px (se ven bien en pantalla y en el PDF). Se reemplaza la foto en su registro y se borra la original.${almEsperados ? '' : ' Antes se analiza la base de datos para saber qué registro usa cada foto.'}`) + `</span></div>` +
+      `<button type="button" class="btn btn-primary btn-sm" data-alm-comprimir="${esc(m)}">🗜 Comprimir ${pdf ? 'PDFs' : 'fotos'}</button>`
+    : `<div class="alm-ok">✔ ${pdf ? 'Todos los PDFs' : 'Todas las fotos'} de este módulo ya están ${pdf ? 'comprimidos o son livianos' : 'comprimidas o son livianas'}.</div>`) + `</div>`;
+}
+// Cambia en un valor de Firestore la ruta o la URL del archivo viejo por la nueva (y su "tam" si está al lado).
+// Devuelve el mismo valor si no hubo cambios.
+function almReemplazar(v, viejo, nuevo, url, tam){
+  if(typeof v === 'string'){
+    if(v === viejo) return nuevo;
+    const m = v.match(/\/o\/([^?#]+)/);
+    if(m) try{ if(decodeURIComponent(m[1]) === viejo) return url; }catch(e){}
+    return v;
+  }
+  if(Array.isArray(v)){ let cambio = false; const r = v.map(x=>{ const y = almReemplazar(x, viejo, nuevo, url, tam); if(y !== x) cambio = true; return y; }); return cambio ? r : v; }
+  if(v && typeof v === 'object' && Object.getPrototypeOf(v) === Object.prototype){
+    let cambio = false; const r = {};
+    for(const [k, x] of Object.entries(v)){ const y = almReemplazar(x, viejo, nuevo, url, tam); if(y !== x) cambio = true; r[k] = y; }
+    if(cambio && typeof r.tam === 'number') r.tam = tam;
+    return cambio ? r : v;
+  }
+  return v;
+}
+async function almReducirFoto(blob){
+  const img = await createImageBitmap(blob), k = Math.min(1, ALM_FOTO_LADO / Math.max(img.width, img.height));
+  const cv = document.createElement('canvas'); cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
+  const ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height); ctx.drawImage(img, 0, 0, cv.width, cv.height);
+  const r = await voCanvasJpeg(cv, ALM_FOTO_CALIDAD); cv.width = cv.height = 0;
+  return r;
+}
+// PDF de una guía de agencia: se busca la guía por voucher y guía (no hace falta analizar la base de datos).
+async function almComprimirPdfAgencia(f, pre){
+  const [, voucher, guia] = f.path.split('/');
+  const snap = await vouchersAgenciaItemsRef.where('voucher_correlativo', '==', voucher).where('guia_correlativo', '==', guia).get();
+  const usa = snap.docs.filter(d=>{ const u = d.data().pdf_url || '', x = u.match(/\/o\/([^?#]+)/); try{ return x && decodeURIComponent(x[1]) === f.path; }catch(e){ return false; } });
+  if(!usa.length) return 'sin_uso';
+  const ref = storage.ref().child(f.path);
+  const red = await voReducir(new File([await voDescargar(await ref.getDownloadURL())], f.nombre, { type: 'application/pdf' }), txt=> almEstado(`${pre}: ${txt}`, 'proceso'));
+  if(!red.tamOriginal) return 'sin_cambio';
+  const nuevo = f.path.replace(/[^/]+$/, `${Date.now()}_${f.nombre.replace(/^\d+_/, '')}`), nref = storage.ref().child(nuevo);
+  await nref.put(red, vchMetaPdf(f.tam));
+  const url = await nref.getDownloadURL();
+  await Promise.all(usa.map(d=> d.ref.update({ pdf_url: url, pdf_tam: red.size, pdf_tam_original: f.tam, pdf_comprimido_por: currentUserAlias, pdf_comprimido_en: firebase.firestore.Timestamp.now() })));
+  return { nuevo, nref, tam: red.size };
+}
+// Foto: se reemplaza en todos los registros que la usan (por ruta o por URL). Un registro que alguien
+// está llenando o modificando no se toca.
+async function almComprimirFoto(f){
+  const x = almEsperados && almEsperados.get(f.path);
+  if(!x || !(x.docs || []).length) return 'sin_uso';
+  const snaps = await Promise.all(x.docs.map(d=> db.collection(d.col).doc(d.id).get()));
+  if(snaps.some(s=> s.exists && (s.data().modificando || (s.ref.parent.id === 'registros_foto' && s.data().estado === 'BORRADOR')))) return 'en_uso';
+  const ref = storage.ref().child(f.path);
+  const red = await almReducirFoto(new Blob([await voDescargar(await ref.getDownloadURL())]));
+  if(!red || red.size >= f.tam * 0.9) return 'sin_cambio';
+  const nuevo = f.path.replace(/[^/]+$/, `${f.nombre.replace(/\.[^.]+$/, '')}_c${Date.now()}.jpg`), nref = storage.ref().child(nuevo);
+  await nref.put(red, { contentType: 'image/jpeg', cacheControl: 'private, max-age=31536000', customMetadata: { comprimido: '1', tam_original: String(f.tam) } });
+  const url = await nref.getDownloadURL();
+  for(const s of snaps){
+    if(!s.exists) continue;
+    const data = s.data(), cambios = {};
+    Object.keys(data).forEach(k=>{ const v = almReemplazar(data[k], f.path, nuevo, url, red.size); if(v !== data[k]) cambios[k] = v; });
+    if(Object.keys(cambios).length) await s.ref.update(cambios);
+  }
+  return { nuevo, nref, tam: red.size };
 }
 async function almComprimir(m){
+  const tipo = ALM_COMPRIMIBLES[m];
+  if(!tipo || almOcupado) return;
+  // Las fotos necesitan saber qué registro las usa: si falta, primero se analiza la base de datos.
+  if(tipo === 'foto' && !almEsperados){ await almAnalizarBase(); if(!almEsperados) return; }
   const L = almPorComprimir((almArchivos || []).filter(f=> almModulo(f.path) === m));
-  if(!L.length || almOcupado) return;
-  if(!confirm(`Se comprimirán ${L.length} PDF(s) (${almFmt(L.reduce((s, f)=> s + f.tam, 0))}).\n\nCada PDF se reemplaza en su guía por la versión comprimida y se borra el original. ¿Continuar?`)) return;
+  if(!L.length) return;
+  if(!confirm(`Se comprimirán ${almQue(m, L.length)} de ${almNombreMod(m)} (${almFmt(L.reduce((s, f)=> s + f.tam, 0))}).\n\nCada archivo se reemplaza en su registro por la versión comprimida y se borra el original. ¿Continuar?`)) return;
   almOcupado = true;
-  let antes = 0, despues = 0, hechos = 0, sinCambio = 0, sinGuia = 0, errores = 0;
+  let antes = 0, despues = 0, hechos = 0, sinCambio = 0, sinUso = 0, enUso = 0, errores = 0;
   for(const [i, f] of L.entries()){
-    const pre = `Comprimiendo ${i + 1} de ${L.length}: ${f.path.split('/').slice(1, 3).join(' / ')} (${voMB(f.tam)})`;
+    const pre = `Comprimiendo ${i + 1} de ${L.length}: ${f.path.split('/').slice(1, 3).join(' / ')} (${almFmt(f.tam)})`;
     try{
       almEstado(pre + '…', 'proceso');
-      const [, voucher, guia] = f.path.split('/');
-      const snap = await vouchersAgenciaItemsRef.where('voucher_correlativo', '==', voucher).where('guia_correlativo', '==', guia).get();
-      const usa = snap.docs.filter(d=>{ const u = d.data().pdf_url || '', x = u.match(/\/o\/([^?#]+)/); try{ return x && decodeURIComponent(x[1]) === f.path; }catch(e){ return false; } });
-      if(!usa.length){ sinGuia++; continue; }   // ninguna guía lo usa: es un huérfano, se limpia en "Archivos huérfanos"
-      const ref = storage.ref().child(f.path);
-      const datos = await voDescargar(await ref.getDownloadURL());
-      const original = new File([datos], f.nombre, { type: 'application/pdf' });
-      const red = await voReducir(original, txt=> almEstado(`${pre}: ${txt}`, 'proceso'));
-      if(!red.tamOriginal){ sinCambio++; await ref.updateMetadata({ customMetadata: { comprimido: '1', tam_original: String(f.tam) } }); f.comprimido = true; continue; }
-      const nuevo = f.path.replace(/[^/]+$/, `${Date.now()}_${f.nombre.replace(/^\d+_/, '')}`), nref = storage.ref().child(nuevo);
-      await nref.put(red, vchMetaPdf(f.tam));
-      const url = await nref.getDownloadURL();
-      await Promise.all(usa.map(d=> d.ref.update({ pdf_url: url, pdf_tam: red.size, pdf_tam_original: f.tam, pdf_comprimido_por: currentUserAlias, pdf_comprimido_en: firebase.firestore.Timestamp.now() })));
-      await ref.delete();
-      antes += f.tam; despues += red.size; hechos++;
-      // Los cruces con la base de datos siguen valiendo: la guía ahora usa el archivo nuevo.
-      if(almRefs) almRefs.add(nuevo);
-      if(almEsperados){ const x = almEsperados.get(f.path); almEsperados.delete(f.path); almEsperados.set(nuevo, x || { col: 'vouchers_agencia_items', bucket: '' }); }
-      Object.assign(f, { path: nuevo, nombre: nref.name, tam: red.size, comprimido: true, fecha: new Date().toISOString() });
+      const r = tipo === 'pdf' ? await almComprimirPdfAgencia(f, pre) : await almComprimirFoto(f);
+      if(r === 'sin_uso'){ sinUso++; f.sinGuia = true; continue; }   // nadie lo usa: es un huérfano, se limpia en "Archivos huérfanos"
+      if(r === 'en_uso'){ enUso++; continue; }
+      if(r === 'sin_cambio'){ sinCambio++; await storage.ref().child(f.path).updateMetadata({ customMetadata: { comprimido: '1', tam_original: String(f.tam) } }); f.comprimido = true; continue; }
+      await storage.ref().child(f.path).delete();
+      antes += f.tam; despues += r.tam; hechos++;
+      // Los cruces con la base de datos siguen valiendo: el registro ahora usa el archivo nuevo.
+      if(almRefs) almRefs.add(r.nuevo);
+      if(almEsperados){ const x = almEsperados.get(f.path); almEsperados.delete(f.path); almEsperados.set(r.nuevo, x || { col: 'vouchers_agencia_items', bucket: '', docs: [] }); }
+      Object.assign(f, { path: r.nuevo, nombre: r.nref.name, tam: r.tam, comprimido: true, fecha: new Date().toISOString() });
     }catch(err){ console.error('No se pudo comprimir', f.path, err); errores++; }
   }
   almOcupado = false;
-  const resumen = `${hechos} PDF(s) comprimido(s): ${almFmt(antes)} → ${almFmt(despues)} (se liberaron ${almFmt(antes - despues)})` +
-    (sinCambio ? ` · ${sinCambio} ya no bajaban más` : '') + (sinGuia ? ` · ${sinGuia} sin guía (ver huérfanos)` : '') + (errores ? ` · ${errores} con error` : '');
+  const resumen = `${almQue(m, hechos)} comprimido(s): ${almFmt(antes)} → ${almFmt(despues)} (se liberaron ${almFmt(antes - despues)})` +
+    (sinCambio ? ` · ${sinCambio} ya no bajaban más` : '') + (sinUso ? ` · ${sinUso} sin ${tipo === 'pdf' ? 'guía' : 'registro'} (ver huérfanos)` : '') +
+    (enUso ? ` · ${enUso} en un registro que se está llenando o modificando` : '') + (errores ? ` · ${errores} con error` : '');
   if(hechos || sinCambio) await logAccion('almacenamiento_pdfs_comprimidos', { detalle: `${almNombreMod(m)}: ${resumen}` });
   almEstado(resumen + '.', errores ? 'err' : 'ok');
   renderAlm();
@@ -19730,6 +19811,17 @@ function almExcel(){
 $('btn-alm-archivos').addEventListener('click', almAnalizarArchivos);
 $('btn-alm-base').addEventListener('click', almAnalizarBase);
 $('btn-alm-excel').addEventListener('click', almExcel);
+// Sin análisis previo, primero se analizan los archivos y luego se comprime.
+$('btn-alm-comprimir').addEventListener('click', async ()=>{
+  if(almOcupado) return;
+  if(!almArchivos){ await almAnalizarArchivos(); if(!almArchivos) return; }
+  for(const m of Object.keys(ALM_COMPRIMIBLES)){
+    if(!almPorComprimir(almArchivos.filter(f=> almModulo(f.path) === m)).length) continue;
+    almModAbierto = m; renderAlm();
+    await almComprimir(m);
+  }
+  if(!almPorComprimir(almArchivos.filter(f=> ALM_COMPRIMIBLES[almModulo(f.path)])).length) renderAlm();
+});
 $('view-almacenamiento').addEventListener('click', async e=>{
   const ver = e.target.closest('[data-alm-ver]'), mod = e.target.closest('[data-alm-mod]'), ocultar = e.target.closest('[data-alm-ocultar]'),
         cp = e.target.closest('[data-alm-carp-pag]'), hp = e.target.closest('[data-alm-huerf-pag]'), fp = e.target.closest('[data-alm-falt-pag]');
