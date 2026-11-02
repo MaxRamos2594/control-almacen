@@ -3692,6 +3692,7 @@
     <div class="alm-acciones">
       <button type="button" class="btn btn-primary" id="btn-alm-archivos">🔍 Analizar archivos</button>
       <button type="button" class="btn btn-ghost" id="btn-alm-base">🗄 Analizar base de datos</button>
+      <button type="button" class="btn btn-ghost" id="btn-alm-comprimir" title="Comprime los PDFs pesados de los vouchers de agencia">🗜 Comprimir PDFs</button>
       <button type="button" class="btn btn-ghost" id="btn-alm-excel" disabled>⬇ Excel</button>
     </div>
     <div class="msg" id="alm-msg"></div>
@@ -3781,8 +3782,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v218';
-const APP_UPDATED = '02/11/2026 15:00';
+const APP_VERSION = 'v219';
+const APP_UPDATED = '02/11/2026 17:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -19572,6 +19573,11 @@ function renderAlm(){
          tarjeta('🖼 Imágenes', almFmt(porTipo('Imagen')), `${A.filter(f=> almTipo(f).startsWith('Imagen')).length} archivo(s) · ${almPctTxt(almPct(porTipo('Imagen'), totA))} de los archivos`) : '') +
     (huerf ? tarjeta('🧹 Huérfanos', almFmt(huerf.reduce((s, f)=> s + f.tam, 0)), `${huerf.length} archivo(s) sin uso`) : '');
   $('btn-alm-excel').disabled = !A && !almBase;
+  // Atajo arriba: cuántos PDFs faltan comprimir en los módulos que se pueden comprimir.
+  const porComp = A ? almPorComprimir(A.filter(f=> ALM_COMPRIMIBLES[almModulo(f.path)])) : null;
+  $('btn-alm-comprimir').textContent = !porComp ? '🗜 Comprimir PDFs' : porComp.length ? `🗜 Comprimir ${porComp.length} PDF(s) · ${almFmt(porComp.reduce((s, f)=> s + f.tam, 0))}` : '🗜 PDFs ya comprimidos';
+  $('btn-alm-comprimir').disabled = !!porComp && !porComp.length;
+  $('btn-alm-comprimir').classList.toggle('btn-primary', !!(porComp && porComp.length)); $('btn-alm-comprimir').classList.toggle('btn-ghost', !(porComp && porComp.length));
   ['modulos', 'tipos', 'meses', 'pesados'].forEach(s=> $('alm-sec-' + s).style.display = A ? 'block' : 'none');
   $('alm-sec-base').style.display = almBase ? 'block' : 'none';
   $('alm-sec-huerfanos').style.display = huerf ? 'block' : 'none';
@@ -19591,7 +19597,7 @@ function almAgrupar(L, clave){
 // Cada PDF se baja, se pasa por el mismo reductor que al subir, se sube como archivo nuevo, se actualiza
 // la guía que lo usa y recién entonces se borra el original. Los que no bajan de tamaño quedan marcados.
 const ALM_COMPRIMIBLES = { vouchers_agencia: true };
-const almPorComprimir = L=> L.filter(f=> almTipo(f) === 'PDF' && !f.comprimido && f.tam > VO_REDUCIR_DESDE).sort((a, b)=> b.tam - a.tam);
+const almPorComprimir = L=> L.filter(f=> almTipo(f) === 'PDF' && !f.comprimido && !f.sinGuia && f.tam > VO_REDUCIR_DESDE).sort((a, b)=> b.tam - a.tam);
 function almCajaComprimir(m, archivos){
   if(!ALM_COMPRIMIBLES[m]) return '';
   const L = almPorComprimir(archivos), tam = L.reduce((s, f)=> s + f.tam, 0);
@@ -19613,7 +19619,7 @@ async function almComprimir(m){
       const [, voucher, guia] = f.path.split('/');
       const snap = await vouchersAgenciaItemsRef.where('voucher_correlativo', '==', voucher).where('guia_correlativo', '==', guia).get();
       const usa = snap.docs.filter(d=>{ const u = d.data().pdf_url || '', x = u.match(/\/o\/([^?#]+)/); try{ return x && decodeURIComponent(x[1]) === f.path; }catch(e){ return false; } });
-      if(!usa.length){ sinGuia++; continue; }   // ninguna guía lo usa: es un huérfano, se limpia en "Archivos huérfanos"
+      if(!usa.length){ sinGuia++; f.sinGuia = true; continue; }   // ninguna guía lo usa: es un huérfano, se limpia en "Archivos huérfanos"
       const ref = storage.ref().child(f.path);
       const datos = await voDescargar(await ref.getDownloadURL());
       const original = new File([datos], f.nombre, { type: 'application/pdf' });
@@ -19730,6 +19736,17 @@ function almExcel(){
 $('btn-alm-archivos').addEventListener('click', almAnalizarArchivos);
 $('btn-alm-base').addEventListener('click', almAnalizarBase);
 $('btn-alm-excel').addEventListener('click', almExcel);
+// Sin análisis previo, primero se analizan los archivos y luego se comprime.
+$('btn-alm-comprimir').addEventListener('click', async ()=>{
+  if(almOcupado) return;
+  if(!almArchivos){ await almAnalizarArchivos(); if(!almArchivos) return; }
+  for(const m of Object.keys(ALM_COMPRIMIBLES)){
+    if(!almPorComprimir(almArchivos.filter(f=> almModulo(f.path) === m)).length) continue;
+    almModAbierto = m; renderAlm();
+    await almComprimir(m);
+  }
+  if(!almPorComprimir(almArchivos.filter(f=> ALM_COMPRIMIBLES[almModulo(f.path)])).length) renderAlm();
+});
 $('view-almacenamiento').addEventListener('click', async e=>{
   const ver = e.target.closest('[data-alm-ver]'), mod = e.target.closest('[data-alm-mod]'), ocultar = e.target.closest('[data-alm-ocultar]'),
         cp = e.target.closest('[data-alm-carp-pag]'), hp = e.target.closest('[data-alm-huerf-pag]'), fp = e.target.closest('[data-alm-falt-pag]');

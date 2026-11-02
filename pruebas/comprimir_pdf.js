@@ -77,7 +77,9 @@ const MB = b=> (b / 1048576).toFixed(2) + ' MB';
   const caja = await page.evaluate(()=> document.querySelector('#alm-modulos .alm-comprimir').innerText.replace(/\s+/g, ' '));
   verificar(/^🗜 2 PDF\(s\) de más de 0\.68 MB sin comprimir/.test(caja), `Almacenamiento muestra los PDFs por comprimir (el ya comprimido al subir no cuenta): "${caja.slice(0, 70)}…"`);
   await page.screenshot({ path: path.join(__dirname, 'salida', 'comprimir_pdf.png'), fullPage: true });
-  await page.click('#alm-modulos [data-alm-comprimir="vouchers_agencia"]');
+  const arriba = await page.textContent('#btn-alm-comprimir');
+  verificar(/^🗜 Comprimir 2 PDF\(s\) · 7\.9\d MB$/.test(arriba), `Atajo arriba, junto a «Analizar archivos»: "${arriba}"`);
+  await page.click('#btn-alm-comprimir');
   await page.waitForFunction(()=> /PDF\(s\) comprimido\(s\)/.test($('alm-msg').textContent), null, { timeout: 120000 });
   const fin = await page.evaluate(async ()=>{
     const d = (await vouchersAgenciaItemsRef.doc('VOU-00002_G2').get()).data(), ref = vchRefDeUrl(d.pdf_url), m = await ref.getMetadata();
@@ -85,10 +87,11 @@ const MB = b=> (b / 1048576).toFixed(2) + ' MB';
     return { msg: $('alm-msg').textContent, path: ref.fullPath, tam: Number(m.size), meta: m.customMetadata || {}, d,
       viejo: await existe('vouchers_agencia/VOU-00002/G2/1700000000000_guia.pdf'), huerfano: await existe('vouchers_agencia/VOU-00003/G3/1700000000000_guia.pdf'),
       caja: document.querySelector('#alm-modulos .alm-comprimir').innerText.replace(/\s+/g, ' '),
+      arriba: $('btn-alm-comprimir').textContent, arribaOff: $('btn-alm-comprimir').disabled,
       log: (await movimientosRef.get()).docs.map(x=> x.data()).filter(x=> x.tipo === 'almacenamiento_pdfs_comprimidos').map(x=> x.detalle).join() };
   });
   verificar(/^1 PDF\(s\) comprimido\(s\): [\d.]+ MB → [\d.]+ (KB|MB) \(se liberaron [\d.]+ MB\) · 1 sin guía/.test(fin.msg) && fin.tam < pesado.length * 0.6 && fin.d.pdf_tam === fin.tam && fin.d.pdf_tam_original === pesado.length && fin.meta.comprimido === '1' &&
-    !fin.viejo && fin.huerfano && fin.path !== 'vouchers_agencia/VOU-00002/G2/1700000000000_guia.pdf' && /Campañas · vouchers de agencia: 1 PDF/.test(fin.log),
+    !fin.viejo && fin.huerfano && fin.arriba === '🗜 PDFs ya comprimidos' && fin.arribaOff && /Todos los PDFs/.test(fin.caja) && fin.path !== 'vouchers_agencia/VOU-00002/G2/1700000000000_guia.pdf' && /Campañas · vouchers de agencia: 1 PDF/.test(fin.log),
     `Comprimir PDFs: "${fin.msg}"; la guía usa el nuevo y el original se borró; el huérfano no se toca`);
   await page.screenshot({ path: path.join(__dirname, 'salida', 'comprimir_pdf_hecho.png'), fullPage: true });
 
