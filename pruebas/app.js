@@ -52,6 +52,8 @@ async function crearUsuarioAuth(email, pass){
 async function limpiarEmuladores(){
   await fetch(`http://127.0.0.1:8080/emulator/v1/projects/${PROYECTO}/databases/(default)/documents`, { method: 'DELETE' });
   await fetch(`http://127.0.0.1:9099/emulator/v1/projects/${PROYECTO}/accounts`, { method: 'DELETE' });
+  // Archivos de Storage que dejaron otras pruebas (las reglas se mantienen).
+  await fetch('http://127.0.0.1:9199/internal/reset', { method: 'POST' }).catch(()=>{});
 }
 
 // Servidor local: entrega index.html (conectado a emuladores) y las librerías
