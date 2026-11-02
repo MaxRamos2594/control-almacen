@@ -3782,8 +3782,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v219';
-const APP_UPDATED = '02/11/2026 18:30';
+const APP_VERSION = 'v220';
+const APP_UPDATED = '03/11/2026 09:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -17026,17 +17026,26 @@ function renderPanelPdf(){
 let tiSubidaCorrelativoActual = null;
 
 async function subirPdfFirmadoToma(correlativo, file){
-  const path = `tomas_inventario/${correlativo}/${Date.now()}_${file.name}`;
+  // Se comprime antes de subir (mismo reductor que Venta Online); solo se usa si queda más liviano.
+  const subir = await voReducir(file, txt=> showToast(txt, 'ok'));
+  const path = `tomas_inventario/${correlativo}/${Date.now()}_${vchNombreArchivo(file.name)}`;
   const ref = storage.ref().child(path);
-  await ref.put(file);
+  await ref.put(subir, vchMetaPdf(file.size));
   const url = await ref.getDownloadURL();
+  const header = tiRegAllCache.find(r=>r.correlativo===correlativo), anterior = header && header.pdf_firmado_url;
   await inventarioTomasRef.doc(correlativo).update({
     pdf_firmado_url: url,
     pdf_firmado_nombre: file.name,
+    pdf_firmado_tam: subir.size,
+    pdf_firmado_tam_original: file.size,
     pdf_firmado_subido_por: currentUserAlias,
     pdf_firmado_subido_en: firebase.firestore.FieldValue.serverTimestamp()
   });
-  await logAccion('toma_inventario_pdf_subido', {detalle:`Se subió el PDF firmado "${file.name}" a la toma ${correlativo}`});
+  // Al reemplazar, el PDF anterior se borra para que no quede ocupando espacio.
+  if(anterior && anterior !== url){ try{ await vchRefDeUrl(anterior).delete(); }catch(e){ console.warn('No se pudo borrar el PDF anterior', e); } }
+  const reduccion = subir.tamOriginal ? ` (comprimido de ${voMB(subir.tamOriginal)} a ${voMB(subir.size)})` : '';
+  await logAccion('toma_inventario_pdf_subido', {detalle:`Se subió el PDF firmado "${file.name}" a la toma ${correlativo}${reduccion}`});
+  if(reduccion) showToast('PDF firmado' + reduccion, 'ok');
   return url;
 }
 
@@ -19604,19 +19613,25 @@ function almAgrupar(L, clave){
 // recién entonces se borra el original. Los que no bajan de tamaño quedan marcados.
 // Qué se comprime en cada módulo: PDFs de las guías de agencia (sin analizar la base de datos) y fotos
 // del registro fotográfico y de la toma de inventario (necesita la base de datos para saber qué registro usa cada foto).
-const ALM_COMPRIMIBLES = { vouchers_agencia: 'pdf', registros_foto: 'foto', tomas_inventario: 'foto' };
+const ALM_COMPRIMIBLES = { vouchers_agencia: 'pdf', registros_foto: 'foto', tomas_inventario: 'mixto' };
 const ALM_FOTO_DESDE = 200 * 1024, ALM_FOTO_LADO = 1280, ALM_FOTO_CALIDAD = 0.72;
 function almComprimible(f){
   const t = ALM_COMPRIMIBLES[almModulo(f.path)];
   if(!t || f.comprimido || f.sinGuia) return false;
   if(almRefs && !almRefs.has(f.path)) return false;   // huérfano: no se comprime, se limpia en "Archivos huérfanos"
-  return t === 'pdf' ? almTipo(f) === 'PDF' && f.tam > VO_REDUCIR_DESDE : almTipo(f).startsWith('Imagen') && f.tam > ALM_FOTO_DESDE;
+  const pdf = almTipo(f) === 'PDF' && f.tam > VO_REDUCIR_DESDE, foto = almTipo(f).startsWith('Imagen') && f.tam > ALM_FOTO_DESDE;
+  return t === 'pdf' ? pdf : t === 'foto' ? foto : pdf || foto;
 }
 const almPorComprimir = L=> L.filter(almComprimible).sort((a, b)=> b.tam - a.tam);
-const almQue = (m, n)=> ALM_COMPRIMIBLES[m] === 'pdf' ? `${n} PDF(s)` : `${n} foto(s)`;
+const almQue = (m, n)=> ({ pdf: `${n} PDF(s)`, foto: `${n} foto(s)` })[ALM_COMPRIMIBLES[m]] || `${n} archivo(s)`;
 function almCajaComprimir(m, archivos){
   if(!ALM_COMPRIMIBLES[m]) return '';
-  const L = almPorComprimir(archivos), tam = L.reduce((s, f)=> s + f.tam, 0), pdf = ALM_COMPRIMIBLES[m] === 'pdf';
+  const L = almPorComprimir(archivos), tam = L.reduce((s, f)=> s + f.tam, 0), pdf = ALM_COMPRIMIBLES[m] === 'pdf', mixto = ALM_COMPRIMIBLES[m] === 'mixto';
+  if(mixto) return `<div class="alm-comprimir">` + (L.length
+    ? `<div><b>🗜 ${esc(almQue(m, L.length))} pesados sin comprimir (fotos de más de ${esc(almFmt(ALM_FOTO_DESDE))} y PDFs de más de ${esc(almFmt(VO_REDUCIR_DESDE))}) · ${esc(almFmt(tam))}</b>` +
+      `<span class="hint">Las fotos se achican a ${esc(ALM_FOTO_LADO)} px y los PDFs firmados se comprimen como al subirlos. Se reemplazan en su toma y se borra el original.${almEsperados ? '' : ' Antes se analiza la base de datos para saber qué toma usa cada archivo.'}</span></div>` +
+      `<button type="button" class="btn btn-primary btn-sm" data-alm-comprimir="${esc(m)}">🗜 Comprimir archivos</button>`
+    : `<div class="alm-ok">✔ Todos los archivos de este módulo ya están comprimidos o son livianos.</div>`) + `</div>`;
   return `<div class="alm-comprimir">` + (L.length
     ? `<div><b>🗜 ${esc(almQue(m, L.length))} de más de ${esc(almFmt(pdf ? VO_REDUCIR_DESDE : ALM_FOTO_DESDE))} sin comprimir · ${esc(almFmt(tam))}</b><span class="hint">` +
         (pdf ? 'Se comprimen como al subirlos (las páginas quedan como imagen, se leen bien). Se reemplaza el archivo en su guía y se borra el original.'
@@ -19666,16 +19681,18 @@ async function almComprimirPdfAgencia(f, pre){
 }
 // Foto: se reemplaza en todos los registros que la usan (por ruta o por URL). Un registro que alguien
 // está llenando o modificando no se toca.
-async function almComprimirFoto(f){
-  const x = almEsperados && almEsperados.get(f.path);
+async function almComprimirFoto(f, pre){
+  const x = almEsperados && almEsperados.get(f.path), esPdf = almTipo(f) === 'PDF';
   if(!x || !(x.docs || []).length) return 'sin_uso';
   const snaps = await Promise.all(x.docs.map(d=> db.collection(d.col).doc(d.id).get()));
   if(snaps.some(s=> s.exists && (s.data().modificando || (s.ref.parent.id === 'registros_foto' && s.data().estado === 'BORRADOR')))) return 'en_uso';
   const ref = storage.ref().child(f.path);
-  const red = await almReducirFoto(new Blob([await voDescargar(await ref.getDownloadURL())]));
-  if(!red || red.size >= f.tam * 0.9) return 'sin_cambio';
-  const nuevo = f.path.replace(/[^/]+$/, `${f.nombre.replace(/\.[^.]+$/, '')}_c${Date.now()}.jpg`), nref = storage.ref().child(nuevo);
-  await nref.put(red, { contentType: 'image/jpeg', cacheControl: 'private, max-age=31536000', customMetadata: { comprimido: '1', tam_original: String(f.tam) } });
+  const datos = await voDescargar(await ref.getDownloadURL());
+  let red;
+  if(esPdf){ red = await voReducir(new File([datos], f.nombre, { type: 'application/pdf' }), txt=> almEstado(`${pre}: ${txt}`, 'proceso')); if(!red.tamOriginal) return 'sin_cambio'; }
+  else{ red = await almReducirFoto(new Blob([datos])); if(!red || red.size >= f.tam * 0.9) return 'sin_cambio'; }
+  const nuevo = f.path.replace(/[^/]+$/, `${f.nombre.replace(/\.[^.]+$/, '')}_c${Date.now()}.${esPdf ? 'pdf' : 'jpg'}`), nref = storage.ref().child(nuevo);
+  await nref.put(red, esPdf ? vchMetaPdf(f.tam) : { contentType: 'image/jpeg', cacheControl: 'private, max-age=31536000', customMetadata: { comprimido: '1', tam_original: String(f.tam) } });
   const url = await nref.getDownloadURL();
   for(const s of snaps){
     if(!s.exists) continue;
@@ -19689,7 +19706,7 @@ async function almComprimir(m){
   const tipo = ALM_COMPRIMIBLES[m];
   if(!tipo || almOcupado) return;
   // Las fotos necesitan saber qué registro las usa: si falta, primero se analiza la base de datos.
-  if(tipo === 'foto' && !almEsperados){ await almAnalizarBase(); if(!almEsperados) return; }
+  if(tipo !== 'pdf' && !almEsperados){ await almAnalizarBase(); if(!almEsperados) return; }
   const L = almPorComprimir((almArchivos || []).filter(f=> almModulo(f.path) === m));
   if(!L.length) return;
   if(!confirm(`Se comprimirán ${almQue(m, L.length)} de ${almNombreMod(m)} (${almFmt(L.reduce((s, f)=> s + f.tam, 0))}).\n\nCada archivo se reemplaza en su registro por la versión comprimida y se borra el original. ¿Continuar?`)) return;
@@ -19699,7 +19716,7 @@ async function almComprimir(m){
     const pre = `Comprimiendo ${i + 1} de ${L.length}: ${f.path.split('/').slice(1, 3).join(' / ')} (${almFmt(f.tam)})`;
     try{
       almEstado(pre + '…', 'proceso');
-      const r = tipo === 'pdf' ? await almComprimirPdfAgencia(f, pre) : await almComprimirFoto(f);
+      const r = tipo === 'pdf' ? await almComprimirPdfAgencia(f, pre) : await almComprimirFoto(f, pre);
       if(r === 'sin_uso'){ sinUso++; f.sinGuia = true; continue; }   // nadie lo usa: es un huérfano, se limpia en "Archivos huérfanos"
       if(r === 'en_uso'){ enUso++; continue; }
       if(r === 'sin_cambio'){ sinCambio++; await storage.ref().child(f.path).updateMetadata({ customMetadata: { comprimido: '1', tam_original: String(f.tam) } }); f.comprimido = true; continue; }
