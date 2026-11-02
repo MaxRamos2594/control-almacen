@@ -244,7 +244,8 @@
   .alm-ruta{font-family:var(--mono); font-size:11.5px; word-break:break-all; max-width:420px;}
   .alm-dos{display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:12px;} .alm-sec{margin-bottom:12px;}
   .alm-huerf-res{display:flex; flex-direction:column; gap:2px; margin-bottom:8px;} .alm-ok{color:#1d7a46; font-weight:700;}
-  #btn-alm-borrar-huerfanos{margin-top:10px;} .alm-vacio td{color:var(--ink-soft);} .alm-vacias{margin-top:8px;}
+  #btn-alm-borrar-huerfanos{margin-top:10px;}
+  .alm-comprimir{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; margin:12px 0 4px; padding:10px 12px; border:1px dashed var(--blue); border-radius:10px; background:#f3f8ff;} .alm-comprimir > div{display:flex; flex-direction:column; gap:2px;} .alm-vacio td{color:var(--ink-soft);} .alm-vacias{margin-top:8px;}
   @media (max-width:600px){
     .alm-tabla{font-size:12.5px;} .alm-tabla th, .alm-tabla td{padding:6px 4px;} .alm-col-pct{min-width:80px;} .alm-ruta{max-width:170px;}
     .alm-dos{grid-template-columns:1fr;} .alm-card b{font-size:19px;}
@@ -2882,6 +2883,8 @@
         <div class="hist-wrap" style="max-height:340px; margin-bottom:12px;">
           <table><thead><tr><th>N° guía</th><th>Fecha</th><th>Tienda</th><th>Bultos</th><th>PDF</th><th></th></tr></thead><tbody id="vch-items-body"></tbody></table>
         </div>
+        <p class="hint" style="margin:-4px 0 6px;">Los PDFs pesados (escaneos) se comprimen automáticamente al subirlos.</p>
+        <div class="msg" id="vch-pdf-msg"></div>
         <div id="vch-pdf-wrap" style="display:none;">
           <p class="hint" id="vch-pdf-info" style="margin-bottom:8px;"></p>
           <iframe id="vch-pdf-iframe" style="width:100%; height:520px; border:1px solid var(--line-strong); border-radius:6px;" src=""></iframe>
@@ -3778,8 +3781,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v217';
-const APP_UPDATED = '02/11/2026 12:00';
+const APP_VERSION = 'v218';
+const APP_UPDATED = '02/11/2026 15:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4279,7 +4282,7 @@ function moduloOf(tipo){
 }
 function tipoLabel(tipo){
   const map = {
-    almacenamiento_huerfanos_eliminados:'Archivos huérfanos eliminados (almacenamiento)',
+    almacenamiento_huerfanos_eliminados:'Archivos huérfanos eliminados (almacenamiento)', almacenamiento_pdfs_comprimidos:'PDFs comprimidos (almacenamiento)',
     reg_foto_creado:'Registro fotográfico creado', reg_foto_eliminado:'Registro fotográfico eliminado', reg_foto_iniciado:'Registro fotográfico iniciado (borrador)',
     reg_foto_confirmado:'Registro fotográfico confirmado', reg_foto_descartado:'Borrador de registro fotográfico descartado', reg_foto_exportado:'Registro fotográfico exportado',
     reg_foto_reabierto:'Registro fotográfico abierto para modificar', reg_foto_modificado:'Registro fotográfico modificado', reg_foto_modificacion_cancelada:'Modificación de registro fotográfico cancelada',
@@ -17581,7 +17584,7 @@ function renderVchItemsTabla(){
       </td>
       <td>
         <span class="vch-pill ${esc(tienePdf?'ok':'no')}">${esc(tienePdf?'Subido':'Pendiente')}</span>
-        ${tienePdf?`<br><span class="hint">${esc(it.pdf_subido_por||'')} · ${esc(it.pdf_subido_en && it.pdf_subido_en.toDate ? it.pdf_subido_en.toDate().toLocaleString('es-PE') : '')}</span>`:''}
+        ${tienePdf?`<br><span class="hint">${esc(it.pdf_subido_por||'')} · ${esc(it.pdf_subido_en && it.pdf_subido_en.toDate ? it.pdf_subido_en.toDate().toLocaleString('es-PE') : '')}${it.pdf_tam ? ` · ${esc(voMB(it.pdf_tam))}${it.pdf_tam_original > it.pdf_tam ? ` (de ${esc(voMB(it.pdf_tam_original))})` : ''}` : ''}</span>`:''}
       </td>
       <td style="white-space:nowrap;">
         ${tienePdf?`<button class="btn btn-ghost btn-sm vch-ver-pdf" data-id="${esc(it.id)}">👁 Ver</button> <button class="btn btn-ghost btn-sm vch-reemplazar-pdf" data-id="${esc(it.id)}">↺</button> <button class="btn btn-sm vch-eliminar-pdf" data-id="${esc(it.id)}" style="background:#8A332A; color:#fff;">🗑</button>`
@@ -17645,6 +17648,11 @@ function mostrarVchPdf(itemId){
   $('vch-pdf-abrir-nueva').href = item.pdf_url;
 }
 
+// Los PDFs de agencia ya procesados por el reductor llevan la marca "comprimido" (Almacenamiento no los vuelve a comprimir).
+const vchMetaPdf = tamOriginal=> ({ contentType:'application/pdf', cacheControl:'private, max-age=31536000', customMetadata:{ comprimido:'1', tam_original:String(tamOriginal) } });
+const vchNombreArchivo = n=> n.replace(/[^\w.\-]+/g, '_');
+// Referencia al archivo desde su URL de descarga (funciona con cualquier host, también el emulador).
+const vchRefDeUrl = url=>{ const m = String(url).match(/\/o\/([^?#]+)/); return m ? storage.ref().child(decodeURIComponent(m[1])) : storage.refFromURL(url); };
 $('vch-pdf-input-global').addEventListener('change', async ()=>{
   const file = $('vch-pdf-input-global').files[0];
   if(!file || !vchSubidaItemIdActual) return;
@@ -17656,26 +17664,36 @@ $('vch-pdf-input-global').addEventListener('change', async ()=>{
   const itemId = vchSubidaItemIdActual;
   const item = vchItemsCache.find(i=>i.id===itemId);
   if(!item){ $('vch-pdf-input-global').value=''; vchSubidaItemIdActual=null; return; }
-  showToast('Subiendo PDF…','ok');
   try{
-    const path = `vouchers_agencia/${item.voucher_correlativo}/${item.guia_correlativo}/${Date.now()}_${file.name}`;
+    // Se comprime antes de subir (mismo reductor que Venta Online); solo se usa si queda más liviano.
+    msgProceso('vch-pdf-msg', 'Comprimiendo PDF…');
+    const subir = await voReducir(file, txt=> msgProceso('vch-pdf-msg', txt));
+    msgProceso('vch-pdf-msg', `Subiendo PDF${subir.tamOriginal ? ` (${voMB(subir.tamOriginal)} → ${voMB(subir.size)})` : ` (${voMB(file.size)})`}…`);
+    const path = `vouchers_agencia/${item.voucher_correlativo}/${item.guia_correlativo}/${Date.now()}_${vchNombreArchivo(file.name)}`;
     const ref = storage.ref().child(path);
-    await ref.put(file);
+    await ref.put(subir, vchMetaPdf(file.size));
     const url = await ref.getDownloadURL();
-    const ahora = firebase.firestore.Timestamp.now();
+    const ahora = firebase.firestore.Timestamp.now(), anterior = item.pdf_url;
     await vouchersAgenciaItemsRef.doc(itemId).update({
       pdf_url: url,
       pdf_nombre: file.name,
+      pdf_tam: subir.size,
+      pdf_tam_original: file.size,
       pdf_subido_por: currentUserAlias,
       pdf_subido_en: ahora
     });
-    await logAccion('voucher_agencia_pdf_subido', {detalle:`Se subió el PDF "${file.name}" a la guía ${item.guia_correlativo} del voucher ${item.voucher_correlativo}`});
-    item.pdf_url = url; item.pdf_nombre = file.name; item.pdf_subido_por = currentUserAlias; item.pdf_subido_en = ahora;
+    // Al reemplazar, el PDF anterior se borra para que no quede ocupando espacio.
+    if(anterior && anterior !== url){ try{ await vchRefDeUrl(anterior).delete(); }catch(e){ console.warn('No se pudo borrar el PDF anterior', e); } }
+    const reduccion = subir.tamOriginal ? ` (comprimido de ${voMB(subir.tamOriginal)} a ${voMB(subir.size)})` : '';
+    await logAccion('voucher_agencia_pdf_subido', {detalle:`Se subió el PDF "${file.name}" a la guía ${item.guia_correlativo} del voucher ${item.voucher_correlativo}${reduccion}`});
+    Object.assign(item, { pdf_url: url, pdf_nombre: file.name, pdf_tam: subir.size, pdf_tam_original: file.size, pdf_subido_por: currentUserAlias, pdf_subido_en: ahora });
     renderVchItemsTabla();
     mostrarVchPdf(itemId);
+    showMsg('vch-pdf-msg', 'ok', `PDF subido${reduccion}.`);
     showToast('PDF subido correctamente.','ok');
   }catch(err){
     console.error(err);
+    showMsg('vch-pdf-msg', 'err', 'Error al subir el PDF: ' + err.message);
     showToast('Error al subir el PDF: '+err.message,'err');
   }finally{
     $('vch-pdf-input-global').value = '';
@@ -17694,11 +17712,13 @@ async function eliminarVchPdf(itemId){
     await vouchersAgenciaItemsRef.doc(itemId).update({
       pdf_url: firebase.firestore.FieldValue.delete(),
       pdf_nombre: firebase.firestore.FieldValue.delete(),
+      pdf_tam: firebase.firestore.FieldValue.delete(),
+      pdf_tam_original: firebase.firestore.FieldValue.delete(),
       pdf_subido_por: firebase.firestore.FieldValue.delete(),
       pdf_subido_en: firebase.firestore.FieldValue.delete()
     });
     await logAccion('voucher_agencia_pdf_eliminado', {detalle:`Se eliminó el PDF de la guía ${item.guia_correlativo} del voucher ${item.voucher_correlativo}`});
-    delete item.pdf_url; delete item.pdf_nombre; delete item.pdf_subido_por; delete item.pdf_subido_en;
+    ['pdf_url', 'pdf_nombre', 'pdf_tam', 'pdf_tam_original', 'pdf_subido_por', 'pdf_subido_en'].forEach(k=> delete item[k]);
     renderVchItemsTabla();
     $('vch-pdf-wrap').style.display = 'none';
     showToast('PDF eliminado.','ok');
@@ -19445,7 +19465,7 @@ async function almAnalizarArchivos(){
     await Promise.all(Array.from({ length: 12 }, async ()=>{
       while(i < refs.length){
         const ref = refs[i++];
-        try{ const m = await ref.getMetadata(); L.push({ path: ref.fullPath, nombre: ref.name, tam: Number(m.size) || 0, tipo: m.contentType || '', fecha: m.timeCreated || '' }); }
+        try{ const m = await ref.getMetadata(); L.push({ path: ref.fullPath, nombre: ref.name, tam: Number(m.size) || 0, tipo: m.contentType || '', fecha: m.timeCreated || '', comprimido: !!(m.customMetadata && m.customMetadata.comprimido) }); }
         catch(err){ L.push({ path: ref.fullPath, nombre: ref.name, tam: 0, tipo: '', fecha: '', error: err.code || err.message }); }
         if(L.length % 25 === 0) almEstado(`Leyendo tamaños… ${L.length} de ${refs.length}`, 'proceso');
       }
@@ -19567,6 +19587,57 @@ function almAgrupar(L, clave){
   L.forEach(f=>{ const k = clave(f); const g = m.get(k) || { n: 0, tam: 0, archivos: [] }; g.n++; g.tam += f.tam; g.archivos.push(f); m.set(k, g); });
   return [...m.entries()].sort((a, b)=> b[1].tam - a[1].tam || String(a[0]).localeCompare(String(b[0])));
 }
+// ---- Compresor de PDFs ya subidos (vouchers de agencia) ----
+// Cada PDF se baja, se pasa por el mismo reductor que al subir, se sube como archivo nuevo, se actualiza
+// la guía que lo usa y recién entonces se borra el original. Los que no bajan de tamaño quedan marcados.
+const ALM_COMPRIMIBLES = { vouchers_agencia: true };
+const almPorComprimir = L=> L.filter(f=> almTipo(f) === 'PDF' && !f.comprimido && f.tam > VO_REDUCIR_DESDE).sort((a, b)=> b.tam - a.tam);
+function almCajaComprimir(m, archivos){
+  if(!ALM_COMPRIMIBLES[m]) return '';
+  const L = almPorComprimir(archivos), tam = L.reduce((s, f)=> s + f.tam, 0);
+  return `<div class="alm-comprimir">` + (L.length
+    ? `<div><b>🗜 ${esc(L.length)} PDF(s) de más de ${esc(voMB(VO_REDUCIR_DESDE))} sin comprimir · ${esc(almFmt(tam))}</b><span class="hint">Se comprimen como al subirlos (las páginas quedan como imagen, se leen bien). Se reemplaza el archivo en su guía y se borra el original.</span></div>` +
+      `<button type="button" class="btn btn-primary btn-sm" data-alm-comprimir="${esc(m)}">🗜 Comprimir PDFs</button>`
+    : `<div class="alm-ok">✔ Todos los PDFs de este módulo ya están comprimidos o son livianos.</div>`) + `</div>`;
+}
+async function almComprimir(m){
+  const L = almPorComprimir((almArchivos || []).filter(f=> almModulo(f.path) === m));
+  if(!L.length || almOcupado) return;
+  if(!confirm(`Se comprimirán ${L.length} PDF(s) (${almFmt(L.reduce((s, f)=> s + f.tam, 0))}).\n\nCada PDF se reemplaza en su guía por la versión comprimida y se borra el original. ¿Continuar?`)) return;
+  almOcupado = true;
+  let antes = 0, despues = 0, hechos = 0, sinCambio = 0, sinGuia = 0, errores = 0;
+  for(const [i, f] of L.entries()){
+    const pre = `Comprimiendo ${i + 1} de ${L.length}: ${f.path.split('/').slice(1, 3).join(' / ')} (${voMB(f.tam)})`;
+    try{
+      almEstado(pre + '…', 'proceso');
+      const [, voucher, guia] = f.path.split('/');
+      const snap = await vouchersAgenciaItemsRef.where('voucher_correlativo', '==', voucher).where('guia_correlativo', '==', guia).get();
+      const usa = snap.docs.filter(d=>{ const u = d.data().pdf_url || '', x = u.match(/\/o\/([^?#]+)/); try{ return x && decodeURIComponent(x[1]) === f.path; }catch(e){ return false; } });
+      if(!usa.length){ sinGuia++; continue; }   // ninguna guía lo usa: es un huérfano, se limpia en "Archivos huérfanos"
+      const ref = storage.ref().child(f.path);
+      const datos = await voDescargar(await ref.getDownloadURL());
+      const original = new File([datos], f.nombre, { type: 'application/pdf' });
+      const red = await voReducir(original, txt=> almEstado(`${pre}: ${txt}`, 'proceso'));
+      if(!red.tamOriginal){ sinCambio++; await ref.updateMetadata({ customMetadata: { comprimido: '1', tam_original: String(f.tam) } }); f.comprimido = true; continue; }
+      const nuevo = f.path.replace(/[^/]+$/, `${Date.now()}_${f.nombre.replace(/^\d+_/, '')}`), nref = storage.ref().child(nuevo);
+      await nref.put(red, vchMetaPdf(f.tam));
+      const url = await nref.getDownloadURL();
+      await Promise.all(usa.map(d=> d.ref.update({ pdf_url: url, pdf_tam: red.size, pdf_tam_original: f.tam, pdf_comprimido_por: currentUserAlias, pdf_comprimido_en: firebase.firestore.Timestamp.now() })));
+      await ref.delete();
+      antes += f.tam; despues += red.size; hechos++;
+      // Los cruces con la base de datos siguen valiendo: la guía ahora usa el archivo nuevo.
+      if(almRefs) almRefs.add(nuevo);
+      if(almEsperados){ const x = almEsperados.get(f.path); almEsperados.delete(f.path); almEsperados.set(nuevo, x || { col: 'vouchers_agencia_items', bucket: '' }); }
+      Object.assign(f, { path: nuevo, nombre: nref.name, tam: red.size, comprimido: true, fecha: new Date().toISOString() });
+    }catch(err){ console.error('No se pudo comprimir', f.path, err); errores++; }
+  }
+  almOcupado = false;
+  const resumen = `${hechos} PDF(s) comprimido(s): ${almFmt(antes)} → ${almFmt(despues)} (se liberaron ${almFmt(antes - despues)})` +
+    (sinCambio ? ` · ${sinCambio} ya no bajaban más` : '') + (sinGuia ? ` · ${sinGuia} sin guía (ver huérfanos)` : '') + (errores ? ` · ${errores} con error` : '');
+  if(hechos || sinCambio) await logAccion('almacenamiento_pdfs_comprimidos', { detalle: `${almNombreMod(m)}: ${resumen}` });
+  almEstado(resumen + '.', errores ? 'err' : 'ok');
+  renderAlm();
+}
 function renderAlmArchivos(A, totA){
   const mods = almAgrupar(A, f=> almModulo(f.path));
   // Los módulos conocidos sin archivos también se listan, para que se vea que están vacíos.
@@ -19585,6 +19656,7 @@ function renderAlmArchivos(A, totA){
             return `<tr><td><b>${esc(c)}</b></td><td class="num">${esc(x.n)}</td><td class="num">${esc(almFmt(x.tam))}</td><td class="alm-col-pct">${almBarra(q)}<small>${esc(almPctTxt(q))}</small></td></tr>`; }).join('') +
           `</tbody></table></div>${almPaginador('data-alm-carp-pag', almCarpPag, carps.length)}` +
           `<div class="rf-rep-sub"><b>Archivos más pesados de ${esc(almNombreMod(m))}</b></div>${almTablaArchivos([...g.archivos].sort((a, b)=> b.tam - a.tam).slice(0, 10), false)}` +
+          almCajaComprimir(m, g.archivos) +
           `<button type="button" class="btn btn-ghost btn-sm rf-rep-ocultar" data-alm-ocultar="1">▴ Ocultar ${esc(almNombreMod(m))}</button></td></tr>`;
       }
       return tr; }).join('') + `</tbody><tfoot><tr><th>Total</th><th class="num">${esc(A.length)}</th><th class="num">${esc(almFmt(totA))}</th><th></th></tr></tfoot></table></div>`
@@ -19669,6 +19741,8 @@ $('view-almacenamiento').addEventListener('click', async e=>{
     return;
   }
   if(e.target.closest('#btn-alm-borrar-huerfanos')){ almBorrarHuerfanos(); return; }
+  const comp = e.target.closest('[data-alm-comprimir]');
+  if(comp){ comp.disabled = true; await almComprimir(comp.dataset.almComprimir); return; }
   if(cp){ if(!cp.disabled){ almCarpPag += Number(cp.dataset.almCarpPag); renderAlm(); } return; }
   if(hp){ if(!hp.disabled){ almHuerfPag += Number(hp.dataset.almHuerfPag); renderAlm(); } return; }
   if(fp){ if(!fp.disabled){ almFaltPag += Number(fp.dataset.almFaltPag); renderAlm(); } return; }
