@@ -75,10 +75,10 @@ const MB = b=> (b / 1048576).toFixed(2) + ' MB';
   await page.waitForSelector('#alm-sec-modulos[style*="block"]', { timeout: 20000 });
   await page.click('#alm-modulos tr[data-alm-mod="vouchers_agencia"]');
   const caja = await page.evaluate(()=> document.querySelector('#alm-modulos .alm-comprimir').innerText.replace(/\s+/g, ' '));
-  verificar(/^🗜 2 PDF\(s\) de más de 0\.68 MB sin comprimir/.test(caja), `Almacenamiento muestra los PDFs por comprimir (el ya comprimido al subir no cuenta): "${caja.slice(0, 70)}…"`);
+  verificar(/^🗜 2 PDF\(s\) de más de 700\.0 KB sin comprimir/.test(caja), `Almacenamiento muestra los PDFs por comprimir (el ya comprimido al subir no cuenta): "${caja.slice(0, 70)}…"`);
   await page.screenshot({ path: path.join(__dirname, 'salida', 'comprimir_pdf.png'), fullPage: true });
   const arriba = await page.textContent('#btn-alm-comprimir');
-  verificar(/^🗜 Comprimir 2 PDF\(s\) · 7\.9\d MB$/.test(arriba), `Atajo arriba, junto a «Analizar archivos»: "${arriba}"`);
+  verificar(/^🗜 Comprimir 2 archivo\(s\) · 7\.9\d MB$/.test(arriba), `Atajo arriba, junto a «Analizar archivos»: "${arriba}"`);
   await page.click('#btn-alm-comprimir');
   await page.waitForFunction(()=> /PDF\(s\) comprimido\(s\)/.test($('alm-msg').textContent), null, { timeout: 120000 });
   const fin = await page.evaluate(async ()=>{
@@ -91,9 +91,51 @@ const MB = b=> (b / 1048576).toFixed(2) + ' MB';
       log: (await movimientosRef.get()).docs.map(x=> x.data()).filter(x=> x.tipo === 'almacenamiento_pdfs_comprimidos').map(x=> x.detalle).join() };
   });
   verificar(/^1 PDF\(s\) comprimido\(s\): [\d.]+ MB → [\d.]+ (KB|MB) \(se liberaron [\d.]+ MB\) · 1 sin guía/.test(fin.msg) && fin.tam < pesado.length * 0.6 && fin.d.pdf_tam === fin.tam && fin.d.pdf_tam_original === pesado.length && fin.meta.comprimido === '1' &&
-    !fin.viejo && fin.huerfano && fin.arriba === '🗜 PDFs ya comprimidos' && fin.arribaOff && /Todos los PDFs/.test(fin.caja) && fin.path !== 'vouchers_agencia/VOU-00002/G2/1700000000000_guia.pdf' && /Campañas · vouchers de agencia: 1 PDF/.test(fin.log),
+    !fin.viejo && fin.huerfano && fin.arriba === '🗜 Todo comprimido' && fin.arribaOff && /Todos los PDFs/.test(fin.caja) && fin.path !== 'vouchers_agencia/VOU-00002/G2/1700000000000_guia.pdf' && /Campañas · vouchers de agencia: 1 PDF/.test(fin.log),
     `Comprimir PDFs: "${fin.msg}"; la guía usa el nuevo y el original se borró; el huérfano no se toca`);
   await page.screenshot({ path: path.join(__dirname, 'salida', 'comprimir_pdf_hecho.png'), fullPage: true });
+
+  // 3) Fotos ya subidas (registro fotográfico y toma de inventario): se achican y se cambian en su registro.
+  await page.evaluate(async ()=>{
+    const foto = async p=>{
+      const cv = document.createElement('canvas'); cv.width = 2400; cv.height = 1800; const ctx = cv.getContext('2d'), im = ctx.createImageData(cv.width, cv.height);
+      for(let i = 0; i < im.data.length; i += 4){ const v = 90 + Math.random() * 140 | 0; im.data[i] = v; im.data[i+1] = v * 0.9; im.data[i+2] = v * 0.7; im.data[i+3] = 255; }
+      ctx.putImageData(im, 0, 0);
+      const blob = await new Promise(ok=> cv.toBlob(ok, 'image/jpeg', 0.95)), ref = storage.ref().child(p);
+      await ref.put(blob, { contentType:'image/jpeg' });
+      return { path: p, url: await ref.getDownloadURL(), tam: blob.size };
+    };
+    const f1 = await foto('registros_foto/RF-00001/pos_1.jpg'), f2 = await foto('registros_foto/RF-00001/p1_1.jpg'), f3 = await foto('registros_foto/RF-00002/pos_1.jpg'), f4 = await foto('tomas_inventario/TI-00001/pallet_CD0001_1.jpg');
+    await registrosFotoRef.doc('RF-00001').set({ estado:'CONFIRMADO', posicion:'A01', foto_posicion: f1, items:[{ sku:'P100', cantidad:1, fotos:[f2] }], fecha_creacion: new Date().toISOString() });
+    await registrosFotoRef.doc('RF-00002').set({ estado:'BORRADOR', posicion:'A02', foto_posicion: f3, items:[], fecha_creacion: new Date().toISOString() });
+    await inventarioTomasRef.doc('TI-00001').set({ correlativo:'TI-00001', imagenes:[{ pallet_codigo:'CD0001', url: f4.url, nombre:'pallet.jpg' }] });
+    window.fotosAntes = { f1, f2, f3, f4 };
+  });
+  await page.click('#btn-alm-archivos');
+  await page.waitForFunction(()=> /archivo\(s\) analizados/.test($('alm-msg').textContent), null, { timeout: 30000 });
+  const arribaFotos = await page.textContent('#btn-alm-comprimir');
+  await page.click('#alm-modulos tr[data-alm-mod="registros_foto"]');
+  const cajaRf = await page.evaluate(()=> document.querySelector('#alm-modulos .alm-comprimir').innerText.replace(/\s+/g, ' '));
+  verificar(/^🗜 Comprimir 5 archivo\(s\)/.test(arribaFotos) && /^🗜 3 foto\(s\) de más de 200\.0 KB sin comprimir .*Antes se analiza la base de datos/.test(cajaRf), `Fotos por comprimir: arriba "${arribaFotos}"; en el módulo "${cajaRf.slice(0, 60)}…"`);
+  await page.click('#alm-modulos [data-alm-comprimir="registros_foto"]');
+  await page.waitForFunction(()=> /foto\(s\) comprimido\(s\)/.test($('alm-msg').textContent), null, { timeout: 120000 });
+  const rf = await page.evaluate(async ()=>{
+    const a = window.fotosAntes, d1 = (await registrosFotoRef.doc('RF-00001').get()).data(), d2 = (await registrosFotoRef.doc('RF-00002').get()).data();
+    const existe = p=> storage.ref().child(p).getMetadata().then(m=> Number(m.size), ()=> 0);
+    return { msg: $('alm-msg').textContent, a, d1, d2, tamNuevo: await existe(d1.foto_posicion.path), urlOk: decodeURIComponent(d1.foto_posicion.url).includes(d1.foto_posicion.path),
+      viejo1: await existe(a.f1.path), viejo2: await existe(a.f2.path), borrador: await existe(a.f3.path), item: d1.items[0].fotos[0] };
+  });
+  verificar(/^2 foto\(s\) comprimido\(s\): [\d.]+ MB → [\d.]+ (KB|MB) \(se liberaron [\d.]+ (KB|MB)\) · 1 en un registro que se está llenando o modificando\.$/.test(rf.msg) &&
+    rf.d1.foto_posicion.path !== rf.a.f1.path && rf.urlOk && rf.tamNuevo === rf.d1.foto_posicion.tam && rf.tamNuevo < rf.a.f1.tam * 0.6 && rf.item.path !== rf.a.f2.path && rf.item.tam < rf.a.f2.tam &&
+    !rf.viejo1 && !rf.viejo2 && rf.borrador && rf.d2.foto_posicion.path === rf.a.f3.path && rf.d1.items[0].sku === 'P100' && rf.d1.estado === 'CONFIRMADO',
+    `Registro fotográfico: "${rf.msg}" (${(rf.a.f1.tam / 1024).toFixed(0)} KB → ${(rf.tamNuevo / 1024).toFixed(0)} KB por foto); el borrador no se toca`);
+  await page.click('#alm-modulos tr[data-alm-mod="tomas_inventario"]');
+  await page.click('#alm-modulos [data-alm-comprimir="tomas_inventario"]');
+  await page.waitForFunction(()=> /foto\(s\) comprimido\(s\)/.test($('alm-msg').textContent) && /^1 foto/.test($('alm-msg').textContent), null, { timeout: 60000 });
+  const ti = await page.evaluate(async ()=>{ const d = (await inventarioTomasRef.doc('TI-00001').get()).data(), a = window.fotosAntes.f4;
+    return { url: d.imagenes[0].url, pallet: d.imagenes[0].pallet_codigo, viejo: await storage.ref().child(a.path).getMetadata().then(()=> true, ()=> false), mismo: d.imagenes[0].url === a.url }; });
+  verificar(!ti.mismo && /pallet_CD0001_1_c\d+\.jpg/.test(decodeURIComponent(ti.url)) && ti.pallet === 'CD0001' && !ti.viejo, 'Toma de inventario: la foto del pallet se comprime y se cambia en la toma (por su URL)');
+  await page.screenshot({ path: path.join(__dirname, 'salida', 'comprimir_fotos.png'), fullPage: true });
 
   if(errores.length) console.log('\nErrores de JavaScript:\n' + [...new Set(errores)].join('\n'));
   console.log(fallas || errores.length ? `\n${fallas} verificación(es) fallida(s).` : '\nTodo correcto.');
