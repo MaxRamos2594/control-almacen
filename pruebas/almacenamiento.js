@@ -27,6 +27,9 @@ function verificar(condicion, texto){
     await registrosFotoRef.doc('RF-00001').set({ estado:'CONFIRMADO', posicion:'A01', foto_posicion:{ path:'registros_foto/RF-00001/pos_1.jpg' }, items:[{ sku:'P100', cantidad:1, fotos:[{ path:'registros_foto/RF-00001/p1_1.jpg' }] }] });
     await voComprobantesRef.doc('BV01-1').set({ nro:'BV01-1', archivos:[{ path:'vo_comprobantes/BV01-1_1.pdf' }] });
     await productosRef.doc('P100').set({ codigo:'P100', descripcion:'PELOTA', imagen_url: url });
+    // Registros cuyo PDF no está: uno se borró y otro quedó en otro bucket.
+    await voComprobantesRef.doc('BV01-2').set({ nro:'BV01-2', pdf_path:'vo_comprobantes/BV01-2_1.pdf' });
+    await vouchersAgenciaItemsRef.doc('V1-G1').set({ voucher_correlativo:'V1', guia_correlativo:'G1', pdf_url:'https://firebasestorage.googleapis.com/v0/b/otro-bucket.appspot.com/o/vouchers_agencia%2FV1%2FG1%2Fguia.pdf?alt=media&token=x' });
   });
 
   // Solo administradores: no aparece en los permisos ni para usuarios sin "Administrador".
@@ -40,8 +43,9 @@ function verificar(condicion, texto){
   const cards = await page.evaluate(()=> $('alm-cards').innerText.replace(/\s+/g, ' '));
   verificar(/Archivos \(Storage\) 112\.3 KB 5 archivo\(s\)/i.test(cards) && /PDFs 48\.8 KB 1 archivo/i.test(cards) && /Imágenes 63\.5 KB 4 archivo/i.test(cards), `Resumen: ${cards}`);
   const mods = await page.evaluate(()=> [...document.querySelectorAll('#alm-modulos tr[data-alm-mod]')].map(t=> t.innerText.replace(/\s+/g, ' ').trim()));
-  verificar(mods.length === 3 && /^▸ Registro fotográfico registros_foto\/ 3 58\.6 KB 52 %$/.test(mods[0]) && /^▸ Venta Online · comprobantes vo_comprobantes\/ 1 48\.8 KB 43 %$/.test(mods[1]) && /Productos · imágenes/.test(mods[2]),
-    `Por módulo, del más pesado al más liviano: ${mods.join(' | ')}`);
+  const vacios = await page.evaluate(()=> [...document.querySelectorAll('#alm-modulos tr.alm-vacio')].map(t=> t.cells[0].innerText.replace(/\s+/g, ' ').trim()));
+  verificar(mods.length === 3 && vacios.length === 5 && vacios.some(t=> /vouchers de agencia vouchers_agencia\//.test(t)) && vacios.some(t=> /Venta Online · vouchers/.test(t)) && /^▸ Registro fotográfico registros_foto\/ 3 58\.6 KB 52 %$/.test(mods[0]) && /^▸ Venta Online · comprobantes vo_comprobantes\/ 1 48\.8 KB 43 %$/.test(mods[1]) && /Productos · imágenes/.test(mods[2]),
+    `Por módulo, del más pesado al más liviano: ${mods.join(' | ')}; sin archivos: ${vacios.join(' | ')}`);
   const comprimido = await page.evaluate(()=> !document.querySelector('#alm-modulos .rf-rep-exp'));
   await page.click('#alm-modulos tr[data-alm-mod="registros_foto"]');
   const carps = await page.evaluate(()=> [...document.querySelectorAll('#alm-modulos .rf-rep-exp .alm-tabla')[0].querySelectorAll(':scope > tbody > tr')].map(t=> t.innerText.replace(/\s+/g, ' ').trim()));
@@ -68,10 +72,13 @@ function verificar(condicion, texto){
   const base = await page.evaluate(()=>{ const f = c=> { const t = document.querySelector(`#alm-base [data-alm-col="${c}"]`); return t ? t.cells[1].innerText : '?'; };
     return { rf: f('registros_foto'), vo: f('vo_comprobantes'), prod: f('productos'), usuarios: f('usuarios'), errores: document.querySelectorAll('#alm-base .alm-error').length, filas: document.querySelectorAll('#alm-base tbody tr').length, vacias: ($('alm-vacias') || {}).textContent || '',
       total: document.querySelector('#alm-base tfoot').innerText.replace(/\s+/g, ' ') }; });
-  verificar(base.rf === '1' && base.vo === '1' && base.prod === '1' && base.usuarios === '1' && base.errores === 0 && base.filas === 5 && /^Sin documentos \(32\): .*Kardex.*Pallets/.test(base.vacias) && /≈ [\d.]+ KB/.test(base.total),
+  verificar(base.rf === '1' && base.vo === '2' && base.prod === '1' && base.usuarios === '1' && base.errores === 0 && base.filas === 6 && /^Sin documentos \(31\): .*Kardex.*Pallets/.test(base.vacias) && /≈ [\d.]+ KB/.test(base.total),
     `Base de datos por colección: ${base.filas} con datos (sin errores; ${base.total}); vacías en una línea: ${base.vacias.slice(0, 60)}…`);
   const huerf = await page.evaluate(()=> ({ txt: $('alm-huerfanos').innerText.replace(/\s+/g, ' '), rutas: [...document.querySelectorAll('#alm-huerfanos [data-alm-ver]')].map(b=> b.dataset.almVer), boton: !!$('btn-alm-borrar-huerfanos') }));
   verificar(huerf.rutas.join() === 'registros_foto/RF-00002/pos_1.jpg' && !huerf.boton && /menos de 24 horas/.test(huerf.txt), `Huérfanos: ${huerf.rutas.join()} (recién subido: todavía no se ofrece borrarlo)`);
+  const falt = await page.evaluate(()=> ({ aviso: document.querySelector('#alm-faltantes .alm-error').innerText, filas: [...document.querySelectorAll('#alm-faltantes .alm-tabla')[0].querySelectorAll(':scope > tbody > tr')].map(t=> t.innerText.replace(/\s+/g, ' ').trim()) }));
+  verificar(/^⚠ 2 archivo\(s\)/.test(falt.aviso) && falt.filas.length === 2 && falt.filas.some(t=> /^Venta Online · comprobantes vo_comprobantes\/ Venta Online · comprobantes 1 No existe/.test(t)) && falt.filas.some(t=> /^Campañas · vouchers de agencia vouchers_agencia\/ Vouchers de agencia · ítems 1 En otro bucket: otro-bucket\.appspot\.com/.test(t)),
+    `Registrados que no se encontraron: ${falt.filas.join(' | ')}`);
   await page.screenshot({ path: path.join(__dirname, 'salida', 'almacenamiento.png'), fullPage: true });
 
   // Excel con todos los archivos (en uso o no) y la base de datos.

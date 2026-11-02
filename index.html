@@ -244,7 +244,7 @@
   .alm-ruta{font-family:var(--mono); font-size:11.5px; word-break:break-all; max-width:420px;}
   .alm-dos{display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:12px;} .alm-sec{margin-bottom:12px;}
   .alm-huerf-res{display:flex; flex-direction:column; gap:2px; margin-bottom:8px;} .alm-ok{color:#1d7a46; font-weight:700;}
-  #btn-alm-borrar-huerfanos{margin-top:10px;} .alm-vacias{margin-top:8px;}
+  #btn-alm-borrar-huerfanos{margin-top:10px;} .alm-vacio td{color:var(--ink-soft);} .alm-vacias{margin-top:8px;}
   @media (max-width:600px){
     .alm-tabla{font-size:12.5px;} .alm-tabla th, .alm-tabla td{padding:6px 4px;} .alm-col-pct{min-width:80px;} .alm-ruta{max-width:170px;}
     .alm-dos{grid-template-columns:1fr;} .alm-card b{font-size:19px;}
@@ -3712,6 +3712,11 @@
     <p class="hint" style="margin-bottom:8px;">Tamaño aproximado de los datos guardados (sin contar los índices que Firestore agrega por su cuenta).</p>
     <div id="alm-base"></div>
   </div>
+  <div class="panel alm-sec" id="alm-sec-faltantes" style="display:none;">
+    <h3>🔎 Archivos registrados que no se encontraron</h3>
+    <p class="hint" style="margin-bottom:8px;">Archivos (PDFs, fotos) que los registros de la base de datos usan, pero que no están en el almacenamiento que se analizó.</p>
+    <div id="alm-faltantes"></div>
+  </div>
   <div class="panel alm-sec" id="alm-sec-huerfanos" style="display:none;">
     <h3>🧹 Archivos huérfanos</h3>
     <p class="hint" style="margin-bottom:8px;">Archivos que ningún registro de la base de datos usa (por ejemplo, fotos de un registro que ya se borró). Ocupan espacio sin servir para nada.</p>
@@ -3773,8 +3778,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v216';
-const APP_UPDATED = '02/11/2026 10:00';
+const APP_VERSION = 'v217';
+const APP_UPDATED = '02/11/2026 12:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -19394,7 +19399,9 @@ const ALM_COLECCIONES = { movimientos:'Bitácora / historial', kardex:'Kardex', 
   merma_auditorias:'Merma · auditorías', compras_cargas:'Compras · cargas', compras_items:'Compras · ítems', compras_totales:'Compras · totales',
   compras_campana:'Compras de campaña', compras_campana_items:'Compras de campaña · ítems', vo_comprobantes:'Venta Online · comprobantes',
   regularizaciones:'Regularizaciones', regularizacion_items:'Regularizaciones · ítems', registros_foto:'Registro fotográfico' };
-let almArchivos = null, almArchivosEn = null, almBase = null, almBaseEn = null, almRefs = null, almBaseCompleta = false;
+let almArchivos = null, almArchivosEn = null, almBase = null, almBaseEn = null, almRefs = null, almBaseCompleta = false, almFallasLista = [];
+// Archivos que los registros dicen tener (ruta → colección y bucket), para avisar si alguno no está en el almacenamiento.
+let almEsperados = null, almFaltPag = 0;
 let almModAbierto = null, almCarpPag = 0, almHuerfPag = 0, almOcupado = false;
 const ALM_POR_PAGINA = 10;
 function almFmt(b){
@@ -19420,17 +19427,19 @@ function almEstado(texto, tipo){ if(tipo === 'proceso') msgProceso('alm-msg', te
 const almFecha = d=> new Date(d).toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' });
 
 // ---- Archivos (Storage) ----
-async function almListar(ref, out, avisar){
-  const r = await ref.listAll();
+async function almListar(ref, out, avisar, fallas){
+  let r;
+  try{ r = await ref.listAll(); }
+  catch(err){ fallas.push({ carpeta: ref.fullPath || '(raíz)', error: err.code || err.message }); return; }
   out.push(...r.items); avisar(out.length);
-  for(const p of r.prefixes) await almListar(p, out, avisar);
+  for(const p of r.prefixes) await almListar(p, out, avisar, fallas);
 }
 async function almAnalizarArchivos(){
   if(almOcupado) return; almOcupado = true; $('btn-alm-archivos').disabled = true;
   try{
     almEstado('Buscando archivos…', 'proceso');
-    const refs = [];
-    await almListar(storage.ref(), refs, n=> almEstado(`Buscando archivos… ${n} encontrado(s)`, 'proceso'));
+    const refs = [], fallas = [];
+    await almListar(storage.ref(), refs, n=> almEstado(`Buscando archivos… ${n} encontrado(s)`, 'proceso'), fallas);
     const L = []; let i = 0;
     // Se piden los tamaños de a varios a la vez.
     await Promise.all(Array.from({ length: 12 }, async ()=>{
@@ -19441,8 +19450,8 @@ async function almAnalizarArchivos(){
         if(L.length % 25 === 0) almEstado(`Leyendo tamaños… ${L.length} de ${refs.length}`, 'proceso');
       }
     }));
-    almArchivos = L; almArchivosEn = new Date(); almModAbierto = null; almCarpPag = 0; almHuerfPag = 0;
-    almEstado(`Listo: ${L.length} archivo(s) analizados.`);
+    almArchivos = L; almArchivosEn = new Date(); almFallasLista = fallas; almModAbierto = null; almCarpPag = 0; almHuerfPag = 0;
+    almEstado(`Listo: ${L.length} archivo(s) analizados.` + (fallas.length ? ` ${fallas.length} carpeta(s) no se pudieron leer.` : ''), fallas.length ? 'err' : 'ok');
     renderAlm();
   }catch(err){ console.error(err); almEstado('No se pudieron leer los archivos: ' + err.message, 'err'); }
   finally{ almOcupado = false; $('btn-alm-archivos').disabled = false; }
@@ -19465,22 +19474,26 @@ function almTamValor(v){
 }
 const almTamDoc = (col, id, data)=> almB(col) + 1 + almB(id) + 1 + 16 + almTamValor(data) + 32;
 // Junta las rutas de Storage que usa cada documento (ruta guardada tal cual o dentro de la URL de descarga).
-function almRecolectar(v, set){
+function almRecolectar(v, set, esperados, col){
   if(typeof v === 'string'){
     if(v.length > 2048 || !v.includes('/')) return;
     set.add(v);
     const m = v.match(/\/o\/([^?#]+)/);
-    if(m) try{ set.add(decodeURIComponent(m[1])); }catch(e){}
+    if(m){
+      let ruta = null; try{ ruta = decodeURIComponent(m[1]); set.add(ruta); }catch(e){}
+      const b = v.match(/\/b\/([^/]+)\/o\//);
+      if(ruta && esperados && !esperados.has(ruta)) esperados.set(ruta, { col, bucket: b ? b[1] : '' });
+    }else if(esperados && ALM_CARPETAS[v.split('/')[0]] && /\.[a-z0-9]{2,5}$/i.test(v) && !esperados.has(v)) esperados.set(v, { col, bucket: '' });
     return;
   }
-  if(Array.isArray(v)) v.forEach(x=> almRecolectar(x, set));
-  else if(v && typeof v === 'object' && !(v instanceof firebase.firestore.Timestamp)) Object.values(v).forEach(x=> almRecolectar(x, set));
+  if(Array.isArray(v)) v.forEach(x=> almRecolectar(x, set, esperados, col));
+  else if(v && typeof v === 'object' && !(v instanceof firebase.firestore.Timestamp)) Object.values(v).forEach(x=> almRecolectar(x, set, esperados, col));
 }
 async function almAnalizarBase(){
   if(almOcupado) return;
   if(!confirm('Analizar la base de datos lee todos los documentos una vez (cuenta como lecturas de Firestore). ¿Continuar?')) return;
   almOcupado = true; $('btn-alm-base').disabled = true;
-  const res = {}, refs = new Set(), cols = Object.keys(ALM_COLECCIONES);
+  const res = {}, refs = new Set(), esperados = new Map(), cols = Object.keys(ALM_COLECCIONES);
   const docId = firebase.firestore.FieldPath.documentId();
   try{
     for(const [ci, col] of cols.entries()){
@@ -19490,7 +19503,7 @@ async function almAnalizarBase(){
           let q = db.collection(col).orderBy(docId).limit(1000);
           if(ultimo) q = q.startAfter(ultimo);
           const snap = await q.get();
-          snap.docs.forEach(d=>{ const data = d.data(); n++; bytes += almTamDoc(col, d.id, data); almRecolectar(data, refs); });
+          snap.docs.forEach(d=>{ const data = d.data(); n++; bytes += almTamDoc(col, d.id, data); almRecolectar(data, refs, esperados, col); });
           almEstado(`Leyendo base de datos… ${ci + 1} de ${cols.length}: ${ALM_COLECCIONES[col]} (${n} documento(s))`, 'proceso');
           if(snap.size < 1000) break;
           ultimo = snap.docs[snap.size - 1];
@@ -19498,12 +19511,20 @@ async function almAnalizarBase(){
         res[col] = { n, bytes };
       }catch(err){ console.warn(col, err); res[col] = { n, bytes, error: err.code === 'permission-denied' ? 'sin permiso para leerla' : (err.message || String(err)) }; }
     }
-    almBase = res; almRefs = refs; almBaseEn = new Date(); almHuerfPag = 0;
+    almBase = res; almRefs = refs; almEsperados = esperados; almBaseEn = new Date(); almHuerfPag = 0; almFaltPag = 0;
     almBaseCompleta = !Object.values(res).some(r=> r.error);
     almEstado(`Listo: ${Object.values(res).reduce((s, r)=> s + r.n, 0)} documento(s) en ${cols.length} colecciones.${almArchivos ? '' : ' Analiza también los archivos para encontrar los huérfanos.'}`);
     renderAlm();
   }catch(err){ console.error(err); almEstado('No se pudo leer la base de datos: ' + err.message, 'err'); }
   finally{ almOcupado = false; $('btn-alm-base').disabled = false; }
+}
+// Archivos registrados en la base de datos que no aparecen en el almacenamiento (o que están guardados en otro bucket).
+function almFaltantes(){
+  if(!almArchivos || !almEsperados) return null;
+  const hay = new Set(almArchivos.map(f=> f.path)), propio = storage.ref().bucket;
+  return [...almEsperados.entries()].filter(([ruta, x])=> (x.bucket && x.bucket !== propio) || !hay.has(ruta))
+    .map(([ruta, x])=> ({ path: ruta, col: x.col, bucket: x.bucket && x.bucket !== propio ? x.bucket : '' }))
+    .sort((a, b)=> (a.bucket || '').localeCompare(b.bucket || '') || a.path.localeCompare(b.path));
 }
 const almHuerfanos = ()=> almArchivos && almRefs ? almArchivos.filter(f=> !almRefs.has(f.path)).sort((a, b)=> b.tam - a.tam) : null;
 const almReciente = f=> !f.fecha || Date.now() - new Date(f.fecha).getTime() < ALM_MARGEN_HUERFANO_MS;
@@ -19534,6 +19555,9 @@ function renderAlm(){
   ['modulos', 'tipos', 'meses', 'pesados'].forEach(s=> $('alm-sec-' + s).style.display = A ? 'block' : 'none');
   $('alm-sec-base').style.display = almBase ? 'block' : 'none';
   $('alm-sec-huerfanos').style.display = huerf ? 'block' : 'none';
+  const falt = almFaltantes();
+  $('alm-sec-faltantes').style.display = falt ? 'block' : 'none';
+  if(falt) renderAlmFaltantes(falt);
   if(A) renderAlmArchivos(A, totA);
   if(almBase) renderAlmBase(totB);
   if(huerf) renderAlmHuerfanos(huerf);
@@ -19545,9 +19569,12 @@ function almAgrupar(L, clave){
 }
 function renderAlmArchivos(A, totA){
   const mods = almAgrupar(A, f=> almModulo(f.path));
+  // Los módulos conocidos sin archivos también se listan, para que se vea que están vacíos.
+  Object.keys(ALM_CARPETAS).filter(m=> !mods.some(([x])=> x === m)).forEach(m=> mods.push([m, { n: 0, tam: 0, archivos: [] }]));
   if(almModAbierto && !mods.some(([m])=> m === almModAbierto)) almModAbierto = null;
   $('alm-modulos').innerHTML = mods.length ? `<div class="alm-scroll"><table class="alm-tabla"><thead><tr><th>Módulo</th><th class="num">Archivos</th><th class="num">Tamaño</th><th class="alm-col-pct">% del total</th></tr></thead><tbody>` +
     mods.map(([m, g])=>{ const abierto = almModAbierto === m, p = almPct(g.tam, totA);
+      if(!g.n) return `<tr class="alm-vacio"><td><b><span class="rf-rep-flecha"></span> ${esc(almNombreMod(m))}</b><small class="alm-carp">${esc(m)}/</small></td><td class="num">0</td><td class="num">—</td><td class="alm-col-pct"><small>sin archivos</small></td></tr>`;
       let tr = `<tr class="rf-rep-fila${abierto ? ' abierta' : ''}" data-alm-mod="${esc(m)}"><td><b><span class="rf-rep-flecha">${abierto ? '▾' : '▸'}</span> ${esc(almNombreMod(m))}</b><small class="alm-carp">${esc(m)}/</small></td><td class="num">${esc(g.n)}</td><td class="num"><b>${esc(almFmt(g.tam))}</b></td><td class="alm-col-pct">${almBarra(p)}<small>${esc(almPctTxt(p))}</small></td></tr>`;
       if(abierto){
         const carps = almAgrupar(g.archivos, f=> almCarpeta(f.path));
@@ -19562,6 +19589,7 @@ function renderAlmArchivos(A, totA){
       }
       return tr; }).join('') + `</tbody><tfoot><tr><th>Total</th><th class="num">${esc(A.length)}</th><th class="num">${esc(almFmt(totA))}</th><th></th></tr></tfoot></table></div>`
     : '<div class="hint">No hay archivos guardados.</div>';
+  $('alm-modulos').insertAdjacentHTML('afterbegin', almFallasLista.length ? `<div class="alm-error" style="margin-bottom:8px;">⚠ No se pudieron leer ${esc(almFallasLista.length)} carpeta(s), sus archivos no se cuentan: ${esc(almFallasLista.map(f=> `${f.carpeta} (${f.error})`).join(' · '))}</div>` : '');
   const tipos = almAgrupar(A, almTipo);
   $('alm-tipos').innerHTML = `<div class="alm-scroll"><table class="alm-tabla"><thead><tr><th>Tipo</th><th class="num">Archivos</th><th class="num">Tamaño</th><th class="alm-col-pct">%</th></tr></thead><tbody>` +
     tipos.map(([t, g])=>{ const p = almPct(g.tam, totA); return `<tr><td><b>${esc(t)}</b></td><td class="num">${esc(g.n)}</td><td class="num">${esc(almFmt(g.tam))}</td><td class="alm-col-pct">${almBarra(p)}<small>${esc(almPctTxt(p))}</small></td></tr>`; }).join('') + '</tbody></table></div>';
@@ -19580,6 +19608,19 @@ function renderAlmBase(totB){
       return `<tr data-alm-col="${esc(c)}"><td><b>${esc(ALM_COLECCIONES[c] || c)}</b><small class="alm-carp">${esc(c)}</small>${r.error ? `<small class="alm-error">⚠ ${esc(r.error)}</small>` : ''}</td><td class="num">${esc(anFmt(r.n))}</td><td class="num"><b>${esc(almFmt(r.bytes))}</b></td><td class="alm-col-pct">${almBarra(p)}<small>${esc(almPctTxt(p))}</small></td></tr>`; }).join('') +
     `</tbody><tfoot><tr><th>Total</th><th class="num">${esc(anFmt(cols.reduce((s, [, r])=> s + r.n, 0)))}</th><th class="num">≈ ${esc(almFmt(totB))}</th><th></th></tr></tfoot></table></div>` +
     (vacias.length ? `<p class="hint alm-vacias" id="alm-vacias">Sin documentos (${esc(vacias.length)}): ${esc(vacias.map(([c])=> ALM_COLECCIONES[c] || c).join(' · '))}</p>` : '');
+}
+function renderAlmFaltantes(F){
+  if(!F.length){ $('alm-faltantes').innerHTML = '<div class="alm-ok">✔ Todos los archivos que usan los registros están en el almacenamiento.</div>'; return; }
+  const grupos = almAgrupar(F.map(f=> Object.assign({ tam: 1 }, f)), f=> `${f.bucket}|${almModulo(f.path)}|${f.col}`);
+  const pags = Math.max(1, Math.ceil(F.length / ALM_POR_PAGINA)); almFaltPag = Math.min(almFaltPag, pags - 1);
+  $('alm-faltantes').innerHTML = `<div class="alm-error" style="margin-bottom:8px;">⚠ ${esc(F.length)} archivo(s) que los registros usan no están en el almacenamiento de esta app (${esc(storage.ref().bucket)}).</div>` +
+    `<div class="alm-scroll"><table class="alm-tabla"><thead><tr><th>Módulo</th><th>Registrado en</th><th class="num">Archivos</th><th>Dónde está</th></tr></thead><tbody>` +
+    grupos.map(([, g])=>{ const f = g.archivos[0];
+      return `<tr><td><b>${esc(almNombreMod(almModulo(f.path)))}</b><small class="alm-carp">${esc(almModulo(f.path))}/</small></td><td>${esc(ALM_COLECCIONES[f.col] || f.col)}</td><td class="num"><b>${esc(g.n)}</b></td>` +
+        `<td>${f.bucket ? `En otro bucket: <b class="alm-carp" style="display:inline;">${esc(f.bucket)}</b> (no se cuenta arriba)` : 'No existe: se borró o nunca terminó de subirse'}</td></tr>`; }).join('') + '</tbody></table></div>' +
+    `<div class="rf-rep-sub"><b>Detalle</b></div><div class="alm-scroll"><table class="alm-tabla"><thead><tr><th>Archivo</th><th>Registrado en</th><th>Bucket</th></tr></thead><tbody>` +
+    F.slice(almFaltPag * ALM_POR_PAGINA, (almFaltPag + 1) * ALM_POR_PAGINA).map(f=> `<tr><td class="alm-ruta">${esc(f.path)}</td><td>${esc(ALM_COLECCIONES[f.col] || f.col)}</td><td>${esc(f.bucket || 'este')}</td></tr>`).join('') +
+    '</tbody></table></div>' + almPaginador('data-alm-falt-pag', almFaltPag, F.length);
 }
 function renderAlmHuerfanos(H){
   const borrables = H.filter(f=> !almReciente(f)), tam = H.reduce((s, f)=> s + f.tam, 0), tamB = borrables.reduce((s, f)=> s + f.tam, 0);
@@ -19619,7 +19660,7 @@ $('btn-alm-base').addEventListener('click', almAnalizarBase);
 $('btn-alm-excel').addEventListener('click', almExcel);
 $('view-almacenamiento').addEventListener('click', async e=>{
   const ver = e.target.closest('[data-alm-ver]'), mod = e.target.closest('[data-alm-mod]'), ocultar = e.target.closest('[data-alm-ocultar]'),
-        cp = e.target.closest('[data-alm-carp-pag]'), hp = e.target.closest('[data-alm-huerf-pag]');
+        cp = e.target.closest('[data-alm-carp-pag]'), hp = e.target.closest('[data-alm-huerf-pag]'), fp = e.target.closest('[data-alm-falt-pag]');
   if(ver){
     // La ventana se abre al tocar (si no, el navegador la bloquea) y luego recibe la URL.
     const w = window.open('', '_blank');
@@ -19630,6 +19671,7 @@ $('view-almacenamiento').addEventListener('click', async e=>{
   if(e.target.closest('#btn-alm-borrar-huerfanos')){ almBorrarHuerfanos(); return; }
   if(cp){ if(!cp.disabled){ almCarpPag += Number(cp.dataset.almCarpPag); renderAlm(); } return; }
   if(hp){ if(!hp.disabled){ almHuerfPag += Number(hp.dataset.almHuerfPag); renderAlm(); } return; }
+  if(fp){ if(!fp.disabled){ almFaltPag += Number(fp.dataset.almFaltPag); renderAlm(); } return; }
   if(ocultar){ const m = almModAbierto; almModAbierto = null; renderAlm(); const f = document.querySelector(`[data-alm-mod="${CSS.escape(m)}"]`); if(f && f.getBoundingClientRect().top < 0) f.scrollIntoView({ block:'center' }); return; }
   if(mod){ almModAbierto = almModAbierto === mod.dataset.almMod ? null : mod.dataset.almMod; almCarpPag = 0; renderAlm(); }
 });
