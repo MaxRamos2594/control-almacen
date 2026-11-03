@@ -273,7 +273,33 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   await page.waitForFunction(()=> $('rfsub-panel-lista').style.display === 'block' && /RF-00001/.test(($('rf-detalle').querySelector('h2') || {}).textContent || ''), null, { timeout: 10000 });
   verificar(detPos === 'RF-00001' && posOculta && posOculta2, `Reporte por posición: A02 → ${detPos}; se oculta con «Ocultar» o tocándola otra vez; clic en un RF abre su detalle`);
 
+  // Layout: gris sin RF, verde con 1, naranja con más de 1; tocar una posición muestra sus RF.
+  await page.click('#rfsub-layout');
+  await page.waitForSelector('#rfl-mapa .slot[data-id="A02"]', { timeout: 10000 });
+  const clases = ()=> page.evaluate(()=> ['A01','A02','A03','A04'].map(c=>{ const el = document.querySelector(`#rfl-mapa .slot[data-id="${c}"]`); return c + ':' + (el.classList.contains('rfl-n') ? 'n' : el.classList.contains('rfl-1') ? '1' : '0'); }).join(' '));
+  const lay1 = await clases();
+  const resumen1 = await page.evaluate(()=> $('rfl-resumen').innerText.replace(/\s+/g, ' '));
+  const color = await page.evaluate(()=> ['A01','A02'].map(c=> getComputedStyle(document.querySelector(`#rfl-mapa .slot[data-id="${c}"]`)).backgroundColor).join(' | '));
+  // Un segundo RF confirmado en A02 (solo en memoria) la vuelve naranja y muestra la cantidad.
+  await page.evaluate(()=>{ rfLista.push(Object.assign({}, rfLista.find(r=> r.id === 'RF-00001'), { id:'RF-09999' })); renderRfLayout(); });
+  const lay2 = await clases();
+  const naranja = await page.evaluate(()=> { const el = document.querySelector('#rfl-mapa .slot[data-id="A02"]'); return el.textContent + ' ' + getComputedStyle(el).backgroundColor; });
+  await page.click('#rfl-mapa .slot[data-id="A02"]');
+  const detLay = await page.evaluate(()=> [...document.querySelectorAll('#rfl-detalle [data-rfr-ver]')].map(r=> r.dataset.rfrVer).sort().join(','));
+  await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_layout.png'), fullPage: true });
+  await page.click('#rfl-detalle [data-rfl-ocultar]');
+  const layOculto = await page.evaluate(()=> $('rfl-detalle').style.display === 'none');
+  await page.evaluate(()=>{ rfLista = rfLista.filter(r=> r.id !== 'RF-09999'); });
+  await page.selectOption('#rfl-estado', '');
+  const lay3 = await clases();
+  await page.selectOption('#rfl-estado', 'CONFIRMADO');
+  const idsDup = await page.evaluate(()=> document.querySelectorAll('#rfl-mapa [id^="slot-"]').length);
+  verificar(lay1 === 'A01:0 A02:1 A03:1 A04:0' && /2 con 1 RF 0 con más de 1 2 sin RF/.test(resumen1) && color === 'rgb(228, 230, 234) | rgb(46, 158, 91)' &&
+    lay2 === 'A01:0 A02:n A03:1 A04:0' && naranja === '2 rgb(242, 107, 15)' && detLay === 'RF-00001,RF-09999' && layOculto && lay3 === 'A01:0 A02:1 A03:1 A04:1' && idsDup === 0,
+    `Layout: ${lay1} (gris/verde); con 2 RF A02 queda naranja y muestra "2"; al tocarla ${detLay}; con "Todos" ${lay3}`);
+
   // Modificar un registro confirmado: vuelve a la pantalla de registro y se confirma de nuevo.
+  await page.click('#rfsub-lista');
   await page.evaluate(()=> rfAbrir('RF-00002'));
   const fotoVieja = await page.evaluate(()=> rfLista.find(r=> r.id === 'RF-00002').items[0].fotos[0].path);
   await page.click('#btn-rf-modificar');

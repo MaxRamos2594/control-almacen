@@ -232,6 +232,20 @@
   .rf-rep-card:hover{border-color:var(--blue); background:#f6f9fd;} .rf-rep-card span{grid-row:1 / 3; font-size:30px;} .rf-rep-card b{font-size:15px;} .rf-rep-card small{color:var(--ink-soft); font-size:12px;}
   .rf-rep-resumen{width:100%; border-collapse:collapse; margin-bottom:12px;} .rf-rep-resumen th, .rf-rep-resumen td{padding:7px 8px; border-bottom:1px solid var(--line); text-align:left;}
   .rf-rep-resumen tbody tr{cursor:pointer;} .rf-rep-resumen tbody tr:hover{background:#f6f9fd;}
+  .asi-panel{max-width:900px; margin:0 auto; display:flex; flex-direction:column; gap:10px;}
+  .asi-cab{display:flex; justify-content:space-between; align-items:center; gap:8px;} .asi-cab h3{margin:0;}
+  .asi-chat{display:flex; flex-direction:column; gap:10px; min-height:120px; max-height:60vh; overflow-y:auto; padding:4px 2px;}
+  .asi-chat:empty{display:none;}
+  .asi-msg{display:flex; flex-direction:column; max-width:85%;} .asi-msg.yo{align-self:flex-end; align-items:flex-end;} .asi-msg.ia{align-self:flex-start;}
+  .asi-burbuja{padding:10px 14px; border-radius:14px; line-height:1.45; font-size:14px; overflow-wrap:anywhere;}
+  .asi-msg.yo .asi-burbuja{background:var(--blue); color:#fff; border-bottom-right-radius:4px;}
+  .asi-msg.ia .asi-burbuja{background:#f1f4f8; border:1px solid var(--line); border-bottom-left-radius:4px;}
+  .asi-msg.pensando .asi-burbuja{color:var(--ink-soft); font-style:italic;} .asi-msg.error .asi-burbuja{background:var(--red-bg); border-color:var(--red);}
+  .asi-consultas{font-size:11.5px; color:var(--ink-soft); margin-top:4px;}
+  .asi-ejemplos{display:flex; flex-wrap:wrap; gap:6px; align-items:center;}
+  .asi-ejemplos button{border:1px solid var(--line); background:#fff; border-radius:999px; padding:6px 12px; font:inherit; font-size:13px; cursor:pointer; color:var(--ink);} .asi-ejemplos button:hover{border-color:var(--blue); background:#f6f9fd;}
+  .asi-form{display:flex; gap:8px; align-items:flex-end;} .asi-form textarea{flex:1; resize:vertical; min-height:44px; font:inherit; font-size:15px; padding:10px 12px; border:1px solid var(--line-strong); border-radius:10px;}
+  @media (max-width:600px){ .asi-msg{max-width:95%;} .asi-chat{max-height:55vh;} }
   .alm-acciones{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;}
   .alm-cards{display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:10px; margin-top:10px;}
   .alm-card{border:1px solid var(--line); border-radius:12px; padding:12px 14px; background:#fff; display:flex; flex-direction:column; gap:4px;}
@@ -250,6 +264,14 @@
     .alm-tabla{font-size:12.5px;} .alm-tabla th, .alm-tabla td{padding:6px 4px;} .alm-col-pct{min-width:80px;} .alm-ruta{max-width:170px;}
     .alm-dos{grid-template-columns:1fr;} .alm-card b{font-size:19px;}
   }
+  .rfl-barra{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:8px;}
+  .rfl-leyenda{display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--ink-soft);} .rfl-leyenda span{display:inline-flex; align-items:center; gap:5px;}
+  .rfl-leyenda i{display:inline-block; width:14px; height:14px; border-radius:3px; border:1px solid;}
+  .rfl-resumen{display:flex; flex-wrap:wrap; gap:8px; align-items:center;} .rfl-k{padding:4px 10px; border-radius:999px; font-size:12.5px; border:1px solid;}
+  .rfl-0, .slot.rfl-0, .rfl-k.k0{background:#E4E6EA !important; border-color:#C2C7CE !important; color:#7A828C !important;}
+  .rfl-1, .slot.rfl-1, .rfl-k.k1{background:#2E9E5B !important; border-color:#217A45 !important; color:#fff !important;}
+  .rfl-n, .slot.rfl-n, .rfl-k.kn{background:#F26B0F !important; border-color:#C4520A !important; color:#fff !important; font-weight:700;}
+  .rfl-mapa{overflow-x:auto; padding:4px 0 8px;} .rfl-mapa .slot.rfl-0{cursor:default;} .rfl-mapa .slot.rfl-sel{outline:3px solid var(--blue); outline-offset:1px; z-index:3;}
   .rf-rep-scroll{overflow-x:auto;} .rf-rep-fila.abierta{background:#eef4fb;} .rf-rep-flecha{display:inline-block; width:14px; color:var(--blue);}
   .rf-rep-exp > td{background:#f8fafc; padding:10px 8px 12px;} .rf-rep-sub{margin:12px 0 6px;} .rf-rep-ocultar{margin-top:8px;}
   @media (max-width:600px){
@@ -1881,6 +1903,10 @@
     <button id="btn-menu-cerrar" aria-label="Cerrar menú">×</button>
   </div>
   <div class="drawer-group">
+    <div class="drawer-group-title">Consultas</div>
+    <button data-tab="asistente" id="tab-asistente">🤖 Asistente IA</button>
+  </div>
+  <div class="drawer-group">
     <div class="drawer-group-title">Almacén</div>
     <button class="active" data-tab="diseno" id="tab-diseno">Diseño de Layout</button>
     <button data-tab="mov" id="tab-mov">Movimientos</button>
@@ -3279,6 +3305,7 @@
     <button class="active" id="rfsub-nuevo">📸 Nuevo registro</button>
     <button id="rfsub-lista">🗂 Registros</button>
     <button id="rfsub-reportes">📊 Reportes</button>
+    <button id="rfsub-layout">🗺 Layout</button>
   </div>
 
   <div id="rfsub-panel-nuevo">
@@ -3352,6 +3379,20 @@
       <div id="rf-rep-tabla"></div>
       <div id="rf-rep-pag"></div>
     </div>
+  </div>
+  <div id="rfsub-panel-layout" style="display:none;">
+    <div class="panel" style="margin-bottom:12px;">
+      <h3>🗺 Registro fotográfico en el layout</h3>
+      <div class="rfl-barra">
+        <select id="rfl-estado" title="Qué registros se cuentan"><option value="CONFIRMADO">✔ Solo confirmados</option><option value="">Todos (incluye borradores)</option></select>
+        <div class="rfl-leyenda"><span><i class="rfl-0"></i>Sin RF</span><span><i class="rfl-1"></i>1 RF</span><span><i class="rfl-n"></i>Más de 1 RF</span></div>
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-rfl-recargar">↻ Actualizar</button>
+      </div>
+      <div class="rfl-resumen" id="rfl-resumen"></div>
+      <p class="hint" style="margin:6px 0 8px;">Toca una posición pintada para ver sus registros.</p>
+      <div class="rfl-mapa" id="rfl-mapa"></div>
+    </div>
+    <div class="panel" id="rfl-detalle" style="display:none;"></div>
   </div>
   <datalist id="rf-participantes"></datalist><datalist id="rf-posiciones"></datalist><datalist id="rf-skus"></datalist>
 </div>
@@ -3684,6 +3725,26 @@
   </div>
 </div>
 
+<!-- ASISTENTE IA -->
+<div class="view" id="view-asistente">
+  <div class="panel asi-panel">
+    <div class="asi-cab"><h3>🤖 Asistente IA</h3><button type="button" class="btn btn-ghost btn-sm" id="btn-asi-nueva">↺ Nueva conversación</button></div>
+    <p class="hint">Pregunta con tus palabras sobre productos, pallets, posiciones, entradas y salidas. Responde con los datos del sistema (Gemini de Firebase); abajo de cada respuesta ves qué consultó.</p>
+    <div class="asi-chat" id="asi-chat" aria-live="polite"></div>
+    <div class="asi-ejemplos" id="asi-ejemplos">
+      <span class="hint">Prueba con:</span>
+      <button type="button" data-asi-ejemplo>¿El código 17891 qué día salió?</button>
+      <button type="button" data-asi-ejemplo>¿Dónde está el código 17891?</button>
+      <button type="button" data-asi-ejemplo>¿Qué productos salieron hoy?</button>
+      <button type="button" data-asi-ejemplo>¿Qué tiene el pallet CD0005 y dónde está?</button>
+    </div>
+    <form class="asi-form" id="asi-form" autocomplete="off">
+      <textarea id="asi-input" rows="2" placeholder="Escribe tu pregunta… Ej.: ¿El código 17891 qué día salió?"></textarea>
+      <button type="submit" class="btn btn-primary" id="btn-asi-enviar">Enviar</button>
+    </form>
+  </div>
+</div>
+
 <!-- ALMACENAMIENTO -->
 <div class="view" id="view-almacenamiento">
   <div class="panel" style="margin-bottom:12px;">
@@ -3782,8 +3843,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v220';
-const APP_UPDATED = '03/11/2026 09:00';
+const APP_VERSION = 'v222';
+const APP_UPDATED = '03/11/2026 14:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4005,7 +4066,7 @@ async function loadPermisos(user){
 
 // Permisos: clave en usuarios/{correo}.permisos de cada opción del menú.
 const PERM_TAB_CLAVE = { diseno:'diseno', mov:'movimientos', pallets:'pallets', productos:'productos', inventario:'inventario', toma_inventario:'toma_inventario', regfoto:'reg_fotos',
-  kardex:'kardex', merma:'merma', retiros:'retiros', campanas:'campanas', rotulos:'rotulos', ventaonline:'venta_online', reportes:'reportes', bitacora:'bitacora' };
+  kardex:'kardex', merma:'merma', retiros:'retiros', campanas:'campanas', rotulos:'rotulos', ventaonline:'venta_online', reportes:'reportes', bitacora:'bitacora', asistente:'asistente' };
 // Opciones con secciones que se permiten una por una: permisos.subs[opción] = ids de las
 // secciones permitidas (sin lista = todas, como antes).
 const PERM_SUB_TABS = ['campanas', 'ventaonline', 'rotulos', 'merma', 'regfoto'];
@@ -4283,7 +4344,7 @@ function moduloOf(tipo){
 }
 function tipoLabel(tipo){
   const map = {
-    almacenamiento_huerfanos_eliminados:'Archivos huérfanos eliminados (almacenamiento)', almacenamiento_pdfs_comprimidos:'Archivos comprimidos (almacenamiento)',
+    asistente_consulta:'Consulta al asistente IA', almacenamiento_huerfanos_eliminados:'Archivos huérfanos eliminados (almacenamiento)', almacenamiento_pdfs_comprimidos:'Archivos comprimidos (almacenamiento)',
     reg_foto_creado:'Registro fotográfico creado', reg_foto_eliminado:'Registro fotográfico eliminado', reg_foto_iniciado:'Registro fotográfico iniciado (borrador)',
     reg_foto_confirmado:'Registro fotográfico confirmado', reg_foto_descartado:'Borrador de registro fotográfico descartado', reg_foto_exportado:'Registro fotográfico exportado',
     reg_foto_reabierto:'Registro fotográfico abierto para modificar', reg_foto_modificado:'Registro fotográfico modificado', reg_foto_modificacion_cancelada:'Modificación de registro fotográfico cancelada',
@@ -18463,13 +18524,14 @@ const RF_POR_PAGINA = 10, RF_LADO_MAX = 1280;
 let rfPosFotos = [], rfItems = [], rfLista = [], rfLeidos = false, rfPagina = 0, rfSel = null;
 const rfNuevoItem = ()=> ({ sku:'', descripcion:'', cantidad:'', fotos:[] });
 function setRfSubtab(name){
-  ['nuevo','lista','reportes'].forEach(n=>{ $('rfsub-'+n).classList.toggle('active', n===name); $('rfsub-panel-'+n).style.display = n===name ? 'block' : 'none'; });
-  if(name === 'lista' || name === 'reportes') rfCargar();
+  ['nuevo','lista','reportes','layout'].forEach(n=>{ $('rfsub-'+n).classList.toggle('active', n===name); $('rfsub-panel-'+n).style.display = n===name ? 'block' : 'none'; });
+  if(name === 'lista' || name === 'reportes' || name === 'layout') rfCargar();
   else rfPrepararForm();
 }
 $('rfsub-nuevo').addEventListener('click', ()=> setRfSubtab('nuevo'));
 $('rfsub-lista').addEventListener('click', ()=> setRfSubtab('lista'));
 $('rfsub-reportes').addEventListener('click', ()=> setRfSubtab('reportes'));
+$('rfsub-layout').addEventListener('click', ()=> setRfSubtab('layout'));
 $('tab-regfoto').addEventListener('click', ()=>{ if($('rfsub-panel-nuevo').style.display !== 'none') rfPrepararForm(); else rfCargar(); });
 
 // ---- Fotos: achicar antes de subir ----
@@ -19178,7 +19240,53 @@ $('rfsub-panel-reportes').addEventListener('click', e=>{
 $('rfr-q').addEventListener('input', ()=>{ rfRepPag = 0; renderRfReportes(); });
 $('btn-rfr-recargar').addEventListener('click', ()=> rfCargar(true));
 
-function rfSiReportes(){ if($('rfsub-panel-reportes').style.display !== 'none') renderRfReportes(); }
+function rfSiReportes(){
+  if($('rfsub-panel-reportes').style.display !== 'none') renderRfReportes();
+  if($('rfsub-panel-layout').style.display !== 'none') renderRfLayout();
+}
+// ---- Layout: cada posición pintada según cuántos RF tiene (gris 0, verde 1, naranja más de 1) ----
+let rflSel = null;
+function rflConteo(){
+  const est = $('rfl-estado').value, por = new Map();
+  rfLista.filter(r=> !est || rfEstadoReg(r) === est).forEach(r=>{ const k = r.posicion || ''; if(!por.has(k)) por.set(k, []); por.get(k).push(r); });
+  return por;
+}
+function renderRfLayout(){
+  const por = rflConteo();
+  // Mismo dibujo del layout de Movimientos, sin los ids de sus posiciones (no se duplican en la página).
+  $('rfl-mapa').innerHTML = buildBloquesMarkup(true, false).replace(/ id="slot-[^"]*"/g, '');
+  let c0 = 0, c1 = 0, cn = 0;
+  $('rfl-mapa').querySelectorAll('.slot[data-id]').forEach(el=>{
+    const id = el.dataset.id, n = (por.get(id) || []).length, p = posiciones[id] || {};
+    el.className = ['slot', p.tipo === 'piso' ? 'piso-slot' : '', n === 0 ? 'rfl-0' : n === 1 ? 'rfl-1' : 'rfl-n', rflSel === id ? 'rfl-sel' : ''].join(' ').replace(/\s+/g, ' ').trim();
+    el.textContent = n > 1 ? n : id.slice(-2);
+    el.title = `${id} · ${n ? n + ' RF' : 'sin RF'}`;
+    if(n === 0) c0++; else if(n === 1) c1++; else cn++;
+  });
+  const fuera = [...por.keys()].filter(k=> !posiciones[k]).length;
+  $('rfl-resumen').innerHTML = `<span class="rfl-k k1"><b>${esc(c1)}</b> con 1 RF</span><span class="rfl-k kn"><b>${esc(cn)}</b> con más de 1</span><span class="rfl-k k0"><b>${esc(c0)}</b> sin RF</span>` +
+    (fuera ? `<span class="hint">· ${esc(fuera)} posición(es) con RF fuera del layout</span>` : '');
+  if(rflSel) rflDetalle(rflSel, false); else $('rfl-detalle').style.display = 'none';
+}
+function rflDetalle(id, desplazar){
+  const L = (rflConteo().get(id) || []);
+  if(!L.length){ rflSel = null; $('rfl-detalle').style.display = 'none'; return; }
+  rflSel = id;
+  $('rfl-mapa').querySelectorAll('.slot[data-id]').forEach(el=> el.classList.toggle('rfl-sel', el.dataset.id === id));
+  const box = $('rfl-detalle'); box.style.display = 'block';
+  box.innerHTML = `<div class="rf-det-cab"><div><span class="hint">Posición · ${esc(rfBloqueDe(id))}</span><h2>📍 ${esc(id)}</h2></div><span class="hint">${esc(L.length)} RF · ${esc(anFmt(rfUnd(L)))} unidades</span></div>` +
+    rfRepListaRf(L, false) + `<button type="button" class="btn btn-ghost btn-sm rf-rep-ocultar" data-rfl-ocultar="1">▴ Ocultar</button>`;
+  if(desplazar) box.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+$('rfsub-panel-layout').addEventListener('click', e=>{
+  const ver = e.target.closest('[data-rfr-ver]'), slot = e.target.closest('#rfl-mapa .slot[data-id]'), chip = e.target.closest('[data-mostrar-anexados]');
+  if(ver){ setRfSubtab('lista'); rfSel = ver.dataset.rfrVer; setTimeout(()=> rfAbrir(ver.dataset.rfrVer), 50); return; }
+  if(e.target.closest('[data-rfl-ocultar]')){ rflSel = null; renderRfLayout(); return; }
+  if(chip){ toggleModoCompacto(); renderRfLayout(); return; }
+  if(slot){ if(rflSel === slot.dataset.id){ rflSel = null; renderRfLayout(); } else rflDetalle(slot.dataset.id, true); }
+});
+$('rfl-estado').addEventListener('change', ()=>{ rflSel = null; renderRfLayout(); });
+$('btn-rfl-recargar').addEventListener('click', ()=> rfCargar(true));
 // ---- Registros: lista, búsqueda, detalle ----
 async function rfCargar(forzar){
   if(rfLeidos && !forzar){ renderRfLista(); rfSiReportes(); return; }
@@ -19858,6 +19966,198 @@ $('view-almacenamiento').addEventListener('click', async e=>{
   if(ocultar){ const m = almModAbierto; almModAbierto = null; renderAlm(); const f = document.querySelector(`[data-alm-mod="${CSS.escape(m)}"]`); if(f && f.getBoundingClientRect().top < 0) f.scrollIntoView({ block:'center' }); return; }
   if(mod){ almModAbierto = almModAbierto === mod.dataset.almMod ? null : mod.dataset.almMod; almCarpPag = 0; renderAlm(); }
 });
+
+/* -------------------- Asistente IA (Gemini de Firebase AI Logic) -------------------- */
+// Gemini entiende la pregunta y pide los datos con "herramientas"; las herramientas consultan
+// Firestore (o lo que la app ya tiene cargado) y Gemini redacta la respuesta solo con esos datos.
+// Requiere activar Firebase AI Logic (Gemini Developer API) en la consola de Firebase.
+const ASI_SDK = 'https://www.gstatic.com/firebasejs/11.10.0/';
+const ASI_MODELO = 'gemini-2.5-flash';
+const ASI_MAX_VUELTAS = 6;
+let asiChat = null, asiOcupado = false;
+const asiNorm = c=> String(c || '').trim().toUpperCase();
+const asiFecha = t=>{ const d = t && t.toDate ? t.toDate() : (t ? new Date(t) : null); return d && !isNaN(d) ? d.toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }) : '—'; };
+// "AAAA-MM-DD" → inicio o fin de ese día (hora local).
+function asiDia(s, fin){ const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})$/); if(!m) return null; return new Date(+m[1], +m[2] - 1, +m[3], fin ? 23 : 0, fin ? 59 : 0, fin ? 59 : 0, fin ? 999 : 0); }
+const asiPuede = (...tabs)=> tabs.some(t=> permTabPermitida(currentPermisos, t));
+// Qué herramientas puede usar el usuario (según lo que ve en el menú).
+function asiHerramientas(){
+  const kardex = asiPuede('kardex', 'mov'), almacen = asiPuede('mov', 'pallets', 'inventario', 'productos', 'diseno', 'kardex'), bitacora = asiPuede('bitacora');
+  return [
+    kardex && { name:'movimientos_producto', description:'Entradas y salidas (kardex) de un código de producto: fecha y hora, tipo (ingreso o salida), cantidad, motivo, pallet, posición y usuario. Úsala para "¿qué día salió / entró el código X?".',
+      parametros:{ codigo:['string', 'Código del producto, tal cual lo escribe el usuario'], tipo:['string', '"ingreso" o "salida" (opcional)'], desde:['string', 'Fecha inicial AAAA-MM-DD (opcional)'], hasta:['string', 'Fecha final AAAA-MM-DD (opcional)'] }, obligatorios:['codigo'] },
+    kardex && { name:'movimientos_por_fecha', description:'Entradas y salidas (kardex) de todos los productos en un rango de fechas, con totales por producto. Úsala para "¿qué salió hoy?", "¿qué entró la semana pasada?".',
+      parametros:{ desde:['string', 'Fecha inicial AAAA-MM-DD'], hasta:['string', 'Fecha final AAAA-MM-DD'], tipo:['string', '"ingreso" o "salida" (opcional)'] }, obligatorios:['desde', 'hasta'] },
+    almacen && { name:'ubicar_producto', description:'Dónde está hoy un código de producto: pallets, posiciones, bloque y cantidad en cada uno, y el stock total.',
+      parametros:{ codigo:['string', 'Código del producto'] }, obligatorios:['codigo'] },
+    almacen && { name:'buscar_productos', description:'Busca productos del maestro por parte del código o de la descripción; devuelve código, descripción, costo y stock actual.',
+      parametros:{ texto:['string', 'Texto a buscar'] }, obligatorios:['texto'] },
+    almacen && { name:'info_pallet', description:'Contenido actual de un pallet (productos y cantidades), en qué posición está y su historial reciente.',
+      parametros:{ codigo:['string', 'Código del pallet, por ejemplo CD0005'] }, obligatorios:['codigo'] },
+    almacen && { name:'info_posicion', description:'Estado de una posición del layout (libre, ocupada, bloqueada), su bloque y el pallet con sus productos.',
+      parametros:{ codigo:['string', 'Código de la posición, por ejemplo A03'] }, obligatorios:['codigo'] },
+    bitacora && { name:'bitacora', description:'Acciones registradas en la bitácora (movimientos de pallets, ingresos, retiros, cambios) filtradas por fechas, usuario o pallet.',
+      parametros:{ desde:['string', 'Fecha inicial AAAA-MM-DD (opcional)'], hasta:['string', 'Fecha final AAAA-MM-DD (opcional)'], usuario:['string', 'Nombre o alias del usuario (opcional)'], pallet:['string', 'Código del pallet (opcional)'] }, obligatorios:[] }
+  ].filter(Boolean);
+}
+function asiInstrucciones(){
+  return `Eres el asistente del sistema "Control de Almacén" de un centro de distribución en Perú. Hoy es ${new Date().toLocaleDateString('es-PE', { weekday:'long', day:'2-digit', month:'2-digit', year:'numeric' })} (fecha ISO ${new Date().toLocaleDateString('en-CA')}).
+Respondes en español, claro y breve, usando SOLO los datos que devuelven las herramientas. Nunca inventes fechas, cantidades ni códigos: si una herramienta no encuentra datos, dilo.
+- "Salió", "se despachó", "se retiró" = movimientos de tipo salida del kardex. "Entró", "ingresó", "llegó" = tipo ingreso.
+- Para "hoy", "ayer", "esta semana", etc., calcula las fechas AAAA-MM-DD a partir de la fecha de hoy.
+- Escribe las fechas como dd/mm/aaaa y la hora si la hay. Si hay varias, menciona la más reciente primero y resume el resto.
+- Usa **negrita** para el dato principal y listas con "- " cuando haya varios elementos.
+- Si te preguntan algo que no puedes consultar con tus herramientas, explica qué sí puedes responder.`;
+}
+// Crea el chat con Gemini (se carga el SDK la primera vez). Las pruebas lo reemplazan por uno simulado.
+async function asiCrearChat(){
+  const [appSdk, ai] = await Promise.all([import(ASI_SDK + 'firebase-app.js'), import(ASI_SDK + 'firebase-ai.js')]);
+  const app = appSdk.getApps().find(a=> a.name === 'asistente') || appSdk.initializeApp(firebaseConfig, 'asistente');
+  const S = ai.Schema;
+  const tipo = (t, descripcion)=> S[t]({ description: descripcion });
+  const functionDeclarations = asiHerramientas().map(h=> ({ name: h.name, description: h.description,
+    parameters: S.object({ properties: Object.fromEntries(Object.entries(h.parametros).map(([k, [t, d]])=> [k, tipo(t, d)])),
+      optionalProperties: Object.keys(h.parametros).filter(k=> !h.obligatorios.includes(k)) }) }));
+  const modelo = ai.getGenerativeModel(ai.getAI(app, { backend: new ai.GoogleAIBackend() }),
+    { model: ASI_MODELO, systemInstruction: asiInstrucciones(), tools: functionDeclarations.length ? [{ functionDeclarations }] : undefined });
+  return modelo.startChat();
+}
+
+// ---- Herramientas ----
+async function asiMovimientosProducto({ codigo, tipo, desde, hasta }){
+  const cod = asiNorm(codigo), d = asiDia(desde), h = asiDia(hasta, true);
+  const snap = await kardexRef.where('producto', '==', cod).limit(5000).get();
+  let L = snap.docs.map(x=> x.data());
+  const prod = productos[cod] || {};
+  if(!L.length && !productos[cod]) return { codigo: cod, encontrado: false, mensaje: 'No hay movimientos ni producto con ese código.' };
+  const ts = r=> r.timestamp && r.timestamp.toDate ? r.timestamp.toDate().getTime() : 0;
+  L = L.filter(r=> (!tipo || r.tipo === String(tipo).toLowerCase()) && (!d || ts(r) >= d.getTime()) && (!h || ts(r) <= h.getTime())).sort((a, b)=> ts(b) - ts(a));
+  const suma = t=> L.filter(r=> r.tipo === t).reduce((s, r)=> s + (Number(r.cantidad) || 0), 0);
+  return { codigo: cod, descripcion: prod.descripcion || (L[0] && L[0].descripcion) || '', total_movimientos: L.length, unidades_ingresadas: suma('ingreso'), unidades_salidas: suma('salida'),
+    movimientos: L.slice(0, 40).map(r=> ({ fecha: asiFecha(r.timestamp), tipo: r.tipo, cantidad: r.cantidad, motivo: r.motivo || '', pallet: r.pallet_codigo || '', posicion: r.posicion || '', usuario: r.usuario || '' })),
+    nota: L.length > 40 ? `Se muestran los 40 más recientes de ${L.length}.` : '' };
+}
+async function asiMovimientosPorFecha({ desde, hasta, tipo }){
+  const d = asiDia(desde), h = asiDia(hasta, true);
+  if(!d || !h) return { error: 'Fechas inválidas: usa AAAA-MM-DD.' };
+  const snap = await kardexRef.where('timestamp', '>=', firebase.firestore.Timestamp.fromDate(d)).where('timestamp', '<=', firebase.firestore.Timestamp.fromDate(h)).orderBy('timestamp', 'desc').limit(1000).get();
+  const L = snap.docs.map(x=> x.data()).filter(r=> !tipo || r.tipo === String(tipo).toLowerCase());
+  const por = new Map();
+  L.forEach(r=>{ const k = r.producto + '|' + r.tipo; const g = por.get(k) || { codigo: r.producto, descripcion: r.descripcion || '', tipo: r.tipo, unidades: 0, movimientos: 0 }; g.unidades += Number(r.cantidad) || 0; g.movimientos++; por.set(k, g); });
+  return { desde, hasta, total_movimientos: L.length, por_producto: [...por.values()].sort((a, b)=> b.unidades - a.unidades).slice(0, 40),
+    ultimos: L.slice(0, 25).map(r=> ({ fecha: asiFecha(r.timestamp), tipo: r.tipo, codigo: r.producto, cantidad: r.cantidad, pallet: r.pallet_codigo || '', usuario: r.usuario || '' })),
+    nota: snap.size >= 1000 ? 'Hay más de 1000 movimientos en el rango; se analizaron los 1000 más recientes.' : '' };
+}
+const asiPosDePallet = cod=> Object.entries(posiciones).find(([, p])=> p.pallet_codigo === cod);
+const asiBloqueDe = p=> p ? (p.tipo === 'mezanine' ? 'MEZANINE' : ((bloques[p.bloque_id] || {}).nombre || '')) : '';
+function asiUbicarProducto({ codigo }){
+  const cod = asiNorm(codigo), L = [];
+  Object.entries(pallets).forEach(([pc, pal])=> (pal.items || []).filter(it=> asiNorm(it.producto) === cod).forEach(it=>{ const pos = asiPosDePallet(pc);
+    L.push({ pallet: pc, posicion: pos ? pos[0] : 'sin posición', bloque: asiBloqueDe(pos && pos[1]), cantidad: Number(it.cantidad) || 0 }); }));
+  return { codigo: cod, descripcion: (productos[cod] || {}).descripcion || '', existe_en_maestro: !!productos[cod], stock_total: L.reduce((s, x)=> s + x.cantidad, 0), ubicaciones: L.sort((a, b)=> b.cantidad - a.cantidad) };
+}
+function asiBuscarProductos({ texto }){
+  const tk = normalizarTexto(texto || '').split(/\s+/).filter(Boolean);
+  const stock = {}; Object.values(pallets).forEach(p=> (p.items || []).forEach(it=> stock[it.producto] = (stock[it.producto] || 0) + (Number(it.cantidad) || 0)));
+  const L = Object.entries(productos).filter(([c, p])=>{ const t = normalizarTexto(c + ' ' + (p.descripcion || '')); return tk.every(x=> t.includes(x)); });
+  return { total: L.length, productos: L.slice(0, 25).map(([c, p])=> ({ codigo: c, descripcion: p.descripcion || '', costo: p.costo ?? null, stock: stock[c] || 0 })), nota: L.length > 25 ? `Hay ${L.length}; se muestran 25.` : '' };
+}
+async function asiInfoPallet({ codigo }){
+  const cod = asiNorm(codigo), pal = pallets[cod], pos = asiPosDePallet(cod);
+  let historial = [];
+  if(asiPuede('bitacora')){ const s = await movimientosRef.where('pallet_codigo', '==', cod).limit(200).get();
+    historial = s.docs.map(x=> x.data()).sort((a, b)=> (b.timestamp ? b.timestamp.toMillis() : 0) - (a.timestamp ? a.timestamp.toMillis() : 0)).slice(0, 15)
+      .map(r=> ({ fecha: asiFecha(r.timestamp), accion: tipoLabel(r.tipo), de: r.origen || '', a: r.destino || '', detalle: r.detalle || '', usuario: r.usuario || '' })); }
+  if(!pal && !historial.length) return { pallet: cod, encontrado: false, mensaje: 'No existe un pallet activo con ese código ni historial.' };
+  return { pallet: cod, activo: !!pal, posicion: pos ? pos[0] : (pal ? 'sin posición' : 'retirado'), bloque: asiBloqueDe(pos && pos[1]),
+    productos: pal ? (pal.items || []).map(it=> ({ codigo: it.producto, descripcion: it.descripcion || '', cantidad: Number(it.cantidad) || 0 })) : [], historial };
+}
+function asiInfoPosicion({ codigo }){
+  const cod = asiNorm(codigo), p = posiciones[cod];
+  if(!p) return { posicion: cod, encontrada: false, mensaje: 'No existe esa posición en el layout.' };
+  const pal = p.pallet_codigo ? pallets[p.pallet_codigo] : null;
+  return { posicion: cod, bloque: asiBloqueDe(p), estado: p.estado || (p.pallet_codigo ? 'ocupado' : 'vacio'), bloqueada: !!p.bloqueado, pallet: p.pallet_codigo || null,
+    productos: pal ? (pal.items || []).map(it=> ({ codigo: it.producto, descripcion: it.descripcion || '', cantidad: Number(it.cantidad) || 0 })) : [] };
+}
+async function asiBitacora({ desde, hasta, usuario, pallet }){
+  let q = movimientosRef;
+  const d = asiDia(desde), h = asiDia(hasta, true);
+  if(pallet) q = q.where('pallet_codigo', '==', asiNorm(pallet));
+  else{
+    if(d) q = q.where('timestamp', '>=', firebase.firestore.Timestamp.fromDate(d));
+    if(h) q = q.where('timestamp', '<=', firebase.firestore.Timestamp.fromDate(h));
+    q = q.orderBy('timestamp', 'desc');
+  }
+  const snap = await q.limit(500).get(), u = normalizarTexto(usuario || '');
+  const ms = r=> r.timestamp && r.timestamp.toMillis ? r.timestamp.toMillis() : 0;
+  const L = snap.docs.map(x=> x.data()).filter(r=> (!u || normalizarTexto(r.usuario || '').includes(u)) && (!pallet || ((!d || ms(r) >= d.getTime()) && (!h || ms(r) <= h.getTime())))).sort((a, b)=> ms(b) - ms(a));
+  return { total: L.length, acciones: L.slice(0, 40).map(r=> ({ fecha: asiFecha(r.timestamp), accion: tipoLabel(r.tipo), pallet: r.pallet_codigo || '', de: r.origen || '', a: r.destino || '', detalle: r.detalle || '', usuario: r.usuario || '' })),
+    nota: L.length > 40 ? `Se muestran las 40 más recientes de ${L.length}.` : '' };
+}
+const ASI_FUNCIONES = { movimientos_producto: asiMovimientosProducto, movimientos_por_fecha: asiMovimientosPorFecha, ubicar_producto: asiUbicarProducto,
+  buscar_productos: asiBuscarProductos, info_pallet: asiInfoPallet, info_posicion: asiInfoPosicion, bitacora: asiBitacora };
+async function asiEjecutar(nombre, args){
+  // Se vuelve a validar el permiso: solo se ejecuta lo que el usuario tiene habilitado.
+  if(!asiHerramientas().some(h=> h.name === nombre) || !ASI_FUNCIONES[nombre]) return { error: 'No tienes permiso para esta consulta.' };
+  try{ return await ASI_FUNCIONES[nombre](args || {}); }
+  catch(err){ console.warn('Asistente', nombre, err); return { error: err.message || String(err) }; }
+}
+const ASI_ETIQUETAS = { movimientos_producto:'kardex del producto', movimientos_por_fecha:'kardex por fechas', ubicar_producto:'ubicación del producto', buscar_productos:'maestro de productos',
+  info_pallet:'pallet', info_posicion:'posición', bitacora:'bitácora' };
+
+// ---- Conversación ----
+function asiFormato(t){ return esc(t).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>'); }
+function asiAgregar(rol, texto, consultas){
+  const div = document.createElement('div'); div.className = 'asi-msg ' + rol;
+  div.innerHTML = `<div class="asi-burbuja">${asiFormato(texto)}</div>` + (consultas ? `<div class="asi-consultas">${esc(consultas)}</div>` : '');
+  $('asi-chat').appendChild(div); $('asi-chat').scrollTop = $('asi-chat').scrollHeight;
+  $('asi-ejemplos').style.display = 'none';
+  return div;
+}
+function asiMensajeError(err){
+  const m = String((err && (err.code || '') + ' ' + (err.message || '')) || err);
+  if(/api-not-enabled|not been used|disabled|PERMISSION_DENIED|403|firebasevertexai/i.test(m))
+    return 'El asistente todavía no está activado en Firebase. Un administrador debe entrar a la consola de Firebase → **AI Logic** → **Comenzar** y elegir **Gemini Developer API**. Luego vuelve a intentarlo.';
+  if(/Failed to fetch|NetworkError|network/i.test(m)) return 'No hay conexión con el servicio de IA. Revisa tu internet e inténtalo de nuevo.';
+  if(/quota|429|RESOURCE_EXHAUSTED/i.test(m)) return 'Se alcanzó el límite de consultas del servicio de IA por ahora. Espera un momento e inténtalo de nuevo.';
+  return 'No se pudo responder: ' + m;
+}
+async function asiEnviar(texto){
+  texto = String(texto || '').trim();
+  if(!texto || asiOcupado) return;
+  asiOcupado = true; $('btn-asi-enviar').disabled = true; $('asi-input').value = '';
+  asiAgregar('yo', texto);
+  const pensando = asiAgregar('ia pensando', 'Pensando…');
+  const consultas = [];
+  try{
+    if(!asiChat) asiChat = await asiCrearChat();
+    let res = await asiChat.sendMessage(texto);
+    for(let i = 0; i < ASI_MAX_VUELTAS; i++){
+      const llamadas = res.response.functionCalls ? res.response.functionCalls() : null;
+      if(!llamadas || !llamadas.length) break;
+      const partes = [];
+      for(const ll of llamadas){
+        pensando.querySelector('.asi-burbuja').textContent = `Consultando ${ASI_ETIQUETAS[ll.name] || ll.name}…`;
+        const r = await asiEjecutar(ll.name, ll.args);
+        consultas.push(`${ASI_ETIQUETAS[ll.name] || ll.name}${ll.args && (ll.args.codigo || ll.args.texto) ? ' ' + (ll.args.codigo || ll.args.texto) : ''}`);
+        partes.push({ functionResponse: { name: ll.name, response: r } });
+      }
+      res = await asiChat.sendMessage(partes);
+    }
+    pensando.remove();
+    asiAgregar('ia', res.response.text() || 'No tengo una respuesta para eso.', consultas.length ? '🔎 Consultó: ' + consultas.join(' · ') : '');
+    logAccion('asistente_consulta', { detalle: texto.slice(0, 300) }).catch(()=>{});
+  }catch(err){
+    console.warn('Asistente', err);
+    pensando.remove();
+    asiAgregar('ia error', asiMensajeError(err));
+    asiChat = null;   // la próxima pregunta empieza un chat nuevo
+  }finally{ asiOcupado = false; $('btn-asi-enviar').disabled = false; $('asi-input').focus(); }
+}
+$('asi-form').addEventListener('submit', e=>{ e.preventDefault(); asiEnviar($('asi-input').value); });
+$('asi-input').addEventListener('keydown', e=>{ if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); asiEnviar($('asi-input').value); } });
+$('asi-ejemplos').addEventListener('click', e=>{ const b = e.target.closest('[data-asi-ejemplo]'); if(b) asiEnviar(b.textContent); });
+$('btn-asi-nueva').addEventListener('click', ()=>{ asiChat = null; $('asi-chat').innerHTML = ''; $('asi-ejemplos').style.display = ''; $('asi-input').focus(); });
 
 </script>
 </body>
