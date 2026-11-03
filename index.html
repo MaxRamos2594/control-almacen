@@ -3843,8 +3843,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v222';
-const APP_UPDATED = '03/11/2026 14:00';
+const APP_VERSION = 'v223';
+const APP_UPDATED = '03/11/2026 17:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -20114,13 +20114,29 @@ function asiAgregar(rol, texto, consultas){
   $('asi-ejemplos').style.display = 'none';
   return div;
 }
+// Explica el error según lo que devuelve Google y deja el detalle técnico para poder revisarlo.
 function asiMensajeError(err){
-  const m = String((err && (err.code || '') + ' ' + (err.message || '')) || err);
-  if(/api-not-enabled|not been used|disabled|PERMISSION_DENIED|403|firebasevertexai/i.test(m))
-    return 'El asistente todavía no está activado en Firebase. Un administrador debe entrar a la consola de Firebase → **AI Logic** → **Comenzar** y elegir **Gemini Developer API**. Luego vuelve a intentarlo.';
-  if(/Failed to fetch|NetworkError|network/i.test(m)) return 'No hay conexión con el servicio de IA. Revisa tu internet e inténtalo de nuevo.';
-  if(/quota|429|RESOURCE_EXHAUSTED/i.test(m)) return 'Se alcanzó el límite de consultas del servicio de IA por ahora. Espera un momento e inténtalo de nuevo.';
-  return 'No se pudo responder: ' + m;
+  let extra = '';
+  try{ if(err && err.customData) extra = ' ' + JSON.stringify(err.customData); }catch(e){}
+  const m = String((err && ((err.code || '') + ' ' + (err.message || '') + extra)) || err).trim();
+  const detalle = '\n\nDetalle técnico: ' + m.slice(0, 500);
+  if(/referer|referrer|HTTP_REFERRER_BLOCKED/i.test(m))
+    return 'La clave de API del proyecto no permite llamadas desde esta página. En Google Cloud → **APIs y servicios** → **Credenciales** → la clave del navegador (Browser key) → **Restricciones de aplicaciones**, agrega la dirección de esta página.' + detalle;
+  if(/API_KEY_SERVICE_BLOCKED|are blocked/i.test(m))
+    return 'La clave de API del proyecto tiene restringidas las APIs que puede usar. En Google Cloud → **APIs y servicios** → **Credenciales** → la clave del navegador (Browser key) → **Restricciones de API**, agrega **Firebase AI Logic API** y **Generative Language API**, y guarda. Puede tardar unos minutos en aplicarse.' + detalle;
+  if(/api-not-enabled|has not been used|SERVICE_DISABLED|it is disabled/i.test(m))
+    return 'Falta activar el servicio. En la consola de Firebase → **AI Logic** → **Comenzar** → **Gemini Developer API**. Si ya lo hiciste hace poco, espera unos minutos y vuelve a intentarlo.' + detalle;
+  if(/app.?check/i.test(m))
+    return 'La Verificación de aplicaciones (App Check) está rechazando la consulta: esta página todavía no envía la verificación.' + detalle;
+  if(/NOT_FOUND|not found|is not supported|404/i.test(m))
+    return `El modelo de IA configurado (${ASI_MODELO}) no está disponible para el proyecto. Hay que cambiarlo por uno vigente.` + detalle;
+  if(/billing|facturaci/i.test(m))
+    return 'El proyecto necesita una cuenta de facturación activa para usar este servicio.' + detalle;
+  if(/quota|429|RESOURCE_EXHAUSTED/i.test(m)) return 'Se alcanzó el límite de consultas del servicio de IA por ahora. Espera un momento e inténtalo de nuevo.' + detalle;
+  if(/Failed to fetch|NetworkError|network/i.test(m)) return 'No hay conexión con el servicio de IA. Revisa tu internet e inténtalo de nuevo.' + detalle;
+  if(/PERMISSION_DENIED|403/i.test(m))
+    return 'Google rechazó la consulta por permisos. Revisa que **AI Logic** esté activado con **Gemini Developer API** y que la clave de API permita usarlo.' + detalle;
+  return 'No se pudo responder.' + detalle;
 }
 async function asiEnviar(texto){
   texto = String(texto || '').trim();
