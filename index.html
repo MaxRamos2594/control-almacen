@@ -264,6 +264,14 @@
     .alm-tabla{font-size:12.5px;} .alm-tabla th, .alm-tabla td{padding:6px 4px;} .alm-col-pct{min-width:80px;} .alm-ruta{max-width:170px;}
     .alm-dos{grid-template-columns:1fr;} .alm-card b{font-size:19px;}
   }
+  .rfl-barra{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:8px;}
+  .rfl-leyenda{display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--ink-soft);} .rfl-leyenda span{display:inline-flex; align-items:center; gap:5px;}
+  .rfl-leyenda i{display:inline-block; width:14px; height:14px; border-radius:3px; border:1px solid;}
+  .rfl-resumen{display:flex; flex-wrap:wrap; gap:8px; align-items:center;} .rfl-k{padding:4px 10px; border-radius:999px; font-size:12.5px; border:1px solid;}
+  .rfl-0, .slot.rfl-0, .rfl-k.k0{background:#E4E6EA !important; border-color:#C2C7CE !important; color:#7A828C !important;}
+  .rfl-1, .slot.rfl-1, .rfl-k.k1{background:#2E9E5B !important; border-color:#217A45 !important; color:#fff !important;}
+  .rfl-n, .slot.rfl-n, .rfl-k.kn{background:#F26B0F !important; border-color:#C4520A !important; color:#fff !important; font-weight:700;}
+  .rfl-mapa{overflow-x:auto; padding:4px 0 8px;} .rfl-mapa .slot.rfl-0{cursor:default;} .rfl-mapa .slot.rfl-sel{outline:3px solid var(--blue); outline-offset:1px; z-index:3;}
   .rf-rep-scroll{overflow-x:auto;} .rf-rep-fila.abierta{background:#eef4fb;} .rf-rep-flecha{display:inline-block; width:14px; color:var(--blue);}
   .rf-rep-exp > td{background:#f8fafc; padding:10px 8px 12px;} .rf-rep-sub{margin:12px 0 6px;} .rf-rep-ocultar{margin-top:8px;}
   @media (max-width:600px){
@@ -3297,6 +3305,7 @@
     <button class="active" id="rfsub-nuevo">📸 Nuevo registro</button>
     <button id="rfsub-lista">🗂 Registros</button>
     <button id="rfsub-reportes">📊 Reportes</button>
+    <button id="rfsub-layout">🗺 Layout</button>
   </div>
 
   <div id="rfsub-panel-nuevo">
@@ -3370,6 +3379,20 @@
       <div id="rf-rep-tabla"></div>
       <div id="rf-rep-pag"></div>
     </div>
+  </div>
+  <div id="rfsub-panel-layout" style="display:none;">
+    <div class="panel" style="margin-bottom:12px;">
+      <h3>🗺 Registro fotográfico en el layout</h3>
+      <div class="rfl-barra">
+        <select id="rfl-estado" title="Qué registros se cuentan"><option value="CONFIRMADO">✔ Solo confirmados</option><option value="">Todos (incluye borradores)</option></select>
+        <div class="rfl-leyenda"><span><i class="rfl-0"></i>Sin RF</span><span><i class="rfl-1"></i>1 RF</span><span><i class="rfl-n"></i>Más de 1 RF</span></div>
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-rfl-recargar">↻ Actualizar</button>
+      </div>
+      <div class="rfl-resumen" id="rfl-resumen"></div>
+      <p class="hint" style="margin:6px 0 8px;">Toca una posición pintada para ver sus registros.</p>
+      <div class="rfl-mapa" id="rfl-mapa"></div>
+    </div>
+    <div class="panel" id="rfl-detalle" style="display:none;"></div>
   </div>
   <datalist id="rf-participantes"></datalist><datalist id="rf-posiciones"></datalist><datalist id="rf-skus"></datalist>
 </div>
@@ -3820,8 +3843,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v221';
-const APP_UPDATED = '03/11/2026 11:00';
+const APP_VERSION = 'v222';
+const APP_UPDATED = '03/11/2026 14:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -18501,13 +18524,14 @@ const RF_POR_PAGINA = 10, RF_LADO_MAX = 1280;
 let rfPosFotos = [], rfItems = [], rfLista = [], rfLeidos = false, rfPagina = 0, rfSel = null;
 const rfNuevoItem = ()=> ({ sku:'', descripcion:'', cantidad:'', fotos:[] });
 function setRfSubtab(name){
-  ['nuevo','lista','reportes'].forEach(n=>{ $('rfsub-'+n).classList.toggle('active', n===name); $('rfsub-panel-'+n).style.display = n===name ? 'block' : 'none'; });
-  if(name === 'lista' || name === 'reportes') rfCargar();
+  ['nuevo','lista','reportes','layout'].forEach(n=>{ $('rfsub-'+n).classList.toggle('active', n===name); $('rfsub-panel-'+n).style.display = n===name ? 'block' : 'none'; });
+  if(name === 'lista' || name === 'reportes' || name === 'layout') rfCargar();
   else rfPrepararForm();
 }
 $('rfsub-nuevo').addEventListener('click', ()=> setRfSubtab('nuevo'));
 $('rfsub-lista').addEventListener('click', ()=> setRfSubtab('lista'));
 $('rfsub-reportes').addEventListener('click', ()=> setRfSubtab('reportes'));
+$('rfsub-layout').addEventListener('click', ()=> setRfSubtab('layout'));
 $('tab-regfoto').addEventListener('click', ()=>{ if($('rfsub-panel-nuevo').style.display !== 'none') rfPrepararForm(); else rfCargar(); });
 
 // ---- Fotos: achicar antes de subir ----
@@ -19216,7 +19240,53 @@ $('rfsub-panel-reportes').addEventListener('click', e=>{
 $('rfr-q').addEventListener('input', ()=>{ rfRepPag = 0; renderRfReportes(); });
 $('btn-rfr-recargar').addEventListener('click', ()=> rfCargar(true));
 
-function rfSiReportes(){ if($('rfsub-panel-reportes').style.display !== 'none') renderRfReportes(); }
+function rfSiReportes(){
+  if($('rfsub-panel-reportes').style.display !== 'none') renderRfReportes();
+  if($('rfsub-panel-layout').style.display !== 'none') renderRfLayout();
+}
+// ---- Layout: cada posición pintada según cuántos RF tiene (gris 0, verde 1, naranja más de 1) ----
+let rflSel = null;
+function rflConteo(){
+  const est = $('rfl-estado').value, por = new Map();
+  rfLista.filter(r=> !est || rfEstadoReg(r) === est).forEach(r=>{ const k = r.posicion || ''; if(!por.has(k)) por.set(k, []); por.get(k).push(r); });
+  return por;
+}
+function renderRfLayout(){
+  const por = rflConteo();
+  // Mismo dibujo del layout de Movimientos, sin los ids de sus posiciones (no se duplican en la página).
+  $('rfl-mapa').innerHTML = buildBloquesMarkup(true, false).replace(/ id="slot-[^"]*"/g, '');
+  let c0 = 0, c1 = 0, cn = 0;
+  $('rfl-mapa').querySelectorAll('.slot[data-id]').forEach(el=>{
+    const id = el.dataset.id, n = (por.get(id) || []).length, p = posiciones[id] || {};
+    el.className = ['slot', p.tipo === 'piso' ? 'piso-slot' : '', n === 0 ? 'rfl-0' : n === 1 ? 'rfl-1' : 'rfl-n', rflSel === id ? 'rfl-sel' : ''].join(' ').replace(/\s+/g, ' ').trim();
+    el.textContent = n > 1 ? n : id.slice(-2);
+    el.title = `${id} · ${n ? n + ' RF' : 'sin RF'}`;
+    if(n === 0) c0++; else if(n === 1) c1++; else cn++;
+  });
+  const fuera = [...por.keys()].filter(k=> !posiciones[k]).length;
+  $('rfl-resumen').innerHTML = `<span class="rfl-k k1"><b>${esc(c1)}</b> con 1 RF</span><span class="rfl-k kn"><b>${esc(cn)}</b> con más de 1</span><span class="rfl-k k0"><b>${esc(c0)}</b> sin RF</span>` +
+    (fuera ? `<span class="hint">· ${esc(fuera)} posición(es) con RF fuera del layout</span>` : '');
+  if(rflSel) rflDetalle(rflSel, false); else $('rfl-detalle').style.display = 'none';
+}
+function rflDetalle(id, desplazar){
+  const L = (rflConteo().get(id) || []);
+  if(!L.length){ rflSel = null; $('rfl-detalle').style.display = 'none'; return; }
+  rflSel = id;
+  $('rfl-mapa').querySelectorAll('.slot[data-id]').forEach(el=> el.classList.toggle('rfl-sel', el.dataset.id === id));
+  const box = $('rfl-detalle'); box.style.display = 'block';
+  box.innerHTML = `<div class="rf-det-cab"><div><span class="hint">Posición · ${esc(rfBloqueDe(id))}</span><h2>📍 ${esc(id)}</h2></div><span class="hint">${esc(L.length)} RF · ${esc(anFmt(rfUnd(L)))} unidades</span></div>` +
+    rfRepListaRf(L, false) + `<button type="button" class="btn btn-ghost btn-sm rf-rep-ocultar" data-rfl-ocultar="1">▴ Ocultar</button>`;
+  if(desplazar) box.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+$('rfsub-panel-layout').addEventListener('click', e=>{
+  const ver = e.target.closest('[data-rfr-ver]'), slot = e.target.closest('#rfl-mapa .slot[data-id]'), chip = e.target.closest('[data-mostrar-anexados]');
+  if(ver){ setRfSubtab('lista'); rfSel = ver.dataset.rfrVer; setTimeout(()=> rfAbrir(ver.dataset.rfrVer), 50); return; }
+  if(e.target.closest('[data-rfl-ocultar]')){ rflSel = null; renderRfLayout(); return; }
+  if(chip){ toggleModoCompacto(); renderRfLayout(); return; }
+  if(slot){ if(rflSel === slot.dataset.id){ rflSel = null; renderRfLayout(); } else rflDetalle(slot.dataset.id, true); }
+});
+$('rfl-estado').addEventListener('change', ()=>{ rflSel = null; renderRfLayout(); });
+$('btn-rfl-recargar').addEventListener('click', ()=> rfCargar(true));
 // ---- Registros: lista, búsqueda, detalle ----
 async function rfCargar(forzar){
   if(rfLeidos && !forzar){ renderRfLista(); rfSiReportes(); return; }
