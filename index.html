@@ -3395,9 +3395,10 @@
   </div>
   <div id="rfsub-panel-layout" style="display:none;">
     <div class="panel" style="margin-bottom:12px;">
-      <h3>🗺 Registro fotográfico en el layout del CD</h3>
+      <h3>🗺 Registro fotográfico en el layout del CD VENEZUELA</h3>
       <div class="rfl-barra">
         <select id="rfl-estado" title="Qué registros se cuentan"><option value="CONFIRMADO">✔ Solo confirmados</option><option value="">Todos (incluye borradores)</option></select>
+        <select id="rfl-usuario" title="De qué usuario"></select>
         <div class="rfl-leyenda"><span><i class="rfl-0"></i>Sin RF</span><span><i class="rfl-1"></i>1 RF</span><span><i class="rfl-n"></i>Más de 1 RF</span></div>
         <button type="button" class="btn btn-ghost btn-sm" id="btn-rfl-recargar">↻ Actualizar</button>
       </div>
@@ -3862,8 +3863,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v227';
-const APP_UPDATED = '05/11/2026 13:00';
+const APP_VERSION = 'v228';
+const APP_UPDATED = '05/11/2026 16:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -19375,12 +19376,20 @@ function rfSiReportes(){
 }
 // ---- Layout: cada posición pintada según cuántos RF tiene (gris 0, verde 1, naranja más de 1) ----
 let rflSel = null;
+// Solo el CD VENEZUELA; sin usuario elegido cuenta los de todos los usuarios que se pueden ver.
+function rflLlenarUsuarios(){
+  const sel = $('rfl-usuario'), v = sel.value;
+  const L = [...new Map(rfLista.filter(r=> rfEsCD(rfTiendaDe(r)) && r.usuario_email).map(r=> [r.usuario_email, r.usuario || r.usuario_email])).entries()].sort((a, b)=> a[1].localeCompare(b[1], 'es'));
+  sel.innerHTML = '<option value="">👤 Todos los usuarios</option>' + L.map(([e, a])=> `<option value="${esc(e)}">${esc(a)}</option>`).join('');
+  sel.value = L.some(([e])=> e === v) ? v : '';
+}
 function rflConteo(){
-  const est = $('rfl-estado').value, por = new Map();
-  rfLista.filter(r=> rfEsCD(rfTiendaDe(r)) && (!est || rfEstadoReg(r) === est)).forEach(r=>{ const k = r.posicion || ''; if(!por.has(k)) por.set(k, []); por.get(k).push(r); });
+  const est = $('rfl-estado').value, us = $('rfl-usuario').value, por = new Map();
+  rfLista.filter(r=> rfEsCD(rfTiendaDe(r)) && (!est || rfEstadoReg(r) === est) && (!us || r.usuario_email === us)).forEach(r=>{ const k = r.posicion || ''; if(!por.has(k)) por.set(k, []); por.get(k).push(r); });
   return por;
 }
 function renderRfLayout(){
+  rflLlenarUsuarios();
   const por = rflConteo();
   // Mismo dibujo del layout de Movimientos, sin los ids de sus posiciones (no se duplican en la página).
   $('rfl-mapa').innerHTML = buildBloquesMarkup(true, false).replace(/ id="slot-[^"]*"/g, '');
@@ -19414,7 +19423,7 @@ $('rfsub-panel-layout').addEventListener('click', e=>{
   if(chip){ toggleModoCompacto(); renderRfLayout(); return; }
   if(slot){ if(rflSel === slot.dataset.id){ rflSel = null; renderRfLayout(); } else rflDetalle(slot.dataset.id, true); }
 });
-$('rfl-estado').addEventListener('change', ()=>{ rflSel = null; renderRfLayout(); });
+['rfl-estado', 'rfl-usuario'].forEach(id=> $(id).addEventListener('change', ()=>{ rflSel = null; renderRfLayout(); }));
 $('btn-rfl-recargar').addEventListener('click', ()=> rfCargar(true));
 // ---- Registros: lista, búsqueda, detalle ----
 async function rfCargar(forzar){
