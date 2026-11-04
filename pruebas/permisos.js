@@ -59,6 +59,11 @@ const visibles = (page, sel)=> page.evaluate(sel=> [...document.querySelectorAll
   await page.waitForFunction(()=> /Permisos guardados para yolanda/.test($('us-msg').textContent), null, { timeout: 10000 });
   perm = await page.evaluate(async ()=> (await usuariosRef.doc('yolanda@ejemplo.com').get()).data().permisos);
   verificar(perm.vo_vouchers === false && perm.venta_online === true && perm.rotulos === false && JSON.stringify(perm.subs) === '{"ventaonline":["vosub-vouchers"]}', 'Al guardar se reemplazan los permisos completos (sin restos del permiso antiguo)');
+  // Recargar la página estando en Usuarios: la lista se carga sola (antes se quedaba en "Cargando…").
+  await page.reload();
+  await page.waitForFunction(()=> $('status-text').textContent === 'Sincronizado en vivo' && $('view-usuarios').classList.contains('active'), null, { timeout: 20000 });
+  const recarga = await page.waitForFunction(()=> document.querySelectorAll('#us-lista .us-item').length >= 3, null, { timeout: 10000 }).then(()=> true, ()=> false);
+  verificar(recarga, 'Al recargar la página estando en Usuarios, la lista de usuarios se carga');
   await browser.close();
 
   // Entrar como cada usuario.
