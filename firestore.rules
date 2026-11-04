@@ -9,6 +9,7 @@ rules_version = '2';
 //   - La bitácora (movimientos) no se puede editar ni borrar.
 //   - El kardex no se puede borrar; solo admin/eliminar lo corrige (fusión).
 //   - El maestro de participantes solo lo edita un admin.
+//   - Registro fotográfico: cada usuario solo ve los suyos (admin o "rf_todos" ven todos).
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -30,6 +31,14 @@ service cloud.firestore {
     function canDelete() {
       return registered()
         && (perms().get('admin', false) == true || perms().get('eliminar', false) == true);
+    }
+    // Ve los registros fotográficos de todos (admin o permiso "rf_todos").
+    function rfTodos() {
+      return registered()
+        && (perms().get('admin', false) == true || perms().get('rf_todos', false) == true);
+    }
+    function esDuenoRF() {
+      return resource.data.get('usuario_email', '') == request.auth.token.email;
     }
 
     // Permisos de usuarios: cada quien lee el suyo; solo admin escribe.
@@ -63,6 +72,17 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // Registro fotográfico: cada usuario ve y trabaja solo sus registros;
+    // admin y quien tenga "rf_todos" ven los de todos (Reportes).
+    // resource == null: leer un registro que todavía no existe (al generar el correlativo).
+    match /registros_foto/{id} {
+      allow read: if registered() && (resource == null || esDuenoRF() || rfTodos());
+      allow create: if registered()
+        && (request.resource.data.get('usuario_email', '') == request.auth.token.email || rfTodos());
+      allow update: if registered() && (esDuenoRF() || rfTodos() || canDelete());
+      allow delete: if registered() && (esDuenoRF() || canDelete());
+    }
+
     // Link público de Venta Online para el cliente: cualquiera que tenga el link puede leer
     // ESE documento (su id es un código aleatorio de 32 caracteres, imposible de adivinar);
     // nadie puede listar la colección. Solo los usuarios registrados lo crean o cambian
@@ -74,7 +94,7 @@ service cloud.firestore {
     // Resto de colecciones de la app: cualquier usuario registrado.
     match /{coleccion}/{id} {
       allow read, write: if registered()
-        && !(coleccion in ['usuarios', 'movimientos', 'kardex', 'participantes_maestro']);
+        && !(coleccion in ['usuarios', 'movimientos', 'kardex', 'participantes_maestro', 'registros_foto']);
     }
   }
 }
