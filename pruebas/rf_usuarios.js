@@ -35,6 +35,14 @@ const listo = page=> page.waitForFunction(()=> $('status-text').textContent === 
     await usuariosRef.doc('yolanda@ejemplo.com').set({ email:'yolanda@ejemplo.com', alias:'YOLANDA', permisos:{ reg_fotos:true } });
     await usuariosRef.doc('johan@ejemplo.com').set({ email:'johan@ejemplo.com', alias:'JOHAN', permisos:{ reg_fotos:true } });
   }, ADMIN.email);
+  // La lista de tiendas se actualiza cuando llegan (o cambian) los participantes, sin volver a entrar.
+  await page.evaluate(()=>{ switchTab('regfoto'); setRfSubtab('nuevo'); });
+  await page.waitForFunction(()=> $('rf-tienda').options.length === 3, null, { timeout: 10000 });
+  await page.evaluate(()=> participantesMaestroRef.doc('SJL').set({ nombre:'SAN JUAN DE LURIGANCHO' }));
+  await page.waitForFunction(()=> [...$('rf-tienda').options].some(o=> o.value === 'SAN JUAN DE LURIGANCHO'), null, { timeout: 10000 });
+  await page.evaluate(()=> participantesMaestroRef.doc('SJL').delete());
+  await page.waitForFunction(()=> $('rf-tienda').options.length === 3, null, { timeout: 10000 });
+  verificar(true, 'Una tienda nueva del maestro aparece al momento en "¿Dónde haces el inventario?" (y desaparece si se borra)');
   await page.click('#btn-menu'); await page.click('#tab-usuarios');
   await page.waitForSelector('#us-lista [data-us-email="johan@ejemplo.com"]', { timeout: 10000 });
   await page.click('#us-lista [data-us-email="johan@ejemplo.com"]');
@@ -54,7 +62,8 @@ const listo = page=> page.waitForFunction(()=> $('status-text').textContent === 
   // 2) Yolanda: solo lo suyo, su correlativo RF-YOL-00001 y una tienda con ubicación libre.
   ({ browser, page, errores } = await abrirApp({ usuario: YOLANDA }));
   await listo(page);
-  await page.evaluate(()=>{ switchTab('regfoto'); setRfSubtab('nuevo'); });
+  // Su única opción es Registro fotográfico: entra directo, antes de que lleguen los participantes.
+  await page.waitForFunction(()=> $('view-regfoto').classList.contains('active') && $('rf-tienda').options.length >= 3, null, { timeout: 10000 });
   await page.waitForFunction(()=> $('rf-tienda').options.length >= 3, null, { timeout: 10000 });
   const inicio = await page.evaluate(()=> ({ pref: $('rf-mi-prefijo').textContent, tiendas: [...$('rf-tienda').options].map(o=> o.value).join(',') }));
   await page.selectOption('#rf-tienda', 'COMAS');
