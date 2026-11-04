@@ -266,6 +266,10 @@
   }
   .rf-tienda-inicio{display:flex; flex-direction:column; gap:6px; font-weight:700; font-size:14px; margin-bottom:12px; width:100%; max-width:520px;} .rf-tienda-inicio select{font-size:16px; padding:10px 12px;}
   .us-rf{border:1px dashed var(--line-strong); border-radius:10px; padding:10px 12px; margin:10px 0;}
+  .rf-aviso-botones{display:flex; gap:10px; justify-content:center; flex-wrap:wrap;} #btn-rf-aviso-no{background:#fff; color:var(--ink); border:1px solid var(--line-strong);}
+  .rf-vacia{display:inline-block; padding:1px 7px; border-radius:999px; background:#EEF1F5; border:1px solid #C2C7CE; color:#4A5562; font-size:10.5px; font-weight:700;}
+  .rf-vacia-det{padding:10px 12px; border-radius:10px; background:#EEF1F5; border:1px dashed #9AA3AE; margin:10px 0;}
+  .us-rf-part{margin-top:8px;} .us-rf-part.bloqueado{opacity:.45; pointer-events:none;}
   .rfl-barra{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:8px;}
   .rfl-leyenda{display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--ink-soft);} .rfl-leyenda span{display:inline-flex; align-items:center; gap:5px;}
   .rfl-leyenda i{display:inline-block; width:14px; height:14px; border-radius:3px; border:1px solid;}
@@ -3429,7 +3433,7 @@
 <div class="cam-modal" id="rf-aviso" hidden>
   <div class="rf-aviso-caja" role="alertdialog" aria-labelledby="rf-aviso-tit">
     <div class="rf-aviso-ico">⚠️</div><b id="rf-aviso-tit"></b><p id="rf-aviso-txt"></p>
-    <button type="button" id="btn-rf-aviso-ok">Entendido</button>
+    <div class="rf-aviso-botones"><button type="button" id="btn-rf-aviso-no" hidden>No</button><button type="button" id="btn-rf-aviso-ok">Entendido</button></div>
   </div>
 </div>
 <div class="rf-lightbox" id="rf-lightbox" hidden><img id="rf-lightbox-img" alt=""><div class="rf-lb-pie" id="rf-lightbox-pie"></div><button type="button" class="rf-lb-x" id="rf-lightbox-x">✕</button><button type="button" class="rf-lb-nav ant" id="rf-lb-ant" aria-label="Foto anterior">‹</button><button type="button" class="rf-lb-nav sig" id="rf-lb-sig" aria-label="Foto siguiente">›</button></div>
@@ -3731,6 +3735,7 @@
         <b>📸 Registro fotográfico</b>
         <div class="field" style="margin:6px 0;"><label>Prefijo de su correlativo <span class="hint">(2 a 5 letras; sus registros serán RF-PREFIJO-00001…)</span></label><input type="text" id="us-rf-prefijo" class="upper" maxlength="5" placeholder="Automático: primeras letras del alias"></div>
         <label class="us-extra" style="margin:0;"><input type="checkbox" id="us-rf-todos"> Ver los registros fotográficos de todos los usuarios <span class="hint">(en Registros, Reportes y Layout; si no, solo ve los suyos)</span></label>
+        <div class="us-rf-part" id="us-rf-part-box"><span class="hint">Además de los suyos, ver los registros de estos participantes (de cualquier usuario):</span><div class="us-chips" id="us-rf-part"></div></div>
       </div>
       <div class="us-resumen" id="us-resumen"></div>
       <button class="btn btn-primary" id="btn-guardar-usuario" style="width:100%;">Guardar permisos</button>
@@ -3857,8 +3862,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v225';
-const APP_UPDATED = '04/11/2026 16:00';
+const APP_VERSION = 'v226';
+const APP_UPDATED = '05/11/2026 10:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -18683,6 +18688,7 @@ function rfPrefijoDe(alias, email){
 }
 const rfPrefijo = ()=> currentRfPrefijo || rfPrefijoDe(currentUserAlias, currentUserEmail);
 const rfVeTodos = ()=> !!(currentPermisos.admin || currentPermisos.rf_todos);
+const rfParticipantesVisibles = ()=> Array.isArray(currentPermisos.rf_participantes) ? currentPermisos.rf_participantes : [];
 function rfTiendas(){
   const L = [...new Set(Object.values(participantesMaestroCache || {}).map(p=> String(p.nombre || '').trim().toUpperCase()).filter(n=> n && n !== RF_CD))].sort((a, b)=> a.localeCompare(b, 'es'));
   return [RF_CD, ...L];
@@ -18895,10 +18901,16 @@ $('btn-rf-excel').addEventListener('click', ()=>{
   const L = rfFiltradosReporte();
   if(!L.length){ showToast('No hay registros para exportar con estos filtros.', 'err'); return; }
   const filas = [];
-  L.forEach(r=> (r.items || []).forEach((it, k)=> filas.push({ 'Correlativo': r.id, 'Fecha de creación': rfFechaTxt(r.fecha_creacion), 'Participante': r.participante || '',
-    'Posición': r.posicion || '', 'Estado': rfEstadoReg(r), 'Generado por': r.usuario || '', 'Confirmado por': r.confirmado_por || '', 'Fecha de confirmación': rfFechaTxt(r.confirmado_en), 'N° producto': k + 1, 'SKU': it.sku, 'Descripción': it.descripcion || '', 'Cantidad': Number(it.cantidad) || 0, 'N° fotos': (it.fotos || []).length })));
+  // Una fila por producto; una ubicación vacía va en una sola fila sin producto (cantidad 0).
+  L.forEach(r=>{
+    const base = { 'Correlativo': r.id, 'Fecha de creación': rfFechaTxt(r.fecha_creacion), 'Participante': r.participante || '',
+      'Posición': r.posicion || '', 'Estado': rfEstadoReg(r), 'Generado por': r.usuario || '', 'Confirmado por': r.confirmado_por || '', 'Fecha de confirmación': rfFechaTxt(r.confirmado_en) };
+    const items = r.items || [];
+    if(!items.length){ if(r.ubicacion_vacia) filas.push(Object.assign({}, base, { 'Ubicación vacía': 'SÍ', 'N° producto': '', 'SKU': '', 'Descripción': 'UBICACIÓN VACÍA', 'Cantidad': 0, 'N° fotos': 0 })); return; }
+    items.forEach((it, k)=> filas.push(Object.assign({}, base, { 'Ubicación vacía': 'NO', 'N° producto': k + 1, 'SKU': it.sku, 'Descripción': it.descripcion || '', 'Cantidad': Number(it.cantidad) || 0, 'N° fotos': (it.fotos || []).length })));
+  });
   const ws = XLSX.utils.json_to_sheet(filas);
-  ws['!cols'] = [12, 18, 18, 10, 12, 16, 16, 18, 11, 16, 44, 10, 9].map(w=> ({ wch: w }));
+  ws['!cols'] = [12, 18, 18, 10, 12, 16, 16, 18, 10, 11, 16, 44, 10, 9].map(w=> ({ wch: w }));
   ws['!autofilter'] = { ref: ws['!ref'] };
   const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Registro fotográfico');
   XLSX.writeFile(wb, `registro_fotografico_${new Date().toISOString().slice(0, 10)}.xlsx`);
@@ -18940,13 +18952,14 @@ async function rfExportarPdf(lista){
       doc.setTextColor(30); doc.setFontSize(10);
       const datos = [['Participante', r.participante || ''], ['Fecha de creación', rfFechaTxt(r.fecha_creacion)], ['Correlativo', r.id], ['Posición', r.posicion || ''], ['Estado', rfEstadoReg(r)], ['Generado por', r.usuario || ''],
         ['Confirmado por', r.confirmado_por ? `${r.confirmado_por} · ${rfFechaTxt(r.confirmado_en)}` : '—'],
-        ['Productos', `${(r.items || []).length} · ${anFmt(r.unidades || 0)} unidad(es)`]];
+        ['Productos', r.ubicacion_vacia ? 'Ubicación vacía (sin productos)' : `${(r.items || []).length} · ${anFmt(r.unidades || 0)} unidad(es)`]];
       datos.forEach(([k, v], i)=>{ doc.setFont('helvetica', 'bold'); doc.text(k + ':', 32, 80 + i * 16); doc.setFont('helvetica', 'normal'); doc.text(String(v), 130, 80 + i * 16); });
       const fp = r.foto_posicion && imgs.get(r.foto_posicion.url);
       doc.setDrawColor(200); doc.rect(W - 32 - 200, 66, 200, 150);
       if(fp) rfDibujarFoto(doc, fp, W - 32 - 200, 66, 200, 150); else doc.text('Sin foto', W - 132, 145, { align:'center' });
       doc.setFontSize(8); doc.setTextColor(110); doc.text('Foto de la posición', W - 132, 226, { align:'center' }); doc.setTextColor(30);
       const filas = (r.items || []).map((it, k)=> [String(k + 1), it.sku, it.descripcion || '', anFmt(it.cantidad), '']);
+      if(!filas.length && r.ubicacion_vacia) filas.push(['', '—', 'UBICACIÓN VACÍA (sin productos)', '0', '']);
       doc.autoTable({
         startY: 238, margin:{ left:32, right:32 }, styles:{ fontSize:9, cellPadding:4, valign:'middle' }, headStyles:{ fillColor:[43, 76, 111] },
         head: [['#', 'SKU', 'Descripción', 'Cantidad', 'Fotos del producto']], body: filas,
@@ -19149,10 +19162,15 @@ $('btn-rf-guardar').addEventListener('click', async ()=>{
   else if(!posicion) error = cd ? 'Elige la posición del layout.' : 'Escribe la ubicación en la tienda.';
   else if(cd && !posiciones[posicion]) error = `La posición ${posicion} no existe en el layout. Elígela de la lista.`;
   else if(!rfPosFotos.length) error = 'Falta la foto de la posición.';
-  else if(!rfItems.some(rfCompleto)) error = 'Agrega al menos un producto (SKU, cantidad y foto).';
   if(error){ showMsg('rf-msg', 'err', error); rfAviso('Todavía no se puede confirmar', error); return; }
   const mal = rfItems.findIndex(it=> !rfVacio(it) && !rfCompleto(it));
   if(mal >= 0){ rfAvisarIncompleto(mal); return; }
+  // Sin productos: se pregunta si la ubicación está vacía. Sí → se guarda sin detalle, marcada como vacía. No → no se confirma.
+  let vacia = false;
+  if(!rfItems.some(rfCompleto)){
+    vacia = await rfPreguntar('¿La ubicación está vacía?', `No registraste productos en ${posicion}. ¿La ubicación está vacía?`, '📭 Sí, está vacía', 'No, falta registrar');
+    if(!vacia){ const t = 'Registra al menos un producto (SKU, cantidad y foto) antes de confirmar.'; showMsg('rf-msg', 'err', t); rfFoco(0, 'sku'); return; }
+  }
   const todas = [...rfPosFotos, ...rfItems.flatMap(it=> it.fotos)];
   if(todas.some(f=> f.subiendo)){ rfAviso('Espera un momento', 'Todavía se están subiendo fotos. Vuelve a presionar Confirmar en unos segundos.'); return; }
   if(todas.some(f=> f.error || !f.path)){ rfAviso('Hay fotos sin subir', 'Las fotos marcadas en rojo no se subieron. Tócalas para reintentar y luego confirma.'); return; }
@@ -19166,7 +19184,7 @@ $('btn-rf-guardar').addEventListener('click', async ()=>{
       const ref = registrosFotoRef.doc(id), snap = await tx.get(ref);
       if(!snap.exists) throw new Error('el borrador ya no existe');
       if(snap.data().estado !== 'BORRADOR') throw new Error('ya estaba confirmado');
-      const cambios = { estado:'CONFIRMADO', confirmado_por: currentUserAlias, confirmado_por_email: currentUserEmail, confirmado_en: ahora,
+      const cambios = { estado:'CONFIRMADO', ubicacion_vacia: vacia, confirmado_por: currentUserAlias, confirmado_por_email: currentUserEmail, confirmado_en: ahora,
         modificando: firebase.firestore.FieldValue.delete(), respaldo: firebase.firestore.FieldValue.delete() };
       if(modif) Object.assign(cambios, { modificado_por: currentUserAlias, modificado_en: ahora, modificaciones: firebase.firestore.FieldValue.arrayUnion({ por: currentUserAlias, email: currentUserEmail || '', en: ahora }) });
       tx.update(ref, Object.assign(datos, cambios));
@@ -19174,9 +19192,9 @@ $('btn-rf-guardar').addEventListener('click', async ()=>{
     const nf = todas.length;
     // Fotos que se quitaron durante la modificación: recién ahora se borran.
     if(modif){ const finales = new Set(rfPathsDe(datos)); [...modif].filter(p=> !finales.has(p)).forEach(p=> storage.ref().child(p).delete().catch(()=>{})); }
-    await logAccion(modif ? 'reg_foto_modificado' : 'reg_foto_confirmado', {detalle:`${id} ${modif ? 'modificado y confirmado de nuevo' : 'confirmado'} · ${participante} · posición ${posicion} · ${datos.items.length} producto(s), ${datos.unidades} und, ${nf} foto(s)`});
+    await logAccion(modif ? 'reg_foto_modificado' : 'reg_foto_confirmado', {detalle:`${id} ${modif ? 'modificado y confirmado de nuevo' : 'confirmado'} · ${participante} · posición ${posicion} · ${vacia ? 'ubicación vacía (sin productos)' : `${datos.items.length} producto(s), ${datos.unidades} und`}, ${nf} foto(s)`});
     proc.fin(); $('rf-msg').className = 'msg'; $('rf-msg').textContent = '';
-    $('rf-ok').innerHTML = `✅ <b>${esc(id)}</b> ${modif ? 'modificado y confirmado' : 'confirmado'} · posición ${esc(posicion)} · ${esc(datos.items.length)} producto(s) <button type="button" id="btn-rf-ver-ultimo">Ver</button>`;
+    $('rf-ok').innerHTML = `✅ <b>${esc(id)}</b> ${modif ? 'modificado y confirmado' : 'confirmado'} · posición ${esc(posicion)} · ${vacia ? '📭 ubicación vacía' : `${esc(datos.items.length)} producto(s)`} <button type="button" id="btn-rf-ver-ultimo">Ver</button>`;
     $('rf-ok').hidden = false;
     rfLimpiarForm(); rfLeidos = false; rfSel = id; rfMostrarInicio();
     window.scrollTo({ top: 0, behavior:'smooth' }); $('btn-rf-iniciar').focus();
@@ -19188,12 +19206,22 @@ $('btn-rf-guardar').addEventListener('click', async ()=>{
 let rfAvisoAlCerrar = null;
 function rfAviso(titulo, texto, alCerrar){
   $('rf-aviso-tit').textContent = titulo; $('rf-aviso-txt').textContent = texto; rfAvisoAlCerrar = alCerrar || null;
+  $('btn-rf-aviso-ok').textContent = 'Entendido'; $('btn-rf-aviso-no').hidden = true;
   $('rf-aviso').hidden = false; setTimeout(()=> $('btn-rf-aviso-ok').focus(), 30);
   if(navigator.vibrate) navigator.vibrate([60, 40, 60]);
 }
-function rfCerrarAviso(){ $('rf-aviso').hidden = true; const fn = rfAvisoAlCerrar; rfAvisoAlCerrar = null; if(fn) setTimeout(fn, 30); }
-$('btn-rf-aviso-ok').addEventListener('click', rfCerrarAviso);
-$('rf-aviso').addEventListener('click', e=>{ if(e.target.id === 'rf-aviso') rfCerrarAviso(); });
+// Pregunta Sí / No con el mismo aviso; cerrarlo de otra forma cuenta como "No".
+let rfPreguntaResp = null;
+function rfPreguntar(titulo, texto, siTxt, noTxt){
+  return new Promise(ok=>{ rfAviso(titulo, texto); rfPreguntaResp = ok; $('btn-rf-aviso-ok').textContent = siTxt; $('btn-rf-aviso-no').textContent = noTxt; $('btn-rf-aviso-no').hidden = false; });
+}
+function rfCerrarAviso(si){
+  $('rf-aviso').hidden = true; const fn = rfAvisoAlCerrar, resp = rfPreguntaResp; rfAvisoAlCerrar = null; rfPreguntaResp = null;
+  if(resp) resp(si === true); if(fn) setTimeout(fn, 30);
+}
+$('btn-rf-aviso-ok').addEventListener('click', ()=> rfCerrarAviso(true));
+$('btn-rf-aviso-no').addEventListener('click', ()=> rfCerrarAviso(false));
+$('rf-aviso').addEventListener('click', e=>{ if(e.target.id === 'rf-aviso') rfCerrarAviso(false); });
 
 // ---- Modificar un registro ya confirmado ----
 // Vuelve a la pantalla de registro como borrador "en modificación" (guarda un respaldo de lo confirmado).
@@ -19251,7 +19279,7 @@ function rfLlenarFiltros(){
     $(t).innerHTML = '<option value="">🏬 Todas las tiendas</option>' + tiendas.map(x=> `<option value="${esc(x)}">${esc(x)}</option>`).join('');
     $(u).innerHTML = '<option value="">👤 Todos los usuarios</option>' + usuarios.map(([e, a])=> `<option value="${esc(e)}">${esc(a)}</option>`).join('');
     $(t).value = tiendas.includes(vt) ? vt : ''; $(u).value = usuarios.some(([e])=> e === vu) ? vu : '';
-    $(u).hidden = !rfVeTodos();   // quien solo ve lo suyo no necesita elegir usuario
+    $(u).hidden = !rfVeTodos() && !rfParticipantesVisibles().length;   // quien solo ve lo suyo no necesita elegir usuario
   });
 }
 function rfFiltradosReporte(){
@@ -19392,8 +19420,12 @@ async function rfCargar(forzar){
   $('rf-lista').innerHTML = '<div class="hint">⏳ Cargando registros…</div>';
   try{
     // Cada usuario lee solo los suyos; admin o "rf_todos" leen todos (las reglas de Firestore hacen lo mismo).
-    const q = rfVeTodos() ? registrosFotoRef : registrosFotoRef.where('usuario_email', '==', currentUserEmail);
-    rfLista = (await q.get()).docs.map(d=> Object.assign({ id: d.id }, d.data()))
+    // Además de los suyos, los de los participantes permitidos (una consulta por participante, como piden las reglas).
+    const consultas = rfVeTodos() ? [registrosFotoRef.get()]
+      : [registrosFotoRef.where('usuario_email', '==', currentUserEmail).get(), ...rfParticipantesVisibles().map(t=> registrosFotoRef.where('participante', '==', t).get())];
+    const porId = new Map();
+    (await Promise.all(consultas)).forEach(snap=> snap.docs.forEach(d=> porId.set(d.id, Object.assign({ id: d.id }, d.data()))));
+    rfLista = [...porId.values()]
       .sort((a, b)=> String(b.fecha_creacion || '').localeCompare(String(a.fecha_creacion || '')) || b.id.localeCompare(a.id));
     rfLlenarFiltros();
     rfLista.forEach(r=> { r._txt = normalizarTexto([r.id, rfEstadoReg(r), r.participante, r.posicion, r.usuario, r.confirmado_por, ...(r.items || []).map(it=> `${it.sku} ${it.descripcion}`)].join(' ')); });
@@ -19416,7 +19448,7 @@ function renderRfLista(){
   rfPagina = Math.min(rfPagina, pags - 1);
   $('rf-lista').innerHTML = L.length ? L.slice(rfPagina * RF_POR_PAGINA, (rfPagina + 1) * RF_POR_PAGINA).map(r=> `<button type="button" class="rf-fila${r.id === rfSel ? ' sel' : ''}" data-rf-abrir="${esc(r.id)}">` +
       `${r.foto_posicion ? `<img src="${esc(r.foto_posicion.url)}" alt="" loading="lazy">` : '<span class="sin"></span>'}` +
-      `<span><span class="t">${cmpMarcar(r.id, tk)}</span> <span class="rf-est ${esc(rfEstadoReg(r))}">${r.modificando ? '✏ EN MODIFICACIÓN' : rfEstadoReg(r) === 'BORRADOR' ? '📝 BORRADOR' : '✔ CONFIRMADO'}</span><span class="s"> · ${esc(new Date(r.fecha_creacion).toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }))}</span><br>` +
+      `<span><span class="t">${cmpMarcar(r.id, tk)}</span> <span class="rf-est ${esc(rfEstadoReg(r))}">${r.modificando ? '✏ EN MODIFICACIÓN' : rfEstadoReg(r) === 'BORRADOR' ? '📝 BORRADOR' : '✔ CONFIRMADO'}</span>${r.ubicacion_vacia ? ' <span class="rf-vacia">📭 VACÍA</span>' : ''}<span class="s"> · ${esc(new Date(r.fecha_creacion).toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }))}</span><br>` +
       `<span class="s">🏬 ${cmpMarcar(r.participante || RF_CD, tk)} · 📍 ${cmpMarcar(r.posicion || '', tk)} · 👤 ${cmpMarcar(r.usuario || '', tk)}</span></span>` +
       `<span class="n"><b>${esc(anFmt(r.unidades || 0))} und</b>${esc(r.cant_items || 0)} producto(s)</span></button>`).join('')
     : `<div class="hint">${rfLista.length ? 'Nada coincide con la búsqueda.' : 'Aún no hay registros. Créalos en "📸 Nuevo registro".'}</div>`;
@@ -19441,6 +19473,7 @@ function rfAbrir(id){
     `<div><span>Correlativo</span><b>${esc(r.id)}</b></div><div><span>Posición</span><b>📍 ${esc(r.posicion)}</b></div><div><span>Generado por</span><b>${esc(r.usuario || '')}</b></div>` +
     `<div><span>Confirmado por</span><b>${esc(r.confirmado_por ? `${r.confirmado_por} · ${rfFechaTxt(r.confirmado_en)}` : rfEstadoReg(r) === 'BORRADOR' ? 'Pendiente (borrador)' : '—')}</b></div></div>` +
     `<span class="rf-lbl">📷 Foto de la posición</span><div class="rf-fotos" style="margin-bottom:12px;">${r.foto_posicion ? foto(r.foto_posicion, `Posición ${r.posicion}`).replace('class="rf-thumb"', 'class="rf-thumb" style="width:160px; height:160px;"') : '—'}</div>` +
+    (r.ubicacion_vacia ? `<div class="rf-vacia-det">📭 <b>Ubicación vacía</b>: se registró sin productos (solo con la foto de la posición).</div>` : '') +
     `<table class="rf-det-items"><thead><tr><th>SKU</th><th>Descripción</th><th class="num">Cantidad</th><th>Fotos</th></tr></thead><tbody>` +
     (r.items || []).map(it=> `<tr><td><b>${esc(it.sku)}</b></td><td>${esc(it.descripcion || '')}</td><td class="num">${esc(anFmt(it.cantidad))}</td><td><div class="rf-fotos">${(it.fotos || []).map(f=> foto(f, `${it.sku} · ${it.descripcion || ''}`)).join('')}</div></td></tr>`).join('') +
     `</tbody><tfoot><tr><th colspan="2">Total</th><th class="num">${esc(anFmt(r.unidades || 0))}</th><th></th></tr></tfoot></table>`;
@@ -19512,9 +19545,17 @@ function usRefrescar(){
   $('us-resumen').innerHTML = admin ? '👑 <b>Administrador:</b> ve y hace todo, incluida la pestaña Usuarios.' :
     partes.length ? `👁 Verá: ${partes.join(' · ')}${$('us-eliminar').checked ? ' — y puede editar/eliminar (y subir vouchers).' : ' — sin editar ni eliminar (en Venta Online solo consulta, no sube vouchers).'}` : '⚠ Sin acceso a ninguna opción: no podrá entrar.';
 }
+// Participantes del registro fotográfico que el usuario puede ver (chips con el CD y las tiendas del maestro).
+function usRfParticipantes(marcados){
+  const L = rfTiendas(); marcados.forEach(m=> { if(!L.includes(m)) L.push(m); });
+  $('us-rf-part').innerHTML = L.map(t=> `<label class="us-chip"><input type="checkbox" data-us-rf-part="${esc(t)}"${marcados.includes(t) ? ' checked' : ''}> ${esc(t)}</label>`).join('');
+  $('us-rf-part-box').classList.toggle('bloqueado', $('us-rf-todos').checked || $('us-admin').checked);
+}
+$('us-rf-todos').addEventListener('change', ()=> $('us-rf-part-box').classList.toggle('bloqueado', $('us-rf-todos').checked || $('us-admin').checked));
 function usLlenar(p){
   const base = Object.assign({}, p, { admin:false });
   $('us-admin').checked = !!p.admin; $('us-eliminar').checked = !!p.eliminar; $('us-rf-todos').checked = !!p.rf_todos;
+  usRfParticipantes(p.rf_participantes || []);
   usTabs().forEach(cb=>{
     const tab = cb.dataset.usTab; cb.checked = !!p.admin || permTabPermitida(base, tab);
     const lista = p.admin ? null : permSubsPermitidas(base, tab);
@@ -19523,7 +19564,8 @@ function usLlenar(p){
   usRefrescar();
 }
 function usLeer(){
-  const permisos = { admin: $('us-admin').checked, eliminar: $('us-eliminar').checked, rf_todos: $('us-rf-todos').checked, vo_vouchers: false, subs: {} };
+  const permisos = { admin: $('us-admin').checked, eliminar: $('us-eliminar').checked, rf_todos: $('us-rf-todos').checked, vo_vouchers: false, subs: {},
+    rf_participantes: [...document.querySelectorAll('#us-rf-part [data-us-rf-part]:checked')].map(x=> x.dataset.usRfPart) };
   usTabs().forEach(cb=>{
     const tab = cb.dataset.usTab; permisos[PERM_TAB_CLAVE[tab]] = cb.checked;
     const subs = usSubs(tab), on = subs.filter(x=> x.checked).map(x=> x.dataset.usSub);

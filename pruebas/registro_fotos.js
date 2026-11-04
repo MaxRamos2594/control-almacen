@@ -373,6 +373,34 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_reportes_celular.png'), fullPage: true });
   verificar(anchoRep <= 390, `Celular: Reportes con un bloque desplegado entra en la pantalla (${anchoRep}px)`);
 
+  // Ubicación vacía: sin productos pregunta; "No" no confirma; "Sí" guarda sin detalle, marcada como vacía.
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.evaluate(()=> rfContinuar('RF-ADM-00004')); await page.waitForFunction(()=> !$('rf-form').hidden && rfBorrador && rfBorrador.id === 'RF-ADM-00004', null, { timeout: 10000 });
+  await page.click('#rf-pos-fotos .rf-add-foto');
+  await page.waitForFunction(()=> !$('cam-modal').hidden && $('cam-video').videoWidth > 0 && !$('cam-disparar').disabled, null, { timeout: 10000 });
+  await page.click('#cam-disparar');
+  await page.waitForFunction(()=> $('cam-modal').hidden || rfPosFotos.length === 1, null, { timeout: 10000 });
+  if(await page.evaluate(()=> !$('cam-modal').hidden)) await page.click('#cam-cerrar');
+  await page.waitForFunction(()=> rfPosFotos.length === 1 && rfPosFotos[0].path && !rfPosFotos[0].subiendo, null, { timeout: 20000 });
+  await page.click('#btn-rf-guardar');
+  await page.waitForFunction(()=> !$('rf-aviso').hidden && !$('btn-rf-aviso-no').hidden, null, { timeout: 10000 });
+  const preg = await page.evaluate(()=> ({ tit: $('rf-aviso-tit').textContent, txt: $('rf-aviso-txt').textContent, si: $('btn-rf-aviso-ok').textContent, no: $('btn-rf-aviso-no').textContent }));
+  await page.click('#btn-rf-aviso-no');
+  await page.waitForTimeout(300);
+  const trasNo = await page.evaluate(async ()=> ({ estado: (await registrosFotoRef.doc('RF-ADM-00004').get()).data().estado, msg: $('rf-msg').textContent, abierto: !$('rf-form').hidden }));
+  await page.click('#btn-rf-guardar');
+  await page.waitForFunction(()=> !$('rf-aviso').hidden && !$('btn-rf-aviso-no').hidden, null, { timeout: 10000 });
+  await page.click('#btn-rf-aviso-ok');
+  await page.waitForFunction(()=> /RF-ADM-00004/.test($('rf-ok').innerText), null, { timeout: 30000 });
+  const vac = await page.evaluate(async ()=>{ const d = (await registrosFotoRef.doc('RF-ADM-00004').get()).data(); await rfCargar(true); rfAbrir('RF-ADM-00004');
+    return { d, ok: $('rf-ok').innerText, chip: !!document.querySelector('#rf-lista [data-rf-abrir="RF-ADM-00004"] .rf-vacia'), det: $('rf-detalle').innerText }; });
+  verificar(preg.tit === '¿La ubicación está vacía?' && /No registraste productos en A04/.test(preg.txt) && /Sí, está vacía/.test(preg.si) && /No, falta registrar/.test(preg.no) &&
+    trasNo.estado === 'BORRADOR' && /Registra al menos un producto/.test(trasNo.msg) && trasNo.abierto,
+    `Sin productos pregunta "${preg.tit}"; con "No" no se confirma y queda el borrador`);
+  verificar(vac.d.estado === 'CONFIRMADO' && vac.d.ubicacion_vacia === true && vac.d.items.length === 0 && vac.d.unidades === 0 && !!vac.d.foto_posicion && /ubicación vacía/.test(vac.ok) && vac.chip && /Ubicación vacía: se registró sin productos/.test(vac.det),
+    'Con "Sí, está vacía" se confirma sin detalle (ubicacion_vacia, 0 und, con la foto de la posición); la lista y el detalle lo muestran');
+  await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_vacia.png'), fullPage: true });
+
   if(errores.length) console.log('\nErrores de JavaScript:\n' + [...new Set(errores)].join('\n'));
   console.log(fallas || errores.length ? `\n${fallas} verificación(es) fallida(s).` : '\nTodo correcto.');
   await browser.close();
