@@ -50,10 +50,10 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
 
   // Iniciar: se asigna el correlativo y se guarda como borrador; se abre el selector de posiciones del layout.
   await page.click('#btn-rf-iniciar');
-  await page.waitForFunction(()=> !$('rf-pos-modal').hidden && $('rf-correlativo').value === 'RF-00001', null, { timeout: 15000 });
-  const ini = await page.evaluate(async ()=> ({ bd: (await registrosFotoRef.doc('RF-00001').get()).data(), cab: { part: $('rf-participante').value, fecha: $('rf-fecha').value, usu: $('rf-usuario').value, barra: $('rf-bar-corr').textContent } }));
-  verificar(ini.bd && ini.bd.estado === 'BORRADOR' && ini.bd.usuario === 'Administrador' && /@/.test(ini.bd.usuario_email) && ini.cab.part === 'CD VENEZUELA' && /\d/.test(ini.cab.fecha) && ini.cab.usu === 'Administrador' && ini.cab.barra === 'RF-00001',
-    `Al iniciar: correlativo RF-00001 guardado como BORRADOR con el usuario que lo genera (${ini.bd.usuario}, ${ini.bd.usuario_email})`);
+  await page.waitForFunction(()=> !$('rf-pos-modal').hidden && $('rf-correlativo').value === 'RF-ADM-00001', null, { timeout: 15000 });
+  const ini = await page.evaluate(async ()=> ({ bd: (await registrosFotoRef.doc('RF-ADM-00001').get()).data(), cab: { part: $('rf-participante').value, fecha: $('rf-fecha').value, usu: $('rf-usuario').value, barra: $('rf-bar-corr').textContent } }));
+  verificar(ini.bd && ini.bd.estado === 'BORRADOR' && ini.bd.usuario === 'Administrador' && /@/.test(ini.bd.usuario_email) && ini.cab.part === 'CD VENEZUELA' && /\d/.test(ini.cab.fecha) && ini.cab.usu === 'Administrador' && ini.cab.barra === 'RF-ADM-00001',
+    `Al iniciar: correlativo RF-ADM-00001 guardado como BORRADOR con el usuario que lo genera (${ini.bd.usuario}, ${ini.bd.usuario_email})`);
   const sel = await page.evaluate(()=> $('rf-pos-lista').innerText.replace(/\s+/g, ' '));
   await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_posiciones.png') });
   verificar(/BLOQUE A/.test(sel) && /Nicho A/.test(sel) && /A01/.test(sel) && /A04/.test(sel), `Selector de posiciones según el layout: ${sel.slice(0, 80)}…`);
@@ -70,7 +70,7 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_camara.png') });
   await page.click('#cam-disparar');
   await page.waitForFunction(()=> $('cam-modal').hidden && document.activeElement && document.activeElement.dataset.rfCampo === 'sku', null, { timeout: 10000 });
-  await page.waitForFunction(async ()=>{ const d = (await registrosFotoRef.doc('RF-00001').get()).data(); return d.posicion === 'A02' && d.foto_posicion && /^http/.test(d.foto_posicion.url); }, null, { timeout: 15000, polling: 500 });
+  await page.waitForFunction(async ()=>{ const d = (await registrosFotoRef.doc('RF-ADM-00001').get()).data(); return d.posicion === 'A02' && d.foto_posicion && /^http/.test(d.foto_posicion.url); }, null, { timeout: 15000, polling: 500 });
   await page.waitForFunction(()=> /Guardado/.test($('rf-nube').textContent), null, { timeout: 10000 });
   const nube = await page.evaluate(()=> [!$('cam-video').srcObject, $('rf-pasos').innerText.replace(/\s+/g, ''), $('rf-nube').textContent]);
   verificar(nube[0] && /✓Posición/.test(nube[1]) && /Guardado/.test(nube[2]),
@@ -111,14 +111,14 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   verificar(/Registra el producto 2/.test(av.tit) && /antes de agregar uno nuevo/i.test(av.txt) && av.n === 2 && (await page.evaluate(()=> rfItems.length === 2 && document.activeElement.dataset.rfCampo === 'sku')),
     `Producto anterior en blanco: pop up "${av.tit}" y no agrega otro`);
   // Autoguardado: se recarga la página a mitad del registro y se continúa el borrador sin perder nada.
-  await page.waitForFunction(async ()=>{ const d = (await registrosFotoRef.doc('RF-00001').get()).data(); return d.items.length === 1 && d.items[0].sku === 'P100' && d.items[0].cantidad === 3 && d.items[0].fotos.length === 2; }, null, { timeout: 15000, polling: 500 });
+  await page.waitForFunction(async ()=>{ const d = (await registrosFotoRef.doc('RF-ADM-00001').get()).data(); return d.items.length === 1 && d.items[0].sku === 'P100' && d.items[0].cantidad === 3 && d.items[0].fotos.length === 2; }, null, { timeout: 15000, polling: 500 });
   await page.reload();
   await page.waitForFunction(()=> document.getElementById('status-text').textContent === 'Sincronizado en vivo', null, { timeout: 20000 });
   await page.evaluate(()=>{ switchTab('regfoto'); setRfSubtab('nuevo'); });
-  await page.waitForSelector('#rf-mis-borradores [data-rf-continuar="RF-00001"]', { timeout: 10000 });
-  await page.click('#rf-mis-borradores [data-rf-continuar="RF-00001"]');
+  await page.waitForSelector('#rf-mis-borradores [data-rf-continuar="RF-ADM-00001"]', { timeout: 10000 });
+  await page.click('#rf-mis-borradores [data-rf-continuar="RF-ADM-00001"]');
   await page.waitForFunction(()=> !$('rf-form').hidden && $('rf-posicion').value === 'A02' && rfPosFotos.length === 1 && rfItems[0].sku === 'P100' && rfItems[0].fotos.length === 2 && rfItems.length === 2, null, { timeout: 10000 });
-  verificar(true, 'Recargando la página: "Continuar RF-00001" recupera la posición, su foto y el producto 1 con sus 2 fotos');
+  verificar(true, 'Recargando la página: "Continuar RF-ADM-00001" recupera la posición, su foto y el producto 1 con sus 2 fotos');
   await page.focus('#rf-items [data-rf-item="1"] [data-rf-campo="sku"]');
   // Producto 2: SKU nuevo, descripción a mano (texto malicioso para probar el escape), foto desde la galería.
   // Escáner de código de barras al lado del SKU (Code 128 "X-55" frente a la cámara).
@@ -146,16 +146,16 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   await page.click('#btn-rf-guardar');
   await page.waitForFunction(()=> !$('rf-ok').hidden, null, { timeout: 30000 });
   const tras = await page.evaluate(()=> ({ ok: $('rf-ok').innerText, inicio: !$('rf-inicio').hidden, form: $('rf-form').hidden, foco: document.activeElement.id, borr: rfBorrador }));
-  verificar(/RF-00001\s+confirmado/.test(tras.ok) && tras.inicio && tras.form && tras.foco === 'btn-rf-iniciar' && !tras.borr,
+  verificar(/RF-ADM-00001\s+confirmado/.test(tras.ok) && tras.inicio && tras.form && tras.foco === 'btn-rf-iniciar' && !tras.borr,
     `Confirmar: "${tras.ok.replace(/\s+/g, ' ')}" y queda listo para iniciar el siguiente`);
-  const bd = await page.evaluate(async ()=> (await registrosFotoRef.doc('RF-00001').get()).data());
+  const bd = await page.evaluate(async ()=> (await registrosFotoRef.doc('RF-ADM-00001').get()).data());
   verificar(bd && bd.estado === 'CONFIRMADO' && bd.confirmado_por === 'Administrador' && !!bd.confirmado_en && bd.participante === 'CD VENEZUELA' && bd.posicion === 'A02' && /^http/.test(bd.foto_posicion.url) && bd.items.length === 2 && bd.items[0].sku === 'P100' && bd.items[0].cantidad === 3 &&
     bd.items[0].fotos.length === 2 && bd.items[1].sku === 'X-55' && bd.items[1].fotos.length === 1 && bd.unidades === 8 && !!bd.fecha_creacion,
-    'RF-00001 CONFIRMADO (quién y cuándo): cabecera, posición A02 con foto y 2 productos con sus fotos');
+    'RF-ADM-00001 CONFIRMADO (quién y cuándo): cabecera, posición A02 con foto y 2 productos con sus fotos');
   await page.click('#btn-rf-ver-ultimo');
   await page.waitForFunction(()=> !!document.querySelector('#rf-detalle .rf-det-items'), null, { timeout: 15000 });
   const det = await page.evaluate(()=> ({ txt: $('rf-detalle').innerText, fotos: document.querySelectorAll('#rf-detalle .rf-thumb img').length, fila: document.querySelectorAll('#rf-lista .rf-fila').length }));
-  verificar(/RF-00001/.test(det.txt) && /A02/.test(det.txt) && /CONFIRMADO/.test(det.txt) && /Generado por\s*Administrador/i.test(det.txt) && /PELOTA ROJA/.test(det.txt) && det.fotos === 4 && det.fila === 1, `"Ver" abre la lista y el detalle con ${det.fotos} fotos`);
+  verificar(/RF-ADM-00001/.test(det.txt) && /A02/.test(det.txt) && /CONFIRMADO/.test(det.txt) && /Generado por\s*Administrador/i.test(det.txt) && /PELOTA ROJA/.test(det.txt) && det.fotos === 4 && det.fila === 1, `"Ver" abre la lista y el detalle con ${det.fotos} fotos`);
   await page.click('#rf-detalle .rf-thumb >> nth=1');
   const g1 = await page.textContent('#rf-lightbox-pie');
   await page.click('#rf-lb-sig'); const g2 = await page.textContent('#rf-lightbox-pie');
@@ -178,14 +178,14 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   const [xl] = await Promise.all([page.waitForEvent('download'), page.click('#btn-rf-excel')]);
   const xlPath = path.join(__dirname, 'salida', 'rf_export.xlsx'); await xl.saveAs(xlPath);
   const filas = XLSX.utils.sheet_to_json(XLSX.readFile(xlPath).Sheets['Registro fotográfico']);
-  verificar(filas.length === 2 && filas[0]['Correlativo'] === 'RF-00001' && filas[0]['Posición'] === 'A02' && filas[0]['Estado'] === 'CONFIRMADO' && filas[0]['Generado por'] === 'Administrador' && filas[0]['Confirmado por'] === 'Administrador' && filas[0]['SKU'] === 'P100' && filas[0]['Cantidad'] === 3 && filas[1]['SKU'] === 'X-55' && filas[1]['Cantidad'] === 5 && !Object.keys(filas[0]).some(k=> /url|foto_/i.test(k)),
+  verificar(filas.length === 2 && filas[0]['Correlativo'] === 'RF-ADM-00001' && filas[0]['Posición'] === 'A02' && filas[0]['Estado'] === 'CONFIRMADO' && filas[0]['Generado por'] === 'Administrador' && filas[0]['Confirmado por'] === 'Administrador' && filas[0]['SKU'] === 'P100' && filas[0]['Cantidad'] === 3 && filas[1]['SKU'] === 'X-55' && filas[1]['Cantidad'] === 5 && !Object.keys(filas[0]).some(k=> /url|foto_/i.test(k)),
     `Excel como matriz (una fila por producto, sin fotos): ${Object.keys(filas[0]).join(' | ')}`);
   const [pdf] = await Promise.all([page.waitForEvent('download', { timeout: 60000 }), page.click('#btn-rf-pdf')]);
   const pdfPath = path.join(__dirname, 'salida', 'rf_export.pdf'); await pdf.saveAs(pdfPath);
   const crudo = fs.readFileSync(pdfPath, 'latin1'), imagenes = (crudo.match(/\/Subtype \/Image/g) || []).length;
   const textoPdf = await page.evaluate(async b64=>{ pdfjsLib.GlobalWorkerOptions.workerSrc = '/lib/pdf.worker.min.js';
     const d = await pdfjsLib.getDocument({ data: Uint8Array.from(atob(b64), c=> c.charCodeAt(0)) }).promise; return (await (await d.getPage(1)).getTextContent()).items.map(i=> i.str).join(' '); }, fs.readFileSync(pdfPath).toString('base64'));
-  verificar(imagenes >= 4 && /RF-00001/.test(textoPdf) && /A02/.test(textoPdf) && /CONFIRMADO/.test(textoPdf) && /P100/.test(textoPdf) && /X-55/.test(textoPdf) && /CD VENEZUELA/.test(textoPdf),
+  verificar(imagenes >= 4 && /RF-ADM-00001/.test(textoPdf) && /A02/.test(textoPdf) && /CONFIRMADO/.test(textoPdf) && /P100/.test(textoPdf) && /X-55/.test(textoPdf) && /CD VENEZUELA/.test(textoPdf),
     `PDF con fotos: ${imagenes} imágenes, cabecera y productos`);
   await page.evaluate(async b64=>{ const d = await pdfjsLib.getDocument({ data: Uint8Array.from(atob(b64), c=> c.charCodeAt(0)) }).promise; const pg = await d.getPage(1), vp = pg.getViewport({ scale: 1.3 });
     const cv = document.createElement('canvas'); cv.width = vp.width; cv.height = vp.height * 0.6; await pg.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise; window.__pdfPng = cv.toDataURL('image/png'); }, fs.readFileSync(pdfPath).toString('base64'));
@@ -198,11 +198,11 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   await page.fill('#rf-q', 'no-existe'); await page.waitForTimeout(150);
   const b2 = await page.evaluate(()=> rfFiltrados().length);
   await page.fill('#rf-q', '');
-  verificar(b1 === 'RF-00001' && b2 === 0, 'Buscador por SKU/descripción');
+  verificar(b1 === 'RF-ADM-00001' && b2 === 0, 'Buscador por SKU/descripción');
   await page.click('#rfsub-nuevo');
   verificar(await page.evaluate(()=> !$('rf-inicio').hidden && $('rf-form').hidden && !rfBorrador), 'En "Nuevo registro" espera a que se inicie el siguiente');
   await page.click('#btn-rf-iniciar');
-  await page.waitForFunction(()=> !$('rf-pos-modal').hidden && $('rf-correlativo').value === 'RF-00002', null, { timeout: 15000 });
+  await page.waitForFunction(()=> !$('rf-pos-modal').hidden && $('rf-correlativo').value === 'RF-ADM-00002', null, { timeout: 15000 });
   await page.click('#rf-pos-lista [data-rf-pos="A03"]');
   await page.waitForFunction(()=> !$('cam-modal').hidden && $('cam-video').videoWidth > 0 && !$('cam-disparar').disabled, null, { timeout: 10000 });
   await page.click('#cam-disparar');
@@ -214,11 +214,11 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   await page.click('#cam-disparar'); await page.click('#cam-cerrar');
   await page.waitForFunction(()=> $('btn-rf-guardar').classList.contains('listo'), null, { timeout: 15000 });
   await page.click('#btn-rf-guardar');
-  await page.waitForFunction(()=> /RF-00002/.test($('rf-ok').innerText), null, { timeout: 30000 });
-  verificar(true, 'Segundo registro RF-00002 (posición A03) iniciado y confirmado');
+  await page.waitForFunction(()=> /RF-ADM-00002/.test($('rf-ok').innerText), null, { timeout: 30000 });
+  verificar(true, 'Segundo registro RF-ADM-00002 (posición A03) iniciado y confirmado');
   // Tercero: posición fuera del layout no se confirma; descartar borra el borrador.
   await page.click('#btn-rf-iniciar');
-  await page.waitForFunction(()=> $('rf-correlativo').value === 'RF-00003' && !$('rf-pos-modal').hidden, null, { timeout: 15000 });
+  await page.waitForFunction(()=> $('rf-correlativo').value === 'RF-ADM-00003' && !$('rf-pos-modal').hidden, null, { timeout: 15000 });
   await page.click('#btn-rf-pos-cerrar');
   await page.evaluate(()=>{ $('rf-posicion').value = 'ZZ9'; });
   await page.click('#btn-rf-guardar');
@@ -227,22 +227,22 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   await page.click('#btn-rf-aviso-ok');
   await page.click('#btn-rf-descartar');
   await page.waitForFunction(()=> !rfBorrador && !$('rf-inicio').hidden, null, { timeout: 10000 });
-  verificar(!(await page.evaluate(async ()=> (await registrosFotoRef.doc('RF-00003').get()).exists)), '"Descartar" borra el borrador RF-00003');
+  verificar(!(await page.evaluate(async ()=> (await registrosFotoRef.doc('RF-ADM-00003').get()).exists)), '"Descartar" borra el borrador RF-ADM-00003');
   // Cuarto: queda como borrador; se ve con el filtro "Borradores" y se continúa desde su detalle.
   await page.click('#btn-rf-iniciar');
-  await page.waitForFunction(()=> $('rf-correlativo').value === 'RF-00004' && !$('rf-pos-modal').hidden, null, { timeout: 15000 });
+  await page.waitForFunction(()=> $('rf-correlativo').value === 'RF-ADM-00004' && !$('rf-pos-modal').hidden, null, { timeout: 15000 });
   await page.click('#rf-pos-lista [data-rf-pos="A04"]');
   await page.waitForFunction(()=> !$('cam-modal').hidden, null, { timeout: 10000 }); await page.click('#cam-cerrar');
   await page.evaluate(()=> rfGuardarAhora());
-  await page.click('#rfsub-lista'); await page.waitForFunction(()=> rfLista.some(r=> r.id === 'RF-00004'), null, { timeout: 15000 });
+  await page.click('#rfsub-lista'); await page.waitForFunction(()=> rfLista.some(r=> r.id === 'RF-ADM-00004'), null, { timeout: 15000 });
   await page.selectOption('#rf-estado-f', 'BORRADOR');
   const borrs = await page.evaluate(()=> rfFiltrados().map(r=> r.id).join(','));
   await page.selectOption('#rf-estado-f', 'CONFIRMADO');
   const confs = await page.evaluate(()=> rfFiltrados().map(r=> r.id).join(','));
   await page.selectOption('#rf-estado-f', '');
-  await page.evaluate(()=> rfAbrir('RF-00004'));
+  await page.evaluate(()=> rfAbrir('RF-ADM-00004'));
   const cont = await page.evaluate(()=> !!$('btn-rf-continuar') && /Pendiente \(borrador\)/.test($('rf-detalle').innerText));
-  verificar(borrs === 'RF-00004' && confs === 'RF-00002,RF-00001' && cont, `Filtro por estado: borradores ${borrs} · confirmados ${confs}; el borrador se puede continuar desde su detalle`);
+  verificar(borrs === 'RF-ADM-00004' && confs === 'RF-ADM-00002,RF-ADM-00001' && cont, `Filtro por estado: borradores ${borrs} · confirmados ${confs}; el borrador se puede continuar desde su detalle`);
 
   // Reporte por bloque y por posición: comprimidos; al tocar uno se despliegan sus RF y se pueden ocultar.
   await page.click('#rfsub-reportes');
@@ -262,16 +262,16 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   await page.click('#rf-rep-resumen [data-rfr-ocultar]'); const ocultoBtn = await nTiles() === 0 && await ids() === '';
   await page.click('#rf-rep-resumen [data-rfr-bloque="BLOQUE A"]'); await page.click('#rf-rep-resumen tr[data-rfr-bloque="BLOQUE A"]');
   const ocultoFila = await nTiles() === 0;
-  verificar(comprimido && /BLOQUE A 2 de 4 2/.test(vis.bloque) && vis.tabla === 2 && t === '0 1 1 0' && detBlo === 'RF-00001,RF-00002' && detTile === 'RF-00001' && detTile2 === detBlo && a4Todos === '1' && ocultoBtn && ocultoFila,
+  verificar(comprimido && /BLOQUE A 2 de 4 2/.test(vis.bloque) && vis.tabla === 2 && t === '0 1 1 0' && detBlo === 'RF-ADM-00001,RF-ADM-00002' && detTile === 'RF-ADM-00001' && detTile2 === detBlo && a4Todos === '1' && ocultoBtn && ocultoFila,
     `Reporte por bloque comprimido → "${vis.bloque}"; al tocarlo: A01–A04 ${t}, RF ${detBlo}; A02 → ${detTile}; con "Todos" A04 ${a4Todos}; «Ocultar» y tocar de nuevo lo comprimen`);
   await page.click('#rf-rep-tabla [data-rfr-pos="A02"]'); const detPos = await ids();
   await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_reportes.png'), fullPage: true });
   await page.click('#rf-rep-tabla [data-rfr-ocultar]'); const posOculta = await ids() === '';
   await page.click('#rf-rep-tabla [data-rfr-pos="A02"]'); await page.click('#rf-rep-tabla tr[data-rfr-pos="A02"]'); const posOculta2 = await ids() === '';
   await page.click('#rf-rep-tabla [data-rfr-pos="A02"]');
-  await page.click('#rf-rep-tabla [data-rfr-ver="RF-00001"]');
-  await page.waitForFunction(()=> $('rfsub-panel-lista').style.display === 'block' && /RF-00001/.test(($('rf-detalle').querySelector('h2') || {}).textContent || ''), null, { timeout: 10000 });
-  verificar(detPos === 'RF-00001' && posOculta && posOculta2, `Reporte por posición: A02 → ${detPos}; se oculta con «Ocultar» o tocándola otra vez; clic en un RF abre su detalle`);
+  await page.click('#rf-rep-tabla [data-rfr-ver="RF-ADM-00001"]');
+  await page.waitForFunction(()=> $('rfsub-panel-lista').style.display === 'block' && /RF-ADM-00001/.test(($('rf-detalle').querySelector('h2') || {}).textContent || ''), null, { timeout: 10000 });
+  verificar(detPos === 'RF-ADM-00001' && posOculta && posOculta2, `Reporte por posición: A02 → ${detPos}; se oculta con «Ocultar» o tocándola otra vez; clic en un RF abre su detalle`);
 
   // Layout: gris sin RF, verde con 1, naranja con más de 1; tocar una posición muestra sus RF.
   await page.click('#rfsub-layout');
@@ -281,7 +281,7 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   const resumen1 = await page.evaluate(()=> $('rfl-resumen').innerText.replace(/\s+/g, ' '));
   const color = await page.evaluate(()=> ['A01','A02'].map(c=> getComputedStyle(document.querySelector(`#rfl-mapa .slot[data-id="${c}"]`)).backgroundColor).join(' | '));
   // Un segundo RF confirmado en A02 (solo en memoria) la vuelve naranja y muestra la cantidad.
-  await page.evaluate(()=>{ rfLista.push(Object.assign({}, rfLista.find(r=> r.id === 'RF-00001'), { id:'RF-09999' })); renderRfLayout(); });
+  await page.evaluate(()=>{ rfLista.push(Object.assign({}, rfLista.find(r=> r.id === 'RF-ADM-00001'), { id:'RF-09999' })); renderRfLayout(); });
   const lay2 = await clases();
   const naranja = await page.evaluate(()=> { const el = document.querySelector('#rfl-mapa .slot[data-id="A02"]'); return el.textContent + ' ' + getComputedStyle(el).backgroundColor; });
   await page.click('#rfl-mapa .slot[data-id="A02"]');
@@ -295,16 +295,16 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   await page.selectOption('#rfl-estado', 'CONFIRMADO');
   const idsDup = await page.evaluate(()=> document.querySelectorAll('#rfl-mapa [id^="slot-"]').length);
   verificar(lay1 === 'A01:0 A02:1 A03:1 A04:0' && /2 con 1 RF 0 con más de 1 2 sin RF/.test(resumen1) && color === 'rgb(228, 230, 234) | rgb(46, 158, 91)' &&
-    lay2 === 'A01:0 A02:n A03:1 A04:0' && naranja === '2 rgb(242, 107, 15)' && detLay === 'RF-00001,RF-09999' && layOculto && lay3 === 'A01:0 A02:1 A03:1 A04:1' && idsDup === 0,
+    lay2 === 'A01:0 A02:n A03:1 A04:0' && naranja === '2 rgb(242, 107, 15)' && detLay === 'RF-09999,RF-ADM-00001' && layOculto && lay3 === 'A01:0 A02:1 A03:1 A04:1' && idsDup === 0,
     `Layout: ${lay1} (gris/verde); con 2 RF A02 queda naranja y muestra "2"; al tocarla ${detLay}; con "Todos" ${lay3}`);
 
   // Modificar un registro confirmado: vuelve a la pantalla de registro y se confirma de nuevo.
   await page.click('#rfsub-lista');
-  await page.evaluate(()=> rfAbrir('RF-00002'));
-  const fotoVieja = await page.evaluate(()=> rfLista.find(r=> r.id === 'RF-00002').items[0].fotos[0].path);
+  await page.evaluate(()=> rfAbrir('RF-ADM-00002'));
+  const fotoVieja = await page.evaluate(()=> rfLista.find(r=> r.id === 'RF-ADM-00002').items[0].fotos[0].path);
   await page.click('#btn-rf-modificar');
-  await page.waitForFunction(()=> $('rfsub-panel-nuevo').style.display === 'block' && !$('rf-form').hidden && $('rf-correlativo').value === 'RF-00002' && rfItems[0].sku === 'P100', null, { timeout: 15000 });
-  const mod = await page.evaluate(async ()=> ({ chip: document.querySelector('.rf-chip-borrador').textContent, btn: $('btn-rf-guardar').textContent, desc: $('btn-rf-descartar').textContent, bd: (await registrosFotoRef.doc('RF-00002').get()).data() }));
+  await page.waitForFunction(()=> $('rfsub-panel-nuevo').style.display === 'block' && !$('rf-form').hidden && $('rf-correlativo').value === 'RF-ADM-00002' && rfItems[0].sku === 'P100', null, { timeout: 15000 });
+  const mod = await page.evaluate(async ()=> ({ chip: document.querySelector('.rf-chip-borrador').textContent, btn: $('btn-rf-guardar').textContent, desc: $('btn-rf-descartar').textContent, bd: (await registrosFotoRef.doc('RF-ADM-00002').get()).data() }));
   verificar(/MODIFICANDO/.test(mod.chip) && /Confirmar cambios/.test(mod.btn) && /Cancelar cambios/.test(mod.desc) && mod.bd.modificando === true && mod.bd.estado === 'BORRADOR' && !!mod.bd.respaldo,
     '"✏ Modificar" vuelve a la pantalla de registro con el RF en modificación (con respaldo)');
   await page.click('#rf-items [data-rf-item="0"] [data-rf-paso="1"]');
@@ -315,26 +315,26 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   await page.click('#rf-items [data-rf-item="0"] .rf-thumb >> nth=0 >> .rf-quitar');
   const sigue = await page.evaluate(async p=> storage.ref().child(p).getMetadata().then(()=> true, ()=> false), fotoVieja);
   await page.click('#btn-rf-guardar');
-  await page.waitForFunction(()=> /RF-00002\s+modificado/.test($('rf-ok').innerText), null, { timeout: 20000 });
-  const tras2 = await page.evaluate(async p=> ({ bd: (await registrosFotoRef.doc('RF-00002').get()).data(), vieja: await storage.ref().child(p).getMetadata().then(()=> true, ()=> false) }), fotoVieja);
+  await page.waitForFunction(()=> /RF-ADM-00002\s+modificado/.test($('rf-ok').innerText), null, { timeout: 20000 });
+  const tras2 = await page.evaluate(async p=> ({ bd: (await registrosFotoRef.doc('RF-ADM-00002').get()).data(), vieja: await storage.ref().child(p).getMetadata().then(()=> true, ()=> false) }), fotoVieja);
   verificar(sigue && tras2.bd.estado === 'CONFIRMADO' && tras2.bd.items[0].cantidad === 2 && tras2.bd.items[0].fotos.length === 1 && tras2.bd.modificado_por === 'Administrador' && !('modificando' in tras2.bd) && !('respaldo' in tras2.bd) && !tras2.vieja,
     'Confirmar cambios: queda CONFIRMADO con la cantidad nueva y quién lo modificó; la foto quitada se borra recién al confirmar');
   // Cancelar una modificación deja todo como estaba.
-  await page.click('#rfsub-lista'); await page.waitForFunction(()=> rfLista.some(r=> r.id === 'RF-00002' && r.estado === 'CONFIRMADO'), null, { timeout: 10000 });
-  await page.evaluate(()=> rfAbrir('RF-00002')); await page.click('#btn-rf-modificar');
-  await page.waitForFunction(()=> !$('rf-form').hidden && $('rf-correlativo').value === 'RF-00002', null, { timeout: 15000 });
+  await page.click('#rfsub-lista'); await page.waitForFunction(()=> rfLista.some(r=> r.id === 'RF-ADM-00002' && r.estado === 'CONFIRMADO'), null, { timeout: 10000 });
+  await page.evaluate(()=> rfAbrir('RF-ADM-00002')); await page.click('#btn-rf-modificar');
+  await page.waitForFunction(()=> !$('rf-form').hidden && $('rf-correlativo').value === 'RF-ADM-00002', null, { timeout: 15000 });
   await page.click('#rf-items [data-rf-item="0"] [data-rf-paso="1"]'); await page.evaluate(()=> rfGuardarAhora());
   await page.click('#btn-rf-descartar');
   await page.waitForFunction(()=> !rfBorrador && !$('rf-inicio').hidden, null, { timeout: 10000 });
-  const canc = await page.evaluate(async ()=> (await registrosFotoRef.doc('RF-00002').get()).data());
+  const canc = await page.evaluate(async ()=> (await registrosFotoRef.doc('RF-ADM-00002').get()).data());
   verificar(canc.estado === 'CONFIRMADO' && canc.items[0].cantidad === 2 && !('modificando' in canc) && !('respaldo' in canc), '"↩ Cancelar cambios" deja el RF como estaba confirmado');
   await page.click('#rfsub-lista'); await page.waitForFunction(()=> rfLista.length >= 3, null, { timeout: 10000 });
 
   // Eliminar (borra también las fotos).
-  const paths = await page.evaluate(()=> { const r = rfLista.find(x=> x.id === 'RF-00001'); return [r.foto_posicion.path, ...r.items.flatMap(it=> it.fotos.map(f=> f.path))]; });
-  await page.evaluate(()=> rfAbrir('RF-00001'));
+  const paths = await page.evaluate(()=> { const r = rfLista.find(x=> x.id === 'RF-ADM-00001'); return [r.foto_posicion.path, ...r.items.flatMap(it=> it.fotos.map(f=> f.path))]; });
+  await page.evaluate(()=> rfAbrir('RF-ADM-00001'));
   await page.click('#btn-rf-eliminar');
-  await page.waitForFunction(()=> !rfLista.some(r=> r.id === 'RF-00001'), null, { timeout: 15000 });
+  await page.waitForFunction(()=> !rfLista.some(r=> r.id === 'RF-ADM-00001'), null, { timeout: 15000 });
   const quedan = await page.evaluate(async ps=> (await Promise.all(ps.map(p=> storage.ref().child(p).getMetadata().then(()=> 1, ()=> 0)))).reduce((a, b)=> a + b, 0), paths);
   const log = await page.evaluate(async ()=> (await movimientosRef.get()).docs.map(d=> d.data().tipo).filter(t=> /^reg_foto/.test(t)).sort().join(','));
   verificar(quedan === 0 && log === 'reg_foto_confirmado,reg_foto_confirmado,reg_foto_descartado,reg_foto_eliminado,reg_foto_exportado,reg_foto_exportado,reg_foto_iniciado,reg_foto_iniciado,reg_foto_iniciado,reg_foto_iniciado,reg_foto_modificacion_cancelada,reg_foto_modificado,reg_foto_reabierto,reg_foto_reabierto', `Eliminar borra el registro y sus ${paths.length} fotos; bitácora: ${log}`);
@@ -344,7 +344,7 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   const medir = ()=> page.evaluate(()=>{ const it = document.querySelector('#rf-items .rf-item'), r = sel=> it.querySelector(sel).getBoundingClientRect(), ancho = it.getBoundingClientRect().width;
     return { sku: r('.rf-sku-box').width / ancho, skuInput: Math.round(r('[data-rf-campo="sku"]').width), cant: r('.rf-cant'), desc: r('.rf-desc'), skuAbajo: r('.rf-sku-box').bottom, scroll: document.documentElement.scrollWidth }; });
   await page.setViewportSize({ width: 800, height: 1280 });
-  await page.evaluate(()=> rfContinuar('RF-00004')); await page.waitForFunction(()=> !$('rf-form').hidden, null, { timeout: 10000 }); await page.waitForTimeout(300);
+  await page.evaluate(()=> rfContinuar('RF-ADM-00004')); await page.waitForFunction(()=> !$('rf-form').hidden, null, { timeout: 10000 }); await page.waitForTimeout(300);
   let m = await medir();
   await page.locator('#rf-items').screenshot({ path: path.join(__dirname, 'salida', 'rf_tablet.png') });
   verificar(m.sku > 0.9 && m.skuInput > 550 && Math.abs(m.cant.top - m.desc.top) < 2 && m.cant.top >= m.skuAbajo && m.desc.width > m.cant.width && m.scroll <= 800,
@@ -355,7 +355,7 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
 
   // Celular: sin desplazamiento hacia los lados.
   await page.setViewportSize({ width: 390, height: 860 });
-  await page.evaluate(()=> rfContinuar('RF-00004')); await page.waitForFunction(()=> !$('rf-form').hidden, null, { timeout: 10000 }); await page.waitForTimeout(300);
+  await page.evaluate(()=> rfContinuar('RF-ADM-00004')); await page.waitForFunction(()=> !$('rf-form').hidden, null, { timeout: 10000 }); await page.waitForTimeout(300);
   const ancho = await page.evaluate(()=> document.documentElement.scrollWidth);
   await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_celular.png') });
   await page.click('#rf-pos-fotos .rf-add-foto');

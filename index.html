@@ -264,6 +264,8 @@
     .alm-tabla{font-size:12.5px;} .alm-tabla th, .alm-tabla td{padding:6px 4px;} .alm-col-pct{min-width:80px;} .alm-ruta{max-width:170px;}
     .alm-dos{grid-template-columns:1fr;} .alm-card b{font-size:19px;}
   }
+  .rf-tienda-inicio{display:flex; flex-direction:column; gap:6px; font-weight:700; font-size:14px; margin-bottom:12px; width:100%; max-width:520px;} .rf-tienda-inicio select{font-size:16px; padding:10px 12px;}
+  .us-rf{border:1px dashed var(--line-strong); border-radius:10px; padding:10px 12px; margin:10px 0;}
   .rfl-barra{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:8px;}
   .rfl-leyenda{display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--ink-soft);} .rfl-leyenda span{display:inline-flex; align-items:center; gap:5px;}
   .rfl-leyenda i{display:inline-block; width:14px; height:14px; border-radius:3px; border:1px solid;}
@@ -3311,8 +3313,9 @@
   <div id="rfsub-panel-nuevo">
     <div class="rf-ok" id="rf-ok" hidden></div>
     <div class="panel rf-inicio" id="rf-inicio">
+      <label class="rf-tienda-inicio">🏬 ¿Dónde haces el inventario? <select id="rf-tienda"></select></label>
       <button type="button" class="rf-iniciar" id="btn-rf-iniciar">▶ Iniciar registro</button>
-      <p class="hint">Al iniciar se le asigna su correlativo y se guarda solo como <b>borrador</b> mientras trabajas. Al final, <b>Confirmar</b>.</p>
+      <p class="hint">Al iniciar se le asigna tu correlativo (<b id="rf-mi-prefijo">RF-…</b>) y se guarda solo como <b>borrador</b> mientras trabajas. Al final, <b>Confirmar</b>.</p>
       <div id="rf-mis-borradores"></div>
     </div>
     <div id="rf-form" hidden>
@@ -3321,11 +3324,11 @@
     <div class="panel" style="margin-bottom:12px;">
       <h3>Datos de cabecera</h3>
       <div class="rf-cab-grid">
-        <div class="field"><label>Participante</label><input type="text" id="rf-participante" class="upper" list="rf-participantes" value="CD VENEZUELA" autocomplete="off"></div>
+        <div class="field"><label>Tienda / participante</label><select id="rf-participante"></select></div>
         <div class="field"><label>Fecha de creación</label><input type="text" id="rf-fecha" readonly></div>
         <div class="field"><label>Correlativo</label><input type="text" id="rf-correlativo" readonly></div>
         <div class="field"><label>Usuario</label><input type="text" id="rf-usuario" readonly></div>
-        <div class="field rf-pos-campo"><label>Posición * <span class="hint">(del layout)</span></label><div class="rf-pos-fila"><input type="text" id="rf-posicion" readonly placeholder="Toca para elegir"><button type="button" id="btn-rf-pos" title="Elegir la posición en el layout">📍</button></div></div>
+        <div class="field rf-pos-campo"><label id="rf-pos-lbl">Posición * <span class="hint">(del layout)</span></label><div class="rf-pos-fila"><input type="text" id="rf-posicion" class="upper" readonly placeholder="Toca para elegir" list="rf-ubicaciones" autocomplete="off"><button type="button" id="btn-rf-pos" title="Elegir la posición en el layout">📍</button></div></div>
       </div>
       <div class="rf-foto-box"><span class="rf-lbl">📷 Foto de la posición *</span><div class="rf-fotos" id="rf-pos-fotos"></div></div>
     </div>
@@ -3343,6 +3346,7 @@
     <div class="panel" style="margin-bottom:12px;">
       <div class="rf-filtros">
         <select id="rf-estado-f" title="Estado"><option value="">Todos</option><option value="CONFIRMADO">✔ Confirmados</option><option value="BORRADOR">📝 Borradores</option></select>
+        <select id="rf-tienda-f" title="Tienda"></select><select id="rf-usuario-f" title="Usuario"></select>
         <input type="search" id="rf-q" placeholder="Buscar por correlativo, posición, participante, SKU, descripción o usuario…" autocomplete="off">
         <label>Desde <input type="date" id="rf-desde"></label><label>Hasta <input type="date" id="rf-hasta"></label>
         <button type="button" class="btn btn-ghost btn-sm" id="btn-rf-recargar">↻ Actualizar</button>
@@ -3358,6 +3362,7 @@
       <h3>📊 Reportes</h3>
       <div class="rf-filtros">
         <select id="rfr-estado" title="Estado"><option value="CONFIRMADO">✔ Solo confirmados</option><option value="">Todos</option><option value="BORRADOR">📝 Solo borradores</option></select>
+        <select id="rfr-tienda" title="Tienda"></select><select id="rfr-usuario" title="Usuario"></select>
         <input type="search" id="rfr-q" placeholder="Filtrar por correlativo, posición, SKU, descripción o usuario…" autocomplete="off">
         <label>Desde <input type="date" id="rfr-desde"></label><label>Hasta <input type="date" id="rfr-hasta"></label>
         <button type="button" class="btn btn-ghost btn-sm" id="btn-rfr-recargar">↻ Actualizar</button>
@@ -3369,8 +3374,12 @@
       <div class="msg" id="rf-exp-msg"></div>
     </div>
     <div class="panel" style="margin-bottom:12px;">
+      <h3>👥 Resumen por tienda y usuario</h3>
+      <div id="rf-rep-usuarios"></div>
+    </div>
+    <div class="panel" style="margin-bottom:12px;">
       <h3>📦 Reporte por bloque</h3>
-      <p class="hint" style="margin-bottom:8px;">Con los filtros de arriba. Toca un bloque para desplegar sus posiciones y sus RF; vuelve a tocarlo (o «▴ Ocultar») para comprimirlo.</p>
+      <p class="hint" style="margin-bottom:8px;">Con los filtros de arriba. En el CD, un bloque del layout; en las tiendas, la tienda con sus ubicaciones. Toca uno para desplegar sus posiciones y sus RF; vuelve a tocarlo (o «▴ Ocultar») para comprimirlo.</p>
       <div id="rf-rep-resumen"></div>
     </div>
     <div class="panel" style="margin-bottom:12px;">
@@ -3382,7 +3391,7 @@
   </div>
   <div id="rfsub-panel-layout" style="display:none;">
     <div class="panel" style="margin-bottom:12px;">
-      <h3>🗺 Registro fotográfico en el layout</h3>
+      <h3>🗺 Registro fotográfico en el layout del CD</h3>
       <div class="rfl-barra">
         <select id="rfl-estado" title="Qué registros se cuentan"><option value="CONFIRMADO">✔ Solo confirmados</option><option value="">Todos (incluye borradores)</option></select>
         <div class="rfl-leyenda"><span><i class="rfl-0"></i>Sin RF</span><span><i class="rfl-1"></i>1 RF</span><span><i class="rfl-n"></i>Más de 1 RF</span></div>
@@ -3394,7 +3403,7 @@
     </div>
     <div class="panel" id="rfl-detalle" style="display:none;"></div>
   </div>
-  <datalist id="rf-participantes"></datalist><datalist id="rf-posiciones"></datalist><datalist id="rf-skus"></datalist>
+  <datalist id="rf-participantes"></datalist><datalist id="rf-posiciones"></datalist><datalist id="rf-skus"></datalist><datalist id="rf-ubicaciones"></datalist>
 </div>
 
 <!-- Cámara del navegador (celular o PC) y visor de fotos -->
@@ -3718,6 +3727,11 @@
       <p class="hint" style="margin:12px 0 6px;">Qué puede ver: marca las opciones del menú y, dentro de cada una, sus secciones.</p>
       <div class="us-arbol" id="us-arbol"></div>
       <label class="us-extra"><input type="checkbox" id="us-eliminar"> Puede editar / eliminar / bloquear registros <span class="hint">(solo dentro de lo que puede ver; en Venta Online: subir y quitar vouchers)</span></label>
+      <div class="us-rf">
+        <b>📸 Registro fotográfico</b>
+        <div class="field" style="margin:6px 0;"><label>Prefijo de su correlativo <span class="hint">(2 a 5 letras; sus registros serán RF-PREFIJO-00001…)</span></label><input type="text" id="us-rf-prefijo" class="upper" maxlength="5" placeholder="Automático: primeras letras del alias"></div>
+        <label class="us-extra" style="margin:0;"><input type="checkbox" id="us-rf-todos"> Ver los registros fotográficos de todos los usuarios <span class="hint">(en Registros, Reportes y Layout; si no, solo ve los suyos)</span></label>
+      </div>
       <div class="us-resumen" id="us-resumen"></div>
       <button class="btn btn-primary" id="btn-guardar-usuario" style="width:100%;">Guardar permisos</button>
       <div class="msg" id="us-msg"></div>
@@ -3843,8 +3857,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v223';
-const APP_UPDATED = '03/11/2026 17:00';
+const APP_VERSION = 'v224';
+const APP_UPDATED = '04/11/2026 12:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -3907,6 +3921,7 @@ try{ ocultarLadoDerecho = localStorage.getItem('almacen_ocultar_lado_derecho') =
 let participantesMaestroCache = {}; // maestro de participantes, keyed por clave del nombre oficial
 let validadoresMaestroCache = {}; // maestro de validadores, keyed por DNI
 let currentPermisos = {};
+let currentRfPrefijo = '';   // prefijo del correlativo del registro fotográfico (usuarios/{correo}.rf_prefijo)
 let currentUserEmail = '';
 let currentUserAlias = '';
 let listenersStarted = false;
@@ -4049,6 +4064,7 @@ async function loadPermisos(user){
     }
   }
   currentPermisos = snap.data().permisos || {};
+  currentRfPrefijo = snap.data().rf_prefijo || '';
   const tabGuardada = (location.hash || '').replace('#tab-','');
   currentUserEmail = email;
   currentUserAlias = snap.data().alias || email;
@@ -18654,8 +18670,38 @@ function rfEscanearSku(i){
 // Pensado para operarios en el celular: pasos a la vista, botones grandes y el flujo avanza solo
 // (posición + Enter → cámara de la posición → SKU → cantidad + Enter → cámara del producto →
 // siguiente producto). Siempre queda un producto en blanco al final, que se ignora al guardar.
+// ---- Tiendas y correlativo por usuario ----
+const RF_CD = 'CD VENEZUELA';   // el CD principal: el único con layout
+const rfEsCD = t=> !t || String(t).toUpperCase() === RF_CD;
+// Prefijo automático: primeras 3 letras del alias (sin tildes); un admin puede fijar otro en Usuarios.
+function rfPrefijoDe(alias, email){
+  const l = String(alias || email || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z]/g, '');
+  return (l || 'USR').slice(0, 3).padEnd(2, 'X');
+}
+const rfPrefijo = ()=> currentRfPrefijo || rfPrefijoDe(currentUserAlias, currentUserEmail);
+const rfVeTodos = ()=> !!(currentPermisos.admin || currentPermisos.rf_todos);
+function rfTiendas(){
+  const L = [...new Set(Object.values(participantesMaestroCache || {}).map(p=> String(p.nombre || '').trim().toUpperCase()).filter(n=> n && n !== RF_CD))].sort((a, b)=> a.localeCompare(b, 'es'));
+  return [RF_CD, ...L];
+}
+function rfLlenarTiendas(sel, valor){
+  const L = rfTiendas(); if(valor && !L.includes(valor)) L.push(valor);   // registros viejos con otro texto
+  sel.innerHTML = L.map(t=> `<option value="${esc(t)}">${esc(t === RF_CD ? RF_CD + ' (CD principal)' : t)}</option>`).join('');
+  sel.value = valor && L.includes(valor) ? valor : RF_CD;
+}
+// CD: posición del layout (selector). Tienda: ubicación en texto libre, con las que ya se usaron ahí.
+function rfModoPosicion(){
+  const cd = rfEsCD($('rf-participante').value), inp = $('rf-posicion');
+  inp.readOnly = cd; $('btn-rf-pos').hidden = !cd;
+  inp.placeholder = cd ? 'Toca para elegir' : 'Ej.: GÓNDOLA 3, TRASTIENDA';
+  $('rf-pos-lbl').innerHTML = cd ? 'Posición * <span class="hint">(del layout)</span>' : 'Ubicación en la tienda * <span class="hint">(texto libre)</span>';
+  if(!cd){ const t = $('rf-participante').value;
+    $('rf-ubicaciones').innerHTML = [...new Set(rfLista.filter(x=> x.participante === t && x.posicion).map(x=> x.posicion))].sort().map(u=> `<option value="${esc(u)}">`).join(''); }
+}
 function rfPrepararForm(){
-  $('rf-participantes').innerHTML = Object.values(participantesMaestroCache || {}).map(p=> `<option value="${esc(p.nombre)}">`).join('');
+  let ult = ''; try{ ult = localStorage.getItem('rf:tienda') || ''; }catch(e){}
+  rfLlenarTiendas($('rf-tienda'), ult || RF_CD);
+  $('rf-mi-prefijo').textContent = `RF-${rfPrefijo()}-00001…`;
   rfMostrarInicio();
   if(rfBorrador){ if(!rfItems.length) rfItems.push(rfNuevoItem()); renderRfForm(); }
 }
@@ -18942,10 +18988,10 @@ function rfMostrarInicio(){
 async function rfListarMisBorradores(){
   const caja = $('rf-mis-borradores'); caja.innerHTML = '';
   try{
-    const L = (await registrosFotoRef.where('estado', '==', 'BORRADOR').get()).docs.map(d=> Object.assign({ id: d.id }, d.data()))
-      .filter(r=> r.usuario_email === currentUserEmail).sort((a, b)=> b.id.localeCompare(a.id));
+    const L = (await registrosFotoRef.where('usuario_email', '==', currentUserEmail).get()).docs.map(d=> Object.assign({ id: d.id }, d.data()))
+      .filter(r=> r.estado === 'BORRADOR').sort((a, b)=> String(b.fecha_creacion).localeCompare(String(a.fecha_creacion)));
     if(L.length) caja.innerHTML = `<div class="rf-borradores"><b>Tienes ${esc(L.length)} borrador(es) sin confirmar:</b>` + L.map(r=> `<button type="button" data-rf-continuar="${esc(r.id)}">` +
-      `<b style="display:inline; font-size:14px; color:inherit;">✏ Continuar ${esc(r.id)}${r.modificando ? ' (modificación)' : ''}</b><span>📍 ${esc(r.posicion || 'sin posición')} · ${esc((r.items || []).length)} producto(s) · ${esc(rfFechaTxt(r.actualizado_en || r.fecha_creacion))}</span></button>`).join('') + '</div>';
+      `<b style="display:inline; font-size:14px; color:inherit;">✏ Continuar ${esc(r.id)}${r.modificando ? ' (modificación)' : ''}</b><span>🏬 ${esc(r.participante || RF_CD)} · 📍 ${esc(r.posicion || 'sin posición')} · ${esc((r.items || []).length)} producto(s) · ${esc(rfFechaTxt(r.actualizado_en || r.fecha_creacion))}</span></button>`).join('') + '</div>';
   }catch(err){ console.warn('Borradores:', err); }
 }
 function rfDatosBorrador(){
@@ -18995,7 +19041,7 @@ function rfCargarEnForm(r){
   document.querySelector('.rf-chip-borrador').classList.toggle('modif', !!r.modificando);
   $('btn-rf-descartar').textContent = r.modificando ? '↩ Cancelar cambios' : '🗑 Descartar';
   $('btn-rf-guardar').textContent = r.modificando ? '✔ Confirmar cambios' : '✔ Confirmar registro'; $('rf-correlativo').value = r.id; $('rf-usuario').value = r.usuario || currentUserAlias;
-  $('rf-fecha').value = rfFechaTxt(r.fecha_creacion); $('rf-participante').value = r.participante || 'CD VENEZUELA'; $('rf-posicion').value = r.posicion || '';
+  $('rf-fecha').value = rfFechaTxt(r.fecha_creacion); rfLlenarTiendas($('rf-participante'), r.participante || RF_CD); $('rf-posicion').value = r.posicion || ''; rfModoPosicion();
   const foto = (f, nombre)=> ({ id: 'f' + (++rfFotoN), url: f.url, remoto: f.url, path: f.path, tam: f.tam, nombre });
   rfPosFotos = r.foto_posicion ? [foto(r.foto_posicion, 'posicion')] : [];
   rfItems = (r.items || []).map((it, i)=> ({ sku: it.sku || '', descripcion: it.descripcion || '', cantidad: String(it.cantidad || ''), fotos: (it.fotos || []).map(f=> foto(f, 'item' + (i + 1))) }));
@@ -19005,13 +19051,15 @@ function rfCargarEnForm(r){
 async function rfIniciar(){
   $('btn-rf-iniciar').disabled = true;
   try{
+    const tienda = $('rf-tienda').value || RF_CD;
+    try{ localStorage.setItem('rf:tienda', tienda); }catch(e){}
     const corr = await generarCorrelativoRegFoto(), ahora = new Date().toISOString();
-    const r = { correlativo: corr, estado:'BORRADOR', participante:'CD VENEZUELA', posicion:'', foto_posicion:null, items:[], cant_items:0, unidades:0, skus:[],
+    const r = { correlativo: corr, estado:'BORRADOR', participante: tienda, posicion:'', foto_posicion:null, items:[], cant_items:0, unidades:0, skus:[],
       usuario: currentUserAlias, usuario_email: currentUserEmail, fecha_creacion: ahora, actualizado_en: ahora };
     await registrosFotoRef.doc(corr).set(Object.assign({ creado_en: firebase.firestore.FieldValue.serverTimestamp() }, r));
     await logAccion('reg_foto_iniciado', {detalle:`${corr} iniciado (borrador)`});
     rfLeidos = false; rfCargarEnForm(Object.assign({ id: corr }, r));
-    rfAbrirSelectorPosicion();
+    if(rfEsCD(tienda)) rfAbrirSelectorPosicion(); else $('rf-posicion').focus();
   }catch(err){ console.error(err); showMsg('rf-msg', 'err', 'No se pudo iniciar el registro: ' + err.message); }
   finally{ $('btn-rf-iniciar').disabled = false; }
 }
@@ -19025,7 +19073,9 @@ async function rfContinuar(id){
 }
 $('btn-rf-iniciar').addEventListener('click', rfIniciar);
 $('rf-mis-borradores').addEventListener('click', e=>{ const b = e.target.closest('[data-rf-continuar]'); if(b) rfContinuar(b.dataset.rfContinuar); });
-$('rf-participante').addEventListener('input', rfAutoguardar);
+$('rf-participante').addEventListener('change', ()=>{ $('rf-posicion').value = ''; rfModoPosicion(); rfAutoguardar(); if(rfEsCD($('rf-participante').value)) rfAbrirSelectorPosicion(); else $('rf-posicion').focus(); });
+$('rf-posicion').addEventListener('input', ()=>{ if(!$('rf-posicion').readOnly) rfAutoguardar(); });
+$('rf-posicion').addEventListener('keydown', e=>{ if(e.key === 'Enter' && !$('rf-posicion').readOnly){ e.preventDefault(); if($('rf-posicion').value.trim() && !rfPosFotos.length) rfCamaraPosicion(); } });
 $('btn-rf-descartar').addEventListener('click', async ()=>{
   if(rfBorrador && rfBorrador.modificando){ rfCancelarModificacion(); return; }
   if(!rfBorrador || !confirm(`¿Descartar el borrador ${rfBorrador.id}? Se borrarán sus fotos. No se puede deshacer.`)) return;
@@ -19065,20 +19115,28 @@ $('rf-pos-lista').addEventListener('click', e=>{
   rfPasos(); rfAutoguardar();
   if(!rfPosFotos.length) rfCamaraPosicion(); else { const i = rfItems.findIndex(it=> !rfCompleto(it)); rfFoco(i < 0 ? 0 : i, 'sku'); }
 });
-['rf-posicion', 'btn-rf-pos'].forEach(id=> $(id).addEventListener('click', rfAbrirSelectorPosicion));
+['rf-posicion', 'btn-rf-pos'].forEach(id=> $(id).addEventListener('click', ()=>{ if(rfEsCD($('rf-participante').value)) rfAbrirSelectorPosicion(); }));
 
+// Cada usuario tiene su numeración: contadores/rf_{PREFIJO} guarda el último número y de quién es el prefijo.
 async function generarCorrelativoRegFoto(){
-  const ref = contadoresRef.doc('registros_foto');
-  const n = await db.runTransaction(async tx=>{ const snap = await tx.get(ref); const nuevo = (snap.exists ? (snap.data().ultimo || 0) : 0) + 1; tx.set(ref, { ultimo: nuevo }, { merge:true }); return nuevo; });
-  return 'RF-' + String(n).padStart(5, '0');
+  const pre = rfPrefijo(), ref = contadoresRef.doc('rf_' + pre);
+  const n = await db.runTransaction(async tx=>{
+    const snap = await tx.get(ref), d = snap.exists ? snap.data() : {};
+    if(d.email && d.email !== currentUserEmail) throw new Error(`El prefijo ${pre} ya lo usa ${d.alias || d.email}. Pide a un administrador que te asigne otro en Usuarios.`);
+    const nuevo = (d.ultimo || 0) + 1;
+    tx.set(ref, { ultimo: nuevo, email: currentUserEmail, alias: currentUserAlias }, { merge:true });
+    return nuevo;
+  });
+  return `RF-${pre}-${String(n).padStart(5, '0')}`;
 }
 $('btn-rf-guardar').addEventListener('click', async ()=>{
   if(!rfBorrador) return;
   const participante = $('rf-participante').value.trim().toUpperCase(), posicion = $('rf-posicion').value.trim().toUpperCase();
   let error = '';
-  if(!participante) error = 'Escribe el participante.';
-  else if(!posicion) error = 'Elige la posición del layout.';
-  else if(!posiciones[posicion]) error = `La posición ${posicion} no existe en el layout. Elígela de la lista.`;
+  const cd = rfEsCD(participante);
+  if(!participante) error = 'Elige la tienda.';
+  else if(!posicion) error = cd ? 'Elige la posición del layout.' : 'Escribe la ubicación en la tienda.';
+  else if(cd && !posiciones[posicion]) error = `La posición ${posicion} no existe en el layout. Elígela de la lista.`;
   else if(!rfPosFotos.length) error = 'Falta la foto de la posición.';
   else if(!rfItems.some(rfCompleto)) error = 'Agrega al menos un producto (SKU, cantidad y foto).';
   if(error){ showMsg('rf-msg', 'err', error); rfAviso('Todavía no se puede confirmar', error); return; }
@@ -19168,13 +19226,32 @@ async function rfCancelarModificacion(){
 }
 
 // ---- Reportes: Excel, PDF y reporte visual por posición ----
+// Tienda de un registro (los antiguos sin participante son del CD) y clave de su posición:
+// en el CD, el código del layout; en una tienda, "TIENDA · UBICACIÓN".
+const rfTiendaDe = r=> String(r.participante || RF_CD).toUpperCase();
+const rfClavePos = r=> rfEsCD(rfTiendaDe(r)) ? (r.posicion || '—') : `${rfTiendaDe(r)} · ${r.posicion || '—'}`;
+const rfPosTxt = c=> String(c).includes(' · ') ? String(c).split(' · ').slice(1).join(' · ') : c;
+// Filtros de tienda y usuario con lo que hay en los registros cargados (se conserva lo elegido).
+function rfLlenarFiltros(){
+  const tiendas = [...new Set(rfLista.map(rfTiendaDe))].sort((a, b)=> a.localeCompare(b, 'es'));
+  const usuarios = [...new Map(rfLista.filter(r=> r.usuario_email).map(r=> [r.usuario_email, r.usuario || r.usuario_email])).entries()].sort((a, b)=> a[1].localeCompare(b[1], 'es'));
+  [['rf-tienda-f', 'rf-usuario-f'], ['rfr-tienda', 'rfr-usuario']].forEach(([t, u])=>{
+    const vt = $(t).value, vu = $(u).value;
+    $(t).innerHTML = '<option value="">🏬 Todas las tiendas</option>' + tiendas.map(x=> `<option value="${esc(x)}">${esc(x)}</option>`).join('');
+    $(u).innerHTML = '<option value="">👤 Todos los usuarios</option>' + usuarios.map(([e, a])=> `<option value="${esc(e)}">${esc(a)}</option>`).join('');
+    $(t).value = tiendas.includes(vt) ? vt : ''; $(u).value = usuarios.some(([e])=> e === vu) ? vu : '';
+    $(u).hidden = !rfVeTodos();   // quien solo ve lo suyo no necesita elegir usuario
+  });
+}
 function rfFiltradosReporte(){
   const tk = normalizarTexto($('rfr-q').value).split(/\s+/).filter(Boolean), d = $('rfr-desde').value, h = $('rfr-hasta').value, est = $('rfr-estado').value;
+  const ti = $('rfr-tienda').value, us = $('rfr-usuario').value;
   return rfLista.filter(r=>{ const f = (r.fecha_creacion || '').slice(0, 10);
     if(est && rfEstadoReg(r) !== est) return false;
+    if(ti && rfTiendaDe(r) !== ti) return false; if(us && (r.usuario_email || '') !== us) return false;
     if(d && f < d) return false; if(h && f > h) return false; return tk.every(t=> r._txt.includes(t)); });
 }
-const rfBloqueDe = cod=>{ const p = (posiciones || {})[cod]; if(!p) return 'SIN BLOQUE (fuera del layout)'; return p.tipo === 'mezanine' ? 'MEZANINE' : ((bloques[p.bloque_id] || {}).nombre || 'SIN BLOQUE'); };
+const rfBloqueDe = cod=>{ if(String(cod).includes(' · ')) return '🏬 ' + String(cod).split(' · ')[0]; const p = (posiciones || {})[cod]; if(!p) return 'SIN BLOQUE (fuera del layout)'; return p.tipo === 'mezanine' ? 'MEZANINE' : ((bloques[p.bloque_id] || {}).nombre || 'SIN BLOQUE'); };
 // Bloques y posiciones comprimidos: solo se despliega el que se toca.
 let rfRepBloque = null, rfRepPos = null, rfRepPosEnBloque = null, rfRepPag = 0;
 const RF_REP_POR_PAGINA = 10;
@@ -19186,11 +19263,22 @@ function rfRepListaRf(L, conPosicion){
       `<td>${esc((r.items || []).map(it=> `${it.sku} ×${it.cantidad}`).join(', '))}</td><td class="num">${esc(anFmt(r.unidades || 0))}</td></tr>`).join('') + '</tbody></table></div><p class="hint" style="margin-top:6px;">Toca un RF para verlo con sus fotos.</p>'
     : '<div class="hint">Sin registros.</div>';
 }
+function renderRfRepUsuarios(L){
+  const por = new Map();
+  L.forEach(r=>{ const k = rfTiendaDe(r) + '|' + (r.usuario || r.usuario_email || '—'); const g = por.get(k) || { tienda: rfTiendaDe(r), usuario: r.usuario || r.usuario_email || '—', n: 0, und: 0, ult: '' };
+    g.n++; g.und += Number(r.unidades) || 0; if(String(r.fecha_creacion) > g.ult) g.ult = String(r.fecha_creacion); por.set(k, g); });
+  const filas = [...por.values()].sort((a, b)=> a.tienda.localeCompare(b.tienda, 'es') || b.n - a.n);
+  $('rf-rep-usuarios').innerHTML = filas.length ? `<div class="rf-rep-scroll"><table class="rf-rep-resumen"><thead><tr><th>Tienda</th><th>Usuario</th><th class="num">Inventarios (RF)</th><th class="num">Unidades</th><th>Último registro</th></tr></thead><tbody>` +
+    filas.map(g=> `<tr><td><b>🏬 ${esc(g.tienda)}</b></td><td>👤 ${esc(g.usuario)}</td><td class="num"><b>${esc(g.n)}</b></td><td class="num">${esc(anFmt(g.und))}</td><td>${esc(rfFechaTxt(g.ult))}</td></tr>`).join('') +
+    `</tbody><tfoot><tr><th colspan="2">Total</th><th class="num">${esc(L.length)}</th><th class="num">${esc(anFmt(rfUnd(L)))}</th><th></th></tr></tfoot></table></div>` : '<div class="hint">Sin registros para estos filtros.</div>';
+}
 function renderRfReportes(){
   const L = rfFiltradosReporte(), porPos = new Map();
-  L.forEach(r=>{ const k = r.posicion || '—'; if(!porPos.has(k)) porPos.set(k, []); porPos.get(k).push(r); });
-  const grupos = new Map();
-  [...new Set([...Object.keys(posiciones || {}), ...porPos.keys()])].forEach(c=>{ const b = rfBloqueDe(c); if(!grupos.has(b)) grupos.set(b, []); grupos.get(b).push(c); });
+  L.forEach(r=>{ const k = rfClavePos(r); if(!porPos.has(k)) porPos.set(k, []); porPos.get(k).push(r); });
+  const grupos = new Map(), tiendaF = $('rfr-tienda').value;
+  renderRfRepUsuarios(L);
+  // Las posiciones del layout (también las vacías) solo cuentan cuando se mira el CD.
+  [...new Set([...(!tiendaF || rfEsCD(tiendaF) ? Object.keys(posiciones || {}) : []), ...porPos.keys()])].forEach(c=>{ const b = rfBloqueDe(c); if(!grupos.has(b)) grupos.set(b, []); grupos.get(b).push(c); });
   const max = Math.max(1, ...[...porPos.values()].map(x=> x.length));
   const nb = [...grupos.keys()].sort(rfOrdCod);
   if(rfRepBloque && !grupos.has(rfRepBloque)) rfRepBloque = null;
@@ -19203,8 +19291,8 @@ function renderRfReportes(){
         const sub = enPos ? (porPos.get(enPos) || []) : rs;
         trBloque += `<tr class="rf-rep-exp"><td colspan="4"><div class="rf-rep-tiles">` +
           cs.map(c=>{ const x = porPos.get(c) || [], h = x.length ? Math.max(1, Math.ceil(x.length / max * 5)) : 0;
-            return `<button type="button" class="rf-rep-tile h${h}${enPos === c ? ' sel' : ''}" data-rfr-tile="${esc(c)}"${x.length ? '' : ' disabled'}><b>${esc(c)}</b><span class="c">${esc(x.length)}</span><small>${x.length ? `RF · ${esc(anFmt(rfUnd(x)))} und` : 'sin RF'}</small></button>`; }).join('') +
-          `</div><div class="rf-rep-sub"><b>${enPos ? `📍 ${esc(enPos)}` : `Todos los RF de ${esc(b)}`}</b> <span class="hint">${esc(sub.length)} RF · ${esc(anFmt(rfUnd(sub)))} unidades${enPos ? ' · toca la posición otra vez para ver todo el bloque' : ''}</span></div>` +
+            return `<button type="button" class="rf-rep-tile h${h}${enPos === c ? ' sel' : ''}" data-rfr-tile="${esc(c)}"${x.length ? '' : ' disabled'}><b>${esc(rfPosTxt(c))}</b><span class="c">${esc(x.length)}</span><small>${x.length ? `RF · ${esc(anFmt(rfUnd(x)))} und` : 'sin RF'}</small></button>`; }).join('') +
+          `</div><div class="rf-rep-sub"><b>${enPos ? `📍 ${esc(rfPosTxt(enPos))}` : `Todos los RF de ${esc(b)}`}</b> <span class="hint">${esc(sub.length)} RF · ${esc(anFmt(rfUnd(sub)))} unidades${enPos ? ' · toca la posición otra vez para ver todo el bloque' : ''}</span></div>` +
           rfRepListaRf(sub, !enPos) + `<button type="button" class="btn btn-ghost btn-sm rf-rep-ocultar" data-rfr-ocultar="b">▴ Ocultar ${esc(b)}</button></td></tr>`;
       }
       return trBloque; }).join('') +
@@ -19216,8 +19304,8 @@ function renderRfReportes(){
   const pagina = filas.slice(rfRepPag * RF_REP_POR_PAGINA, (rfRepPag + 1) * RF_REP_POR_PAGINA);
   $('rf-rep-tabla').innerHTML = filas.length ? `<div class="rf-rep-scroll"><table class="rf-rep-resumen"><thead><tr><th>Posición</th><th>Bloque</th><th class="num">Inventarios (RF)</th><th class="num">Unidades</th><th>Último registro</th></tr></thead><tbody>` +
     pagina.map(([c, rs])=>{ const abierta = rfRepPos === c;
-      return `<tr class="rf-rep-fila${abierta ? ' abierta' : ''}" data-rfr-pos="${esc(c)}"><td><b><span class="rf-rep-flecha">${abierta ? '▾' : '▸'}</span> 📍 ${esc(c)}</b></td><td>${esc(rfBloqueDe(c))}</td><td class="num"><b>${esc(rs.length)}</b></td><td class="num">${esc(anFmt(rfUnd(rs)))}</td><td>${esc(rfFechaTxt(rs.map(r=> r.fecha_creacion).sort().pop()))}</td></tr>` +
-        (abierta ? `<tr class="rf-rep-exp"><td colspan="5">${rfRepListaRf(rs, false)}<button type="button" class="btn btn-ghost btn-sm rf-rep-ocultar" data-rfr-ocultar="p">▴ Ocultar ${esc(c)}</button></td></tr>` : ''); }).join('') + '</tbody></table></div>'
+      return `<tr class="rf-rep-fila${abierta ? ' abierta' : ''}" data-rfr-pos="${esc(c)}"><td><b><span class="rf-rep-flecha">${abierta ? '▾' : '▸'}</span> 📍 ${esc(rfPosTxt(c))}</b></td><td>${esc(rfBloqueDe(c))}</td><td class="num"><b>${esc(rs.length)}</b></td><td class="num">${esc(anFmt(rfUnd(rs)))}</td><td>${esc(rfFechaTxt(rs.map(r=> r.fecha_creacion).sort().pop()))}</td></tr>` +
+        (abierta ? `<tr class="rf-rep-exp"><td colspan="5">${rfRepListaRf(rs, false)}<button type="button" class="btn btn-ghost btn-sm rf-rep-ocultar" data-rfr-ocultar="p">▴ Ocultar ${esc(rfPosTxt(c))}</button></td></tr>` : ''); }).join('') + '</tbody></table></div>'
     : '<div class="hint">No hay posiciones con inventario para estos filtros.</div>';
   $('rf-rep-pag').innerHTML = filas.length > RF_REP_POR_PAGINA ? `<div class="vo-pag"><button type="button" data-rfr-pag="-1" ${rfRepPag ? '' : 'disabled'}>‹ Anterior</button><span id="rf-rep-pag-txt">${esc(rfRepPag * RF_REP_POR_PAGINA + 1)}–${esc(Math.min(filas.length, (rfRepPag + 1) * RF_REP_POR_PAGINA))} de ${esc(filas.length)} · página ${esc(rfRepPag + 1)} de ${esc(pags)}</span><button type="button" data-rfr-pag="1" ${rfRepPag < pags - 1 ? '' : 'disabled'}>Siguiente ›</button></div>` : '';
 }
@@ -19236,7 +19324,7 @@ $('rfsub-panel-reportes').addEventListener('click', e=>{
   if(pos){ rfRepPos = rfRepPos === pos.dataset.rfrPos ? null : pos.dataset.rfrPos; renderRfReportes(); return; }
   if(blo){ rfRepBloque = rfRepBloque === blo.dataset.rfrBloque ? null : blo.dataset.rfrBloque; rfRepPosEnBloque = null; renderRfReportes(); }
 });
-['rfr-estado', 'rfr-desde', 'rfr-hasta'].forEach(id=> $(id).addEventListener('change', ()=>{ rfRepPag = 0; renderRfReportes(); }));
+['rfr-estado', 'rfr-desde', 'rfr-hasta', 'rfr-tienda', 'rfr-usuario'].forEach(id=> $(id).addEventListener('change', ()=>{ rfRepPag = 0; renderRfReportes(); }));
 $('rfr-q').addEventListener('input', ()=>{ rfRepPag = 0; renderRfReportes(); });
 $('btn-rfr-recargar').addEventListener('click', ()=> rfCargar(true));
 
@@ -19248,7 +19336,7 @@ function rfSiReportes(){
 let rflSel = null;
 function rflConteo(){
   const est = $('rfl-estado').value, por = new Map();
-  rfLista.filter(r=> !est || rfEstadoReg(r) === est).forEach(r=>{ const k = r.posicion || ''; if(!por.has(k)) por.set(k, []); por.get(k).push(r); });
+  rfLista.filter(r=> rfEsCD(rfTiendaDe(r)) && (!est || rfEstadoReg(r) === est)).forEach(r=>{ const k = r.posicion || ''; if(!por.has(k)) por.set(k, []); por.get(k).push(r); });
   return por;
 }
 function renderRfLayout(){
@@ -19292,7 +19380,11 @@ async function rfCargar(forzar){
   if(rfLeidos && !forzar){ renderRfLista(); rfSiReportes(); return; }
   $('rf-lista').innerHTML = '<div class="hint">⏳ Cargando registros…</div>';
   try{
-    rfLista = (await registrosFotoRef.get()).docs.map(d=> Object.assign({ id: d.id }, d.data())).sort((a, b)=> b.id.localeCompare(a.id));
+    // Cada usuario lee solo los suyos; admin o "rf_todos" leen todos (las reglas de Firestore hacen lo mismo).
+    const q = rfVeTodos() ? registrosFotoRef : registrosFotoRef.where('usuario_email', '==', currentUserEmail);
+    rfLista = (await q.get()).docs.map(d=> Object.assign({ id: d.id }, d.data()))
+      .sort((a, b)=> String(b.fecha_creacion || '').localeCompare(String(a.fecha_creacion || '')) || b.id.localeCompare(a.id));
+    rfLlenarFiltros();
     rfLista.forEach(r=> { r._txt = normalizarTexto([r.id, rfEstadoReg(r), r.participante, r.posicion, r.usuario, r.confirmado_por, ...(r.items || []).map(it=> `${it.sku} ${it.descripcion}`)].join(' ')); });
     rfLeidos = true;
   }catch(err){ console.error(err); $('rf-lista').innerHTML = `<div class="hint">⚠ No se pudieron leer los registros: ${esc(err.message)}</div>`; return; }
@@ -19302,8 +19394,10 @@ async function rfCargar(forzar){
 }
 function rfFiltrados(){
   const tk = normalizarTexto($('rf-q').value).split(/\s+/).filter(Boolean), d = $('rf-desde').value, h = $('rf-hasta').value, est = $('rf-estado-f').value;
+  const ti = $('rf-tienda-f').value, us = $('rf-usuario-f').value;
   return rfLista.filter(r=>{ const f = (r.fecha_creacion || '').slice(0, 10);
     if(est && rfEstadoReg(r) !== est) return false;
+    if(ti && rfTiendaDe(r) !== ti) return false; if(us && (r.usuario_email || '') !== us) return false;
     if(d && f < d) return false; if(h && f > h) return false; return tk.every(t=> r._txt.includes(t)); });
 }
 function renderRfLista(){
@@ -19312,14 +19406,14 @@ function renderRfLista(){
   $('rf-lista').innerHTML = L.length ? L.slice(rfPagina * RF_POR_PAGINA, (rfPagina + 1) * RF_POR_PAGINA).map(r=> `<button type="button" class="rf-fila${r.id === rfSel ? ' sel' : ''}" data-rf-abrir="${esc(r.id)}">` +
       `${r.foto_posicion ? `<img src="${esc(r.foto_posicion.url)}" alt="" loading="lazy">` : '<span class="sin"></span>'}` +
       `<span><span class="t">${cmpMarcar(r.id, tk)}</span> <span class="rf-est ${esc(rfEstadoReg(r))}">${r.modificando ? '✏ EN MODIFICACIÓN' : rfEstadoReg(r) === 'BORRADOR' ? '📝 BORRADOR' : '✔ CONFIRMADO'}</span><span class="s"> · ${esc(new Date(r.fecha_creacion).toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }))}</span><br>` +
-      `<span class="s">📍 ${cmpMarcar(r.posicion || '', tk)} · ${cmpMarcar(r.participante || '', tk)} · ${cmpMarcar(r.usuario || '', tk)}</span></span>` +
+      `<span class="s">🏬 ${cmpMarcar(r.participante || RF_CD, tk)} · 📍 ${cmpMarcar(r.posicion || '', tk)} · 👤 ${cmpMarcar(r.usuario || '', tk)}</span></span>` +
       `<span class="n"><b>${esc(anFmt(r.unidades || 0))} und</b>${esc(r.cant_items || 0)} producto(s)</span></button>`).join('')
     : `<div class="hint">${rfLista.length ? 'Nada coincide con la búsqueda.' : 'Aún no hay registros. Créalos en "📸 Nuevo registro".'}</div>`;
   $('rf-pag').innerHTML = L.length ? `<div class="vo-pag"><button type="button" data-rf-pag="-1" ${rfPagina ? '' : 'disabled'}>‹ Anterior</button><span id="rf-pag-txt">${esc(rfPagina * RF_POR_PAGINA + 1)}–${esc(Math.min(L.length, (rfPagina + 1) * RF_POR_PAGINA))} de ${esc(L.length)} · página ${esc(rfPagina + 1)} de ${esc(pags)}</span><button type="button" data-rf-pag="1" ${rfPagina < pags - 1 ? '' : 'disabled'}>Siguiente ›</button></div>` : '';
 }
 $('rf-ok').addEventListener('click', e=>{ if(e.target.closest('#btn-rf-ver-ultimo')) setRfSubtab('lista'); });
 $('rf-q').addEventListener('input', ()=>{ rfPagina = 0; renderRfLista(); });
-['rf-estado-f','rf-desde','rf-hasta'].forEach(id=> $(id).addEventListener('change', ()=>{ rfPagina = 0; renderRfLista(); }));
+['rf-estado-f','rf-desde','rf-hasta','rf-tienda-f','rf-usuario-f'].forEach(id=> $(id).addEventListener('change', ()=>{ rfPagina = 0; renderRfLista(); }));
 $('btn-rf-recargar').addEventListener('click', ()=> rfCargar(true));
 $('rf-pag').addEventListener('click', e=>{ const b = e.target.closest('[data-rf-pag]'); if(b && !b.disabled){ rfPagina += Number(b.dataset.rfPag); renderRfLista(); } });
 $('rf-lista').addEventListener('click', e=>{ const b = e.target.closest('[data-rf-abrir]'); if(b) rfAbrir(b.dataset.rfAbrir); });
@@ -19409,7 +19503,7 @@ function usRefrescar(){
 }
 function usLlenar(p){
   const base = Object.assign({}, p, { admin:false });
-  $('us-admin').checked = !!p.admin; $('us-eliminar').checked = !!p.eliminar;
+  $('us-admin').checked = !!p.admin; $('us-eliminar').checked = !!p.eliminar; $('us-rf-todos').checked = !!p.rf_todos;
   usTabs().forEach(cb=>{
     const tab = cb.dataset.usTab; cb.checked = !!p.admin || permTabPermitida(base, tab);
     const lista = p.admin ? null : permSubsPermitidas(base, tab);
@@ -19418,7 +19512,7 @@ function usLlenar(p){
   usRefrescar();
 }
 function usLeer(){
-  const permisos = { admin: $('us-admin').checked, eliminar: $('us-eliminar').checked, vo_vouchers: false, subs: {} };
+  const permisos = { admin: $('us-admin').checked, eliminar: $('us-eliminar').checked, rf_todos: $('us-rf-todos').checked, vo_vouchers: false, subs: {} };
   usTabs().forEach(cb=>{
     const tab = cb.dataset.usTab; permisos[PERM_TAB_CLAVE[tab]] = cb.checked;
     const subs = usSubs(tab), on = subs.filter(x=> x.checked).map(x=> x.dataset.usSub);
@@ -19428,7 +19522,7 @@ function usLeer(){
 }
 function limpiarFormularioUsuario(){
   usSel = null;
-  $('us-email').value = ''; $('us-alias').value = ''; $('us-titulo').textContent = 'Nuevo usuario';
+  $('us-email').value = ''; $('us-alias').value = ''; $('us-rf-prefijo').value = ''; $('us-titulo').textContent = 'Nuevo usuario';
   usLlenar({ rotulos:false });
   $('us-load-hint').textContent = 'Al escribir un correo ya existente, sus permisos actuales se cargan aquí para que no se sobreescriban por accidente.';
   $('us-load-hint').style.color = '';
@@ -19454,7 +19548,7 @@ async function cargarUsuarios(){
 function usAbrir(email){
   const u = usLista.find(x=> x.id === email);
   if(!u) return;
-  usSel = email; $('us-email').value = email; $('us-alias').value = u.alias || ''; $('us-titulo').textContent = u.alias || email;
+  usSel = email; $('us-email').value = email; $('us-alias').value = u.alias || ''; $('us-titulo').textContent = u.alias || email; $('us-rf-prefijo').value = u.rf_prefijo || '';
   usLlenar(u.permisos || {});
   $('us-load-hint').textContent = `✓ Permisos actuales de ${email}. Cambia lo que necesites y guarda.`; $('us-load-hint').style.color = '#245C46';
   renderUsLista();
@@ -19508,15 +19602,21 @@ $('btn-guardar-usuario').addEventListener('click', async ()=>{
   if(!email){ showMsg('us-msg','err','Ingresa el correo del usuario.'); return; }
   const permisos = usLeer();
   if(email === currentUserEmail && !permisos.admin && currentPermisos.admin && !confirm('Estás a punto de quitarte tu propio acceso de administrador. ¿Seguro que quieres continuar?')) return;
+  // Prefijo del registro fotográfico: letras, único entre los usuarios.
+  const prefijo = $('us-rf-prefijo').value.trim().toUpperCase();
+  if(prefijo && !/^[A-Z]{2,5}$/.test(prefijo)){ showMsg('us-msg','err','El prefijo del registro fotográfico debe tener de 2 a 5 letras (sin números ni espacios).'); return; }
+  const prefijoFinal = prefijo || rfPrefijoDe(alias, email);
+  const otro = usLista.find(x=> x.id !== email && (x.rf_prefijo || rfPrefijoDe(x.alias, x.id)) === prefijoFinal);
+  if(otro){ showMsg('us-msg','err', `El prefijo ${prefijoFinal} ya lo usa ${otro.alias || otro.id}. Escribe otro en "Prefijo de su correlativo".`); return; }
   try{
-    const datos = { email, permisos, actualizado: firebase.firestore.FieldValue.serverTimestamp() };
+    const datos = { email, permisos, rf_prefijo: prefijo || firebase.firestore.FieldValue.delete(), actualizado: firebase.firestore.FieldValue.serverTimestamp() };
     if(alias) datos.alias = alias;
     // mergeFields: los permisos se reemplazan completos (no quedan permisos viejos mezclados).
     await usuariosRef.doc(email).set(datos, { mergeFields: Object.keys(datos) });
     await logAccion('permisos_actualizados', {detalle:`Permisos actualizados para ${email}${alias?' ('+alias+')':''}`});
     showMsg('us-msg','ok', `Permisos guardados para ${email}.`);
     showToast(`Permisos actualizados para ${email}.`,'ok');
-    if(email === currentUserEmail){ currentPermisos = permisos; applyPermisosUI(); }
+    if(email === currentUserEmail){ currentPermisos = permisos; currentRfPrefijo = prefijo; applyPermisosUI(); rfLeidos = false; }
     await cargarUsuarios(); usAbrir(email);
   }catch(err){ showMsg('us-msg','err', err.message); }
 });
