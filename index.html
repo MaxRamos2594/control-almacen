@@ -3857,8 +3857,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v224';
-const APP_UPDATED = '04/11/2026 12:00';
+const APP_VERSION = 'v225';
+const APP_UPDATED = '04/11/2026 16:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4073,6 +4073,8 @@ async function loadPermisos(user){
   // Restaura la pestaña de la URL si el usuario tiene permiso para verla.
   const btnGuardada = tabGuardada ? $('tab-'+tabGuardada) : null;
   if(btnGuardada && !btnGuardada.classList.contains('hidden-perm')) switchTab(tabGuardada);
+  // Quien entra directo a Registro fotográfico (su única opción) también tiene su pantalla de inicio lista.
+  if($('view-regfoto').classList.contains('active') && $('rfsub-panel-nuevo').style.display !== 'none') rfPrepararForm();
   $('login-screen').style.display='none';
   $('app-shell').style.display='block';
   if(!listenersStarted){ listenersStarted = true; startListeners(); }
@@ -4445,6 +4447,7 @@ function startListeners(){
     snap.forEach(d=> participantesMaestroCache[d.id] = Object.assign({id:d.id}, d.data()));
     renderParticipantesMaestro();
     renderParticipantesNuevos();
+    rfRefrescarTiendas();
   }, onErr));
   listenerUnsubs.push(validadoresMaestroRef.onSnapshot(snap=>{
     validadoresMaestroCache = {};
@@ -18689,6 +18692,14 @@ function rfLlenarTiendas(sel, valor){
   sel.innerHTML = L.map(t=> `<option value="${esc(t)}">${esc(t === RF_CD ? RF_CD + ' (CD principal)' : t)}</option>`).join('');
   sel.value = valor && L.includes(valor) ? valor : RF_CD;
 }
+// Los participantes llegan después del inicio de sesión (y pueden cambiar): se actualizan las listas
+// de tiendas sin perder lo elegido. Quien entra directo a Registro fotográfico las ve completas.
+let rfTiendaElegida = '';   // lo que el usuario eligió en "¿Dónde haces el inventario?" en esta sesión
+function rfRefrescarTiendas(){
+  let ult = ''; try{ ult = localStorage.getItem('rf:tienda') || ''; }catch(e){}
+  rfLlenarTiendas($('rf-tienda'), rfTiendaElegida || ult || RF_CD);
+  if(rfBorrador) rfLlenarTiendas($('rf-participante'), $('rf-participante').value || RF_CD);
+}
 // CD: posición del layout (selector). Tienda: ubicación en texto libre, con las que ya se usaron ahí.
 function rfModoPosicion(){
   const cd = rfEsCD($('rf-participante').value), inp = $('rf-posicion');
@@ -18699,8 +18710,7 @@ function rfModoPosicion(){
     $('rf-ubicaciones').innerHTML = [...new Set(rfLista.filter(x=> x.participante === t && x.posicion).map(x=> x.posicion))].sort().map(u=> `<option value="${esc(u)}">`).join(''); }
 }
 function rfPrepararForm(){
-  let ult = ''; try{ ult = localStorage.getItem('rf:tienda') || ''; }catch(e){}
-  rfLlenarTiendas($('rf-tienda'), ult || RF_CD);
+  rfRefrescarTiendas();
   $('rf-mi-prefijo').textContent = `RF-${rfPrefijo()}-00001…`;
   rfMostrarInicio();
   if(rfBorrador){ if(!rfItems.length) rfItems.push(rfNuevoItem()); renderRfForm(); }
@@ -19072,6 +19082,7 @@ async function rfContinuar(id){
   }catch(err){ console.error(err); showToast('No se pudo abrir el borrador: ' + err.message, 'err'); }
 }
 $('btn-rf-iniciar').addEventListener('click', rfIniciar);
+$('rf-tienda').addEventListener('change', ()=>{ rfTiendaElegida = $('rf-tienda').value; });
 $('rf-mis-borradores').addEventListener('click', e=>{ const b = e.target.closest('[data-rf-continuar]'); if(b) rfContinuar(b.dataset.rfContinuar); });
 $('rf-participante').addEventListener('change', ()=>{ $('rf-posicion').value = ''; rfModoPosicion(); rfAutoguardar(); if(rfEsCD($('rf-participante').value)) rfAbrirSelectorPosicion(); else $('rf-posicion').focus(); });
 $('rf-posicion').addEventListener('input', ()=>{ if(!$('rf-posicion').readOnly) rfAutoguardar(); });
