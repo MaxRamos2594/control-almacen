@@ -95,7 +95,20 @@ function verificar(condicion, texto){
   await page.fill('#asi-input', '¿Dónde está el 17891?'); await page.click('#btn-asi-enviar');
   await page.waitForFunction(()=> !!document.querySelector('#asi-chat .asi-msg.error'), null, { timeout: 10000 });
   const err = await page.evaluate(()=> document.querySelector('#asi-chat .asi-msg.error').innerText);
-  verificar(/todavía no está activado.*AI Logic.*Gemini Developer API/s.test(err), `Sin AI Logic activado: "${err.slice(0, 90)}…"`);
+  verificar(/^Falta activar el servicio.*AI Logic.*Gemini Developer API.*Detalle técnico: AI\/api-not-enabled/s.test(err), `Sin AI Logic activado: "${err.slice(0, 90)}…"`);
+  // Errores reales de Google: cada causa con su indicación y el detalle técnico.
+  const causas = await page.evaluate(()=>{
+    const url = 'https://firebasevertexai.googleapis.com/v1beta/projects/layout-e25cc/models/gemini-2.5-flash:generateContent';
+    const e = (code, msg, extra)=> Object.assign(new Error(msg), { code, customData: extra });
+    return [
+      asiMensajeError(e('AI/fetch-error', `Error fetching from ${url}: [403 ] Requests to this API firebasevertexai.googleapis.com method google.firebase.vertexai.v1beta.GenerativeService.GenerateContent are blocked.`, { status: 403, errorDetails:[{ reason:'API_KEY_SERVICE_BLOCKED' }] })),
+      asiMensajeError(e('AI/fetch-error', `Error fetching from ${url}: [403 ] Requests from referer https://maxramos2594.github.io/ are blocked.`, { status: 403, errorDetails:[{ reason:'API_KEY_HTTP_REFERRER_BLOCKED' }] })),
+      asiMensajeError(e('AI/api-not-enabled', `Error fetching from ${url}: [403 ] Firebase AI Logic API has not been used in project 649129212982 before or it is disabled.`)),
+      asiMensajeError(e('AI/fetch-error', `Error fetching from ${url}: [404 ] models/gemini-2.5-flash is not found for API version v1beta.`)),
+      asiMensajeError(e('AI/fetch-error', `Error fetching from ${url}: [403 ] The caller does not have permission (PERMISSION_DENIED).`)) ].map(t=> t.split('\n')[0]);
+  });
+  verificar(/Restricciones de API.*Firebase AI Logic API/.test(causas[0]) && /Restricciones de aplicaciones/.test(causas[1]) && /^Falta activar/.test(causas[2]) && /no está disponible/.test(causas[3]) && /rechazó la consulta por permisos/.test(causas[4]),
+    `Errores de Google bien explicados (clave restringida, referer, sin activar, modelo, permisos): ${causas.map(c=> c.slice(0, 40)).join(' | ')}`);
   const log = await page.evaluate(async ()=> (await movimientosRef.get()).docs.map(d=> d.data()).filter(d=> d.tipo === 'asistente_consulta').map(d=> d.detalle).join(' | '));
   verificar(/¿El código 17891 qué día salió\? \| hola|hola \| ¿El código 17891 qué día salió\?/.test(log), `Las preguntas respondidas quedan en la bitácora: ${log}`);
 
