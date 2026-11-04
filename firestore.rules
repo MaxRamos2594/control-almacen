@@ -40,6 +40,10 @@ service cloud.firestore {
     function esDuenoRF() {
       return resource.data.get('usuario_email', '') == request.auth.token.email;
     }
+    // Participantes cuyos registros fotográficos puede ver (aunque los haya hecho otro usuario).
+    function rfDeSuParticipante() {
+      return resource.data.get('participante', '') in perms().get('rf_participantes', []);
+    }
 
     // Permisos de usuarios: cada quien lee el suyo; solo admin escribe.
     match /usuarios/{email} {
@@ -72,11 +76,11 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
-    // Registro fotográfico: cada usuario ve y trabaja solo sus registros;
-    // admin y quien tenga "rf_todos" ven los de todos (Reportes).
+    // Registro fotográfico: cada usuario ve y trabaja sus registros; además ve los de los
+    // participantes que tenga permitidos (permisos.rf_participantes); admin y "rf_todos" ven todos.
     // resource == null: leer un registro que todavía no existe (al generar el correlativo).
     match /registros_foto/{id} {
-      allow read: if registered() && (resource == null || esDuenoRF() || rfTodos());
+      allow read: if registered() && (resource == null || esDuenoRF() || rfTodos() || rfDeSuParticipante());
       allow create: if registered()
         && (request.resource.data.get('usuario_email', '') == request.auth.token.email || rfTodos());
       allow update: if registered() && (esDuenoRF() || rfTodos() || canDelete());

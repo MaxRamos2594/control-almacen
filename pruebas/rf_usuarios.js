@@ -32,6 +32,8 @@ const listo = page=> page.waitForFunction(()=> $('status-text').textContent === 
     await posicionesRef.doc('A01').set({ bloque_id:'B1', estado:'vacio' });
     await registrosFotoRef.doc('RF-ADM-00001').set({ estado:'CONFIRMADO', participante:'CD VENEZUELA', posicion:'A01', usuario:'Administrador', usuario_email: email,
       fecha_creacion:'2026-11-01T10:00:00.000Z', items:[{ sku:'P1', cantidad:5, fotos:[] }], cant_items:1, unidades:5, skus:['P1'] });
+    await registrosFotoRef.doc('RF-ADM-00002').set({ estado:'CONFIRMADO', participante:'CERCADO DE LIMA', posicion:'CAJA 1', usuario:'Administrador', usuario_email: email,
+      fecha_creacion:'2026-11-02T10:00:00.000Z', items:[{ sku:'P2', cantidad:3, fotos:[] }], cant_items:1, unidades:3, skus:['P2'] });
     await usuariosRef.doc('yolanda@ejemplo.com').set({ email:'yolanda@ejemplo.com', alias:'YOLANDA', permisos:{ reg_fotos:true } });
     await usuariosRef.doc('johan@ejemplo.com').set({ email:'johan@ejemplo.com', alias:'JOHAN', permisos:{ reg_fotos:true } });
   }, ADMIN.email);
@@ -45,7 +47,17 @@ const listo = page=> page.waitForFunction(()=> $('status-text').textContent === 
   verificar(true, 'Una tienda nueva del maestro aparece al momento en "¿Dónde haces el inventario?" (y desaparece si se borra)');
   await page.click('#btn-menu'); await page.click('#tab-usuarios');
   await page.waitForSelector('#us-lista [data-us-email="johan@ejemplo.com"]', { timeout: 10000 });
+  // Yolanda: además de lo suyo, ve los registros de CERCADO DE LIMA (de cualquier usuario).
+  await page.click('#us-lista [data-us-email="yolanda@ejemplo.com"]');
+  const chips = await page.evaluate(()=> [...document.querySelectorAll('#us-rf-part [data-us-rf-part]')].map(x=> x.dataset.usRfPart).join(','));
+  await page.check('#us-rf-part [data-us-rf-part="CERCADO DE LIMA"]'); await page.click('#btn-guardar-usuario');
+  await esperar(page, async ()=> (((await usuariosRef.doc('yolanda@ejemplo.com').get()).data() || {}).permisos.rf_participantes || []).join() === 'CERCADO DE LIMA', null, 10000);
+  verificar(chips === 'CD VENEZUELA,CERCADO DE LIMA,COMAS', `Usuarios: participantes del registro fotográfico para elegir (${chips}); a YOLANDA se le da CERCADO DE LIMA`);
+  // Tras guardar se recarga la lista: se espera a que vuelva a abrir a Yolanda antes de pasar a Johan.
+  await page.waitForFunction(()=> /Permisos guardados/.test($('us-msg').textContent) && $('us-email').value === 'yolanda@ejemplo.com' && !!document.querySelector('#us-lista [data-us-email="johan@ejemplo.com"]'), null, { timeout: 10000 });
+  await page.waitForTimeout(300);
   await page.click('#us-lista [data-us-email="johan@ejemplo.com"]');
+  await page.waitForFunction(()=> $('us-email').value === 'johan@ejemplo.com', null, { timeout: 10000 });
   // Un prefijo repetido (YOL es el automático de YOLANDA) se rechaza.
   await page.fill('#us-rf-prefijo', 'yol'); await page.click('#btn-guardar-usuario');
   const repetido = await page.textContent('#us-msg');
@@ -85,11 +97,11 @@ const listo = page=> page.waitForFunction(()=> $('status-text').textContent === 
   await page.waitForFunction(()=> rfLeidos, null, { timeout: 10000 });
   const vis = await page.evaluate(async ()=>{
     const err = async p=>{ try{ await p; return 'leyó'; }catch(e){ return e.code; } };
-    return { ids: rfLista.map(r=> r.id).join(','), usuarioOculto: $('rf-usuario-f').hidden, otro: await err(registrosFotoRef.doc('RF-ADM-00001').get()), todos: await err(registrosFotoRef.get()),
+    return { ids: rfLista.map(r=> r.id).join(','), usuarioOculto: $('rf-usuario-f').hidden, cercado: await err(registrosFotoRef.doc('RF-ADM-00002').get()), otro: await err(registrosFotoRef.doc('RF-ADM-00001').get()), todos: await err(registrosFotoRef.get()),
       ajeno: await err(registrosFotoRef.doc('RF-XYZ-00001').set({ usuario_email:'otro@ejemplo.com', estado:'BORRADOR' })) };
   });
-  verificar(vis.ids === 'RF-YOL-00001' && vis.usuarioOculto && vis.otro === 'permission-denied' && vis.todos === 'permission-denied' && vis.ajeno === 'permission-denied',
-    `Yolanda solo ve ${vis.ids}; las reglas le impiden leer lo de otro (${vis.otro}), listar todo (${vis.todos}) y crear a nombre de otro (${vis.ajeno})`);
+  verificar(vis.ids === 'RF-YOL-00001,RF-ADM-00002' && !vis.usuarioOculto && vis.otro === 'permission-denied' && vis.todos === 'permission-denied' && vis.ajeno === 'permission-denied' && vis.cercado === 'leyó',
+    `Yolanda ve lo suyo y lo de CERCADO DE LIMA (${vis.ids}); las reglas le impiden leer lo de otro participante (${vis.otro}), listar todo (${vis.todos}) y crear a nombre de otro (${vis.ajeno})`);
   erroresTodos.push(...errores); await browser.close();
 
   // 3) Johan (ver todos, prefijo JHN): ve los de todos, filtra por tienda y usuario y su correlativo es propio.
@@ -109,7 +121,7 @@ const listo = page=> page.waitForFunction(()=> $('status-text').textContent === 
   const rep = await page.evaluate(()=> ({ ids: rfLista.map(r=> r.id).sort().join(','), resumen: [...document.querySelectorAll('#rf-rep-usuarios tbody tr')].map(t=> t.innerText.replace(/\s+/g, ' ').trim()),
     bloques: [...document.querySelectorAll('#rf-rep-resumen tr[data-rfr-bloque]')].map(t=> t.dataset.rfrBloque).join(','), usuarioVisible: !$('rfr-usuario').hidden,
     usuarios: [...$('rfr-usuario').options].map(o=> o.textContent).join(',') }));
-  verificar(rep.ids === 'RF-ADM-00001,RF-JHN-00001,RF-YOL-00001' && rep.resumen.length === 3 && rep.resumen.some(t=> /^🏬 COMAS 👤 YOLANDA 1/.test(t)) && rep.resumen.some(t=> /^🏬 CD VENEZUELA 👤 Administrador 1 5/.test(t)) &&
+  verificar(rep.ids === 'RF-ADM-00001,RF-ADM-00002,RF-JHN-00001,RF-YOL-00001' && rep.resumen.length === 4 && rep.resumen.some(t=> /^🏬 COMAS 👤 YOLANDA 1/.test(t)) && rep.resumen.some(t=> /^🏬 CD VENEZUELA 👤 Administrador 1 5/.test(t)) &&
     /BLOQUE A/.test(rep.bloques) && /🏬 COMAS/.test(rep.bloques) && rep.usuarioVisible && /YOLANDA/.test(rep.usuarios),
     `Johan ve todos (${rep.ids}); resumen por tienda y usuario: ${rep.resumen.join(' | ')}; bloques: ${rep.bloques}`);
   await page.selectOption('#rfr-tienda', 'COMAS');
