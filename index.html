@@ -3862,8 +3862,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v226';
-const APP_UPDATED = '05/11/2026 10:00';
+const APP_VERSION = 'v227';
+const APP_UPDATED = '05/11/2026 13:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4160,6 +4160,8 @@ function switchTab(name){
     if(name==='mov') renderRejas('mov-bloques', false);
   }
   if(name==='ventaonline' && $('vosub-panel-vouchers').style.display !== 'none') voCargar();
+  // Usuarios se carga al abrir la pestaña de cualquier forma (menú o al recargar la página estando en ella).
+  if(name==='usuarios' && typeof cargarUsuarios === 'function') cargarUsuarios();
   try{ history.replaceState(null, '', '#tab-'+name); }catch(e){}
 }
 document.querySelectorAll('nav.tabs button').forEach(btn=> btn.addEventListener('click', ()=> switchTab(btn.dataset.tab)));
@@ -19593,11 +19595,20 @@ function renderUsLista(){
   $('us-lista').innerHTML = L.length ? L.map(u=> `<button type="button" class="us-item${u.id === usSel ? ' sel' : ''}" data-us-email="${esc(u.id)}"><b>${esc(u.alias || u.id)}</b><small>${esc(u.id)}</small><div class="us-tags">${usResumenCorto(u.permisos || {})}</div></button>`).join('')
     : '<div class="hint">Sin usuarios que coincidan.</div>';
 }
+// Cualquier falla (leer, ordenar o dibujar) o una espera larga se muestra con su motivo y un botón para reintentar.
 async function cargarUsuarios(){
-  try{ usLista = (await usuariosRef.get()).docs.map(d=> Object.assign({ id: d.id }, d.data())).sort((a, b)=> (a.alias || a.id).localeCompare(b.alias || b.id)); }
-  catch(err){ console.error(err); $('us-lista').innerHTML = `<div class="hint">No se pudo leer la lista: ${esc(err.message)}</div>`; return; }
-  renderUsLista();
+  $('us-lista').innerHTML = '<div class="hint">Cargando…</div>';
+  try{
+    const espera = new Promise((_, no)=> setTimeout(()=> no(new Error('la lectura tardó más de 20 segundos (revisa tu conexión)')), 20000));
+    const snap = await Promise.race([usuariosRef.get(), espera]);
+    usLista = snap.docs.map(d=> Object.assign({ id: d.id }, d.data())).sort((a, b)=> String(a.alias || a.id).localeCompare(String(b.alias || b.id)));
+    renderUsLista();
+  }catch(err){
+    console.error(err);
+    $('us-lista').innerHTML = `<div class="hint">⚠ No se pudo cargar la lista de usuarios: ${esc((err.code ? err.code + ' · ' : '') + (err.message || err))}</div><button type="button" class="btn btn-ghost btn-sm" id="btn-us-reintentar" style="margin-top:8px;">↻ Reintentar</button>`;
+  }
 }
+$('us-lista').addEventListener('click', e=>{ if(e.target.closest('#btn-us-reintentar')) cargarUsuarios(); });
 function usAbrir(email){
   const u = usLista.find(x=> x.id === email);
   if(!u) return;
@@ -19607,7 +19618,6 @@ function usAbrir(email){
   renderUsLista();
 }
 usArmarArbol(); usLlenar({ rotulos:false });
-$('tab-usuarios').addEventListener('click', cargarUsuarios);
 $('us-buscar').addEventListener('input', renderUsLista);
 $('btn-us-nuevo').addEventListener('click', ()=>{ limpiarFormularioUsuario(); $('us-email').focus(); });
 $('us-lista').addEventListener('click', e=>{ const b = e.target.closest('[data-us-email]'); if(b) usAbrir(b.dataset.usEmail); });
