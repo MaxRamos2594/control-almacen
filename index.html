@@ -302,6 +302,9 @@
   .rfl-0, .slot.rfl-0, .rfl-k.k0{background:#E4E6EA !important; border-color:#C2C7CE !important; color:#7A828C !important;}
   .rfl-1, .slot.rfl-1, .rfl-k.k1{background:#2E9E5B !important; border-color:#217A45 !important; color:#fff !important;}
   .rfl-n, .slot.rfl-n, .rfl-k.kn{background:#F26B0F !important; border-color:#C4520A !important; color:#fff !important; font-weight:700;}
+  .rfl-bloq, .slot.rfl-bloq, .rfl-k.kb{background:#2B2F36 !important; border-color:#111 !important; color:#fff !important;}
+  .rfl-merma, .slot.rfl-merma, .rfl-k.km{background:#7B3FA0 !important; border-color:#5A2C78 !important; color:#fff !important;}
+  .rfl-mapa .slot.rfl-bloq, .rfl-mapa .slot.rfl-merma{font-size:9px;}
   .rfl-mapa{overflow:auto; padding:4px 0 8px; max-height:75vh; -webkit-overflow-scrolling:touch; border:1px solid var(--line); border-radius:10px;}
   .rfl-lienzo{display:inline-block; min-width:100%; vertical-align:top;}
   .rfl-zoom{display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:4px 0 8px;} .rfl-zoom button{border:1px solid var(--line-strong); background:#fff; border-radius:8px; padding:6px 10px; font:inherit; font-size:13px; cursor:pointer;}
@@ -3464,10 +3467,11 @@
         <select id="rfl-estado" title="Qué registros se cuentan"><option value="CONFIRMADO">✔ Solo confirmados</option><option value="">Todos (incluye borradores)</option></select>
         <select id="rfl-usuario" title="De qué usuario"></select>
         <select id="rfl-apto" title="Apto para ajuste"><option value="">⚖ Apto ajuste: todos</option><option value="SI">✔ Aptos para ajuste</option><option value="NO">✖ No aptos</option><option value="SIN">… Sin marcar</option></select>
-        <div class="rfl-leyenda"><span><i class="rfl-0"></i>Sin RF</span><span><i class="rfl-1"></i>1 RF</span><span><i class="rfl-n"></i>Más de 1 RF</span></div>
+        <div class="rfl-leyenda"><span><i class="rfl-0"></i>Sin RF</span><span><i class="rfl-1"></i>1 RF</span><span><i class="rfl-n"></i>Más de 1 RF</span><span><i class="rfl-bloq"></i>🔒 Bloqueada</span><span><i class="rfl-merma"></i>♻ Merma</span></div>
         <button type="button" class="btn btn-ghost btn-sm" id="btn-rfl-recargar">↻ Actualizar</button>
       </div>
       <div class="rfl-resumen" id="rfl-resumen"></div>
+      <div class="hint" id="rfl-ayuda-marcas" style="margin-top:4px;"></div>
       <p class="hint" style="margin:6px 0 8px;">Toca una posición pintada para ver sus registros (si son varios, se recorren uno por uno).</p>
       <div class="rfl-zoom"><button type="button" data-rfl-zoom="-1" title="Alejar">🔍−</button><span id="rfl-zoom-txt">100%</span><button type="button" data-rfl-zoom="1" title="Acercar">🔍+</button><button type="button" data-rfl-zoom="ajustar" title="Que entre todo el layout en la pantalla">⤢ Ajustar</button><span class="hint">Desliza el layout hacia los lados para recorrerlo.</span></div>
       <div class="rfl-mapa" id="rfl-mapa"></div>
@@ -3937,8 +3941,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v237';
-const APP_UPDATED = '07/11/2026 17:00';
+const APP_VERSION = 'v238';
+const APP_UPDATED = '05/11/2026 18:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4447,7 +4451,7 @@ function tipoLabel(tipo){
     asistente_consulta:'Consulta al asistente IA', almacenamiento_huerfanos_eliminados:'Archivos huérfanos eliminados (almacenamiento)', almacenamiento_pdfs_comprimidos:'Archivos comprimidos (almacenamiento)',
     reg_foto_creado:'Registro fotográfico creado', reg_foto_eliminado:'Registro fotográfico eliminado', reg_foto_iniciado:'Registro fotográfico iniciado (borrador)',
     reg_foto_confirmado:'Registro fotográfico confirmado', reg_foto_descartado:'Borrador de registro fotográfico descartado', reg_foto_exportado:'Registro fotográfico exportado',
-    reg_foto_reabierto:'Registro fotográfico abierto para modificar', reg_foto_modificado:'Registro fotográfico modificado', reg_foto_modificacion_cancelada:'Modificación de registro fotográfico cancelada', reg_foto_apto_ajuste:'Registro fotográfico: apto para ajuste', reg_foto_posicion_cambiada:'Registro fotográfico: posición cambiada',
+    reg_foto_reabierto:'Registro fotográfico abierto para modificar', reg_foto_modificado:'Registro fotográfico modificado', reg_foto_modificacion_cancelada:'Modificación de registro fotográfico cancelada', reg_foto_apto_ajuste:'Registro fotográfico: apto para ajuste', reg_foto_posicion_cambiada:'Registro fotográfico: posición cambiada', reg_foto_layout_marca:'Registro fotográfico: posición bloqueada / merma',
     ingreso:'Entrada de pallet', movimiento:'Movimiento', retiro:'Salida (pallet completo)',
     retiro_campana:'Salida (campaña)', retiro_campana_revertido:'↺ Retiro de campaña revertido', producto_agregado:'Adición de producto', transferencia:'Transferencia entre pallets',
     bloqueo:'Bloqueo de posición', desbloqueo:'Desbloqueo de posición',
@@ -19626,18 +19630,68 @@ function renderRfLayout(){
   rflAplicarZoom();
   // Al abrir se ve el lado derecho (donde empieza el almacén); al repintar se mantiene donde estaba.
   requestAnimationFrame(()=>{ mapa.scrollLeft = primera ? mapa.scrollWidth : Math.max(0, mapa.scrollWidth - mapa.clientWidth - desdeDer); });
-  let c0 = 0, c1 = 0, cn = 0;
+  if(!rflMarcasLeidas) rflCargarMarcas();
+  let c0 = 0, c1 = 0, cn = 0, cb = 0, cm = 0;
   $('rfl-mapa').querySelectorAll('.slot[data-id]').forEach(el=>{
-    const id = el.dataset.id, n = (por.get(id) || []).length, p = posiciones[id] || {};
-    el.className = ['slot', p.tipo === 'piso' ? 'piso-slot' : '', n === 0 ? 'rfl-0' : n === 1 ? 'rfl-1' : 'rfl-n', rflSel === id ? 'rfl-sel' : ''].join(' ').replace(/\s+/g, ' ').trim();
-    el.textContent = n > 1 ? n : id.slice(-2);
-    el.title = `${id} · ${n ? n + ' RF' : 'sin RF'}`;
+    const id = el.dataset.id, n = (por.get(id) || []).length, p = posiciones[id] || {}, m = rflMarcas.get(id) || {};
+    // Bloqueada o de merma: se pinta con su color y no cuenta como "sin RF" (el número de RF se sigue viendo).
+    const marca = m.bloqueada ? 'rfl-bloq' : m.merma ? 'rfl-merma' : '';
+    el.className = ['slot', p.tipo === 'piso' ? 'piso-slot' : '', marca || (n === 0 ? 'rfl-0' : n === 1 ? 'rfl-1' : 'rfl-n'), rflSel === id ? 'rfl-sel' : ''].join(' ').replace(/\s+/g, ' ').trim();
+    el.textContent = marca ? (m.bloqueada ? '🔒' : '♻') + (n ? n : '') : (n > 1 ? n : id.slice(-2));
+    el.title = `${id} · ${n ? n + ' RF' : 'sin RF'}` + (m.bloqueada ? ' · 🔒 bloqueada' : '') + (m.merma ? ' · ♻ merma' : '') + (marca && m.por ? ` (${m.por})` : '');
+    if(m.bloqueada) cb++; else if(m.merma) cm++;
+    if(marca) return;
     if(n === 0) c0++; else if(n === 1) c1++; else cn++;
   });
   const fuera = [...por.keys()].filter(k=> !posiciones[k]).length;
   $('rfl-resumen').innerHTML = `<span class="rfl-k k1"><b>${esc(c1)}</b> con 1 RF</span><span class="rfl-k kn"><b>${esc(cn)}</b> con más de 1</span><span class="rfl-k k0"><b>${esc(c0)}</b> sin RF</span>` +
+    (cb ? `<span class="rfl-k kb"><b>${esc(cb)}</b> bloqueada(s)</span>` : '') + (cm ? `<span class="rfl-k km"><b>${esc(cm)}</b> de merma</span>` : '') +
     (fuera ? `<span class="hint">· ${esc(fuera)} posición(es) con RF fuera del layout</span>` : '') + rfAvisoAlcance();
   $('rfl-detalle').style.display = 'none';
+  $('rfl-ayuda-marcas').textContent = rflPuedeMarcar() ? '🖱 Clic derecho (o mantener presionado en celular/tablet) sobre una posición para bloquearla o marcarla como merma.' : '';
+}
+// ---- Marcas del layout del registro fotográfico: posiciones bloqueadas y de merma ----
+// Son solo del registro fotográfico (colección rf_marcas, un documento por posición):
+// no bloquean la posición en Movimientos ni tocan los pallets.
+const rfMarcasRef = db.collection('rf_marcas');
+let rflMarcas = new Map(), rflMarcasLeidas = false, rflMarcasCargando = false;
+const rflPuedeMarcar = ()=> !!(currentPermisos.admin || currentPermisos.eliminar || currentPermisos.rf_todos);
+async function rflCargarMarcas(){
+  if(rflMarcasCargando) return;
+  rflMarcasCargando = true;
+  try{
+    const snap = await rfMarcasRef.get();
+    rflMarcas = new Map(snap.docs.map(d=> [d.id, d.data()]));
+    rflMarcasLeidas = true;
+    if($('rfsub-panel-layout').style.display !== 'none') renderRfLayout();
+  }catch(err){ console.error('rf_marcas', err); rflMarcasLeidas = true; }
+  finally{ rflMarcasCargando = false; }
+}
+function rflMenu(x, y, id){
+  if(!rflPuedeMarcar()){ showToast('Solo un administrador o quien puede eliminar / ver todos marca posiciones.', 'err'); return; }
+  const m = rflMarcas.get(id) || {}, menu = $('ctx-menu');
+  menu.innerHTML = `<button disabled style="opacity:.7; cursor:default; font-weight:700;">📍 ${esc(id)}</button>` +
+    (m.bloqueada ? `<button data-rfl-m="desbloquear">🔓 Desbloquear posición</button>` : `<button data-rfl-m="bloquear">🔒 Bloquear posición</button>`) +
+    (m.merma ? `<button data-rfl-m="quitar-merma">✖ Quitar merma</button>` : `<button data-rfl-m="merma">♻ Marcar como posición de merma</button>`);
+  menu.style.display = 'block';
+  menu.style.left = Math.max(4, Math.min(x, innerWidth - menu.offsetWidth - 4)) + 'px';
+  menu.style.top = Math.max(4, Math.min(y, innerHeight - menu.offsetHeight - 4)) + 'px';
+  menu.querySelectorAll('[data-rfl-m]').forEach(b=> b.onclick = ()=>{ menu.style.display = 'none'; rflMarcar(id, b.dataset.rflM); });
+}
+async function rflMarcar(id, accion){
+  const antes = rflMarcas.get(id) || {}, m = { bloqueada: !!antes.bloqueada, merma: !!antes.merma };
+  if(accion === 'bloquear') m.bloqueada = true; else if(accion === 'desbloquear') m.bloqueada = false;
+  else if(accion === 'merma') m.merma = true; else if(accion === 'quitar-merma') m.merma = false;
+  const datos = Object.assign(m, { posicion: id, por: currentUserAlias || '', por_email: currentUserEmail || '', en: new Date().toISOString() });
+  try{
+    if(!m.bloqueada && !m.merma) await rfMarcasRef.doc(id).delete();
+    else await rfMarcasRef.doc(id).set(datos);
+    if(!m.bloqueada && !m.merma) rflMarcas.delete(id); else rflMarcas.set(id, datos);
+    const txt = { bloquear:'bloqueada', desbloquear:'desbloqueada', merma:'marcada como merma', 'quitar-merma':'sin merma' }[accion];
+    await logAccion('reg_foto_layout_marca', { detalle: `Posición ${id} ${txt} (layout del registro fotográfico)` });
+    showToast(`Posición ${id} ${txt}.`);
+    renderRfLayout();
+  }catch(err){ console.error(err); showToast('No se pudo guardar la marca: ' + (err.message || err), 'err'); }
 }
 function rflDetalle(id, desplazar){
   const L = (rflConteo().get(id) || []);
@@ -19663,7 +19717,29 @@ $('rfsub-panel-layout').addEventListener('click', e=>{
   }
 });
 ['rfl-estado', 'rfl-usuario', 'rfl-apto'].forEach(id=> $(id).addEventListener('change', ()=>{ rflSel = null; renderRfLayout(); }));
-$('btn-rfl-recargar').addEventListener('click', ()=> rfCargar(true));
+$('btn-rfl-recargar').addEventListener('click', ()=>{ rflMarcasLeidas = false; rfCargar(true); });
+// Clic derecho en una posición → menú de bloquear / merma. En celular y tablet: mantener presionado.
+let rflMenuEn = 0;
+$('rfl-mapa').addEventListener('contextmenu', e=>{
+  const slot = e.target.closest('.slot[data-id]'); if(!slot) return;
+  e.preventDefault();
+  if(Date.now() - rflMenuEn < 800) return;   // ya lo abrió la pulsación larga (celular/tablet)
+  rflMenu(e.clientX, e.clientY, slot.dataset.id);
+});
+(()=>{
+  let t = null, x0 = 0, y0 = 0, abierto = false;
+  const cancelar = ()=>{ clearTimeout(t); t = null; };
+  $('rfl-mapa').addEventListener('touchstart', e=>{
+    const slot = e.target.closest('.slot[data-id]'); abierto = false; cancelar();
+    if(!slot || e.touches.length !== 1) return;
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+    t = setTimeout(()=>{ t = null; abierto = true; rflMenuEn = Date.now(); rflMenu(x0, y0, slot.dataset.id); }, 550);
+  }, { passive: true });
+  $('rfl-mapa').addEventListener('touchmove', e=>{ if(t && Math.hypot(e.touches[0].clientX - x0, e.touches[0].clientY - y0) > 10) cancelar(); }, { passive: true });
+  // Al soltar después de abrir el menú no se hace el clic (no se abre el detalle ni se cierra el menú).
+  $('rfl-mapa').addEventListener('touchend', e=>{ cancelar(); if(abierto){ e.preventDefault(); abierto = false; } });
+  $('rfl-mapa').addEventListener('touchcancel', cancelar);
+})();
 // ---- Registros: lista, búsqueda, detalle ----
 async function rfCargar(forzar){
   if(rfLeidos && !forzar){ renderRfLista(); rfSiReportes(); if(rfAbrirPendiente){ const id = rfAbrirPendiente; rfAbrirPendiente = null; rfAbrir(id); } return; }

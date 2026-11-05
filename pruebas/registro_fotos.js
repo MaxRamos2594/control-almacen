@@ -327,6 +327,34 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
     lay2 === 'A01:0 A02:n A03:1 A04:0' && naranja === '2 rgb(242, 107, 15)' && detLay === 'RF-09999,RF-ADM-00001' && layOculto && lay3 === 'A01:0 A02:1 A03:1 A04:1' && idsDup === 0,
     `Layout: ${lay1} (gris/verde); con 2 RF A02 queda naranja y muestra "2"; al tocarla ${detLay}; con "Todos" ${lay3}`);
 
+  // Clic derecho: bloquear una posición y marcar otra como merma (solo del registro fotográfico).
+  const marcaRF = async (pos, accion)=>{
+    await page.click(`#rfl-mapa .slot[data-id="${pos}"]`, { button: 'right' });
+    await page.waitForSelector(`#ctx-menu [data-rfl-m="${accion}"]`, { state: 'visible', timeout: 5000 });
+    await page.click(`#ctx-menu [data-rfl-m="${accion}"]`);
+    await page.waitForFunction(([p, a])=> { const m = rflMarcas.get(p) || {}; return a === 'bloquear' ? m.bloqueada : a === 'merma' ? m.merma : !rflMarcas.has(p); }, [pos, accion], { timeout: 10000 });
+  };
+  await marcaRF('A01', 'bloquear');
+  await marcaRF('A04', 'merma');
+  const marcasVis = await page.evaluate(async ()=> {
+    const s = id=> document.querySelector(`#rfl-mapa .slot[data-id="${id}"]`);
+    const d1 = (await rfMarcasRef.doc('A01').get()).data() || {};
+    return { a01: s('A01').className + ' ' + s('A01').textContent + ' ' + getComputedStyle(s('A01')).backgroundColor,
+      a04: s('A04').className + ' ' + s('A04').textContent + ' ' + getComputedStyle(s('A04')).backgroundColor,
+      resumen: $('rfl-resumen').innerText.replace(/\s+/g, ' '), doc: d1.bloqueada === true && !!d1.por_email,
+      mov: !(posiciones.A01 || {}).bloqueada };
+  });
+  await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_layout_marcas.png'), fullPage: true });
+  const bitMarca = await page.evaluate(async ()=> (await movimientosRef.where('tipo', '==', 'reg_foto_layout_marca').get()).size);
+  verificar(/rfl-bloq/.test(marcasVis.a01) && /🔒/.test(marcasVis.a01) && /rgb\(43, 47, 54\)/.test(marcasVis.a01) &&
+    /rfl-merma/.test(marcasVis.a04) && /♻/.test(marcasVis.a04) && /rgb\(123, 63, 160\)/.test(marcasVis.a04) &&
+    /0 sin RF/.test(marcasVis.resumen) && /1 bloqueada/.test(marcasVis.resumen) && /1 de merma/.test(marcasVis.resumen) && marcasVis.doc && marcasVis.mov && bitMarca === 2,
+    `Layout: clic derecho bloquea A01 (🔒 negro) y marca A04 como merma (♻ morado); no cuentan como "sin RF" (${marcasVis.resumen}); no bloquea en Movimientos; queda en la bitácora`);
+  await marcaRF('A01', 'desbloquear');
+  await marcaRF('A04', 'quitar-merma');
+  const sinMarcas = await page.evaluate(async ()=> ({ lay: ['A01','A04'].map(c=> document.querySelector(`#rfl-mapa .slot[data-id="${c}"]`).classList.contains('rfl-0')).join(','), docs: (await rfMarcasRef.get()).size }));
+  verificar(sinMarcas.lay === 'true,true' && sinMarcas.docs === 0, `Layout: desbloquear y quitar merma devuelven las posiciones a gris y borran la marca (${JSON.stringify(sinMarcas)})`);
+
   // Modificar un registro confirmado: vuelve a la pantalla de registro y se confirma de nuevo.
   await cerrarDet(); await page.click('#rfsub-lista');
   await page.evaluate(()=> rfAbrir('RF-ADM-00002'));
@@ -373,7 +401,7 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   await page.waitForFunction(()=> !rfLista.some(r=> r.id === 'RF-ADM-00001'), null, { timeout: 15000 });
   const quedan = await page.evaluate(async ps=> (await Promise.all(ps.map(p=> storage.ref().child(p).getMetadata().then(()=> 1, ()=> 0)))).reduce((a, b)=> a + b, 0), paths);
   const log = await page.evaluate(async ()=> (await movimientosRef.get()).docs.map(d=> d.data().tipo).filter(t=> /^reg_foto/.test(t)).sort().join(','));
-  verificar(quedan === 0 && log === 'reg_foto_apto_ajuste,reg_foto_confirmado,reg_foto_confirmado,reg_foto_descartado,reg_foto_eliminado,reg_foto_exportado,reg_foto_exportado,reg_foto_iniciado,reg_foto_iniciado,reg_foto_iniciado,reg_foto_iniciado,reg_foto_modificacion_cancelada,reg_foto_modificado,reg_foto_reabierto,reg_foto_reabierto', `Eliminar borra el registro y sus ${paths.length} fotos; bitácora: ${log}`);
+  verificar(quedan === 0 && log === 'reg_foto_apto_ajuste,reg_foto_confirmado,reg_foto_confirmado,reg_foto_descartado,reg_foto_eliminado,reg_foto_exportado,reg_foto_exportado,reg_foto_iniciado,reg_foto_iniciado,reg_foto_iniciado,reg_foto_iniciado,reg_foto_layout_marca,reg_foto_layout_marca,reg_foto_layout_marca,reg_foto_layout_marca,reg_foto_modificacion_cancelada,reg_foto_modificado,reg_foto_reabierto,reg_foto_reabierto', `Eliminar borra el registro y sus ${paths.length} fotos; bitácora: ${log}`);
   verificar(!(await page.evaluate(()=> window.__xss || (window.__xssOrigen || []).length)), 'El texto malicioso en la descripción no se ejecutó');
 
   // Tablet (800 px): el SKU va solo arriba, ancho completo; debajo Cantidad y Descripción en la misma fila.
