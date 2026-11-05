@@ -101,6 +101,9 @@ const listo = page=> page.waitForFunction(()=> $('status-text').textContent === 
       ajeno: await err(registrosFotoRef.doc('RF-XYZ-00001').set({ usuario_email:'otro@ejemplo.com', estado:'BORRADOR' })) };
   });
   const aptoYol = await page.evaluate(()=>{ rfAbrir('RF-ADM-00002'); return { valor: ($('rf-apto-valor') || {}).textContent, botones: document.querySelectorAll('#rf-detalle [data-rf-apto]').length, puede: rfPuedeMarcarApto() }; });
+  const alcance = await page.evaluate(()=>{ setRfSubtab('layout'); renderRfLayout(); return ($('rfl-resumen').querySelector('.rf-alcance') || {}).textContent || ''; });
+  await page.evaluate(()=> setRfSubtab('lista'));
+  verificar(/Ves tus registros y los de CERCADO DE LIMA\. Para ver los de otros usuarios/.test(alcance), `Aviso de qué registros ve Yolanda: "${alcance.slice(0, 70)}…"`);
   verificar(aptoYol.valor === 'SIN MARCAR' && aptoYol.botones === 0 && !aptoYol.puede, 'Yolanda (sin "ver todos" ni editar) ve "Apto para ajuste: SIN MARCAR" pero no puede marcarlo');
   verificar(vis.ids === 'RF-YOL-00001,RF-ADM-00002' && !vis.usuarioOculto && vis.otro === 'permission-denied' && vis.todos === 'permission-denied' && vis.ajeno === 'permission-denied' && vis.cercado === 'leyó',
     `Yolanda ve lo suyo y lo de CERCADO DE LIMA (${vis.ids}); las reglas le impiden leer lo de otro participante (${vis.otro}), listar todo (${vis.todos}) y crear a nombre de otro (${vis.ajeno})`);
