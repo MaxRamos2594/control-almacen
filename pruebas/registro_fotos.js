@@ -332,7 +332,7 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
     await page.click(`#rfl-mapa .slot[data-id="${pos}"]`, { button: 'right' });
     await page.waitForSelector(`#ctx-menu [data-rfl-m="${accion}"]`, { state: 'visible', timeout: 5000 });
     await page.click(`#ctx-menu [data-rfl-m="${accion}"]`);
-    await page.waitForFunction(([p, a])=> { const m = rflMarcas.get(p) || {}; return a === 'bloquear' ? m.bloqueada : a === 'merma' ? m.merma : !rflMarcas.has(p); }, [pos, accion], { timeout: 10000 });
+    await page.waitForFunction(([p, a])=> { const m = rflMarcas.get(p) || {}; return a === 'bloquear' ? m.bloqueada : a === 'merma' ? m.merma : a === 'inventariar' ? m.inventariar : !rflMarcas.has(p); }, [pos, accion], { timeout: 10000 });
   };
   await marcaRF('A01', 'bloquear');
   await marcaRF('A04', 'merma');
@@ -352,6 +352,19 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
     `Layout: clic derecho bloquea A01 (🔒 negro) y marca A04 como merma (♻ morado); no cuentan como "sin RF" (${marcasVis.resumen}); no bloquea en Movimientos; queda en la bitácora`);
   await marcaRF('A01', 'desbloquear');
   await marcaRF('A04', 'quitar-merma');
+  // "Por inventariar": azul con 📋.
+  await page.click('#rfl-mapa .slot[data-id="A04"]', { button: 'right' });
+  const menuInv = await page.evaluate(()=> $('ctx-menu').innerText.replace(/\s+/g, ' '));
+  await page.evaluate(()=> $('ctx-menu').style.display = 'none');
+  await marcaRF('A04', 'inventariar');
+  const inv = await page.evaluate(()=>{ const el = document.querySelector('#rfl-mapa .slot[data-id="A04"]'); return { c: el.className + ' ' + el.textContent + ' ' + getComputedStyle(el).backgroundColor, r: $('rfl-resumen').innerText.replace(/\s+/g, ' '), ley: document.querySelector('.rfl-leyenda').innerText }; });
+  await page.click('#rfl-mapa .slot[data-id="A04"]', { button: 'right' });
+  await page.locator('#rfl-mapa .slot[data-id="A04"]').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_layout_inventariar.png') });
+  await page.evaluate(()=> $('ctx-menu').style.display = 'none');
+  verificar(/Por inventariar/.test(menuInv) && /rfl-inv/.test(inv.c) && /📋/.test(inv.c) && /rgb\(21, 101, 192\)/.test(inv.c) && /1 por inventariar/.test(inv.r) && /Por inventariar/.test(inv.ley),
+    `Layout: clic derecho → "📋 Por inventariar" pinta A04 de azul (${inv.r})`);
+  await marcaRF('A04', 'quitar-inventariar');
   const sinMarcas = await page.evaluate(async ()=> ({ lay: ['A01','A04'].map(c=> document.querySelector(`#rfl-mapa .slot[data-id="${c}"]`).classList.contains('rfl-0')).join(','), docs: (await rfMarcasRef.get()).size }));
   verificar(sinMarcas.lay === 'true,true' && sinMarcas.docs === 0, `Layout: desbloquear y quitar merma devuelven las posiciones a gris y borran la marca (${JSON.stringify(sinMarcas)})`);
 
@@ -401,7 +414,7 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   await page.waitForFunction(()=> !rfLista.some(r=> r.id === 'RF-ADM-00001'), null, { timeout: 15000 });
   const quedan = await page.evaluate(async ps=> (await Promise.all(ps.map(p=> storage.ref().child(p).getMetadata().then(()=> 1, ()=> 0)))).reduce((a, b)=> a + b, 0), paths);
   const log = await page.evaluate(async ()=> (await movimientosRef.get()).docs.map(d=> d.data().tipo).filter(t=> /^reg_foto/.test(t)).sort().join(','));
-  verificar(quedan === 0 && log === 'reg_foto_apto_ajuste,reg_foto_confirmado,reg_foto_confirmado,reg_foto_descartado,reg_foto_eliminado,reg_foto_exportado,reg_foto_exportado,reg_foto_iniciado,reg_foto_iniciado,reg_foto_iniciado,reg_foto_iniciado,reg_foto_layout_marca,reg_foto_layout_marca,reg_foto_layout_marca,reg_foto_layout_marca,reg_foto_modificacion_cancelada,reg_foto_modificado,reg_foto_reabierto,reg_foto_reabierto', `Eliminar borra el registro y sus ${paths.length} fotos; bitácora: ${log}`);
+  verificar(quedan === 0 && log === 'reg_foto_apto_ajuste,reg_foto_confirmado,reg_foto_confirmado,reg_foto_descartado,reg_foto_eliminado,reg_foto_exportado,reg_foto_exportado,reg_foto_iniciado,reg_foto_iniciado,reg_foto_iniciado,reg_foto_iniciado,reg_foto_layout_marca,reg_foto_layout_marca,reg_foto_layout_marca,reg_foto_layout_marca,reg_foto_layout_marca,reg_foto_layout_marca,reg_foto_modificacion_cancelada,reg_foto_modificado,reg_foto_reabierto,reg_foto_reabierto', `Eliminar borra el registro y sus ${paths.length} fotos; bitácora: ${log}`);
   verificar(!(await page.evaluate(()=> window.__xss || (window.__xssOrigen || []).length)), 'El texto malicioso en la descripción no se ejecutó');
 
   // Tablet (800 px): el SKU va solo arriba, ancho completo; debajo Cantidad y Descripción en la misma fila.
