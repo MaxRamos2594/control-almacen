@@ -437,6 +437,22 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
     'Con "Sí, está vacía" se confirma sin detalle (ubicacion_vacia, 0 und, con la foto de la posición); la lista y el detalle lo muestran');
   await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_vacia.png'), fullPage: true });
 
+  // Cambiar solo la posición desde el detalle: no se abre otra pantalla y la marca de apto se mantiene.
+  await page.evaluate(async ()=>{ await rfMarcarApto('RF-ADM-00004', 'SI'); setRfSubtab('lista'); });
+  await page.waitForFunction(()=> rfLeidos, null, { timeout: 10000 });
+  await page.evaluate(()=> rfAbrir('RF-ADM-00004'));
+  await page.click('#rf-detalle [data-rf-cambiar-pos]');
+  await page.fill('#rf-pos-nueva', 'zz9'); await page.click('#rf-detalle [data-rf-pos-guardar]');
+  const malaPos = await page.evaluate(async ()=> ({ bd: (await registrosFotoRef.doc('RF-ADM-00004').get()).data().posicion, sigue: !!$('rf-pos-nueva') }));
+  await page.fill('#rf-pos-nueva', 'a01'); await page.press('#rf-pos-nueva', 'Enter');
+  await page.waitForFunction(()=> /A01/.test(($('rf-det-pos') || {}).innerText || '') && !$('rf-pos-nueva'), null, { timeout: 10000 });
+  const cambioPos = await page.evaluate(async ()=> ({ bd: (await registrosFotoRef.doc('RF-ADM-00004').get()).data(), abierto: !$('rf-det-modal').hidden, pestana: $('rfsub-panel-lista').style.display,
+    apto: ($('rf-apto-valor') || {}).textContent }));
+  verificar(malaPos.bd === 'A04' && malaPos.sigue && cambioPos.bd.posicion === 'A01' && cambioPos.bd.apto_ajuste === 'SI' && cambioPos.bd.estado === 'CONFIRMADO' && cambioPos.bd.cambios_posicion.length === 1 &&
+    cambioPos.bd.cambios_posicion[0].de === 'A04' && cambioPos.bd.posicion_cambiada_por === 'Administrador' && cambioPos.abierto && cambioPos.pestana === 'block' && cambioPos.apto === 'SÍ',
+    'Cambiar posición desde el detalle: ZZ9 (fuera del layout) se rechaza; A04 → A01 se guarda ahí mismo, queda quién y cuándo, y el apto para ajuste sigue en SÍ');
+  await page.evaluate(()=> rfCerrarDetalle());
+
   // Layout en celular: con muchos nichos no entra; se puede desplazar de punta a punta y hay zoom.
   await page.evaluate(async ()=>{
     const ts = firebase.firestore.FieldValue.serverTimestamp();
