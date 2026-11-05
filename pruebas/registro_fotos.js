@@ -29,6 +29,8 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
 (async ()=>{
   await limpiarEmuladores();
   const { browser, page, errores } = await abrirApp({ scriptInicial: `(${detectorXss.toString()})(); (${camaraFalsa.toString()})();` });
+  // El detalle de un registro se abre encima de la lista: antes de cambiar de pestaña se cierra (como haría el usuario).
+  const cerrarDet = ()=> page.evaluate(()=> typeof rfCerrarDetalle === 'function' && rfCerrarDetalle());
   await page.waitForFunction(()=> $('status-text').textContent === 'Sincronizado en vivo', null, { timeout: 20000 });
   await page.evaluate(async ()=>{
     await productosRef.doc('P100').set({ codigo:'P100', descripcion:'PELOTA ROJA', costo:1 });
@@ -167,13 +169,24 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   await page.click('#btn-rf-ver-todas');
   verificar(/1 \/ 4/.test(await page.textContent('#rf-lightbox-pie')) && !(await page.evaluate(()=> $('rf-lightbox').hidden)), 'Botón "Ver las 4 fotos" abre la galería desde la primera');
   await page.keyboard.press('Escape');
+  // El detalle es una ventana encima de la lista: Esc cierra la foto pero no el detalle; «← Volver a la lista» lo cierra.
+  const modalAbierto = await page.evaluate(()=> !$('rf-det-modal').hidden && document.body.classList.contains('rf-modal-abierto') && getComputedStyle($('rf-det-modal')).position === 'fixed');
+  await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_detalle_ventana.png') });
+  await page.click('#btn-rf-det-volver');
+  const trasVolver = await page.evaluate(()=> ({ cerrado: $('rf-det-modal').hidden, lista: !!$('rf-lista').offsetParent, scroll: !document.body.classList.contains('rf-modal-abierto') }));
+  await page.click('#rf-lista [data-rf-abrir="RF-ADM-00001"]');
+  const reabre = await page.evaluate(()=> !$('rf-det-modal').hidden);
+  await page.keyboard.press('Escape');
+  const conEsc = await page.evaluate(()=> $('rf-det-modal').hidden);
+  verificar(modalAbierto && trasVolver.cerrado && trasVolver.lista && trasVolver.scroll && reabre && conEsc,
+    'El detalle se abre en una ventana encima de la lista; «← Volver a la lista» y Esc lo cierran y la lista queda donde estaba');
 
   // Exportar a Excel (matriz sin fotos) y a PDF (con fotos).
   await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_registro.png'), fullPage: true });
   verificar(/1–1 de 1 · página 1 de 1/.test(await page.textContent('#rf-pag-txt')), 'Registros: paginado de 10 en 10 (siempre visible)');
   // Los reportes (Excel y PDF) están en la pestaña "Reportes".
   verificar(await page.evaluate(()=> !document.querySelector('#rfsub-panel-lista #btn-rf-excel') && !!document.querySelector('#rfsub-panel-reportes #btn-rf-excel')), 'Excel y PDF migrados a "📊 Reportes"');
-  await page.click('#rfsub-reportes');
+  await cerrarDet(); await page.click('#rfsub-reportes');
   await page.waitForSelector('#rf-rep-resumen [data-rfr-bloque="BLOQUE A"]', { timeout: 10000 });
   const [xl] = await Promise.all([page.waitForEvent('download'), page.click('#btn-rf-excel')]);
   const xlPath = path.join(__dirname, 'salida', 'rf_export.xlsx'); await xl.saveAs(xlPath);
@@ -197,7 +210,7 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   await page.evaluate(async b64=>{ const d = await pdfjsLib.getDocument({ data: Uint8Array.from(atob(b64), c=> c.charCodeAt(0)) }).promise; const pg = await d.getPage(1), vp = pg.getViewport({ scale: 1.3 });
     const cv = document.createElement('canvas'); cv.width = vp.width; cv.height = vp.height * 0.6; await pg.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise; window.__pdfPng = cv.toDataURL('image/png'); }, fs.readFileSync(pdfPath).toString('base64'));
   fs.writeFileSync(path.join(__dirname, 'salida', 'rf_export_pdf.png'), Buffer.from((await page.evaluate(()=> window.__pdfPng)).split(',')[1], 'base64'));
-  await page.click('#rfsub-lista');
+  await cerrarDet(); await page.click('#rfsub-lista');
 
   // Búsqueda y segundo registro (correlativo siguiente).
   await page.fill('#rf-q', 'pelota'); await page.waitForTimeout(150);
@@ -206,7 +219,7 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   const b2 = await page.evaluate(()=> rfFiltrados().length);
   await page.fill('#rf-q', '');
   verificar(b1 === 'RF-ADM-00001' && b2 === 0, 'Buscador por SKU/descripción');
-  await page.click('#rfsub-nuevo');
+  await cerrarDet(); await page.click('#rfsub-nuevo');
   verificar(await page.evaluate(()=> !$('rf-inicio').hidden && $('rf-form').hidden && !rfBorrador), 'En "Nuevo registro" espera a que se inicie el siguiente');
   await page.click('#btn-rf-iniciar');
   await page.waitForFunction(()=> !$('rf-pos-modal').hidden && $('rf-correlativo').value === 'RF-ADM-00002', null, { timeout: 15000 });
@@ -241,7 +254,7 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   await page.click('#rf-pos-lista [data-rf-pos="A04"]');
   await page.waitForFunction(()=> !$('cam-modal').hidden, null, { timeout: 10000 }); await page.click('#cam-cerrar');
   await page.evaluate(()=> rfGuardarAhora());
-  await page.click('#rfsub-lista'); await page.waitForFunction(()=> rfLista.some(r=> r.id === 'RF-ADM-00004'), null, { timeout: 15000 });
+  await cerrarDet(); await page.click('#rfsub-lista'); await page.waitForFunction(()=> rfLista.some(r=> r.id === 'RF-ADM-00004'), null, { timeout: 15000 });
   await page.selectOption('#rf-estado-f', 'BORRADOR');
   const borrs = await page.evaluate(()=> rfFiltrados().map(r=> r.id).join(','));
   await page.selectOption('#rf-estado-f', 'CONFIRMADO');
@@ -252,7 +265,7 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   verificar(borrs === 'RF-ADM-00004' && confs === 'RF-ADM-00002,RF-ADM-00001' && cont, `Filtro por estado: borradores ${borrs} · confirmados ${confs}; el borrador se puede continuar desde su detalle`);
 
   // Reporte por bloque y por posición: comprimidos; al tocar uno se despliegan sus RF y se pueden ocultar.
-  await page.click('#rfsub-reportes');
+  await cerrarDet(); await page.click('#rfsub-reportes');
   await page.waitForSelector('#rf-rep-resumen [data-rfr-bloque="BLOQUE A"]', { timeout: 10000 });
   const ids = ()=> page.evaluate(()=> [...document.querySelectorAll('#rfsub-panel-reportes [data-rfr-ver]')].map(r=> r.dataset.rfrVer).sort().join(','));
   const nTiles = ()=> page.evaluate(()=> document.querySelectorAll('#rfsub-panel-reportes .rf-rep-tile').length);
@@ -281,7 +294,7 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   verificar(detPos === 'RF-ADM-00001' && posOculta && posOculta2, `Reporte por posición: A02 → ${detPos}; se oculta con «Ocultar» o tocándola otra vez; clic en un RF abre su detalle`);
 
   // Layout: gris sin RF, verde con 1, naranja con más de 1; tocar una posición muestra sus RF.
-  await page.click('#rfsub-layout');
+  await cerrarDet(); await page.click('#rfsub-layout');
   await page.waitForSelector('#rfl-mapa .slot[data-id="A02"]', { timeout: 10000 });
   const clases = ()=> page.evaluate(()=> ['A01','A02','A03','A04'].map(c=>{ const el = document.querySelector(`#rfl-mapa .slot[data-id="${c}"]`); return c + ':' + (el.classList.contains('rfl-n') ? 'n' : el.classList.contains('rfl-1') ? '1' : '0'); }).join(' '));
   const lay1 = await clases();
@@ -306,7 +319,7 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
     `Layout: ${lay1} (gris/verde); con 2 RF A02 queda naranja y muestra "2"; al tocarla ${detLay}; con "Todos" ${lay3}`);
 
   // Modificar un registro confirmado: vuelve a la pantalla de registro y se confirma de nuevo.
-  await page.click('#rfsub-lista');
+  await cerrarDet(); await page.click('#rfsub-lista');
   await page.evaluate(()=> rfAbrir('RF-ADM-00002'));
   // Apto para ajuste: se marca desde el detalle (el admin puede).
   await page.click('#rf-detalle [data-rf-apto="SI"]');
@@ -334,7 +347,7 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
     'Confirmar cambios: queda CONFIRMADO con la cantidad nueva y quién lo modificó; la foto quitada se borra recién al confirmar');
   verificar(!('apto_ajuste' in tras2.bd) && !('apto_ajuste_por' in tras2.bd), 'Al modificar un registro, su marca "apto para ajuste" vuelve a quedar sin marcar');
   // Cancelar una modificación deja todo como estaba.
-  await page.click('#rfsub-lista'); await page.waitForFunction(()=> rfLista.some(r=> r.id === 'RF-ADM-00002' && r.estado === 'CONFIRMADO'), null, { timeout: 10000 });
+  await cerrarDet(); await page.click('#rfsub-lista'); await page.waitForFunction(()=> rfLista.some(r=> r.id === 'RF-ADM-00002' && r.estado === 'CONFIRMADO'), null, { timeout: 10000 });
   await page.evaluate(()=> rfAbrir('RF-ADM-00002')); await page.click('#btn-rf-modificar');
   await page.waitForFunction(()=> !$('rf-form').hidden && $('rf-correlativo').value === 'RF-ADM-00002', null, { timeout: 15000 });
   await page.click('#rf-items [data-rf-item="0"] [data-rf-paso="1"]'); await page.evaluate(()=> rfGuardarAhora());
@@ -342,7 +355,7 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   await page.waitForFunction(()=> !rfBorrador && !$('rf-inicio').hidden, null, { timeout: 10000 });
   const canc = await page.evaluate(async ()=> (await registrosFotoRef.doc('RF-ADM-00002').get()).data());
   verificar(canc.estado === 'CONFIRMADO' && canc.items[0].cantidad === 2 && !('modificando' in canc) && !('respaldo' in canc), '"↩ Cancelar cambios" deja el RF como estaba confirmado');
-  await page.click('#rfsub-lista'); await page.waitForFunction(()=> rfLista.length >= 3, null, { timeout: 10000 });
+  await cerrarDet(); await page.click('#rfsub-lista'); await page.waitForFunction(()=> rfLista.length >= 3, null, { timeout: 10000 });
 
   // Eliminar (borra también las fotos).
   const paths = await page.evaluate(()=> { const r = rfLista.find(x=> x.id === 'RF-ADM-00001'); return [r.foto_posicion.path, ...r.items.flatMap(it=> it.fotos.map(f=> f.path))]; });
@@ -380,7 +393,7 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   verificar(ancho <= 390 && camW >= 389, `En celular entra en la pantalla (${ancho}px) y la cámara ocupa toda la pantalla (${Math.round(camW)}px)`);
 
   // Celular: Reportes comprimidos; un bloque desplegado entra en la pantalla.
-  await page.click('#rfsub-reportes');
+  await cerrarDet(); await page.click('#rfsub-reportes');
   await page.waitForSelector('#rf-rep-resumen [data-rfr-bloque="BLOQUE A"]', { timeout: 10000 });
   await page.click('#rf-rep-resumen [data-rfr-bloque="BLOQUE A"]'); await page.evaluate(()=> $('toast-container').innerHTML = ''); await page.waitForTimeout(200);
   const anchoRep = await page.evaluate(()=> document.documentElement.scrollWidth);
