@@ -306,6 +306,7 @@
   .rfl-merma, .slot.rfl-merma, .rfl-k.km{background:#7B3FA0 !important; border-color:#5A2C78 !important; color:#fff !important;}
   .rfl-inv, .slot.rfl-inv, .rfl-k.ki{background:#1565C0 !important; border-color:#0D47A1 !important; color:#fff !important;}
   .rfl-mapa .slot.rfl-bloq, .rfl-mapa .slot.rfl-merma, .rfl-mapa .slot.rfl-inv{font-size:9px;}
+  .rfl-mapa.rfl-eligiendo .slot{cursor:crosshair !important;}
   .rfl-mapa{overflow:auto; padding:4px 0 8px; max-height:75vh; -webkit-overflow-scrolling:touch; border:1px solid var(--line); border-radius:10px;}
   .rfl-lienzo{display:inline-block; min-width:100%; vertical-align:top;}
   .rfl-zoom{display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:4px 0 8px;} .rfl-zoom button{border:1px solid var(--line-strong); background:#fff; border-radius:8px; padding:6px 10px; font:inherit; font-size:13px; cursor:pointer;}
@@ -3473,6 +3474,7 @@
       </div>
       <div class="rfl-resumen" id="rfl-resumen"></div>
       <div class="hint" id="rfl-ayuda-marcas" style="margin-top:4px;"></div>
+      <div class="rf-alcance" id="rfl-fusion-aviso" style="display:none; background:#e3f2fd; border-color:#90caf9;"></div>
       <p class="hint" style="margin:6px 0 8px;">Toca una posición pintada para ver sus registros (si son varios, se recorren uno por uno).</p>
       <div class="rfl-zoom"><button type="button" data-rfl-zoom="-1" title="Alejar">🔍−</button><span id="rfl-zoom-txt">100%</span><button type="button" data-rfl-zoom="1" title="Acercar">🔍+</button><button type="button" data-rfl-zoom="ajustar" title="Que entre todo el layout en la pantalla">⤢ Ajustar</button><span class="hint">Desliza el layout hacia los lados para recorrerlo.</span></div>
       <div class="rfl-mapa" id="rfl-mapa"></div>
@@ -3942,8 +3944,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v239';
-const APP_UPDATED = '05/11/2026 19:00';
+const APP_VERSION = 'v240';
+const APP_UPDATED = '05/11/2026 20:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4452,7 +4454,7 @@ function tipoLabel(tipo){
     asistente_consulta:'Consulta al asistente IA', almacenamiento_huerfanos_eliminados:'Archivos huérfanos eliminados (almacenamiento)', almacenamiento_pdfs_comprimidos:'Archivos comprimidos (almacenamiento)',
     reg_foto_creado:'Registro fotográfico creado', reg_foto_eliminado:'Registro fotográfico eliminado', reg_foto_iniciado:'Registro fotográfico iniciado (borrador)',
     reg_foto_confirmado:'Registro fotográfico confirmado', reg_foto_descartado:'Borrador de registro fotográfico descartado', reg_foto_exportado:'Registro fotográfico exportado',
-    reg_foto_reabierto:'Registro fotográfico abierto para modificar', reg_foto_modificado:'Registro fotográfico modificado', reg_foto_modificacion_cancelada:'Modificación de registro fotográfico cancelada', reg_foto_apto_ajuste:'Registro fotográfico: apto para ajuste', reg_foto_posicion_cambiada:'Registro fotográfico: posición cambiada', reg_foto_layout_marca:'Registro fotográfico: posición bloqueada / merma / por inventariar',
+    reg_foto_reabierto:'Registro fotográfico abierto para modificar', reg_foto_modificado:'Registro fotográfico modificado', reg_foto_modificacion_cancelada:'Modificación de registro fotográfico cancelada', reg_foto_apto_ajuste:'Registro fotográfico: apto para ajuste', reg_foto_posicion_cambiada:'Registro fotográfico: posición cambiada', reg_foto_layout_marca:'Registro fotográfico: posición bloqueada / merma / por inventariar', reg_foto_fusionado:'Registros fotográficos fusionados',
     ingreso:'Entrada de pallet', movimiento:'Movimiento', retiro:'Salida (pallet completo)',
     retiro_campana:'Salida (campaña)', retiro_campana_revertido:'↺ Retiro de campaña revertido', producto_agregado:'Adición de producto', transferencia:'Transferencia entre pallets',
     bloqueo:'Bloqueo de posición', desbloqueo:'Desbloqueo de posición',
@@ -19649,7 +19651,7 @@ function renderRfLayout(){
     (cb ? `<span class="rfl-k kb"><b>${esc(cb)}</b> bloqueada(s)</span>` : '') + (cm ? `<span class="rfl-k km"><b>${esc(cm)}</b> de merma</span>` : '') + (ci ? `<span class="rfl-k ki"><b>${esc(ci)}</b> por inventariar</span>` : '') +
     (fuera ? `<span class="hint">· ${esc(fuera)} posición(es) con RF fuera del layout</span>` : '') + rfAvisoAlcance();
   $('rfl-detalle').style.display = 'none';
-  $('rfl-ayuda-marcas').textContent = rflPuedeMarcar() ? '🖱 Clic derecho (o mantener presionado en celular/tablet) sobre una posición para bloquearla, marcarla como merma o por inventariar.' : '';
+  $('rfl-ayuda-marcas').textContent = rflPuedeMarcar() ? '🖱 Clic derecho (o mantener presionado en celular/tablet) sobre una posición para bloquearla, marcarla como merma o por inventariar, o fusionar sus registros.' : '';
 }
 // ---- Marcas del layout del registro fotográfico: posiciones bloqueadas y de merma ----
 // Son solo del registro fotográfico (colección rf_marcas, un documento por posición):
@@ -19670,16 +19672,100 @@ async function rflCargarMarcas(){
 }
 function rflMenu(x, y, id){
   if(!rflPuedeMarcar()){ showToast('Solo un administrador o quien puede eliminar / ver todos marca posiciones.', 'err'); return; }
-  const m = rflMarcas.get(id) || {}, menu = $('ctx-menu');
+  const m = rflMarcas.get(id) || {}, menu = $('ctx-menu'), nReg = (rflConteo().get(id) || []).length;
+  rflFusionCancelar();
   menu.innerHTML = `<button disabled style="opacity:.7; cursor:default; font-weight:700;">📍 ${esc(id)}</button>` +
     (m.bloqueada ? `<button data-rfl-m="desbloquear">🔓 Desbloquear posición</button>` : `<button data-rfl-m="bloquear">🔒 Bloquear posición</button>`) +
     (m.merma ? `<button data-rfl-m="quitar-merma">✖ Quitar merma</button>` : `<button data-rfl-m="merma">♻ Marcar como posición de merma</button>`) +
-    (m.inventariar ? `<button data-rfl-m="quitar-inventariar">✔ Quitar "por inventariar"</button>` : `<button data-rfl-m="inventariar">📋 Por inventariar</button>`);
+    (m.inventariar ? `<button data-rfl-m="quitar-inventariar">✔ Quitar "por inventariar"</button>` : `<button data-rfl-m="inventariar">📋 Por inventariar</button>`) +
+    (rflPuedeFusionar() && nReg > 1 ? `<button data-rfl-f="aqui">🔗 Fusionar los ${esc(nReg)} registros de esta posición</button>` : '') +
+    (rflPuedeFusionar() && nReg ? `<button data-rfl-f="otra">🔗 Fusionar con otra posición…</button>` : '');
   menu.style.display = 'block';
   menu.style.left = Math.max(4, Math.min(x, innerWidth - menu.offsetWidth - 4)) + 'px';
   menu.style.top = Math.max(4, Math.min(y, innerHeight - menu.offsetHeight - 4)) + 'px';
   menu.querySelectorAll('[data-rfl-m]').forEach(b=> b.onclick = ()=>{ menu.style.display = 'none'; rflMarcar(id, b.dataset.rflM); });
+  menu.querySelectorAll('[data-rfl-f]').forEach(b=> b.onclick = ()=>{
+    menu.style.display = 'none';
+    if(b.dataset.rflF === 'aqui') rflFusionarConfirmar((rflConteo().get(id) || []).map(r=> r.id), id);
+    else rflFusionIniciar(id);
+  });
 }
+// ---- Fusionar registros desde el layout ----
+// Junta 2 o más registros confirmados en uno solo (el más antiguo de la posición que queda conserva su número):
+// los productos con el mismo SKU se suman en una línea con las fotos de ambos; los otros registros se borran.
+// Borra registros de otros usuarios, por eso solo admin o quien puede eliminar.
+const rflPuedeFusionar = ()=> !!(currentPermisos.admin || currentPermisos.eliminar);
+let rflFusion = null;   // { desde: posición } mientras se elige la otra posición
+function rflFusionIniciar(id){
+  rflFusion = { desde: id };
+  $('rfl-mapa').classList.add('rfl-eligiendo');
+  $('rfl-fusion-aviso').innerHTML = `🔗 Toca la posición con la que se fusiona <b>${esc(id)}</b> <button type="button" class="btn btn-ghost btn-sm" data-rfl-fusion-cancelar>✖ Cancelar</button>`;
+  $('rfl-fusion-aviso').style.display = 'block';
+}
+function rflFusionCancelar(){
+  rflFusion = null;
+  if($('rfl-mapa')) $('rfl-mapa').classList.remove('rfl-eligiendo');
+  if($('rfl-fusion-aviso')) $('rfl-fusion-aviso').style.display = 'none';
+}
+// Con la segunda posición elegida: se pregunta en cuál de las dos queda el registro.
+function rflFusionElegida(otra, x, y){
+  const desde = rflFusion.desde; rflFusionCancelar();
+  if(otra === desde){ showToast('Elige una posición distinta.', 'err'); return; }
+  const ids = [...(rflConteo().get(desde) || []), ...(rflConteo().get(otra) || [])].map(r=> r.id);
+  if(!(rflConteo().get(otra) || []).length){ showToast(`La posición ${otra} no tiene registros para fusionar. Para mover el registro usa «✏ Cambiar» la posición en su detalle.`, 'err'); return; }
+  const menu = $('ctx-menu');
+  menu.innerHTML = `<button disabled style="opacity:.7; cursor:default; font-weight:700;">🔗 ${esc(desde)} + ${esc(otra)}: ¿en qué posición queda?</button>` +
+    [desde, otra].map(p=> `<button data-rfl-queda="${esc(p)}">📍 Queda en ${esc(p)}</button>`).join('') + `<button data-rfl-queda="">✖ Cancelar</button>`;
+  menu.style.display = 'block';
+  menu.style.left = Math.max(4, Math.min(x, innerWidth - menu.offsetWidth - 4)) + 'px';
+  menu.style.top = Math.max(4, Math.min(y, innerHeight - menu.offsetHeight - 4)) + 'px';
+  menu.querySelectorAll('[data-rfl-queda]').forEach(b=> b.onclick = ()=>{ menu.style.display = 'none'; if(b.dataset.rflQueda) rflFusionarConfirmar(ids, b.dataset.rflQueda); });
+}
+function rflFusionarConfirmar(ids, posFinal){
+  const regs = ids.map(id=> rfLista.find(r=> r.id === id)).filter(Boolean);
+  if(regs.length < 2){ showToast('Se necesitan al menos 2 registros para fusionar.', 'err'); return; }
+  if(regs.some(r=> rfEstadoReg(r) !== 'CONFIRMADO' || r.modificando)){ showToast('Solo se fusionan registros confirmados (hay un borrador o uno en modificación).', 'err'); return; }
+  const { destino, otros } = rfFusionOrden(regs, posFinal);
+  if(!confirm(`¿Fusionar ${regs.map(r=> `${r.id} (${r.posicion})`).join(', ')} en un solo registro?\n\nQueda ${destino.id} en la posición ${posFinal} con todos los productos y fotos (los SKU repetidos se suman). Se borra${otros.length > 1 ? 'n' : ''} ${otros.map(r=> r.id).join(', ')}. No se puede deshacer.`)) return;
+  rfFusionar(regs, posFinal);
+}
+function rfFusionOrden(regs, posFinal){
+  const ord = regs.slice().sort((a, b)=> String(a.fecha_creacion || '').localeCompare(String(b.fecha_creacion || '')) || String(a.id).localeCompare(String(b.id)));
+  const destino = ord.find(r=> r.posicion === posFinal) || ord[0];
+  return { destino, otros: ord.filter(r=> r !== destino) };
+}
+async function rfFusionar(regs, posFinal){
+  const { destino, otros } = rfFusionOrden(regs, posFinal), porSku = new Map();
+  [destino, ...otros].forEach(r=> (r.items || []).forEach(it=>{
+    const k = String(it.sku || '').trim().toUpperCase(), x = porSku.get(k), cant = Number(it.cantidad) || 0;
+    if(x){ x.cantidad += cant; x.fotos.push(...(it.fotos || [])); if(!x.descripcion) x.descripcion = it.descripcion || ''; }
+    else porSku.set(k, { sku: k, descripcion: it.descripcion || '', cantidad: cant, fotos: [...(it.fotos || [])] });
+  }));
+  const items = [...porSku.values()], ahora = new Date().toISOString();
+  // La foto de la posición: la del registro que queda (o la del primero que tenga); las otras se borran.
+  const fotoPos = destino.foto_posicion || (otros.find(r=> r.foto_posicion) || {}).foto_posicion || null;
+  const borrar = otros.map(r=> r.foto_posicion && r.foto_posicion.path).filter(p=> p && p !== (fotoPos && fotoPos.path));
+  const cambios = { posicion: posFinal, items, cant_items: items.length, unidades: items.reduce((t, it)=> t + it.cantidad, 0), skus: items.map(it=> it.sku),
+    foto_posicion: fotoPos, ubicacion_vacia: items.length ? false : !!destino.ubicacion_vacia,
+    fusionado_de: [...(destino.fusionado_de || []), ...otros.map(r=> r.id)], fusionado_por: currentUserAlias, fusionado_por_email: currentUserEmail, fusionado_en: ahora, actualizado_en: ahora };
+  if(destino.posicion !== posFinal) Object.assign(cambios, { posicion_cambiada_por: currentUserAlias, posicion_cambiada_en: ahora });
+  // Si el que queda no tiene marca de apto y otro sí, se conserva esa marca.
+  const conApto = !rfApto(destino) && otros.find(r=> rfApto(r));
+  if(conApto) ['apto_ajuste', 'apto_ajuste_por', 'apto_ajuste_por_email', 'apto_ajuste_en'].forEach(k=>{ if(conApto[k] !== undefined) cambios[k] = conApto[k]; });
+  try{
+    const batch = db.batch();
+    batch.update(registrosFotoRef.doc(destino.id), cambios);
+    otros.forEach(r=> batch.delete(registrosFotoRef.doc(r.id)));
+    await batch.commit();
+    await Promise.allSettled(borrar.map(p=> storage.ref().child(p).delete()));
+    await logAccion('reg_foto_fusionado', { detalle: `${otros.map(r=> r.id).join(', ')} → ${destino.id} · posición ${posFinal} · ${items.length} producto(s), ${cambios.unidades} und` });
+    Object.assign(destino, cambios);
+    const fuera = new Set(otros.map(r=> r.id)); rfLista = rfLista.filter(r=> !fuera.has(r.id));
+    showToast(`Fusionado: queda ${destino.id} en ${posFinal} (${items.length} producto(s), ${cambios.unidades} und).`, 'ok');
+    renderRfLista(); rfSiReportes(); renderRfLayout();
+  }catch(err){ console.error(err); showToast('No se pudo fusionar: ' + (err.message || err), 'err'); }
+}
+
 async function rflMarcar(id, accion){
   const antes = rflMarcas.get(id) || {}, m = { bloqueada: !!antes.bloqueada, merma: !!antes.merma, inventariar: !!antes.inventariar };
   if(accion === 'bloquear') m.bloqueada = true; else if(accion === 'desbloquear') m.bloqueada = false;
@@ -19713,6 +19799,8 @@ $('rfsub-panel-layout').addEventListener('click', e=>{
   if(e.target.closest('[data-rfl-ocultar]')){ rflSel = null; renderRfLayout(); return; }
   const z = e.target.closest('[data-rfl-zoom]'); if(z){ rflZoomA(z.dataset.rflZoom); return; }
   if(chip){ toggleModoCompacto(); renderRfLayout(); return; }
+  if(e.target.closest('[data-rfl-fusion-cancelar]')){ rflFusionCancelar(); return; }
+  if(slot && rflFusion){ e.stopPropagation(); rflFusionElegida(slot.dataset.id, e.clientX, e.clientY); return; }   // sin propagar: si no, el clic cierra el menú que se acaba de abrir
   if(slot){
     const id = slot.dataset.id, L = (rflConteo().get(id) || []).slice().sort((a, b)=> String(b.fecha_creacion || '').localeCompare(String(a.fecha_creacion || '')));
     if(!L.length) return;
@@ -19722,6 +19810,7 @@ $('rfsub-panel-layout').addEventListener('click', e=>{
 });
 ['rfl-estado', 'rfl-usuario', 'rfl-apto'].forEach(id=> $(id).addEventListener('change', ()=>{ rflSel = null; renderRfLayout(); }));
 $('btn-rfl-recargar').addEventListener('click', ()=>{ rflMarcasLeidas = false; rfCargar(true); });
+document.addEventListener('keydown', e=>{ if(e.key === 'Escape' && rflFusion) rflFusionCancelar(); });
 // Clic derecho en una posición → menú de bloquear / merma. En celular y tablet: mantener presionado.
 let rflMenuEn = 0;
 $('rfl-mapa').addEventListener('contextmenu', e=>{
@@ -19865,6 +19954,7 @@ function rfAbrir(id, desdeGrupo){
     rfBloqueApto(r) +
     `<span class="rf-lbl">📷 Foto de la posición</span><div class="rf-fotos" style="margin-bottom:12px;">${r.foto_posicion ? foto(r.foto_posicion, `Posición ${r.posicion}`).replace('class="rf-thumb"', 'class="rf-thumb" style="width:160px; height:160px;"') : '—'}</div>` +
     (r.ubicacion_vacia ? `<div class="rf-vacia-det">📭 <b>Ubicación vacía</b>: se registró sin productos (solo con la foto de la posición).</div>` : '') +
+    ((r.fusionado_de || []).length ? `<div class="hint" style="margin:6px 0;">🔗 Fusionado con ${esc(r.fusionado_de.join(', '))} · ${esc(r.fusionado_por || '')} · ${esc(rfFechaTxt(r.fusionado_en))}</div>` : '') +
     `<table class="rf-det-items"><thead><tr><th>SKU</th><th>Descripción</th><th class="num">Cantidad</th><th>Fotos</th></tr></thead><tbody>` +
     (r.items || []).map(it=> `<tr><td><b>${esc(it.sku)}</b></td><td>${esc(it.descripcion || '')}</td><td class="num">${esc(anFmt(it.cantidad))}</td><td><div class="rf-fotos">${(it.fotos || []).map(f=> foto(f, `${it.sku} · ${it.descripcion || ''}`)).join('')}</div></td></tr>`).join('') +
     `</tbody><tfoot><tr><th colspan="2">Total</th><th class="num">${esc(anFmt(r.unidades || 0))}</th><th></th></tr></tfoot></table>`;
