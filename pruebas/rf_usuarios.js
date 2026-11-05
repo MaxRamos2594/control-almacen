@@ -170,6 +170,12 @@ const listo = page=> page.waitForFunction(()=> $('status-text').textContent === 
   await page.selectOption('#rfl-usuario', ''); const otraVez = await conteo();
   verificar(opciones === '👤 Todos los usuarios,Administrador,JOHAN' && todos === 'A01:RF-ADM-00001+RF-JHN-00099' && soloJohan === 'A01:RF-JHN-00099' && soloAdmin === 'A01:RF-ADM-00001' && otraVez === todos,
     `Layout con filtro de usuario (${opciones}): todos → ${todos}; JOHAN → ${soloJohan}; Administrador → ${soloAdmin}`);
+  // Filtro de apto para ajuste en el Layout.
+  await page.selectOption('#rfl-apto', 'SI'); const layoutSi = await conteo();
+  await page.selectOption('#rfl-apto', 'SIN'); const layoutSin = await conteo();
+  await page.selectOption('#rfl-apto', 'NO'); const layoutNo = await conteo();
+  await page.selectOption('#rfl-apto', '');
+  verificar(layoutSi === 'A01:RF-ADM-00001' && layoutSin === 'A01:RF-JHN-00099' && layoutNo === '', `Layout con filtro de apto: aptos → ${layoutSi}; sin marcar → ${layoutSin}; no aptos → (ninguno en el CD)`);
   // Aptos: listado por código con suma de cantidad, posiciones distintas, filtros, orden y Excel.
   await page.evaluate(async ()=>{
     const base = { estado:'CONFIRMADO', participante:'CD VENEZUELA', usuario:'JOHAN', usuario_email:'johan@ejemplo.com', fecha_creacion:'2026-11-04T10:00:00.000Z' };
