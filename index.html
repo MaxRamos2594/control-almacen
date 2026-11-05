@@ -3464,6 +3464,7 @@
       <div class="rfl-barra">
         <select id="rfl-estado" title="Qué registros se cuentan"><option value="CONFIRMADO">✔ Solo confirmados</option><option value="">Todos (incluye borradores)</option></select>
         <select id="rfl-usuario" title="De qué usuario"></select>
+        <select id="rfl-apto" title="Apto para ajuste"><option value="">⚖ Apto ajuste: todos</option><option value="SI">✔ Aptos para ajuste</option><option value="NO">✖ No aptos</option><option value="SIN">… Sin marcar</option></select>
         <div class="rfl-leyenda"><span><i class="rfl-0"></i>Sin RF</span><span><i class="rfl-1"></i>1 RF</span><span><i class="rfl-n"></i>Más de 1 RF</span></div>
         <button type="button" class="btn btn-ghost btn-sm" id="btn-rfl-recargar">↻ Actualizar</button>
       </div>
@@ -3930,8 +3931,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v234';
-const APP_UPDATED = '07/11/2026 10:00';
+const APP_VERSION = 'v235';
+const APP_UPDATED = '07/11/2026 12:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -19583,8 +19584,8 @@ function rflLlenarUsuarios(){
   sel.value = L.some(([e])=> e === v) ? v : '';
 }
 function rflConteo(){
-  const est = $('rfl-estado').value, us = $('rfl-usuario').value, por = new Map();
-  rfLista.filter(r=> rfEsCD(rfTiendaDe(r)) && (!est || rfEstadoReg(r) === est) && (!us || r.usuario_email === us)).forEach(r=>{ const k = r.posicion || ''; if(!por.has(k)) por.set(k, []); por.get(k).push(r); });
+  const est = $('rfl-estado').value, us = $('rfl-usuario').value, apto = $('rfl-apto').value, por = new Map();
+  rfLista.filter(r=> rfEsCD(rfTiendaDe(r)) && (!est || rfEstadoReg(r) === est) && (!us || r.usuario_email === us) && rfAptoCumple(r, apto)).forEach(r=>{ const k = r.posicion || ''; if(!por.has(k)) por.set(k, []); por.get(k).push(r); });
   return por;
 }
 // Qué registros ve el usuario (para que se entienda por qué otro ve más o menos).
@@ -19650,7 +19651,7 @@ $('rfsub-panel-layout').addEventListener('click', e=>{
   if(chip){ toggleModoCompacto(); renderRfLayout(); return; }
   if(slot){ if(rflSel === slot.dataset.id){ rflSel = null; renderRfLayout(); } else rflDetalle(slot.dataset.id, true); }
 });
-['rfl-estado', 'rfl-usuario'].forEach(id=> $(id).addEventListener('change', ()=>{ rflSel = null; renderRfLayout(); }));
+['rfl-estado', 'rfl-usuario', 'rfl-apto'].forEach(id=> $(id).addEventListener('change', ()=>{ rflSel = null; renderRfLayout(); }));
 $('btn-rfl-recargar').addEventListener('click', ()=> rfCargar(true));
 // ---- Registros: lista, búsqueda, detalle ----
 async function rfCargar(forzar){
