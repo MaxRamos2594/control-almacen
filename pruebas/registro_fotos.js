@@ -180,6 +180,13 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   const filas = XLSX.utils.sheet_to_json(XLSX.readFile(xlPath).Sheets['Registro fotográfico']);
   verificar(filas.length === 2 && filas[0]['Correlativo'] === 'RF-ADM-00001' && filas[0]['Posición'] === 'A02' && filas[0]['Estado'] === 'CONFIRMADO' && filas[0]['Generado por'] === 'Administrador' && filas[0]['Confirmado por'] === 'Administrador' && filas[0]['SKU'] === 'P100' && filas[0]['Cantidad'] === 3 && filas[1]['SKU'] === 'X-55' && filas[1]['Cantidad'] === 5 && !Object.keys(filas[0]).some(k=> /url|foto_/i.test(k)),
     `Excel como matriz (una fila por producto, sin fotos): ${Object.keys(filas[0]).join(' | ')}`);
+  // Fechas: el día como fecha real de Excel (con formato dd/mm/yyyy) y la hora aparte.
+  const hoja = XLSX.readFile(xlPath, { cellNF: true }).Sheets['Registro fotográfico'];
+  const cab = Object.keys(hoja).filter(k=> /^[A-Z]+1$/.test(k)).reduce((m, k)=> (m[hoja[k].v] = k.replace('1', ''), m), {});
+  const fc = hoja[cab['Fecha de creación'] + '2'], ff = hoja[cab['Fecha de confirmación'] + '2'];
+  const hoy = await page.evaluate(()=>{ const d = new Date(); return (Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(1899, 11, 30)) / 86400000; });
+  verificar(fc.t === 'n' && fc.v === hoy && fc.z === 'dd/mm/yyyy' && ff.t === 'n' && ff.z === 'dd/mm/yyyy' && /^\d{2}:\d{2}$/.test(filas[0]['Hora de creación']) && /^\d{2}:\d{2}$/.test(filas[0]['Hora de confirmación']),
+    `Excel: "Fecha de creación" y "Fecha de confirmación" son fechas de Excel solo con el día (${fc.w || fc.v}); la hora va aparte (${filas[0]['Hora de creación']})`);
   const [pdf] = await Promise.all([page.waitForEvent('download', { timeout: 60000 }), page.click('#btn-rf-pdf')]);
   const pdfPath = path.join(__dirname, 'salida', 'rf_export.pdf'); await pdf.saveAs(pdfPath);
   const crudo = fs.readFileSync(pdfPath, 'latin1'), imagenes = (crudo.match(/\/Subtype \/Image/g) || []).length;

@@ -275,6 +275,13 @@
   .rf-apto-btns{display:flex; gap:8px; flex-wrap:wrap;} .rf-apto-btns .btn{border:1px solid var(--line-strong); background:#fff;}
   .rf-apto-btns [data-rf-apto="SI"].activo{background:#2E9E5B; color:#fff; border-color:#2E9E5B;} .rf-apto-btns [data-rf-apto="NO"].activo{background:#C4483A; color:#fff; border-color:#C4483A;}
   .rf-apto-chip{display:inline-block; padding:1px 7px; border-radius:999px; font-size:10.5px; font-weight:700;} .rf-apto-chip.si{background:#e7f6ec; color:#1d7a46; border:1px solid #2E9E5B;} .rf-apto-chip.no{background:#fdecea; color:#a3352a; border:1px solid #C4483A;}
+  .rfa-acciones{display:flex; flex-wrap:wrap; gap:8px; margin:8px 0;}
+  .rfa-tabla{width:100%; border-collapse:collapse; font-size:13px;} .rfa-tabla th, .rfa-tabla td{padding:7px 8px; border-bottom:1px solid var(--line); text-align:left; vertical-align:middle;}
+  .rfa-tabla .num{text-align:right; white-space:nowrap;} .rfa-tabla thead th[data-rfa-orden]{cursor:pointer; user-select:none; white-space:nowrap; background:#f1f4f8;} .rfa-tabla thead th[data-rfa-orden]:hover{background:#e6edf6;}
+  .rfa-filtros-col th{padding:4px 6px; background:#f8fafc;} #rfa-tabla .rfa-filtros-col input{width:100%; min-width:70px; height:auto; padding:5px 7px; font-size:12px; line-height:1.3; border:1px solid var(--line-strong); border-radius:6px; margin:0;}
+  .rfa-fila{cursor:pointer;} .rfa-fila:hover{background:#f6f9fd;} .rfa-fila.abierta{background:#eef4fb;} .rfa-tabla tfoot th{background:#eaf1fb; font-weight:800;}
+  .rfa-rf{border:1px solid var(--line-strong); background:#fff; border-radius:999px; padding:2px 8px; font:inherit; font-size:11.5px; cursor:pointer;}
+  @media (max-width:600px){ #view-regfoto > .subtabs button{flex:1 1 30%;} }
   .rfl-barra{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:8px;}
   .rfl-leyenda{display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--ink-soft);} .rfl-leyenda span{display:inline-flex; align-items:center; gap:5px;}
   .rfl-leyenda i{display:inline-block; width:14px; height:14px; border-radius:3px; border:1px solid;}
@@ -3329,6 +3336,7 @@
     <button id="rfsub-lista">🗂 Registros</button>
     <button id="rfsub-reportes">📊 Reportes</button>
     <button id="rfsub-layout">🗺 Layout</button>
+    <button id="rfsub-aptos">📋 Aptos</button>
   </div>
 
   <div id="rfsub-panel-nuevo">
@@ -3410,6 +3418,31 @@
       <p class="hint" style="margin-bottom:8px;">Posiciones con inventario. Toca una posición para ver sus RF.</p>
       <div id="rf-rep-tabla"></div>
       <div id="rf-rep-pag"></div>
+    </div>
+  </div>
+  <div id="rfsub-panel-aptos" style="display:none;">
+    <div class="panel">
+      <h3>📋 Listado por código</h3>
+      <p class="hint" style="margin-bottom:8px;">Suma de cantidades y posiciones distintas por código, con los filtros que elijas. Toca un código para ver sus posiciones; toca un título de columna para ordenar.</p>
+      <div class="rf-filtros">
+        <select id="rfa-apto" title="Apto para ajuste"><option value="SI">✔ Aptos para ajuste</option><option value="NO">✖ No aptos</option><option value="SIN">… Sin marcar</option><option value="">Todos</option></select>
+        <select id="rfa-estado" title="Estado"><option value="CONFIRMADO">✔ Solo confirmados</option><option value="">Todos los estados</option></select>
+        <select id="rfa-tienda" title="Tienda"></select><select id="rfa-usuario" title="Usuario"></select>
+        <label>Desde <input type="date" id="rfa-desde"></label><label>Hasta <input type="date" id="rfa-hasta"></label>
+        <input type="search" id="rfa-q" placeholder="Buscar código, descripción o posición…" autocomplete="off">
+      </div>
+      <div class="rfa-acciones"><button type="button" class="btn btn-primary btn-sm" id="btn-rfa-excel">⬇ Exportar a Excel</button><button type="button" class="btn btn-ghost btn-sm" id="btn-rfa-limpiar">✕ Limpiar filtros</button><button type="button" class="btn btn-ghost btn-sm" id="btn-rfa-recargar">↻ Actualizar</button></div>
+      <div class="rf-rep-scroll">
+        <table class="rfa-tabla" id="rfa-tabla">
+          <thead>
+            <tr><th data-rfa-orden="sku">Código<span class="rfa-fl"></span></th><th data-rfa-orden="descripcion">Descripción<span class="rfa-fl"></span></th><th class="num" data-rfa-orden="cantidad">Cantidad total<span class="rfa-fl"></span></th><th class="num" data-rfa-orden="posiciones">Posiciones (distintas)<span class="rfa-fl"></span></th><th class="num" data-rfa-orden="registros">Registros (RF)<span class="rfa-fl"></span></th><th>Tiendas</th></tr>
+            <tr class="rfa-filtros-col"><th><input id="rfa-f-sku" placeholder="Filtrar…"></th><th><input id="rfa-f-desc" placeholder="Filtrar…"></th><th><input id="rfa-f-cant" placeholder="&gt;10, 5-20…"></th><th><input id="rfa-f-pos" placeholder="&gt;1…"></th><th><input id="rfa-f-rf" placeholder="&gt;1…"></th><th></th></tr>
+          </thead>
+          <tbody id="rfa-body"></tbody>
+          <tfoot id="rfa-foot"></tfoot>
+        </table>
+      </div>
+      <div id="rfa-pag"></div>
     </div>
   </div>
   <div id="rfsub-panel-layout" style="display:none;">
@@ -3884,8 +3917,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v232';
-const APP_UPDATED = '06/11/2026 16:00';
+const APP_VERSION = 'v233';
+const APP_UPDATED = '06/11/2026 19:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -18574,14 +18607,15 @@ const RF_POR_PAGINA = 10, RF_LADO_MAX = 1280;
 let rfPosFotos = [], rfItems = [], rfLista = [], rfLeidos = false, rfPagina = 0, rfSel = null;
 const rfNuevoItem = ()=> ({ sku:'', descripcion:'', cantidad:'', fotos:[] });
 function setRfSubtab(name){
-  ['nuevo','lista','reportes','layout'].forEach(n=>{ $('rfsub-'+n).classList.toggle('active', n===name); $('rfsub-panel-'+n).style.display = n===name ? 'block' : 'none'; });
-  if(name === 'lista' || name === 'reportes' || name === 'layout') rfCargar();
+  ['nuevo','lista','reportes','layout','aptos'].forEach(n=>{ $('rfsub-'+n).classList.toggle('active', n===name); $('rfsub-panel-'+n).style.display = n===name ? 'block' : 'none'; });
+  if(name === 'lista' || name === 'reportes' || name === 'layout' || name === 'aptos') rfCargar();
   else rfPrepararForm();
 }
 $('rfsub-nuevo').addEventListener('click', ()=> setRfSubtab('nuevo'));
 $('rfsub-lista').addEventListener('click', ()=> setRfSubtab('lista'));
 $('rfsub-reportes').addEventListener('click', ()=> setRfSubtab('reportes'));
 $('rfsub-layout').addEventListener('click', ()=> setRfSubtab('layout'));
+$('rfsub-aptos').addEventListener('click', ()=> setRfSubtab('aptos'));
 $('tab-regfoto').addEventListener('click', ()=>{ if($('rfsub-panel-nuevo').style.display !== 'none') rfPrepararForm(); else rfCargar(); });
 
 // ---- Fotos: achicar antes de subir ----
@@ -18923,21 +18957,42 @@ const rfFotosFormulario = ()=> [...rfPosFotos.map(f=> ({ url: f.url, pie: 'Posic
 
 // ---- Exportar: Excel (matriz, sin fotos) y PDF (con fotos) de lo filtrado ----
 const rfFechaTxt = iso=> iso ? new Date(iso).toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }) : '';
+// Fechas del Excel: el día como fecha real de Excel (número de serie, sin hora, para filtrar y ordenar)
+// y la hora aparte como texto. Se calcula con la fecha local, así no se corre de día.
+function rfExcelFecha(v){
+  const d = v && v.toDate ? v.toDate() : (v ? new Date(v) : null);
+  if(!d || isNaN(d)) return '';
+  return (Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(1899, 11, 30)) / 86400000;
+}
+function rfExcelHora(v){
+  const d = v && v.toDate ? v.toDate() : (v ? new Date(v) : null);
+  return d && !isNaN(d) ? d.toLocaleTimeString('es-PE', { hour:'2-digit', minute:'2-digit', hour12:false }) : '';
+}
+function rfExcelFormatoFechas(ws, columnas){
+  const rango = XLSX.utils.decode_range(ws['!ref']);
+  for(let c = rango.s.c; c <= rango.e.c; c++){
+    const cab = ws[XLSX.utils.encode_cell({ r: 0, c })];
+    if(!cab || !columnas.includes(cab.v)) continue;
+    for(let f = 1; f <= rango.e.r; f++){ const celda = ws[XLSX.utils.encode_cell({ r: f, c })]; if(celda && celda.t === 'n') celda.z = 'dd/mm/yyyy'; }
+  }
+}
 $('btn-rf-excel').addEventListener('click', ()=>{
   const L = rfFiltradosReporte();
   if(!L.length){ showToast('No hay registros para exportar con estos filtros.', 'err'); return; }
   const filas = [];
   // Una fila por producto; una ubicación vacía va en una sola fila sin producto (cantidad 0).
   L.forEach(r=>{
-    const base = { 'Correlativo': r.id, 'Fecha de creación': rfFechaTxt(r.fecha_creacion), 'Participante': r.participante || '',
-      'Posición': r.posicion || '', 'Estado': rfEstadoReg(r), 'Generado por': r.usuario || '', 'Confirmado por': r.confirmado_por || '', 'Fecha de confirmación': rfFechaTxt(r.confirmado_en),
+    const base = { 'Correlativo': r.id, 'Fecha de creación': rfExcelFecha(r.fecha_creacion), 'Hora de creación': rfExcelHora(r.fecha_creacion), 'Participante': r.participante || '',
+      'Posición': r.posicion || '', 'Estado': rfEstadoReg(r), 'Generado por': r.usuario || '', 'Confirmado por': r.confirmado_por || '',
+      'Fecha de confirmación': rfExcelFecha(r.confirmado_en), 'Hora de confirmación': rfExcelHora(r.confirmado_en),
       'Apto para ajuste': rfAptoTxt(r), 'Marcado por': r.apto_ajuste_por || '' };
     const items = r.items || [];
     if(!items.length){ if(r.ubicacion_vacia) filas.push(Object.assign({}, base, { 'Ubicación vacía': 'SÍ', 'N° producto': '', 'SKU': '', 'Descripción': 'UBICACIÓN VACÍA', 'Cantidad': 0, 'N° fotos': 0 })); return; }
     items.forEach((it, k)=> filas.push(Object.assign({}, base, { 'Ubicación vacía': 'NO', 'N° producto': k + 1, 'SKU': it.sku, 'Descripción': it.descripcion || '', 'Cantidad': Number(it.cantidad) || 0, 'N° fotos': (it.fotos || []).length })));
   });
   const ws = XLSX.utils.json_to_sheet(filas);
-  ws['!cols'] = [12, 18, 18, 10, 12, 16, 16, 18, 14, 16, 10, 11, 16, 44, 10, 9].map(w=> ({ wch: w }));
+  rfExcelFormatoFechas(ws, ['Fecha de creación', 'Fecha de confirmación']);
+  ws['!cols'] = [12, 12, 8, 18, 10, 12, 16, 16, 12, 8, 14, 16, 10, 11, 16, 44, 10, 9].map(w=> ({ wch: w }));
   ws['!autofilter'] = { ref: ws['!ref'] };
   const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Registro fotográfico');
   XLSX.writeFile(wb, `registro_fotografico_${new Date().toISOString().slice(0, 10)}.xlsx`);
@@ -19405,7 +19460,105 @@ $('btn-rfr-recargar').addEventListener('click', ()=> rfCargar(true));
 function rfSiReportes(){
   if($('rfsub-panel-reportes').style.display !== 'none') renderRfReportes();
   if($('rfsub-panel-layout').style.display !== 'none') renderRfLayout();
+  if($('rfsub-panel-aptos').style.display !== 'none') renderRfAptos();
 }
+// ---- Aptos: listado tipo Excel por código (suma de cantidad y posiciones distintas) ----
+let rfaOrden = { campo: 'cantidad', dir: -1 }, rfaPag = 0, rfaAbierto = null;
+const RFA_POR_PAGINA = 50;
+// Filtro numérico de una columna: "10", ">10", ">=10", "<5", "<=5", "=3" o "2-8".
+function rfaNum(v, f){
+  f = String(f || '').replace(/\s+/g, ''); if(!f) return true;
+  let m;
+  if((m = f.match(/^(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)$/))) return v >= +m[1] && v <= +m[2];
+  if((m = f.match(/^(>=|<=|>|<|=)?(\d+(?:\.\d+)?)$/))){ const n = +m[2];
+    return ({ '>': v > n, '>=': v >= n, '<': v < n, '<=': v <= n, '=': v === n })[m[1] || '='] ; }
+  return true;
+}
+function rfaFiltrados(){
+  const apto = $('rfa-apto').value, est = $('rfa-estado').value, ti = $('rfa-tienda').value, us = $('rfa-usuario').value, d = $('rfa-desde').value, h = $('rfa-hasta').value;
+  return rfLista.filter(r=>{ const f = (r.fecha_creacion || '').slice(0, 10);
+    return rfAptoCumple(r, apto) && (!est || rfEstadoReg(r) === est) && (!ti || rfTiendaDe(r) === ti) && (!us || r.usuario_email === us) && (!d || f >= d) && (!h || f <= h); });
+}
+// Agrupa por código: cantidad sumada, posiciones distintas (tienda + ubicación) y registros.
+function rfaAgrupar(L){
+  const por = new Map();
+  L.forEach(r=> (r.items || []).forEach(it=>{
+    const sku = String(it.sku || '').trim().toUpperCase(); if(!sku) return;
+    const g = por.get(sku) || { sku, descripcion: '', cantidad: 0, pos: new Map(), rfs: new Set(), tiendas: new Set() };
+    if(it.descripcion) g.descripcion = it.descripcion;
+    const cant = Number(it.cantidad) || 0, k = rfClavePos(r);
+    g.cantidad += cant; g.rfs.add(r.id); g.tiendas.add(rfTiendaDe(r));
+    const p = g.pos.get(k) || { clave: k, tienda: rfTiendaDe(r), posicion: r.posicion || '—', cantidad: 0, rfs: new Set() };
+    p.cantidad += cant; p.rfs.add(r.id); g.pos.set(k, p);
+    por.set(sku, g);
+  }));
+  return [...por.values()].map(g=> Object.assign(g, { posiciones: g.pos.size, registros: g.rfs.size }));
+}
+function rfaFilas(){
+  const q = normalizarTexto($('rfa-q').value).split(/\s+/).filter(Boolean);
+  const fc = normalizarTexto($('rfa-f-sku').value), fd = normalizarTexto($('rfa-f-desc').value);
+  let G = rfaAgrupar(rfaFiltrados()).filter(g=>{
+    const txt = normalizarTexto(`${g.sku} ${g.descripcion} ${[...g.pos.keys()].join(' ')}`);
+    return q.every(t=> txt.includes(t)) && (!fc || normalizarTexto(g.sku).includes(fc)) && (!fd || normalizarTexto(g.descripcion).includes(fd))
+      && rfaNum(g.cantidad, $('rfa-f-cant').value) && rfaNum(g.posiciones, $('rfa-f-pos').value) && rfaNum(g.registros, $('rfa-f-rf').value);
+  });
+  const { campo, dir } = rfaOrden;
+  G.sort((a, b)=>{ const x = a[campo], y = b[campo]; return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'es', { numeric: true })) * dir || a.sku.localeCompare(b.sku, 'es', { numeric: true }); });
+  return G;
+}
+function rfaLlenarFiltros(){
+  const tiendas = [...new Set(rfLista.map(rfTiendaDe))].sort((a, b)=> a.localeCompare(b, 'es'));
+  const usuarios = [...new Map(rfLista.filter(r=> r.usuario_email).map(r=> [r.usuario_email, r.usuario || r.usuario_email])).entries()].sort((a, b)=> a[1].localeCompare(b[1], 'es'));
+  const vt = $('rfa-tienda').value, vu = $('rfa-usuario').value;
+  $('rfa-tienda').innerHTML = '<option value="">🏬 Todas las tiendas</option>' + tiendas.map(x=> `<option value="${esc(x)}">${esc(x)}</option>`).join('');
+  $('rfa-usuario').innerHTML = '<option value="">👤 Todos los usuarios</option>' + usuarios.map(([e, a])=> `<option value="${esc(e)}">${esc(a)}</option>`).join('');
+  $('rfa-tienda').value = tiendas.includes(vt) ? vt : ''; $('rfa-usuario').value = usuarios.some(([e])=> e === vu) ? vu : '';
+}
+function renderRfAptos(){
+  rfaLlenarFiltros();
+  const G = rfaFilas(), pags = Math.max(1, Math.ceil(G.length / RFA_POR_PAGINA)); rfaPag = Math.min(rfaPag, pags - 1);
+  const flecha = c=> rfaOrden.campo === c ? (rfaOrden.dir > 0 ? ' ▲' : ' ▼') : '';
+  document.querySelectorAll('#rfa-tabla [data-rfa-orden]').forEach(th=> th.querySelector('.rfa-fl').textContent = flecha(th.dataset.rfaOrden));
+  const totPos = new Set(G.flatMap(g=> [...g.pos.keys()])).size, totRf = new Set(G.flatMap(g=> [...g.rfs])).size;
+  $('rfa-body').innerHTML = G.length ? G.slice(rfaPag * RFA_POR_PAGINA, (rfaPag + 1) * RFA_POR_PAGINA).map(g=>{
+      const abierto = rfaAbierto === g.sku;
+      let tr = `<tr class="rfa-fila${abierto ? ' abierta' : ''}" data-rfa-sku="${esc(g.sku)}"><td><span class="rf-rep-flecha">${abierto ? '▾' : '▸'}</span> <b>${esc(g.sku)}</b></td><td>${esc(g.descripcion)}</td>` +
+        `<td class="num"><b>${esc(anFmt(g.cantidad))}</b></td><td class="num">${esc(g.posiciones)}</td><td class="num">${esc(g.registros)}</td><td>${esc([...g.tiendas].join(', '))}</td></tr>`;
+      if(abierto) tr += `<tr class="rf-rep-exp"><td colspan="6"><div class="rf-rep-scroll"><table class="rf-rep-det"><thead><tr><th>Tienda</th><th>Posición</th><th class="num">Cantidad</th><th>Registros</th></tr></thead><tbody>` +
+        [...g.pos.values()].sort((a, b)=> b.cantidad - a.cantidad || rfOrdCod(a.posicion, b.posicion)).map(p=> `<tr><td>🏬 ${esc(p.tienda)}</td><td><b>📍 ${esc(p.posicion)}</b></td><td class="num">${esc(anFmt(p.cantidad))}</td><td>${[...p.rfs].map(id=> `<button type="button" class="rfa-rf" data-rfa-ver="${esc(id)}">${esc(id)}</button>`).join(' ')}</td></tr>`).join('') +
+        `</tbody></table></div></td></tr>`;
+      return tr; }).join('')
+    : `<tr><td colspan="6" class="hint">${rfLista.length ? 'Ningún código cumple los filtros.' : 'Aún no hay registros.'}</td></tr>`;
+  $('rfa-foot').innerHTML = `<tr><th>${esc(anFmt(G.length))} código(s)</th><th></th><th class="num">${esc(anFmt(G.reduce((s, g)=> s + g.cantidad, 0)))}</th><th class="num">${esc(anFmt(totPos))}</th><th class="num">${esc(anFmt(totRf))}</th><th></th></tr>`;
+  $('rfa-pag').innerHTML = G.length > RFA_POR_PAGINA ? `<div class="vo-pag"><button type="button" data-rfa-pag="-1" ${rfaPag ? '' : 'disabled'}>‹ Anterior</button><span>${esc(rfaPag * RFA_POR_PAGINA + 1)}–${esc(Math.min(G.length, (rfaPag + 1) * RFA_POR_PAGINA))} de ${esc(G.length)} · página ${esc(rfaPag + 1)} de ${esc(pags)}</span><button type="button" data-rfa-pag="1" ${rfaPag < pags - 1 ? '' : 'disabled'}>Siguiente ›</button></div>` : '';
+}
+function rfaExcel(){
+  const G = rfaFilas();
+  if(!G.length){ showToast('No hay códigos para exportar con estos filtros.', 'err'); return; }
+  const resumen = G.map(g=> ({ 'Código': g.sku, 'Descripción': g.descripcion, 'Cantidad total': g.cantidad, 'Posiciones (distintas)': g.posiciones, 'Registros (RF)': g.registros, 'Tiendas': [...g.tiendas].join(', ') }));
+  const detalle = G.flatMap(g=> [...g.pos.values()].map(p=> ({ 'Código': g.sku, 'Descripción': g.descripcion, 'Tienda': p.tienda, 'Posición': p.posicion, 'Cantidad': p.cantidad, 'Registros (RF)': [...p.rfs].join(', ') })));
+  const wb = XLSX.utils.book_new();
+  const ws1 = XLSX.utils.json_to_sheet(resumen); ws1['!cols'] = [14, 44, 14, 20, 14, 30].map(w=> ({ wch: w })); ws1['!autofilter'] = { ref: ws1['!ref'] };
+  const ws2 = XLSX.utils.json_to_sheet(detalle); ws2['!cols'] = [14, 44, 22, 16, 12, 30].map(w=> ({ wch: w })); ws2['!autofilter'] = { ref: ws2['!ref'] };
+  XLSX.utils.book_append_sheet(wb, ws1, 'Por código'); XLSX.utils.book_append_sheet(wb, ws2, 'Detalle por posición');
+  const etiqueta = ({ SI:'aptos', NO:'no_aptos', SIN:'sin_marcar' })[$('rfa-apto').value] || 'todos';
+  XLSX.writeFile(wb, `registro_fotografico_${etiqueta}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  logAccion('reg_foto_exportado', { detalle: `Excel de ${etiqueta} por código: ${G.length} código(s), ${detalle.length} fila(s) de detalle` });
+  showToast(`Excel con ${G.length} código(s).`, 'ok');
+}
+$('rfsub-panel-aptos').addEventListener('click', e=>{
+  const ver = e.target.closest('[data-rfa-ver]'), th = e.target.closest('[data-rfa-orden]'), fila = e.target.closest('[data-rfa-sku]'), pag = e.target.closest('[data-rfa-pag]');
+  if(ver){ setRfSubtab('lista'); rfSel = ver.dataset.rfaVer; setTimeout(()=> rfAbrir(ver.dataset.rfaVer), 50); return; }
+  if(e.target.closest('#btn-rfa-excel')){ rfaExcel(); return; }
+  if(e.target.closest('#btn-rfa-limpiar')){ ['rfa-q','rfa-f-sku','rfa-f-desc','rfa-f-cant','rfa-f-pos','rfa-f-rf','rfa-desde','rfa-hasta','rfa-tienda','rfa-usuario'].forEach(id=> $(id).value = ''); $('rfa-apto').value = 'SI'; $('rfa-estado').value = 'CONFIRMADO'; rfaPag = 0; renderRfAptos(); return; }
+  if(e.target.closest('#btn-rfa-recargar')){ rfCargar(true); return; }
+  if(th){ const c = th.dataset.rfaOrden; rfaOrden = rfaOrden.campo === c ? { campo: c, dir: -rfaOrden.dir } : { campo: c, dir: (c === 'sku' || c === 'descripcion') ? 1 : -1 }; renderRfAptos(); return; }
+  if(pag){ if(!pag.disabled){ rfaPag += Number(pag.dataset.rfaPag); rfaAbierto = null; renderRfAptos(); } return; }
+  if(fila){ rfaAbierto = rfaAbierto === fila.dataset.rfaSku ? null : fila.dataset.rfaSku; renderRfAptos(); }
+});
+['rfa-apto','rfa-estado','rfa-tienda','rfa-usuario','rfa-desde','rfa-hasta'].forEach(id=> $(id).addEventListener('change', ()=>{ rfaPag = 0; renderRfAptos(); }));
+['rfa-q','rfa-f-sku','rfa-f-desc','rfa-f-cant','rfa-f-pos','rfa-f-rf'].forEach(id=> $(id).addEventListener('input', ()=>{ rfaPag = 0; renderRfAptos(); }));
+
 // ---- Layout: cada posición pintada según cuántos RF tiene (gris 0, verde 1, naranja más de 1) ----
 let rflSel = null;
 // Solo el CD VENEZUELA; sin usuario elegido cuenta los de todos los usuarios que se pueden ver.

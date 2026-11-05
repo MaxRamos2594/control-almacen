@@ -2,6 +2,7 @@
 // (también en las reglas de Firestore), "ver todos" para reportes, y elegir la tienda a inventariar.
 // Requiere los emuladores encendidos (npm run emuladores).
 const path = require('path');
+const XLSX = require('xlsx');
 const { abrirApp, limpiarEmuladores, ADMIN } = require('./app');
 
 let fallas = 0;
@@ -169,6 +170,31 @@ const listo = page=> page.waitForFunction(()=> $('status-text').textContent === 
   await page.selectOption('#rfl-usuario', ''); const otraVez = await conteo();
   verificar(opciones === '👤 Todos los usuarios,Administrador,JOHAN' && todos === 'A01:RF-ADM-00001+RF-JHN-00099' && soloJohan === 'A01:RF-JHN-00099' && soloAdmin === 'A01:RF-ADM-00001' && otraVez === todos,
     `Layout con filtro de usuario (${opciones}): todos → ${todos}; JOHAN → ${soloJohan}; Administrador → ${soloAdmin}`);
+  // Aptos: listado por código con suma de cantidad, posiciones distintas, filtros, orden y Excel.
+  await page.evaluate(async ()=>{
+    const base = { estado:'CONFIRMADO', participante:'CD VENEZUELA', usuario:'JOHAN', usuario_email:'johan@ejemplo.com', fecha_creacion:'2026-11-04T10:00:00.000Z' };
+    await registrosFotoRef.doc('RF-JHN-00097').set(Object.assign({}, base, { posicion:'B05', items:[{ sku:'P1', descripcion:'PELOTA', cantidad:7, fotos:[] }, { sku:'P9', descripcion:'CAJA', cantidad:2, fotos:[] }], unidades:9 }));
+    await registrosFotoRef.doc('RF-JHN-00096').set(Object.assign({}, base, { posicion:'A01', items:[{ sku:'P1', descripcion:'PELOTA', cantidad:3, fotos:[] }], unidades:3 }));
+    await rfCargar(true);
+    await rfMarcarApto('RF-JHN-00097', 'SI'); await rfMarcarApto('RF-JHN-00096', 'SI');
+    setRfSubtab('aptos');
+  });
+  await page.waitForFunction(()=> document.querySelectorAll('#rfa-body [data-rfa-sku]').length >= 2, null, { timeout: 10000 });
+  const filasA = ()=> page.evaluate(()=> [...document.querySelectorAll('#rfa-body [data-rfa-sku]')].map(t=> [...t.cells].slice(0, 5).map(c=> c.innerText.replace(/[▸▾]/g, '').trim()).join('|')));
+  const a1 = await filasA(), pie = await page.evaluate(()=> $('rfa-foot').innerText.replace(/\s+/g, ' ').trim());
+  await page.fill('#rfa-f-cant', '>10'); const a2 = await filasA(); await page.fill('#rfa-f-cant', '');
+  await page.click('#rfa-tabla [data-rfa-orden="sku"]'); const a3 = await filasA();
+  await page.click('#rfa-body [data-rfa-sku="P1"]');
+  const det = await page.evaluate(()=> [...document.querySelectorAll('#rfa-body .rf-rep-exp tbody tr')].map(t=> t.innerText.replace(/\s+/g, ' ').trim()));
+  await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_aptos.png'), fullPage: true });
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#btn-rfa-excel')]);
+  const xl = path.join(__dirname, 'salida', 'rf_aptos.xlsx'); await dl.saveAs(xl);
+  const wb = XLSX.readFile(xl), r1 = XLSX.utils.sheet_to_json(wb.Sheets['Por código']), r2 = XLSX.utils.sheet_to_json(wb.Sheets['Detalle por posición']);
+  await page.selectOption('#rfa-apto', ''); const a4 = await filasA(); await page.selectOption('#rfa-apto', 'SI');
+  verificar(a1.join(' / ') === 'P1|PELOTA|15|2|3 / P9|CAJA|2|1|1' && /^2 código\(s\) 17 2 3$/i.test(pie) && a2.join() === 'P1|PELOTA|15|2|3' && a3[0].startsWith('P1|') && a3[1].startsWith('P9|') &&
+    det.length === 2 && /A01 8 RF-/.test(det.join(' ')) && /B05 7 RF-JHN-00097/.test(det.join(' ')) &&
+    r1.length === 2 && r1[0]['Código'] === 'P1' && r1[0]['Cantidad total'] === 15 && r1[0]['Posiciones (distintas)'] === 2 && r2.length === 3 && a4.length === 3,
+    `Aptos por código: ${a1.join(' / ')} (pie "${pie}"); filtro cantidad >10 → ${a2.join()}; ordena por código; P1 en ${det.length} posiciones; Excel con ${r1.length} códigos y ${r2.length} filas de detalle; con "Todos" ${a4.length} códigos`);
   erroresTodos.push(...errores); await browser.close();
 
   if(erroresTodos.length) console.log('\nErrores de JavaScript:\n' + [...new Set(erroresTodos)].join('\n'));
