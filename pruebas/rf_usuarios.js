@@ -136,6 +136,20 @@ const listo = page=> page.waitForFunction(()=> $('status-text').textContent === 
   await page.evaluate(()=>{ setRfSubtab('layout'); $('rfl-estado').value = ''; renderRfLayout(); });
   const layout = await page.evaluate(()=> [...rflConteo().entries()].filter(([k])=> k).map(([k, L])=> k + ':' + L.map(r=> r.id).join('+')).join(' '));
   verificar(layout === 'A01:RF-ADM-00001', `Layout del CD con "Todos": solo cuenta registros del CD (${layout}); GÓNDOLA 3 de COMAS no entra`);
+  // Filtro de usuario en el Layout: todos los usuarios o uno solo.
+  await page.evaluate(async ()=>{
+    await registrosFotoRef.doc('RF-JHN-00099').set({ estado:'CONFIRMADO', participante:'CD VENEZUELA', posicion:'A01', usuario:'JOHAN', usuario_email:'johan@ejemplo.com',
+      fecha_creacion:'2026-11-03T10:00:00.000Z', items:[{ sku:'P9', cantidad:1, fotos:[] }], cant_items:1, unidades:1, skus:['P9'] });
+    await rfCargar(true); $('rfl-estado').value = 'CONFIRMADO'; renderRfLayout();
+  });
+  const conteo = ()=> page.evaluate(()=> [...rflConteo().entries()].filter(([k])=> k).map(([k, L])=> k + ':' + L.map(r=> r.id).sort().join('+')).join(' '));
+  const opciones = await page.evaluate(()=> [...$('rfl-usuario').options].map(o=> o.textContent).join(','));
+  const todos = await conteo();
+  await page.selectOption('#rfl-usuario', 'johan@ejemplo.com'); const soloJohan = await conteo();
+  await page.selectOption('#rfl-usuario', { label: 'Administrador' }); const soloAdmin = await conteo();
+  await page.selectOption('#rfl-usuario', ''); const otraVez = await conteo();
+  verificar(opciones === '👤 Todos los usuarios,Administrador,JOHAN' && todos === 'A01:RF-ADM-00001+RF-JHN-00099' && soloJohan === 'A01:RF-JHN-00099' && soloAdmin === 'A01:RF-ADM-00001' && otraVez === todos,
+    `Layout con filtro de usuario (${opciones}): todos → ${todos}; JOHAN → ${soloJohan}; Administrador → ${soloAdmin}`);
   erroresTodos.push(...errores); await browser.close();
 
   if(erroresTodos.length) console.log('\nErrores de JavaScript:\n' + [...new Set(erroresTodos)].join('\n'));
