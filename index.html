@@ -290,6 +290,9 @@
   .rf-det-caja #rf-detalle{margin:0; border:none; border-radius:0 0 14px 14px; box-shadow:none;}
   body.rf-modal-abierto{overflow:hidden;}
   @media (max-width:640px){ .rf-det-modal{padding:0;} .rf-det-caja{border-radius:0; min-height:100%;} .rf-det-barra{border-radius:0;} .rf-det-caja #rf-detalle{border-radius:0;} }
+  .rf-det-grupo{display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px; padding:10px 14px; background:#fff3cd; border-bottom:1px solid #f0d58a; font-size:14px; position:sticky; top:48px; z-index:2;}
+  .rf-det-grupo[hidden]{display:none;} .rf-det-grupo-nav{display:flex; align-items:center; gap:8px;}
+  .rf-det-grupo-nav button{border:1px solid var(--line-strong); background:#fff; border-radius:8px; padding:6px 12px; font:inherit; font-weight:700; cursor:pointer;} .rf-det-grupo-nav button:disabled{opacity:.4; cursor:default;}
   .rfl-barra{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:8px;}
   .rfl-leyenda{display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--ink-soft);} .rfl-leyenda span{display:inline-flex; align-items:center; gap:5px;}
   .rfl-leyenda i{display:inline-block; width:14px; height:14px; border-radius:3px; border:1px solid;}
@@ -3392,12 +3395,6 @@
       <div class="rf-lista" id="rf-lista"></div>
       <div id="rf-pag"></div>
     </div>
-    <div class="rf-det-modal" id="rf-det-modal" hidden>
-      <div class="rf-det-caja" role="dialog" aria-modal="true" aria-label="Detalle del registro fotográfico">
-        <div class="rf-det-barra"><button type="button" id="btn-rf-det-volver">← Volver a la lista</button><button type="button" id="btn-rf-det-cerrar" aria-label="Cerrar">✕</button></div>
-        <div class="panel" id="rf-detalle" style="display:none;"></div>
-      </div>
-    </div>
   </div>
 
   <div id="rfsub-panel-reportes" style="display:none;">
@@ -3469,11 +3466,18 @@
         <button type="button" class="btn btn-ghost btn-sm" id="btn-rfl-recargar">↻ Actualizar</button>
       </div>
       <div class="rfl-resumen" id="rfl-resumen"></div>
-      <p class="hint" style="margin:6px 0 8px;">Toca una posición pintada para ver sus registros.</p>
+      <p class="hint" style="margin:6px 0 8px;">Toca una posición pintada para ver sus registros (si son varios, se recorren uno por uno).</p>
       <div class="rfl-zoom"><button type="button" data-rfl-zoom="-1" title="Alejar">🔍−</button><span id="rfl-zoom-txt">100%</span><button type="button" data-rfl-zoom="1" title="Acercar">🔍+</button><button type="button" data-rfl-zoom="ajustar" title="Que entre todo el layout en la pantalla">⤢ Ajustar</button><span class="hint">Desliza el layout hacia los lados para recorrerlo.</span></div>
       <div class="rfl-mapa" id="rfl-mapa"></div>
     </div>
     <div class="panel" id="rfl-detalle" style="display:none;"></div>
+  </div>
+  <div class="rf-det-modal" id="rf-det-modal" hidden>
+    <div class="rf-det-caja" role="dialog" aria-modal="true" aria-label="Detalle del registro fotográfico">
+      <div class="rf-det-barra"><button type="button" id="btn-rf-det-volver">← Volver a la lista</button><button type="button" id="btn-rf-det-cerrar" aria-label="Cerrar">✕</button></div>
+      <div class="rf-det-grupo" id="rf-det-grupo" hidden></div>
+      <div class="panel" id="rf-detalle" style="display:none;"></div>
+    </div>
   </div>
   <datalist id="rf-participantes"></datalist><datalist id="rf-posiciones"></datalist><datalist id="rf-skus"></datalist><datalist id="rf-ubicaciones"></datalist>
 </div>
@@ -3931,8 +3935,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v235';
-const APP_UPDATED = '07/11/2026 12:00';
+const APP_VERSION = 'v236';
+const APP_UPDATED = '07/11/2026 15:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -19631,7 +19635,7 @@ function renderRfLayout(){
   const fuera = [...por.keys()].filter(k=> !posiciones[k]).length;
   $('rfl-resumen').innerHTML = `<span class="rfl-k k1"><b>${esc(c1)}</b> con 1 RF</span><span class="rfl-k kn"><b>${esc(cn)}</b> con más de 1</span><span class="rfl-k k0"><b>${esc(c0)}</b> sin RF</span>` +
     (fuera ? `<span class="hint">· ${esc(fuera)} posición(es) con RF fuera del layout</span>` : '') + rfAvisoAlcance();
-  if(rflSel) rflDetalle(rflSel, false); else $('rfl-detalle').style.display = 'none';
+  $('rfl-detalle').style.display = 'none';
 }
 function rflDetalle(id, desplazar){
   const L = (rflConteo().get(id) || []);
@@ -19649,7 +19653,12 @@ $('rfsub-panel-layout').addEventListener('click', e=>{
   if(e.target.closest('[data-rfl-ocultar]')){ rflSel = null; renderRfLayout(); return; }
   const z = e.target.closest('[data-rfl-zoom]'); if(z){ rflZoomA(z.dataset.rflZoom); return; }
   if(chip){ toggleModoCompacto(); renderRfLayout(); return; }
-  if(slot){ if(rflSel === slot.dataset.id){ rflSel = null; renderRfLayout(); } else rflDetalle(slot.dataset.id, true); }
+  if(slot){
+    const id = slot.dataset.id, L = (rflConteo().get(id) || []).slice().sort((a, b)=> String(b.fecha_creacion || '').localeCompare(String(a.fecha_creacion || '')));
+    if(!L.length) return;
+    rflSel = id; $('rfl-mapa').querySelectorAll('.slot[data-id]').forEach(el=> el.classList.toggle('rfl-sel', el.dataset.id === id));
+    rfAbrirGrupo(L.map(x=> x.id), id);   // la misma ventana de Registros; si son varios, se avisa y se recorren
+  }
 });
 ['rfl-estado', 'rfl-usuario', 'rfl-apto'].forEach(id=> $(id).addEventListener('change', ()=>{ rflSel = null; renderRfLayout(); }));
 $('btn-rfl-recargar').addEventListener('click', ()=> rfCargar(true));
@@ -19672,7 +19681,7 @@ async function rfCargar(forzar){
   }catch(err){ console.error(err); $('rf-lista').innerHTML = `<div class="hint">⚠ No se pudieron leer los registros: ${esc(err.message)}</div>`; return; }
   rfPagina = 0; renderRfLista();
   if(rfAbrirPendiente){ const id = rfAbrirPendiente; rfAbrirPendiente = null; rfAbrir(id); }
-  else if(rfSel && rfDetAbierto()) rfAbrir(rfSel);   // al recargar solo se actualiza el detalle si está abierto
+  else if(rfSel && rfDetAbierto()) rfAbrir(rfSel, !!rfDetGrupo);   // al recargar solo se actualiza el detalle si está abierto
   rfSiReportes();
 }
 function rfFiltrados(){
@@ -19717,12 +19726,24 @@ async function rfMarcarApto(id, valor){
     if(valor) Object.assign(r, { apto_ajuste: valor, apto_ajuste_por: currentUserAlias, apto_ajuste_por_email: currentUserEmail, apto_ajuste_en: ahora });
     else ['apto_ajuste', 'apto_ajuste_por', 'apto_ajuste_por_email', 'apto_ajuste_en'].forEach(k=> delete r[k]);
     await logAccion('reg_foto_apto_ajuste', { detalle: `${id}: apto para ajuste ${valor ? (valor === 'SI' ? 'SÍ' : 'NO') : '(marca quitada)'}` });
-    renderRfLista(); rfAbrir(id); rfSiReportes();
+    renderRfLista(); rfAbrir(id, !!rfDetGrupo); rfSiReportes();
     showToast(`${id}: apto para ajuste ${valor ? (valor === 'SI' ? 'SÍ' : 'NO') : 'sin marcar'}.`, 'ok');
   }catch(err){ console.error(err); showToast('No se pudo guardar la marca: ' + err.message, 'err'); }
 }
-function rfAbrir(id){
+// Varios registros de una misma posición (desde el Layout): se recorren con ‹ Anterior / Siguiente ›.
+let rfDetGrupo = null;
+function rfAbrirGrupo(ids, titulo){ rfDetGrupo = { ids, i: 0, titulo }; rfAbrir(ids[0], true); }
+function rfPintarGrupo(){
+  const g = rfDetGrupo, caja = $('rf-det-grupo');
+  if(!g || g.ids.length < 2){ caja.hidden = true; caja.innerHTML = ''; return; }
+  caja.hidden = false;
+  caja.innerHTML = `<span>⚠ La posición <b>${esc(g.titulo)}</b> tiene <b>${esc(g.ids.length)} registros</b></span>` +
+    `<span class="rf-det-grupo-nav"><button type="button" data-rf-grupo="-1" ${g.i ? '' : 'disabled'}>‹ Anterior</button><b id="rf-det-grupo-txt">${esc(g.i + 1)} de ${esc(g.ids.length)}</b><button type="button" data-rf-grupo="1" ${g.i < g.ids.length - 1 ? '' : 'disabled'}>Siguiente ›</button></span>`;
+}
+function rfAbrir(id, desdeGrupo){
   const r = rfLista.find(x=> x.id === id); if(!r) return;
+  if(!desdeGrupo) rfDetGrupo = null;
+  else if(rfDetGrupo){ const k = rfDetGrupo.ids.indexOf(id); if(k >= 0) rfDetGrupo.i = k; else rfDetGrupo = null; }
   rfSel = id; document.querySelectorAll('#rf-lista .rf-fila').forEach(b=> b.classList.toggle('sel', b.dataset.rfAbrir === id));
   const puede = currentPermisos.admin || currentPermisos.eliminar, box = $('rf-detalle'); box.style.display = 'block';
   const foto = (f, pie)=> `<div class="rf-thumb" data-rf-ver="${esc(f.url)}" data-rf-pie="${esc(pie)}"><img src="${esc(f.url)}" alt="" loading="lazy"></div>`;
@@ -19741,8 +19762,10 @@ function rfAbrir(id){
     `</tbody><tfoot><tr><th colspan="2">Total</th><th class="num">${esc(anFmt(r.unidades || 0))}</th><th></th></tr></tfoot></table>`;
   // El detalle se abre en una ventana encima de la lista (la lista queda donde estaba).
   const modal = $('rf-det-modal'), yaAbierto = !modal.hidden;
+  rfPintarGrupo();
+  $('btn-rf-det-volver').textContent = rfDetGrupo ? '← Volver al layout' : '← Volver a la lista';
   modal.hidden = false; document.body.classList.add('rf-modal-abierto');
-  if(!yaAbierto) modal.scrollTop = 0;
+  if(!yaAbierto || desdeGrupo) modal.scrollTop = 0;
 }
 const rfDetAbierto = ()=> !$('rf-det-modal').hidden;
 function rfCerrarDetalle(){
@@ -19752,7 +19775,11 @@ function rfCerrarDetalle(){
   if(fila) fila.focus({ preventScroll: true });
 }
 ['btn-rf-det-volver', 'btn-rf-det-cerrar'].forEach(id=> $(id).addEventListener('click', rfCerrarDetalle));
-$('rf-det-modal').addEventListener('click', e=>{ if(e.target.id === 'rf-det-modal') rfCerrarDetalle(); });
+$('rf-det-modal').addEventListener('click', e=>{
+  if(e.target.id === 'rf-det-modal'){ rfCerrarDetalle(); return; }
+  const b = e.target.closest('[data-rf-grupo]');
+  if(b && !b.disabled && rfDetGrupo){ const g = rfDetGrupo; g.i = Math.min(g.ids.length - 1, Math.max(0, g.i + Number(b.dataset.rfGrupo))); rfAbrir(g.ids[g.i], true); }
+});
 // Esc cierra el detalle (si no hay encima una foto en grande o un aviso).
 // Se escucha en captura (antes que los demás): así se ve si había una foto o aviso abierto antes de que se cierre.
 window.addEventListener('keydown', e=>{ if(e.key === 'Escape' && rfDetAbierto() && $('rf-lightbox').hidden && $('rf-aviso').hidden && $('cam-modal').hidden) rfCerrarDetalle(); }, true);
@@ -19776,7 +19803,7 @@ $('rf-detalle').addEventListener('click', async e=>{
     await Promise.allSettled(paths.map(p=> storage.ref().child(p).delete()));
     await logAccion('reg_foto_eliminado', {detalle:`${r.id} · posición ${r.posicion} · ${paths.length} foto(s) borrada(s)`});
     rfLista = rfLista.filter(x=> x.id !== r.id); rfCerrarDetalle(); rfSel = null; $('rf-detalle').style.display = 'none';
-    showToast(`Registro ${r.id} eliminado.`, 'ok'); renderRfLista();
+    showToast(`Registro ${r.id} eliminado.`, 'ok'); renderRfLista(); rfSiReportes();
   }catch(err){ console.error(err); showToast('No se pudo eliminar: ' + err.message, 'err'); }
 });
 

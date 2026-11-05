@@ -304,11 +304,20 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   await page.evaluate(()=>{ rfLista.push(Object.assign({}, rfLista.find(r=> r.id === 'RF-ADM-00001'), { id:'RF-09999' })); renderRfLayout(); });
   const lay2 = await clases();
   const naranja = await page.evaluate(()=> { const el = document.querySelector('#rfl-mapa .slot[data-id="A02"]'); return el.textContent + ' ' + getComputedStyle(el).backgroundColor; });
+  // Tocar la posición abre la ventana del detalle; con varios registros avisa y se recorren uno por uno.
   await page.click('#rfl-mapa .slot[data-id="A02"]');
-  const detLay = await page.evaluate(()=> [...document.querySelectorAll('#rfl-detalle [data-rfr-ver]')].map(r=> r.dataset.rfrVer).sort().join(','));
+  await page.waitForFunction(()=> !$('rf-det-modal').hidden && !$('rf-det-grupo').hidden, null, { timeout: 10000 });
+  const vistos = [await page.evaluate(()=> ($('rf-detalle').querySelector('h2') || {}).textContent)];
+  const grupoLay = await page.evaluate(()=> ({ txt: $('rf-det-grupo').innerText.replace(/\s+/g, ' '), volver: $('btn-rf-det-volver').textContent, ant: document.querySelector('[data-rf-grupo="-1"]').disabled }));
   await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_layout.png'), fullPage: true });
-  await page.click('#rfl-detalle [data-rfl-ocultar]');
-  const layOculto = await page.evaluate(()=> $('rfl-detalle').style.display === 'none');
+  await page.click('[data-rf-grupo="1"]');
+  vistos.push(await page.evaluate(()=> ($('rf-detalle').querySelector('h2') || {}).textContent));
+  const ultimo = await page.evaluate(()=> ({ pag: $('rf-det-grupo-txt').textContent, sig: document.querySelector('[data-rf-grupo="1"]').disabled }));
+  await page.click('#btn-rf-det-volver');
+  const detLay = vistos.slice().sort().join(',');
+  const layOculto = await page.evaluate(()=> $('rf-det-modal').hidden && $('rfsub-panel-layout').style.display === 'block');
+  verificar(/La posición A02 tiene 2 registros/.test(grupoLay.txt) && /1 de 2/.test(grupoLay.txt) && grupoLay.ant && ultimo.pag === '2 de 2' && ultimo.sig && /Volver al layout/.test(grupoLay.volver) && layOculto,
+    `Layout: tocar A02 abre la ventana del registro con el aviso "${grupoLay.txt}"; «Siguiente» pasa al otro (${ultimo.pag}); «← Volver al layout» la cierra`);
   await page.evaluate(()=>{ rfLista = rfLista.filter(r=> r.id !== 'RF-09999'); });
   await page.selectOption('#rfl-estado', '');
   const lay3 = await clases();
