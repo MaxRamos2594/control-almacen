@@ -270,6 +270,11 @@
   .rf-vacia{display:inline-block; padding:1px 7px; border-radius:999px; background:#EEF1F5; border:1px solid #C2C7CE; color:#4A5562; font-size:10.5px; font-weight:700;}
   .rf-vacia-det{padding:10px 12px; border-radius:10px; background:#EEF1F5; border:1px dashed #9AA3AE; margin:10px 0;}
   .us-rf-part{margin-top:8px;} .us-rf-part.bloqueado{opacity:.45; pointer-events:none;}
+  .rf-apto{display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; border:1px solid var(--line); background:#f7f9fc; margin:0 0 12px;}
+  .rf-apto > div:first-child{display:flex; flex-direction:column; gap:2px;} .rf-apto b{font-size:16px;} .rf-apto.si{background:#e7f6ec; border-color:#2E9E5B;} .rf-apto.no{background:#fdecea; border-color:#C4483A;}
+  .rf-apto-btns{display:flex; gap:8px; flex-wrap:wrap;} .rf-apto-btns .btn{border:1px solid var(--line-strong); background:#fff;}
+  .rf-apto-btns [data-rf-apto="SI"].activo{background:#2E9E5B; color:#fff; border-color:#2E9E5B;} .rf-apto-btns [data-rf-apto="NO"].activo{background:#C4483A; color:#fff; border-color:#C4483A;}
+  .rf-apto-chip{display:inline-block; padding:1px 7px; border-radius:999px; font-size:10.5px; font-weight:700;} .rf-apto-chip.si{background:#e7f6ec; color:#1d7a46; border:1px solid #2E9E5B;} .rf-apto-chip.no{background:#fdecea; color:#a3352a; border:1px solid #C4483A;}
   .rfl-barra{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:8px;}
   .rfl-leyenda{display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--ink-soft);} .rfl-leyenda span{display:inline-flex; align-items:center; gap:5px;}
   .rfl-leyenda i{display:inline-block; width:14px; height:14px; border-radius:3px; border:1px solid;}
@@ -3350,6 +3355,7 @@
     <div class="panel" style="margin-bottom:12px;">
       <div class="rf-filtros">
         <select id="rf-estado-f" title="Estado"><option value="">Todos</option><option value="CONFIRMADO">✔ Confirmados</option><option value="BORRADOR">📝 Borradores</option></select>
+        <select id="rf-apto-f" title="Apto para ajuste"><option value="">⚖ Apto ajuste: todos</option><option value="SI">✔ Apto para ajuste: SÍ</option><option value="NO">✖ Apto para ajuste: NO</option><option value="SIN">… Sin marcar</option></select>
         <select id="rf-tienda-f" title="Tienda"></select><select id="rf-usuario-f" title="Usuario"></select>
         <input type="search" id="rf-q" placeholder="Buscar por correlativo, posición, participante, SKU, descripción o usuario…" autocomplete="off">
         <label>Desde <input type="date" id="rf-desde"></label><label>Hasta <input type="date" id="rf-hasta"></label>
@@ -3366,6 +3372,7 @@
       <h3>📊 Reportes</h3>
       <div class="rf-filtros">
         <select id="rfr-estado" title="Estado"><option value="CONFIRMADO">✔ Solo confirmados</option><option value="">Todos</option><option value="BORRADOR">📝 Solo borradores</option></select>
+        <select id="rfr-apto" title="Apto para ajuste"><option value="">⚖ Apto ajuste: todos</option><option value="SI">✔ Apto para ajuste: SÍ</option><option value="NO">✖ Apto para ajuste: NO</option><option value="SIN">… Sin marcar</option></select>
         <select id="rfr-tienda" title="Tienda"></select><select id="rfr-usuario" title="Usuario"></select>
         <input type="search" id="rfr-q" placeholder="Filtrar por correlativo, posición, SKU, descripción o usuario…" autocomplete="off">
         <label>Desde <input type="date" id="rfr-desde"></label><label>Hasta <input type="date" id="rfr-hasta"></label>
@@ -3863,8 +3870,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v228';
-const APP_UPDATED = '05/11/2026 16:00';
+const APP_VERSION = 'v229';
+const APP_UPDATED = '05/11/2026 18:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4373,7 +4380,7 @@ function tipoLabel(tipo){
     asistente_consulta:'Consulta al asistente IA', almacenamiento_huerfanos_eliminados:'Archivos huérfanos eliminados (almacenamiento)', almacenamiento_pdfs_comprimidos:'Archivos comprimidos (almacenamiento)',
     reg_foto_creado:'Registro fotográfico creado', reg_foto_eliminado:'Registro fotográfico eliminado', reg_foto_iniciado:'Registro fotográfico iniciado (borrador)',
     reg_foto_confirmado:'Registro fotográfico confirmado', reg_foto_descartado:'Borrador de registro fotográfico descartado', reg_foto_exportado:'Registro fotográfico exportado',
-    reg_foto_reabierto:'Registro fotográfico abierto para modificar', reg_foto_modificado:'Registro fotográfico modificado', reg_foto_modificacion_cancelada:'Modificación de registro fotográfico cancelada',
+    reg_foto_reabierto:'Registro fotográfico abierto para modificar', reg_foto_modificado:'Registro fotográfico modificado', reg_foto_modificacion_cancelada:'Modificación de registro fotográfico cancelada', reg_foto_apto_ajuste:'Registro fotográfico: apto para ajuste',
     ingreso:'Entrada de pallet', movimiento:'Movimiento', retiro:'Salida (pallet completo)',
     retiro_campana:'Salida (campaña)', retiro_campana_revertido:'↺ Retiro de campaña revertido', producto_agregado:'Adición de producto', transferencia:'Transferencia entre pallets',
     bloqueo:'Bloqueo de posición', desbloqueo:'Desbloqueo de posición',
@@ -18907,13 +18914,14 @@ $('btn-rf-excel').addEventListener('click', ()=>{
   // Una fila por producto; una ubicación vacía va en una sola fila sin producto (cantidad 0).
   L.forEach(r=>{
     const base = { 'Correlativo': r.id, 'Fecha de creación': rfFechaTxt(r.fecha_creacion), 'Participante': r.participante || '',
-      'Posición': r.posicion || '', 'Estado': rfEstadoReg(r), 'Generado por': r.usuario || '', 'Confirmado por': r.confirmado_por || '', 'Fecha de confirmación': rfFechaTxt(r.confirmado_en) };
+      'Posición': r.posicion || '', 'Estado': rfEstadoReg(r), 'Generado por': r.usuario || '', 'Confirmado por': r.confirmado_por || '', 'Fecha de confirmación': rfFechaTxt(r.confirmado_en),
+      'Apto para ajuste': rfAptoTxt(r), 'Marcado por': r.apto_ajuste_por || '' };
     const items = r.items || [];
     if(!items.length){ if(r.ubicacion_vacia) filas.push(Object.assign({}, base, { 'Ubicación vacía': 'SÍ', 'N° producto': '', 'SKU': '', 'Descripción': 'UBICACIÓN VACÍA', 'Cantidad': 0, 'N° fotos': 0 })); return; }
     items.forEach((it, k)=> filas.push(Object.assign({}, base, { 'Ubicación vacía': 'NO', 'N° producto': k + 1, 'SKU': it.sku, 'Descripción': it.descripcion || '', 'Cantidad': Number(it.cantidad) || 0, 'N° fotos': (it.fotos || []).length })));
   });
   const ws = XLSX.utils.json_to_sheet(filas);
-  ws['!cols'] = [12, 18, 18, 10, 12, 16, 16, 18, 10, 11, 16, 44, 10, 9].map(w=> ({ wch: w }));
+  ws['!cols'] = [12, 18, 18, 10, 12, 16, 16, 18, 14, 16, 10, 11, 16, 44, 10, 9].map(w=> ({ wch: w }));
   ws['!autofilter'] = { ref: ws['!ref'] };
   const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Registro fotográfico');
   XLSX.writeFile(wb, `registro_fotografico_${new Date().toISOString().slice(0, 10)}.xlsx`);
@@ -18955,6 +18963,7 @@ async function rfExportarPdf(lista){
       doc.setTextColor(30); doc.setFontSize(10);
       const datos = [['Participante', r.participante || ''], ['Fecha de creación', rfFechaTxt(r.fecha_creacion)], ['Correlativo', r.id], ['Posición', r.posicion || ''], ['Estado', rfEstadoReg(r)], ['Generado por', r.usuario || ''],
         ['Confirmado por', r.confirmado_por ? `${r.confirmado_por} · ${rfFechaTxt(r.confirmado_en)}` : '—'],
+        ['Apto para ajuste', rfAptoTxt(r) + (r.apto_ajuste_por ? ` (${r.apto_ajuste_por})` : '')],
         ['Productos', r.ubicacion_vacia ? 'Ubicación vacía (sin productos)' : `${(r.items || []).length} · ${anFmt(r.unidades || 0)} unidad(es)`]];
       datos.forEach(([k, v], i)=>{ doc.setFont('helvetica', 'bold'); doc.text(k + ':', 32, 80 + i * 16); doc.setFont('helvetica', 'normal'); doc.text(String(v), 130, 80 + i * 16); });
       const fp = r.foto_posicion && imgs.get(r.foto_posicion.url);
@@ -19189,6 +19198,8 @@ $('btn-rf-guardar').addEventListener('click', async ()=>{
       if(snap.data().estado !== 'BORRADOR') throw new Error('ya estaba confirmado');
       const cambios = { estado:'CONFIRMADO', ubicacion_vacia: vacia, confirmado_por: currentUserAlias, confirmado_por_email: currentUserEmail, confirmado_en: ahora,
         modificando: firebase.firestore.FieldValue.delete(), respaldo: firebase.firestore.FieldValue.delete() };
+      // Si se modificó, la marca "apto para ajuste" ya no vale: vuelve a quedar sin marcar.
+      if(modif) Object.assign(cambios, { apto_ajuste: firebase.firestore.FieldValue.delete(), apto_ajuste_por: firebase.firestore.FieldValue.delete(), apto_ajuste_por_email: firebase.firestore.FieldValue.delete(), apto_ajuste_en: firebase.firestore.FieldValue.delete() });
       if(modif) Object.assign(cambios, { modificado_por: currentUserAlias, modificado_en: ahora, modificaciones: firebase.firestore.FieldValue.arrayUnion({ por: currentUserAlias, email: currentUserEmail || '', en: ahora }) });
       tx.update(ref, Object.assign(datos, cambios));
     });
@@ -19271,6 +19282,11 @@ async function rfCancelarModificacion(){
 // Tienda de un registro (los antiguos sin participante son del CD) y clave de su posición:
 // en el CD, el código del layout; en una tienda, "TIENDA · UBICACIÓN".
 const rfTiendaDe = r=> String(r.participante || RF_CD).toUpperCase();
+// Marca "Apto para ajuste": 'SI', 'NO' o sin marcar (''). La ponen admin, editar/eliminar o "ver todos".
+const rfApto = r=> r.apto_ajuste === 'SI' || r.apto_ajuste === 'NO' ? r.apto_ajuste : '';
+const rfAptoTxt = r=> ({ SI:'SÍ', NO:'NO' })[rfApto(r)] || 'SIN MARCAR';
+const rfAptoCumple = (r, f)=> !f || (f === 'SIN' ? !rfApto(r) : rfApto(r) === f);
+const rfPuedeMarcarApto = ()=> !!(currentPermisos.admin || currentPermisos.eliminar || currentPermisos.rf_todos);
 const rfClavePos = r=> rfEsCD(rfTiendaDe(r)) ? (r.posicion || '—') : `${rfTiendaDe(r)} · ${r.posicion || '—'}`;
 const rfPosTxt = c=> String(c).includes(' · ') ? String(c).split(' · ').slice(1).join(' · ') : c;
 // Filtros de tienda y usuario con lo que hay en los registros cargados (se conserva lo elegido).
@@ -19290,7 +19306,7 @@ function rfFiltradosReporte(){
   const ti = $('rfr-tienda').value, us = $('rfr-usuario').value;
   return rfLista.filter(r=>{ const f = (r.fecha_creacion || '').slice(0, 10);
     if(est && rfEstadoReg(r) !== est) return false;
-    if(ti && rfTiendaDe(r) !== ti) return false; if(us && (r.usuario_email || '') !== us) return false;
+    if(ti && rfTiendaDe(r) !== ti) return false; if(us && (r.usuario_email || '') !== us) return false; if(!rfAptoCumple(r, $('rfr-apto').value)) return false;
     if(d && f < d) return false; if(h && f > h) return false; return tk.every(t=> r._txt.includes(t)); });
 }
 const rfBloqueDe = cod=>{ if(String(cod).includes(' · ')) return '🏬 ' + String(cod).split(' · ')[0]; const p = (posiciones || {})[cod]; if(!p) return 'SIN BLOQUE (fuera del layout)'; return p.tipo === 'mezanine' ? 'MEZANINE' : ((bloques[p.bloque_id] || {}).nombre || 'SIN BLOQUE'); };
@@ -19307,12 +19323,12 @@ function rfRepListaRf(L, conPosicion){
 }
 function renderRfRepUsuarios(L){
   const por = new Map();
-  L.forEach(r=>{ const k = rfTiendaDe(r) + '|' + (r.usuario || r.usuario_email || '—'); const g = por.get(k) || { tienda: rfTiendaDe(r), usuario: r.usuario || r.usuario_email || '—', n: 0, und: 0, ult: '' };
-    g.n++; g.und += Number(r.unidades) || 0; if(String(r.fecha_creacion) > g.ult) g.ult = String(r.fecha_creacion); por.set(k, g); });
+  L.forEach(r=>{ const k = rfTiendaDe(r) + '|' + (r.usuario || r.usuario_email || '—'); const g = por.get(k) || { tienda: rfTiendaDe(r), usuario: r.usuario || r.usuario_email || '—', n: 0, und: 0, ult: '', si: 0, no: 0, sin: 0 };
+    g.n++; g.und += Number(r.unidades) || 0; g[({ SI:'si', NO:'no' })[rfApto(r)] || 'sin']++; if(String(r.fecha_creacion) > g.ult) g.ult = String(r.fecha_creacion); por.set(k, g); });
   const filas = [...por.values()].sort((a, b)=> a.tienda.localeCompare(b.tienda, 'es') || b.n - a.n);
-  $('rf-rep-usuarios').innerHTML = filas.length ? `<div class="rf-rep-scroll"><table class="rf-rep-resumen"><thead><tr><th>Tienda</th><th>Usuario</th><th class="num">Inventarios (RF)</th><th class="num">Unidades</th><th>Último registro</th></tr></thead><tbody>` +
-    filas.map(g=> `<tr><td><b>🏬 ${esc(g.tienda)}</b></td><td>👤 ${esc(g.usuario)}</td><td class="num"><b>${esc(g.n)}</b></td><td class="num">${esc(anFmt(g.und))}</td><td>${esc(rfFechaTxt(g.ult))}</td></tr>`).join('') +
-    `</tbody><tfoot><tr><th colspan="2">Total</th><th class="num">${esc(L.length)}</th><th class="num">${esc(anFmt(rfUnd(L)))}</th><th></th></tr></tfoot></table></div>` : '<div class="hint">Sin registros para estos filtros.</div>';
+  $('rf-rep-usuarios').innerHTML = filas.length ? `<div class="rf-rep-scroll"><table class="rf-rep-resumen"><thead><tr><th>Tienda</th><th>Usuario</th><th class="num">Inventarios (RF)</th><th class="num">Unidades</th><th class="num">✔ Aptos</th><th class="num">✖ No aptos</th><th class="num">Sin marcar</th><th>Último registro</th></tr></thead><tbody>` +
+    filas.map(g=> `<tr><td><b>🏬 ${esc(g.tienda)}</b></td><td>👤 ${esc(g.usuario)}</td><td class="num"><b>${esc(g.n)}</b></td><td class="num">${esc(anFmt(g.und))}</td><td class="num">${esc(g.si)}</td><td class="num">${esc(g.no)}</td><td class="num">${esc(g.sin)}</td><td>${esc(rfFechaTxt(g.ult))}</td></tr>`).join('') +
+    `</tbody><tfoot><tr><th colspan="2">Total</th><th class="num">${esc(L.length)}</th><th class="num">${esc(anFmt(rfUnd(L)))}</th><th class="num">${esc(L.filter(x=> rfApto(x) === 'SI').length)}</th><th class="num">${esc(L.filter(x=> rfApto(x) === 'NO').length)}</th><th class="num">${esc(L.filter(x=> !rfApto(x)).length)}</th><th></th></tr></tfoot></table></div>` : '<div class="hint">Sin registros para estos filtros.</div>';
 }
 function renderRfReportes(){
   const L = rfFiltradosReporte(), porPos = new Map();
@@ -19366,7 +19382,7 @@ $('rfsub-panel-reportes').addEventListener('click', e=>{
   if(pos){ rfRepPos = rfRepPos === pos.dataset.rfrPos ? null : pos.dataset.rfrPos; renderRfReportes(); return; }
   if(blo){ rfRepBloque = rfRepBloque === blo.dataset.rfrBloque ? null : blo.dataset.rfrBloque; rfRepPosEnBloque = null; renderRfReportes(); }
 });
-['rfr-estado', 'rfr-desde', 'rfr-hasta', 'rfr-tienda', 'rfr-usuario'].forEach(id=> $(id).addEventListener('change', ()=>{ rfRepPag = 0; renderRfReportes(); }));
+['rfr-estado', 'rfr-desde', 'rfr-hasta', 'rfr-tienda', 'rfr-usuario', 'rfr-apto'].forEach(id=> $(id).addEventListener('change', ()=>{ rfRepPag = 0; renderRfReportes(); }));
 $('rfr-q').addEventListener('input', ()=>{ rfRepPag = 0; renderRfReportes(); });
 $('btn-rfr-recargar').addEventListener('click', ()=> rfCargar(true));
 
@@ -19451,7 +19467,7 @@ function rfFiltrados(){
   const ti = $('rf-tienda-f').value, us = $('rf-usuario-f').value;
   return rfLista.filter(r=>{ const f = (r.fecha_creacion || '').slice(0, 10);
     if(est && rfEstadoReg(r) !== est) return false;
-    if(ti && rfTiendaDe(r) !== ti) return false; if(us && (r.usuario_email || '') !== us) return false;
+    if(ti && rfTiendaDe(r) !== ti) return false; if(us && (r.usuario_email || '') !== us) return false; if(!rfAptoCumple(r, $('rf-apto-f').value)) return false;
     if(d && f < d) return false; if(h && f > h) return false; return tk.every(t=> r._txt.includes(t)); });
 }
 function renderRfLista(){
@@ -19459,7 +19475,7 @@ function renderRfLista(){
   rfPagina = Math.min(rfPagina, pags - 1);
   $('rf-lista').innerHTML = L.length ? L.slice(rfPagina * RF_POR_PAGINA, (rfPagina + 1) * RF_POR_PAGINA).map(r=> `<button type="button" class="rf-fila${r.id === rfSel ? ' sel' : ''}" data-rf-abrir="${esc(r.id)}">` +
       `${r.foto_posicion ? `<img src="${esc(r.foto_posicion.url)}" alt="" loading="lazy">` : '<span class="sin"></span>'}` +
-      `<span><span class="t">${cmpMarcar(r.id, tk)}</span> <span class="rf-est ${esc(rfEstadoReg(r))}">${r.modificando ? '✏ EN MODIFICACIÓN' : rfEstadoReg(r) === 'BORRADOR' ? '📝 BORRADOR' : '✔ CONFIRMADO'}</span>${r.ubicacion_vacia ? ' <span class="rf-vacia">📭 VACÍA</span>' : ''}<span class="s"> · ${esc(new Date(r.fecha_creacion).toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }))}</span><br>` +
+      `<span><span class="t">${cmpMarcar(r.id, tk)}</span> <span class="rf-est ${esc(rfEstadoReg(r))}">${r.modificando ? '✏ EN MODIFICACIÓN' : rfEstadoReg(r) === 'BORRADOR' ? '📝 BORRADOR' : '✔ CONFIRMADO'}</span>${r.ubicacion_vacia ? ' <span class="rf-vacia">📭 VACÍA</span>' : ''}${rfApto(r) ? ` <span class="rf-apto-chip ${rfApto(r) === 'SI' ? 'si' : 'no'}">${rfApto(r) === 'SI' ? '✔ APTO AJUSTE' : '✖ NO APTO'}</span>` : ''}<span class="s"> · ${esc(new Date(r.fecha_creacion).toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }))}</span><br>` +
       `<span class="s">🏬 ${cmpMarcar(r.participante || RF_CD, tk)} · 📍 ${cmpMarcar(r.posicion || '', tk)} · 👤 ${cmpMarcar(r.usuario || '', tk)}</span></span>` +
       `<span class="n"><b>${esc(anFmt(r.unidades || 0))} und</b>${esc(r.cant_items || 0)} producto(s)</span></button>`).join('')
     : `<div class="hint">${rfLista.length ? 'Nada coincide con la búsqueda.' : 'Aún no hay registros. Créalos en "📸 Nuevo registro".'}</div>`;
@@ -19467,10 +19483,29 @@ function renderRfLista(){
 }
 $('rf-ok').addEventListener('click', e=>{ if(e.target.closest('#btn-rf-ver-ultimo')) setRfSubtab('lista'); });
 $('rf-q').addEventListener('input', ()=>{ rfPagina = 0; renderRfLista(); });
-['rf-estado-f','rf-desde','rf-hasta','rf-tienda-f','rf-usuario-f'].forEach(id=> $(id).addEventListener('change', ()=>{ rfPagina = 0; renderRfLista(); }));
+['rf-estado-f','rf-desde','rf-hasta','rf-tienda-f','rf-usuario-f','rf-apto-f'].forEach(id=> $(id).addEventListener('change', ()=>{ rfPagina = 0; renderRfLista(); }));
 $('btn-rf-recargar').addEventListener('click', ()=> rfCargar(true));
 $('rf-pag').addEventListener('click', e=>{ const b = e.target.closest('[data-rf-pag]'); if(b && !b.disabled){ rfPagina += Number(b.dataset.rfPag); renderRfLista(); } });
 $('rf-lista').addEventListener('click', e=>{ const b = e.target.closest('[data-rf-abrir]'); if(b) rfAbrir(b.dataset.rfAbrir); });
+function rfBloqueApto(r){
+  if(rfEstadoReg(r) !== 'CONFIRMADO') return '';
+  const a = rfApto(r), marca = a ? `<span class="hint">Marcado por ${esc(r.apto_ajuste_por || '')} · ${esc(rfFechaTxt(r.apto_ajuste_en))}</span>` : '';
+  return `<div class="rf-apto ${a === 'SI' ? 'si' : a === 'NO' ? 'no' : ''}"><div><span class="rf-lbl" style="margin:0;">⚖ Apto para ajuste</span><b id="rf-apto-valor">${esc(rfAptoTxt(r))}</b>${marca}</div>` +
+    (rfPuedeMarcarApto() ? `<div class="rf-apto-btns"><button type="button" class="btn btn-sm${a === 'SI' ? ' activo' : ''}" data-rf-apto="SI">✔ Sí, apto</button><button type="button" class="btn btn-sm${a === 'NO' ? ' activo' : ''}" data-rf-apto="NO">✖ No apto</button>${a ? '<button type="button" class="btn btn-ghost btn-sm" data-rf-apto="">Quitar marca</button>' : ''}</div>` : '') + `</div>`;
+}
+async function rfMarcarApto(id, valor){
+  const r = rfLista.find(x=> x.id === id); if(!r || !rfPuedeMarcarApto()) return;
+  const ahora = new Date().toISOString(), del = firebase.firestore.FieldValue.delete();
+  try{
+    await registrosFotoRef.doc(id).update(valor ? { apto_ajuste: valor, apto_ajuste_por: currentUserAlias, apto_ajuste_por_email: currentUserEmail, apto_ajuste_en: ahora }
+      : { apto_ajuste: del, apto_ajuste_por: del, apto_ajuste_por_email: del, apto_ajuste_en: del });
+    if(valor) Object.assign(r, { apto_ajuste: valor, apto_ajuste_por: currentUserAlias, apto_ajuste_por_email: currentUserEmail, apto_ajuste_en: ahora });
+    else ['apto_ajuste', 'apto_ajuste_por', 'apto_ajuste_por_email', 'apto_ajuste_en'].forEach(k=> delete r[k]);
+    await logAccion('reg_foto_apto_ajuste', { detalle: `${id}: apto para ajuste ${valor ? (valor === 'SI' ? 'SÍ' : 'NO') : '(marca quitada)'}` });
+    renderRfLista(); rfAbrir(id); rfSiReportes();
+    showToast(`${id}: apto para ajuste ${valor ? (valor === 'SI' ? 'SÍ' : 'NO') : 'sin marcar'}.`, 'ok');
+  }catch(err){ console.error(err); showToast('No se pudo guardar la marca: ' + err.message, 'err'); }
+}
 function rfAbrir(id){
   const r = rfLista.find(x=> x.id === id); if(!r) return;
   rfSel = id; document.querySelectorAll('#rf-lista .rf-fila').forEach(b=> b.classList.toggle('sel', b.dataset.rfAbrir === id));
@@ -19483,6 +19518,7 @@ function rfAbrir(id){
     `<div class="rf-det-datos"><div><span>Participante</span><b>${esc(r.participante)}</b></div><div><span>Fecha de creación</span><b>${esc(new Date(r.fecha_creacion).toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }))}</b></div>` +
     `<div><span>Correlativo</span><b>${esc(r.id)}</b></div><div><span>Posición</span><b>📍 ${esc(r.posicion)}</b></div><div><span>Generado por</span><b>${esc(r.usuario || '')}</b></div>` +
     `<div><span>Confirmado por</span><b>${esc(r.confirmado_por ? `${r.confirmado_por} · ${rfFechaTxt(r.confirmado_en)}` : rfEstadoReg(r) === 'BORRADOR' ? 'Pendiente (borrador)' : '—')}</b></div></div>` +
+    rfBloqueApto(r) +
     `<span class="rf-lbl">📷 Foto de la posición</span><div class="rf-fotos" style="margin-bottom:12px;">${r.foto_posicion ? foto(r.foto_posicion, `Posición ${r.posicion}`).replace('class="rf-thumb"', 'class="rf-thumb" style="width:160px; height:160px;"') : '—'}</div>` +
     (r.ubicacion_vacia ? `<div class="rf-vacia-det">📭 <b>Ubicación vacía</b>: se registró sin productos (solo con la foto de la posición).</div>` : '') +
     `<table class="rf-det-items"><thead><tr><th>SKU</th><th>Descripción</th><th class="num">Cantidad</th><th>Fotos</th></tr></thead><tbody>` +
@@ -19491,6 +19527,8 @@ function rfAbrir(id){
   if(window.matchMedia('(max-width: 1000px)').matches) box.scrollIntoView({ behavior:'smooth', block:'start' });
 }
 $('rf-detalle').addEventListener('click', async e=>{
+  const apto = e.target.closest('[data-rf-apto]');
+  if(apto){ apto.disabled = true; await rfMarcarApto(rfSel, apto.dataset.rfApto); return; }
   if(e.target.closest('#btn-rf-continuar')){ rfContinuar(rfSel); return; }
   if(e.target.closest('#btn-rf-modificar')){ rfModificar(rfSel); return; }
   if(e.target.closest('#btn-rf-ver-todas') || e.target.closest('#btn-rf-pdf-uno')){
