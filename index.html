@@ -282,6 +282,14 @@
   .rfa-fila{cursor:pointer;} .rfa-fila:hover{background:#f6f9fd;} .rfa-fila.abierta{background:#eef4fb;} .rfa-tabla tfoot th{background:#eaf1fb; font-weight:800;}
   .rfa-rf{border:1px solid var(--line-strong); background:#fff; border-radius:999px; padding:2px 8px; font:inherit; font-size:11.5px; cursor:pointer;}
   @media (max-width:600px){ #view-regfoto > .subtabs button{flex:1 1 30%;} }
+  .rf-det-modal{position:fixed; inset:0; z-index:8000; background:rgba(10,14,20,.55); display:flex; align-items:flex-start; justify-content:center; padding:24px 16px; overflow-y:auto; overscroll-behavior:contain;}
+  .rf-det-modal[hidden]{display:none;}
+  .rf-det-caja{width:min(1100px, 100%); border-radius:14px; box-shadow:0 18px 50px rgba(0,0,0,.35); background:#fff;}
+  .rf-det-barra{position:sticky; top:0; z-index:2; display:flex; justify-content:space-between; align-items:center; gap:8px; background:#1b2430; border-radius:14px 14px 0 0; padding:8px 10px;}
+  .rf-det-barra button{border:none; background:none; color:#fff; font:inherit; font-weight:800; font-size:15px; padding:8px 10px; cursor:pointer; border-radius:8px;} .rf-det-barra button:hover{background:rgba(255,255,255,.12);}
+  .rf-det-caja #rf-detalle{margin:0; border:none; border-radius:0 0 14px 14px; box-shadow:none;}
+  body.rf-modal-abierto{overflow:hidden;}
+  @media (max-width:640px){ .rf-det-modal{padding:0;} .rf-det-caja{border-radius:0; min-height:100%;} .rf-det-barra{border-radius:0;} .rf-det-caja #rf-detalle{border-radius:0;} }
   .rfl-barra{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:8px;}
   .rfl-leyenda{display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--ink-soft);} .rfl-leyenda span{display:inline-flex; align-items:center; gap:5px;}
   .rfl-leyenda i{display:inline-block; width:14px; height:14px; border-radius:3px; border:1px solid;}
@@ -1391,7 +1399,7 @@
   .mini-form{border-top:1px solid var(--line); margin-top:12px; padding-top:10px;}
   .mini-form label{font-size:11px; color:var(--ink-soft); display:block; margin-bottom:6px;}
 
-  #toast-container{position:fixed; bottom:16px; right:16px; z-index:100; display:flex; flex-direction:column; gap:8px;}
+  #toast-container{position:fixed; bottom:16px; right:16px; z-index:9500; display:flex; flex-direction:column; gap:8px;}
   .toast{padding:10px 14px; border-radius:6px; font-size:12px; color:#fff; box-shadow:0 4px 12px rgba(0,0,0,.2); max-width:280px;}
   .toast.ok{background:var(--green);}
   .toast.err{background:var(--red);}
@@ -3384,7 +3392,12 @@
       <div class="rf-lista" id="rf-lista"></div>
       <div id="rf-pag"></div>
     </div>
-    <div class="panel" id="rf-detalle" style="display:none;"></div>
+    <div class="rf-det-modal" id="rf-det-modal" hidden>
+      <div class="rf-det-caja" role="dialog" aria-modal="true" aria-label="Detalle del registro fotográfico">
+        <div class="rf-det-barra"><button type="button" id="btn-rf-det-volver">← Volver a la lista</button><button type="button" id="btn-rf-det-cerrar" aria-label="Cerrar">✕</button></div>
+        <div class="panel" id="rf-detalle" style="display:none;"></div>
+      </div>
+    </div>
   </div>
 
   <div id="rfsub-panel-reportes" style="display:none;">
@@ -3917,8 +3930,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v233';
-const APP_UPDATED = '06/11/2026 19:00';
+const APP_VERSION = 'v234';
+const APP_UPDATED = '07/11/2026 10:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -18607,6 +18620,7 @@ const RF_POR_PAGINA = 10, RF_LADO_MAX = 1280;
 let rfPosFotos = [], rfItems = [], rfLista = [], rfLeidos = false, rfPagina = 0, rfSel = null;
 const rfNuevoItem = ()=> ({ sku:'', descripcion:'', cantidad:'', fotos:[] });
 function setRfSubtab(name){
+  if(typeof rfCerrarDetalle === 'function') rfCerrarDetalle();
   ['nuevo','lista','reportes','layout','aptos'].forEach(n=>{ $('rfsub-'+n).classList.toggle('active', n===name); $('rfsub-panel-'+n).style.display = n===name ? 'block' : 'none'; });
   if(name === 'lista' || name === 'reportes' || name === 'layout' || name === 'aptos') rfCargar();
   else rfPrepararForm();
@@ -19640,7 +19654,7 @@ $('rfsub-panel-layout').addEventListener('click', e=>{
 $('btn-rfl-recargar').addEventListener('click', ()=> rfCargar(true));
 // ---- Registros: lista, búsqueda, detalle ----
 async function rfCargar(forzar){
-  if(rfLeidos && !forzar){ renderRfLista(); rfSiReportes(); return; }
+  if(rfLeidos && !forzar){ renderRfLista(); rfSiReportes(); if(rfAbrirPendiente){ const id = rfAbrirPendiente; rfAbrirPendiente = null; rfAbrir(id); } return; }
   $('rf-lista').innerHTML = '<div class="hint">⏳ Cargando registros…</div>';
   try{
     // Cada usuario lee solo los suyos; admin o "rf_todos" leen todos (las reglas de Firestore hacen lo mismo).
@@ -19656,7 +19670,8 @@ async function rfCargar(forzar){
     rfLeidos = true;
   }catch(err){ console.error(err); $('rf-lista').innerHTML = `<div class="hint">⚠ No se pudieron leer los registros: ${esc(err.message)}</div>`; return; }
   rfPagina = 0; renderRfLista();
-  if(rfSel) rfAbrir(rfSel);
+  if(rfAbrirPendiente){ const id = rfAbrirPendiente; rfAbrirPendiente = null; rfAbrir(id); }
+  else if(rfSel && rfDetAbierto()) rfAbrir(rfSel);   // al recargar solo se actualiza el detalle si está abierto
   rfSiReportes();
 }
 function rfFiltrados(){
@@ -19678,7 +19693,9 @@ function renderRfLista(){
     : `<div class="hint">${rfLista.length ? 'Nada coincide con la búsqueda.' : 'Aún no hay registros. Créalos en "📸 Nuevo registro".'}</div>`;
   $('rf-pag').innerHTML = L.length ? `<div class="vo-pag"><button type="button" data-rf-pag="-1" ${rfPagina ? '' : 'disabled'}>‹ Anterior</button><span id="rf-pag-txt">${esc(rfPagina * RF_POR_PAGINA + 1)}–${esc(Math.min(L.length, (rfPagina + 1) * RF_POR_PAGINA))} de ${esc(L.length)} · página ${esc(rfPagina + 1)} de ${esc(pags)}</span><button type="button" data-rf-pag="1" ${rfPagina < pags - 1 ? '' : 'disabled'}>Siguiente ›</button></div>` : '';
 }
-$('rf-ok').addEventListener('click', e=>{ if(e.target.closest('#btn-rf-ver-ultimo')) setRfSubtab('lista'); });
+// «Ver» tras confirmar: abre la lista y, cuando cargue, el detalle del registro recién confirmado.
+let rfAbrirPendiente = null;
+$('rf-ok').addEventListener('click', e=>{ if(e.target.closest('#btn-rf-ver-ultimo')){ rfAbrirPendiente = rfSel; setRfSubtab('lista'); } });
 $('rf-q').addEventListener('input', ()=>{ rfPagina = 0; renderRfLista(); });
 ['rf-estado-f','rf-desde','rf-hasta','rf-tienda-f','rf-usuario-f','rf-apto-f'].forEach(id=> $(id).addEventListener('change', ()=>{ rfPagina = 0; renderRfLista(); }));
 $('btn-rf-recargar').addEventListener('click', ()=> rfCargar(true));
@@ -19721,8 +19738,23 @@ function rfAbrir(id){
     `<table class="rf-det-items"><thead><tr><th>SKU</th><th>Descripción</th><th class="num">Cantidad</th><th>Fotos</th></tr></thead><tbody>` +
     (r.items || []).map(it=> `<tr><td><b>${esc(it.sku)}</b></td><td>${esc(it.descripcion || '')}</td><td class="num">${esc(anFmt(it.cantidad))}</td><td><div class="rf-fotos">${(it.fotos || []).map(f=> foto(f, `${it.sku} · ${it.descripcion || ''}`)).join('')}</div></td></tr>`).join('') +
     `</tbody><tfoot><tr><th colspan="2">Total</th><th class="num">${esc(anFmt(r.unidades || 0))}</th><th></th></tr></tfoot></table>`;
-  if(window.matchMedia('(max-width: 1000px)').matches) box.scrollIntoView({ behavior:'smooth', block:'start' });
+  // El detalle se abre en una ventana encima de la lista (la lista queda donde estaba).
+  const modal = $('rf-det-modal'), yaAbierto = !modal.hidden;
+  modal.hidden = false; document.body.classList.add('rf-modal-abierto');
+  if(!yaAbierto) modal.scrollTop = 0;
 }
+const rfDetAbierto = ()=> !$('rf-det-modal').hidden;
+function rfCerrarDetalle(){
+  if(!rfDetAbierto()) return;
+  $('rf-det-modal').hidden = true; document.body.classList.remove('rf-modal-abierto');
+  const fila = document.querySelector(`#rf-lista [data-rf-abrir="${CSS.escape(rfSel || '')}"]`);
+  if(fila) fila.focus({ preventScroll: true });
+}
+['btn-rf-det-volver', 'btn-rf-det-cerrar'].forEach(id=> $(id).addEventListener('click', rfCerrarDetalle));
+$('rf-det-modal').addEventListener('click', e=>{ if(e.target.id === 'rf-det-modal') rfCerrarDetalle(); });
+// Esc cierra el detalle (si no hay encima una foto en grande o un aviso).
+// Se escucha en captura (antes que los demás): así se ve si había una foto o aviso abierto antes de que se cierre.
+window.addEventListener('keydown', e=>{ if(e.key === 'Escape' && rfDetAbierto() && $('rf-lightbox').hidden && $('rf-aviso').hidden && $('cam-modal').hidden) rfCerrarDetalle(); }, true);
 $('rf-detalle').addEventListener('click', async e=>{
   const apto = e.target.closest('[data-rf-apto]');
   if(apto){ apto.disabled = true; await rfMarcarApto(rfSel, apto.dataset.rfApto); return; }
@@ -19742,7 +19774,7 @@ $('rf-detalle').addEventListener('click', async e=>{
     await registrosFotoRef.doc(r.id).delete();
     await Promise.allSettled(paths.map(p=> storage.ref().child(p).delete()));
     await logAccion('reg_foto_eliminado', {detalle:`${r.id} · posición ${r.posicion} · ${paths.length} foto(s) borrada(s)`});
-    rfLista = rfLista.filter(x=> x.id !== r.id); rfSel = null; $('rf-detalle').style.display = 'none';
+    rfLista = rfLista.filter(x=> x.id !== r.id); rfCerrarDetalle(); rfSel = null; $('rf-detalle').style.display = 'none';
     showToast(`Registro ${r.id} eliminado.`, 'ok'); renderRfLista();
   }catch(err){ console.error(err); showToast('No se pudo eliminar: ' + err.message, 'err'); }
 });
