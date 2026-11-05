@@ -282,7 +282,12 @@
   .rfl-0, .slot.rfl-0, .rfl-k.k0{background:#E4E6EA !important; border-color:#C2C7CE !important; color:#7A828C !important;}
   .rfl-1, .slot.rfl-1, .rfl-k.k1{background:#2E9E5B !important; border-color:#217A45 !important; color:#fff !important;}
   .rfl-n, .slot.rfl-n, .rfl-k.kn{background:#F26B0F !important; border-color:#C4520A !important; color:#fff !important; font-weight:700;}
-  .rfl-mapa{overflow-x:auto; padding:4px 0 8px;} .rfl-mapa .slot.rfl-0{cursor:default;} .rfl-mapa .slot.rfl-sel{outline:3px solid var(--blue); outline-offset:1px; z-index:3;}
+  .rfl-mapa{overflow:auto; padding:4px 0 8px; max-height:75vh; -webkit-overflow-scrolling:touch; border:1px solid var(--line); border-radius:10px;}
+  .rfl-lienzo{display:inline-block; min-width:100%; vertical-align:top;}
+  .rfl-zoom{display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:4px 0 8px;} .rfl-zoom button{border:1px solid var(--line-strong); background:#fff; border-radius:8px; padding:6px 10px; font:inherit; font-size:13px; cursor:pointer;}
+  #rfl-zoom-txt{min-width:44px; text-align:center; font-family:var(--mono); font-size:12px;}
+  @media (max-width:600px){ #view-regfoto > .subtabs{flex-wrap:wrap; overflow:visible;} #view-regfoto > .subtabs button{flex:1 1 45%; min-width:0;} }
+  .rf-alcance{width:100%; margin-top:6px; padding:8px 10px; border-radius:8px; background:#fff8e1; border:1px solid #f0d58a; font-size:12.5px;} .rfl-mapa .slot.rfl-0{cursor:default;} .rfl-mapa .slot.rfl-sel{outline:3px solid var(--blue); outline-offset:1px; z-index:3;}
   .rf-rep-scroll{overflow-x:auto;} .rf-rep-fila.abierta{background:#eef4fb;} .rf-rep-flecha{display:inline-block; width:14px; color:var(--blue);}
   .rf-rep-exp > td{background:#f8fafc; padding:10px 8px 12px;} .rf-rep-sub{margin:12px 0 6px;} .rf-rep-ocultar{margin-top:8px;}
   @media (max-width:600px){
@@ -3411,6 +3416,7 @@
       </div>
       <div class="rfl-resumen" id="rfl-resumen"></div>
       <p class="hint" style="margin:6px 0 8px;">Toca una posición pintada para ver sus registros.</p>
+      <div class="rfl-zoom"><button type="button" data-rfl-zoom="-1" title="Alejar">🔍−</button><span id="rfl-zoom-txt">100%</span><button type="button" data-rfl-zoom="1" title="Acercar">🔍+</button><button type="button" data-rfl-zoom="ajustar" title="Que entre todo el layout en la pantalla">⤢ Ajustar</button><span class="hint">Desliza el layout hacia los lados para recorrerlo.</span></div>
       <div class="rfl-mapa" id="rfl-mapa"></div>
     </div>
     <div class="panel" id="rfl-detalle" style="display:none;"></div>
@@ -3870,8 +3876,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v229';
-const APP_UPDATED = '05/11/2026 18:00';
+const APP_VERSION = 'v230';
+const APP_UPDATED = '06/11/2026 11:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -19404,11 +19410,38 @@ function rflConteo(){
   rfLista.filter(r=> rfEsCD(rfTiendaDe(r)) && (!est || rfEstadoReg(r) === est) && (!us || r.usuario_email === us)).forEach(r=>{ const k = r.posicion || ''; if(!por.has(k)) por.set(k, []); por.get(k).push(r); });
   return por;
 }
+// Qué registros ve el usuario (para que se entienda por qué otro ve más o menos).
+function rfAvisoAlcance(){
+  if(rfVeTodos()) return '';
+  const parts = rfParticipantesVisibles();
+  return `<div class="rf-alcance">👁 Ves <b>tus registros</b>${parts.length ? ` y los de <b>${esc(parts.join(', '))}</b>` : ''}. Para ver los de otros usuarios, un administrador debe darte permiso en Usuarios (participantes o "ver todos").</div>`;
+}
+// Zoom del layout (útil en celular y tablet): se recuerda en este equipo.
+let rflZoom = 1;
+try{ rflZoom = Math.min(2, Math.max(0.3, Number(localStorage.getItem('rf:layout-zoom')) || 1)); }catch(e){}
+function rflAplicarZoom(){
+  const l = $('rfl-lienzo'); if(l) l.style.zoom = rflZoom;
+  $('rfl-zoom-txt').textContent = Math.round(rflZoom * 100) + '%';
+  try{ localStorage.setItem('rf:layout-zoom', String(rflZoom)); }catch(e){}
+}
+function rflZoomA(accion){
+  const mapa = $('rfl-mapa'), l = $('rfl-lienzo'); if(!l) return;
+  // Ajustar: se mide el ancho real del layout sin zoom y se elige el zoom para que entre en la pantalla.
+  if(accion === 'ajustar'){ l.style.zoom = 1; const natural = l.scrollWidth || 1; rflZoom = Math.min(1, Math.max(0.3, Math.floor((mapa.clientWidth - 4) / natural * 100) / 100)); }
+  else rflZoom = Math.min(2, Math.max(0.3, Math.round((rflZoom + Number(accion) * 0.15) * 100) / 100));
+  rflAplicarZoom();
+}
 function renderRfLayout(){
   rflLlenarUsuarios();
   const por = rflConteo();
   // Mismo dibujo del layout de Movimientos, sin los ids de sus posiciones (no se duplican en la página).
-  $('rfl-mapa').innerHTML = buildBloquesMarkup(true, false).replace(/ id="slot-[^"]*"/g, '');
+  // El layout va dentro de un lienzo tan ancho como su contenido: así se puede desplazar de punta a punta
+  // (los nichos se dibujan de derecha a izquierda y, sin esto, lo que sobra a la izquierda queda fuera de alcance).
+  const primera = !$('rfl-mapa').querySelector('.rfl-lienzo'), mapa = $('rfl-mapa'), desdeDer = mapa.scrollWidth - mapa.scrollLeft - mapa.clientWidth;
+  mapa.innerHTML = `<div class="rfl-lienzo" id="rfl-lienzo">${buildBloquesMarkup(true, false).replace(/ id="slot-[^"]*"/g, '')}</div>`;
+  rflAplicarZoom();
+  // Al abrir se ve el lado derecho (donde empieza el almacén); al repintar se mantiene donde estaba.
+  requestAnimationFrame(()=>{ mapa.scrollLeft = primera ? mapa.scrollWidth : Math.max(0, mapa.scrollWidth - mapa.clientWidth - desdeDer); });
   let c0 = 0, c1 = 0, cn = 0;
   $('rfl-mapa').querySelectorAll('.slot[data-id]').forEach(el=>{
     const id = el.dataset.id, n = (por.get(id) || []).length, p = posiciones[id] || {};
@@ -19419,7 +19452,7 @@ function renderRfLayout(){
   });
   const fuera = [...por.keys()].filter(k=> !posiciones[k]).length;
   $('rfl-resumen').innerHTML = `<span class="rfl-k k1"><b>${esc(c1)}</b> con 1 RF</span><span class="rfl-k kn"><b>${esc(cn)}</b> con más de 1</span><span class="rfl-k k0"><b>${esc(c0)}</b> sin RF</span>` +
-    (fuera ? `<span class="hint">· ${esc(fuera)} posición(es) con RF fuera del layout</span>` : '');
+    (fuera ? `<span class="hint">· ${esc(fuera)} posición(es) con RF fuera del layout</span>` : '') + rfAvisoAlcance();
   if(rflSel) rflDetalle(rflSel, false); else $('rfl-detalle').style.display = 'none';
 }
 function rflDetalle(id, desplazar){
@@ -19436,6 +19469,7 @@ $('rfsub-panel-layout').addEventListener('click', e=>{
   const ver = e.target.closest('[data-rfr-ver]'), slot = e.target.closest('#rfl-mapa .slot[data-id]'), chip = e.target.closest('[data-mostrar-anexados]');
   if(ver){ setRfSubtab('lista'); rfSel = ver.dataset.rfrVer; setTimeout(()=> rfAbrir(ver.dataset.rfrVer), 50); return; }
   if(e.target.closest('[data-rfl-ocultar]')){ rflSel = null; renderRfLayout(); return; }
+  const z = e.target.closest('[data-rfl-zoom]'); if(z){ rflZoomA(z.dataset.rflZoom); return; }
   if(chip){ toggleModoCompacto(); renderRfLayout(); return; }
   if(slot){ if(rflSel === slot.dataset.id){ rflSel = null; renderRfLayout(); } else rflDetalle(slot.dataset.id, true); }
 });

@@ -408,6 +408,34 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
     'Con "Sí, está vacía" se confirma sin detalle (ubicacion_vacia, 0 und, con la foto de la posición); la lista y el detalle lo muestran');
   await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_vacia.png'), fullPage: true });
 
+  // Layout en celular: con muchos nichos no entra; se puede desplazar de punta a punta y hay zoom.
+  await page.evaluate(async ()=>{
+    const ts = firebase.firestore.FieldValue.serverTimestamp();
+    for(const [i, n] of ['B','C','D','E','F','G','H','I','J','K'].entries()){
+      await nichosRef.doc(n).set({ bloque_id:'B1', orden: i + 1, pos_visual: i + 1, tipo:'solo_rack', niveles:2, creado_en: ts });
+      for(const [k, nivel] of [['01','arriba'],['02','arriba'],['03','abajo'],['04','abajo']]) await posicionesRef.doc(n + k).set({ tipo:'rack', nicho:n, bloque_id:'B1', nivel, estado:'vacio', bloqueada:false, pallet_codigo:null, actualizado: ts });
+    }
+  });
+  await page.waitForFunction(()=> !!posiciones['K04'], null, { timeout: 10000 });
+  await page.setViewportSize({ width: 390, height: 860 });
+  await page.evaluate(()=>{ try{ localStorage.removeItem('rf:layout-zoom'); }catch(e){} rflZoom = 1; setRfSubtab('layout'); });
+  await page.waitForSelector('#rfl-mapa .slot[data-id="K04"]', { timeout: 10000 });
+  await page.waitForTimeout(300);
+  const desplaza = await page.evaluate(()=>{
+    const m = $('rfl-mapa'), caja = m.getBoundingClientRect(), x = id=> document.querySelector(`#rfl-mapa .slot[data-id="${id}"]`).getBoundingClientRect();
+    const r = { desborda: m.scrollWidth > m.clientWidth + 20, inicioDerecha: Math.abs(m.scrollLeft - (m.scrollWidth - m.clientWidth)) < 3, pagina: document.documentElement.scrollWidth };
+    m.scrollLeft = 0; const izq = x('K01'); r.izquierdaVisible = izq.left >= caja.left - 1 && izq.right <= caja.right + 1;
+    m.scrollLeft = m.scrollWidth; const der = x('A02'); r.derechaVisible = der.right <= caja.right + 1 && der.left >= caja.left - 1;
+    return r; });
+  await page.click('[data-rfl-zoom="ajustar"]'); await page.waitForTimeout(200);
+  const ajuste = await page.evaluate(()=>{ const m = $('rfl-mapa'); return { entra: m.scrollWidth <= m.clientWidth + 2, txt: $('rfl-zoom-txt').textContent, zoom: rflZoom }; });
+  await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_layout_celular.png'), fullPage: true });
+  await page.click('[data-rfl-zoom="1"]');
+  const mas = await page.evaluate(()=> $('rfl-zoom-txt').textContent);
+  verificar(desplaza.desborda && desplaza.inicioDerecha && desplaza.izquierdaVisible && desplaza.derechaVisible && desplaza.pagina <= 390 && ajuste.entra && ajuste.zoom < 1 && /^\d+%$/.test(ajuste.txt) && mas !== ajuste.txt,
+    `Layout en celular: abre en el lado derecho, se desliza hasta el primer y el último nicho sin salirse de la página; «Ajustar» lo deja en ${ajuste.txt} y entra completo; «+» lo acerca (${mas})`);
+  await page.setViewportSize({ width: 1280, height: 900 });
+
   if(errores.length) console.log('\nErrores de JavaScript:\n' + [...new Set(errores)].join('\n'));
   console.log(fallas || errores.length ? `\n${fallas} verificación(es) fallida(s).` : '\nTodo correcto.');
   await browser.close();
