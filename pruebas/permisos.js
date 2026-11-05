@@ -64,6 +64,21 @@ const visibles = (page, sel)=> page.evaluate(sel=> [...document.querySelectorAll
   await page.waitForFunction(()=> $('status-text').textContent === 'Sincronizado en vivo' && $('view-usuarios').classList.contains('active'), null, { timeout: 20000 });
   const recarga = await page.waitForFunction(()=> document.querySelectorAll('#us-lista .us-item').length >= 3, null, { timeout: 10000 }).then(()=> true, ()=> false);
   verificar(recarga, 'Al recargar la página estando en Usuarios, la lista de usuarios se carga');
+  // Celular: lista y editor son pantallas separadas.
+  await page.setViewportSize({ width: 390, height: 860 }); await page.waitForTimeout(200);
+  const vis = ()=> page.evaluate(()=> ({ lista: !!document.querySelector('.us-lista-panel').offsetParent, editor: !!document.querySelector('.us-editor').offsetParent, ancho: document.documentElement.scrollWidth }));
+  const m1 = await vis();
+  await page.screenshot({ path: path.join(__dirname, 'salida', 'permisos_celular_lista.png') });
+  await page.click('#us-lista [data-us-email="yolanda@ejemplo.com"]'); await page.waitForTimeout(200);
+  const m2 = await vis(), tit = await page.textContent('#us-titulo');
+  await page.screenshot({ path: path.join(__dirname, 'salida', 'permisos_celular_editor.png') });
+  await page.click('#btn-us-volver'); await page.waitForTimeout(200);
+  const m3 = await vis();
+  await page.click('#btn-us-nuevo'); await page.waitForTimeout(200);
+  const m4 = await vis();
+  verificar(m1.lista && !m1.editor && !m2.lista && m2.editor && tit === 'YOLANDA' && m3.lista && !m3.editor && m4.editor && !m4.lista && Math.max(m1.ancho, m2.ancho) <= 390,
+    'Celular: la lista ocupa la pantalla; tocar un usuario abre su editor y «← Usuarios» vuelve; «+ Nuevo» abre el editor; sin desplazarse a los lados');
+  await page.setViewportSize({ width: 1440, height: 900 });
   await browser.close();
 
   // Entrar como cada usuario.

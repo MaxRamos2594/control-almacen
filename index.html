@@ -303,6 +303,13 @@
   /* Usuarios y permisos */
   .us-layout{display:grid; grid-template-columns:minmax(240px, 320px) minmax(0, 1fr); gap:14px; align-items:start; max-width:1180px;}
   @media (max-width:820px){ .us-layout{grid-template-columns:1fr;} }
+  .us-volver{display:none; border:none; background:none; color:var(--blue); font:inherit; font-weight:700; font-size:15px; padding:4px 0 10px; cursor:pointer;}
+  @media (max-width:820px){
+    .us-layout:not(.us-editando) .us-editor{display:none;} .us-layout.us-editando .us-lista-panel{display:none;}
+    .us-volver{display:inline-block;} .us-lista{max-height:none; overflow:visible;}
+    #us-buscar{width:100%; font-size:16px; padding:10px 12px; margin-bottom:8px;}
+    .us-item{padding:10px 12px;} .us-arbol{grid-template-columns:1fr;}
+  }
   .us-lista-cab{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;} .us-lista-cab h3{margin:0;}
   #us-buscar{width:100%; margin-bottom:8px;}
   .us-lista{display:flex; flex-direction:column; gap:6px; max-height:70vh; overflow:auto;}
@@ -3722,13 +3729,14 @@
 
 <!-- USUARIOS -->
 <div class="view" id="view-usuarios">
-  <div class="us-layout">
+  <div class="us-layout" id="us-layout">
     <div class="panel us-lista-panel">
       <div class="us-lista-cab"><h3>Usuarios</h3><button class="btn btn-primary btn-sm" id="btn-us-nuevo" type="button">+ Nuevo</button></div>
       <input type="search" id="us-buscar" placeholder="Buscar por nombre o correo…" autocomplete="off">
       <div class="us-lista" id="us-lista"><div class="hint">Cargando…</div></div>
     </div>
     <div class="panel us-editor">
+      <button type="button" class="us-volver" id="btn-us-volver">← Usuarios</button>
       <h3 id="us-titulo">Nuevo usuario</h3>
       <p class="hint" style="margin-bottom:10px;">Primero crea la cuenta en Firebase Console → Authentication → Add user. Luego asigna aquí sus permisos.</p>
       <div class="us-ident">
@@ -3876,8 +3884,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v230';
-const APP_UPDATED = '06/11/2026 11:00';
+const APP_VERSION = 'v231';
+const APP_UPDATED = '06/11/2026 15:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -19700,8 +19708,14 @@ function usAbrir(email){
 }
 usArmarArbol(); usLlenar({ rotulos:false });
 $('us-buscar').addEventListener('input', renderUsLista);
-$('btn-us-nuevo').addEventListener('click', ()=>{ limpiarFormularioUsuario(); $('us-email').focus(); });
-$('us-lista').addEventListener('click', e=>{ const b = e.target.closest('[data-us-email]'); if(b) usAbrir(b.dataset.usEmail); });
+$('btn-us-nuevo').addEventListener('click', ()=>{ limpiarFormularioUsuario(); usModoEditor(true); $('us-email').focus(); });
+// En celular la lista y el editor son pantallas separadas: tocar un usuario abre su editor; «← Usuarios» vuelve.
+function usModoEditor(editando){
+  $('us-layout').classList.toggle('us-editando', editando);
+  if(window.matchMedia('(max-width: 820px)').matches) window.scrollTo({ top: 0 });
+}
+$('btn-us-volver').addEventListener('click', ()=> usModoEditor(false));
+$('us-lista').addEventListener('click', e=>{ const b = e.target.closest('[data-us-email]'); if(b){ usAbrir(b.dataset.usEmail); usModoEditor(true); } });
 $('us-admin').addEventListener('change', usRefrescar);
 $('us-eliminar').addEventListener('change', usRefrescar);
 $('us-arbol').addEventListener('change', e=>{
