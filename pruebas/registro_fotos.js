@@ -358,6 +358,10 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   await page.evaluate(()=> $('ctx-menu').style.display = 'none');
   await marcaRF('A04', 'inventariar');
   const inv = await page.evaluate(()=>{ const el = document.querySelector('#rfl-mapa .slot[data-id="A04"]'); return { c: el.className + ' ' + el.textContent + ' ' + getComputedStyle(el).backgroundColor, r: $('rfl-resumen').innerText.replace(/\s+/g, ' '), ley: document.querySelector('.rfl-leyenda').innerText }; });
+  await page.click('#rfl-mapa .slot[data-id="A04"]', { button: 'right' });
+  await page.locator('#rfl-mapa .slot[data-id="A04"]').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_layout_inventariar.png') });
+  await page.evaluate(()=> $('ctx-menu').style.display = 'none');
   verificar(/Por inventariar/.test(menuInv) && /rfl-inv/.test(inv.c) && /📋/.test(inv.c) && /rgb\(21, 101, 192\)/.test(inv.c) && /1 por inventariar/.test(inv.r) && /Por inventariar/.test(inv.ley),
     `Layout: clic derecho → "📋 Por inventariar" pinta A04 de azul (${inv.r})`);
   await marcaRF('A04', 'quitar-inventariar');
