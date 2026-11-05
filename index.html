@@ -3735,7 +3735,7 @@
       <input type="search" id="us-buscar" placeholder="Buscar por nombre o correo…" autocomplete="off">
       <div class="us-lista" id="us-lista"><div class="hint">Cargando…</div></div>
     </div>
-    <div class="panel us-editor">
+    <div class="panel us-editor sin-plegar">
       <button type="button" class="us-volver" id="btn-us-volver">← Usuarios</button>
       <h3 id="us-titulo">Nuevo usuario</h3>
       <p class="hint" style="margin-bottom:10px;">Primero crea la cuenta en Firebase Console → Authentication → Add user. Luego asigna aquí sus permisos.</p>
@@ -3884,8 +3884,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v231';
-const APP_UPDATED = '06/11/2026 15:00';
+const APP_VERSION = 'v232';
+const APP_UPDATED = '06/11/2026 16:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -18439,6 +18439,8 @@ function setupCollapsiblePanels(){
   document.querySelectorAll('.panel > h3').forEach(h3=>{
     if(h3.querySelector('.collapse-toggle')) return;
     const panel = h3.parentElement;
+    // Paneles cuyo título cambia (p. ej. el editor de Usuarios) no se pliegan: sin botón, quedarían cerrados.
+    if(panel.classList.contains('sin-plegar')){ panel.classList.remove('collapsed'); return; }
     const btn = document.createElement('button');
     btn.type = 'button'; btn.className = 'collapse-toggle';
     btn.title = 'Ocultar/mostrar sección';
