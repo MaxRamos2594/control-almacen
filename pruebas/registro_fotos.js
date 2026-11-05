@@ -301,6 +301,12 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   // Modificar un registro confirmado: vuelve a la pantalla de registro y se confirma de nuevo.
   await page.click('#rfsub-lista');
   await page.evaluate(()=> rfAbrir('RF-ADM-00002'));
+  // Apto para ajuste: se marca desde el detalle (el admin puede).
+  await page.click('#rf-detalle [data-rf-apto="SI"]');
+  await page.waitForFunction(()=> /SÍ/.test(($('rf-apto-valor') || {}).textContent || ''), null, { timeout: 10000 });
+  const apto = await page.evaluate(async ()=> ({ bd: (await registrosFotoRef.doc('RF-ADM-00002').get()).data(), chip: (document.querySelector('#rf-lista [data-rf-abrir="RF-ADM-00002"] .rf-apto-chip') || {}).textContent || '' }));
+  verificar(apto.bd.apto_ajuste === 'SI' && apto.bd.apto_ajuste_por === 'Administrador' && !!apto.bd.apto_ajuste_en && /APTO AJUSTE/.test(apto.chip), `Apto para ajuste: SÍ desde el detalle (queda quién y cuándo; en la lista: "${apto.chip}")`);
+  await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_apto.png'), fullPage: true });
   const fotoVieja = await page.evaluate(()=> rfLista.find(r=> r.id === 'RF-ADM-00002').items[0].fotos[0].path);
   await page.click('#btn-rf-modificar');
   await page.waitForFunction(()=> $('rfsub-panel-nuevo').style.display === 'block' && !$('rf-form').hidden && $('rf-correlativo').value === 'RF-ADM-00002' && rfItems[0].sku === 'P100', null, { timeout: 15000 });
@@ -319,6 +325,7 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   const tras2 = await page.evaluate(async p=> ({ bd: (await registrosFotoRef.doc('RF-ADM-00002').get()).data(), vieja: await storage.ref().child(p).getMetadata().then(()=> true, ()=> false) }), fotoVieja);
   verificar(sigue && tras2.bd.estado === 'CONFIRMADO' && tras2.bd.items[0].cantidad === 2 && tras2.bd.items[0].fotos.length === 1 && tras2.bd.modificado_por === 'Administrador' && !('modificando' in tras2.bd) && !('respaldo' in tras2.bd) && !tras2.vieja,
     'Confirmar cambios: queda CONFIRMADO con la cantidad nueva y quién lo modificó; la foto quitada se borra recién al confirmar');
+  verificar(!('apto_ajuste' in tras2.bd) && !('apto_ajuste_por' in tras2.bd), 'Al modificar un registro, su marca "apto para ajuste" vuelve a quedar sin marcar');
   // Cancelar una modificación deja todo como estaba.
   await page.click('#rfsub-lista'); await page.waitForFunction(()=> rfLista.some(r=> r.id === 'RF-ADM-00002' && r.estado === 'CONFIRMADO'), null, { timeout: 10000 });
   await page.evaluate(()=> rfAbrir('RF-ADM-00002')); await page.click('#btn-rf-modificar');
@@ -337,7 +344,7 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   await page.waitForFunction(()=> !rfLista.some(r=> r.id === 'RF-ADM-00001'), null, { timeout: 15000 });
   const quedan = await page.evaluate(async ps=> (await Promise.all(ps.map(p=> storage.ref().child(p).getMetadata().then(()=> 1, ()=> 0)))).reduce((a, b)=> a + b, 0), paths);
   const log = await page.evaluate(async ()=> (await movimientosRef.get()).docs.map(d=> d.data().tipo).filter(t=> /^reg_foto/.test(t)).sort().join(','));
-  verificar(quedan === 0 && log === 'reg_foto_confirmado,reg_foto_confirmado,reg_foto_descartado,reg_foto_eliminado,reg_foto_exportado,reg_foto_exportado,reg_foto_iniciado,reg_foto_iniciado,reg_foto_iniciado,reg_foto_iniciado,reg_foto_modificacion_cancelada,reg_foto_modificado,reg_foto_reabierto,reg_foto_reabierto', `Eliminar borra el registro y sus ${paths.length} fotos; bitácora: ${log}`);
+  verificar(quedan === 0 && log === 'reg_foto_apto_ajuste,reg_foto_confirmado,reg_foto_confirmado,reg_foto_descartado,reg_foto_eliminado,reg_foto_exportado,reg_foto_exportado,reg_foto_iniciado,reg_foto_iniciado,reg_foto_iniciado,reg_foto_iniciado,reg_foto_modificacion_cancelada,reg_foto_modificado,reg_foto_reabierto,reg_foto_reabierto', `Eliminar borra el registro y sus ${paths.length} fotos; bitácora: ${log}`);
   verificar(!(await page.evaluate(()=> window.__xss || (window.__xssOrigen || []).length)), 'El texto malicioso en la descripción no se ejecutó');
 
   // Tablet (800 px): el SKU va solo arriba, ancho completo; debajo Cantidad y Descripción en la misma fila.

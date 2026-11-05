@@ -100,6 +100,8 @@ const listo = page=> page.waitForFunction(()=> $('status-text').textContent === 
     return { ids: rfLista.map(r=> r.id).join(','), usuarioOculto: $('rf-usuario-f').hidden, cercado: await err(registrosFotoRef.doc('RF-ADM-00002').get()), otro: await err(registrosFotoRef.doc('RF-ADM-00001').get()), todos: await err(registrosFotoRef.get()),
       ajeno: await err(registrosFotoRef.doc('RF-XYZ-00001').set({ usuario_email:'otro@ejemplo.com', estado:'BORRADOR' })) };
   });
+  const aptoYol = await page.evaluate(()=>{ rfAbrir('RF-ADM-00002'); return { valor: ($('rf-apto-valor') || {}).textContent, botones: document.querySelectorAll('#rf-detalle [data-rf-apto]').length, puede: rfPuedeMarcarApto() }; });
+  verificar(aptoYol.valor === 'SIN MARCAR' && aptoYol.botones === 0 && !aptoYol.puede, 'Yolanda (sin "ver todos" ni editar) ve "Apto para ajuste: SIN MARCAR" pero no puede marcarlo');
   verificar(vis.ids === 'RF-YOL-00001,RF-ADM-00002' && !vis.usuarioOculto && vis.otro === 'permission-denied' && vis.todos === 'permission-denied' && vis.ajeno === 'permission-denied' && vis.cercado === 'leyó',
     `Yolanda ve lo suyo y lo de CERCADO DE LIMA (${vis.ids}); las reglas le impiden leer lo de otro participante (${vis.otro}), listar todo (${vis.todos}) y crear a nombre de otro (${vis.ajeno})`);
   erroresTodos.push(...errores); await browser.close();
@@ -132,6 +134,20 @@ const listo = page=> page.waitForFunction(()=> $('status-text').textContent === 
   await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_usuarios_reportes.png'), fullPage: true });
   verificar(soloComas.filas === 1 && soloComas.bloques === '🏬 COMAS' && /📍 GÓNDOLA 3 🏬 COMAS/.test(soloComas.pos) && soloYol === 'RF-YOL-00001',
     `Filtro de tienda COMAS: solo su bloque y la ubicación "${soloComas.pos}"; filtro de usuario YOLANDA: ${soloYol}`);
+  // Johan ("ver todos") marca apto para ajuste; los filtros y el resumen lo usan.
+  await page.selectOption('#rfr-usuario', '');
+  await page.evaluate(async ()=>{ await rfMarcarApto('RF-ADM-00001', 'SI'); await rfMarcarApto('RF-ADM-00002', 'NO'); });
+  await page.selectOption('#rfr-apto', 'SI'); const fSi = await page.evaluate(()=> rfFiltradosReporte().map(r=> r.id).join(','));
+  await page.selectOption('#rfr-apto', 'NO'); const fNo = await page.evaluate(()=> rfFiltradosReporte().map(r=> r.id).join(','));
+  await page.selectOption('#rfr-apto', 'SIN'); const fSin = await page.evaluate(()=> rfFiltradosReporte().map(r=> r.id).sort().join(','));
+  await page.selectOption('#rfr-apto', '');
+  const resApto = await page.evaluate(()=> document.querySelector('#rf-rep-usuarios tfoot').innerText.replace(/\s+/g, ' ').trim());
+  await page.evaluate(()=> setRfSubtab('lista')); await page.waitForFunction(()=> rfLeidos, null, { timeout: 10000 });
+  await page.selectOption('#rf-apto-f', 'SI'); const lSi = await page.evaluate(()=> rfFiltrados().map(r=> r.id).join(',')); await page.selectOption('#rf-apto-f', '');
+  const bd = await page.evaluate(async ()=> (await registrosFotoRef.doc('RF-ADM-00001').get()).data());
+  verificar(fSi === 'RF-ADM-00001' && fNo === 'RF-ADM-00002' && fSin === 'RF-JHN-00001,RF-YOL-00001' && /^Total 4 \d+ 1 1 2$/i.test(resApto) && lSi === 'RF-ADM-00001' && bd.apto_ajuste === 'SI' && bd.apto_ajuste_por === 'JOHAN',
+    `Apto para ajuste: Johan marca; filtro SÍ → ${fSi}, NO → ${fNo}, sin marcar → ${fSin}; resumen "${resApto}"; filtro en Registros → ${lSi}`);
+  await page.evaluate(()=> setRfSubtab('reportes'));
   // Layout del CD: los registros de tiendas no se pintan.
   await page.evaluate(()=>{ setRfSubtab('layout'); $('rfl-estado').value = ''; renderRfLayout(); });
   const layout = await page.evaluate(()=> [...rflConteo().entries()].filter(([k])=> k).map(([k, L])=> k + ':' + L.map(r=> r.id).join('+')).join(' '));
