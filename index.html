@@ -3884,8 +3884,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v232';
-const APP_UPDATED = '06/11/2026 16:00';
+const APP_VERSION = 'v233';
+const APP_UPDATED = '06/11/2026 17:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -18923,21 +18923,42 @@ const rfFotosFormulario = ()=> [...rfPosFotos.map(f=> ({ url: f.url, pie: 'Posic
 
 // ---- Exportar: Excel (matriz, sin fotos) y PDF (con fotos) de lo filtrado ----
 const rfFechaTxt = iso=> iso ? new Date(iso).toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }) : '';
+// Fechas del Excel: el día como fecha real de Excel (número de serie, sin hora, para filtrar y ordenar)
+// y la hora aparte como texto. Se calcula con la fecha local, así no se corre de día.
+function rfExcelFecha(v){
+  const d = v && v.toDate ? v.toDate() : (v ? new Date(v) : null);
+  if(!d || isNaN(d)) return '';
+  return (Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(1899, 11, 30)) / 86400000;
+}
+function rfExcelHora(v){
+  const d = v && v.toDate ? v.toDate() : (v ? new Date(v) : null);
+  return d && !isNaN(d) ? d.toLocaleTimeString('es-PE', { hour:'2-digit', minute:'2-digit', hour12:false }) : '';
+}
+function rfExcelFormatoFechas(ws, columnas){
+  const rango = XLSX.utils.decode_range(ws['!ref']);
+  for(let c = rango.s.c; c <= rango.e.c; c++){
+    const cab = ws[XLSX.utils.encode_cell({ r: 0, c })];
+    if(!cab || !columnas.includes(cab.v)) continue;
+    for(let f = 1; f <= rango.e.r; f++){ const celda = ws[XLSX.utils.encode_cell({ r: f, c })]; if(celda && celda.t === 'n') celda.z = 'dd/mm/yyyy'; }
+  }
+}
 $('btn-rf-excel').addEventListener('click', ()=>{
   const L = rfFiltradosReporte();
   if(!L.length){ showToast('No hay registros para exportar con estos filtros.', 'err'); return; }
   const filas = [];
   // Una fila por producto; una ubicación vacía va en una sola fila sin producto (cantidad 0).
   L.forEach(r=>{
-    const base = { 'Correlativo': r.id, 'Fecha de creación': rfFechaTxt(r.fecha_creacion), 'Participante': r.participante || '',
-      'Posición': r.posicion || '', 'Estado': rfEstadoReg(r), 'Generado por': r.usuario || '', 'Confirmado por': r.confirmado_por || '', 'Fecha de confirmación': rfFechaTxt(r.confirmado_en),
+    const base = { 'Correlativo': r.id, 'Fecha de creación': rfExcelFecha(r.fecha_creacion), 'Hora de creación': rfExcelHora(r.fecha_creacion), 'Participante': r.participante || '',
+      'Posición': r.posicion || '', 'Estado': rfEstadoReg(r), 'Generado por': r.usuario || '', 'Confirmado por': r.confirmado_por || '',
+      'Fecha de confirmación': rfExcelFecha(r.confirmado_en), 'Hora de confirmación': rfExcelHora(r.confirmado_en),
       'Apto para ajuste': rfAptoTxt(r), 'Marcado por': r.apto_ajuste_por || '' };
     const items = r.items || [];
     if(!items.length){ if(r.ubicacion_vacia) filas.push(Object.assign({}, base, { 'Ubicación vacía': 'SÍ', 'N° producto': '', 'SKU': '', 'Descripción': 'UBICACIÓN VACÍA', 'Cantidad': 0, 'N° fotos': 0 })); return; }
     items.forEach((it, k)=> filas.push(Object.assign({}, base, { 'Ubicación vacía': 'NO', 'N° producto': k + 1, 'SKU': it.sku, 'Descripción': it.descripcion || '', 'Cantidad': Number(it.cantidad) || 0, 'N° fotos': (it.fotos || []).length })));
   });
   const ws = XLSX.utils.json_to_sheet(filas);
-  ws['!cols'] = [12, 18, 18, 10, 12, 16, 16, 18, 14, 16, 10, 11, 16, 44, 10, 9].map(w=> ({ wch: w }));
+  rfExcelFormatoFechas(ws, ['Fecha de creación', 'Fecha de confirmación']);
+  ws['!cols'] = [12, 12, 8, 18, 10, 12, 16, 16, 12, 8, 14, 16, 10, 11, 16, 44, 10, 9].map(w=> ({ wch: w }));
   ws['!autofilter'] = { ref: ws['!ref'] };
   const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Registro fotográfico');
   XLSX.writeFile(wb, `registro_fotografico_${new Date().toISOString().slice(0, 10)}.xlsx`);
