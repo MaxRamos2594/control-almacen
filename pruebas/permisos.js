@@ -65,8 +65,10 @@ const visibles = (page, sel)=> page.evaluate(sel=> [...document.querySelectorAll
   const recarga = await page.waitForFunction(()=> document.querySelectorAll('#us-lista .us-item').length >= 3, null, { timeout: 10000 }).then(()=> true, ()=> false);
   verificar(recarga, 'Al recargar la página estando en Usuarios, la lista de usuarios se carga');
   // Celular: lista y editor son pantallas separadas.
-  await page.setViewportSize({ width: 390, height: 860 }); await page.waitForTimeout(200);
-  const vis = ()=> page.evaluate(()=> ({ lista: !!document.querySelector('.us-lista-panel').offsetParent, editor: !!document.querySelector('.us-editor').offsetParent, ancho: document.documentElement.scrollWidth }));
+  // Se recarga ya en tamaño celular (ahí los paneles arrancan plegados).
+  await page.setViewportSize({ width: 390, height: 860 }); await page.reload();
+  await page.waitForFunction(()=> $('status-text').textContent === 'Sincronizado en vivo' && document.querySelectorAll('#us-lista .us-item').length >= 3, null, { timeout: 20000 });
+  const vis = ()=> page.evaluate(()=> ({ lista: !!document.querySelector('.us-lista-panel').offsetParent, editor: !!document.querySelector('.us-editor').offsetParent && !!$('us-email').offsetParent && !!$('btn-guardar-usuario').offsetParent, ancho: document.documentElement.scrollWidth }));
   const m1 = await vis();
   await page.screenshot({ path: path.join(__dirname, 'salida', 'permisos_celular_lista.png') });
   await page.click('#us-lista [data-us-email="yolanda@ejemplo.com"]'); await page.waitForTimeout(200);
