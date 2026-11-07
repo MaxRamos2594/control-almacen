@@ -197,7 +197,7 @@ const listo = page=> page.waitForFunction(()=> $('status-text').textContent === 
   const xl = path.join(__dirname, 'salida', 'rf_aptos.xlsx'); await dl.saveAs(xl);
   const wb = XLSX.readFile(xl), r1 = XLSX.utils.sheet_to_json(wb.Sheets['Por código']), r2 = XLSX.utils.sheet_to_json(wb.Sheets['Detalle por posición']);
   await page.selectOption('#rfa-apto', ''); const a4 = await filasA(); await page.selectOption('#rfa-apto', 'SI');
-  verificar(a1.join(' / ') === 'P1|PELOTA|15|2|3 / P9|CAJA|2|1|1' && /^2 código\(s\) 17 2 3$/i.test(pie) && a2.join() === 'P1|PELOTA|15|2|3' && a3[0].startsWith('P1|') && a3[1].startsWith('P9|') &&
+  verificar(a1.join(' / ') === 'P1|PELOTA|15|2|3 / P9|CAJA|2|1|1' && /^2 código\(s\) 17 2 3 S\/ 0\.00$/i.test(pie) && a2.join() === 'P1|PELOTA|15|2|3' && a3[0].startsWith('P1|') && a3[1].startsWith('P9|') &&
     det.length === 2 && /A01 8 RF-/.test(det.join(' ')) && /B05 7 RF-JHN-00097/.test(det.join(' ')) &&
     r1.length === 2 && r1[0]['Código'] === 'P1' && r1[0]['Cantidad total'] === 15 && r1[0]['Posiciones (distintas)'] === 2 && r2.length === 3 && a4.length === 3,
     `Aptos por código: ${a1.join(' / ')} (pie "${pie}"); filtro cantidad >10 → ${a2.join()}; ordena por código; P1 en ${det.length} posiciones; Excel con ${r1.length} códigos y ${r2.length} filas de detalle; con "Todos" ${a4.length} códigos`);
