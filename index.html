@@ -280,6 +280,7 @@
   .rfa-tabla .num{text-align:right; white-space:nowrap;} .rfa-tabla thead th[data-rfa-orden]{cursor:pointer; user-select:none; white-space:nowrap; background:#f1f4f8;} .rfa-tabla thead th[data-rfa-orden]:hover{background:#e6edf6;}
   .rfa-filtros-col th{padding:4px 6px; background:#f8fafc;} #rfa-tabla .rfa-filtros-col input{width:100%; min-width:70px; height:auto; padding:5px 7px; font-size:12px; line-height:1.3; border:1px solid var(--line-strong); border-radius:6px; margin:0;}
   .rfa-fila{cursor:pointer;} .rfa-fila:hover{background:#f6f9fd;} .rfa-fila.abierta{background:#eef4fb;} .rfa-tabla tfoot th{background:#eaf1fb; font-weight:800;}
+  .rfa-edit{display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end; padding:8px 0 10px;} .rfa-edit label{display:flex; flex-direction:column; font-size:11px; font-weight:700; gap:3px;} .rfa-edit input{height:auto; padding:6px 8px; font-size:13px; margin:0;} .rfa-edit .rfa-e-desc{min-width:260px; flex:1;}
   .rfa-rf{border:1px solid var(--line-strong); background:#fff; border-radius:999px; padding:2px 8px; font:inherit; font-size:11.5px; cursor:pointer;}
   @media (max-width:600px){ #view-regfoto > .subtabs button{flex:1 1 30%;} }
   .rf-det-modal{position:fixed; inset:0; z-index:8000; background:rgba(10,14,20,.55); display:flex; align-items:flex-start; justify-content:center; padding:24px 16px; overflow-y:auto; overscroll-behavior:contain;}
@@ -3944,8 +3945,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v240';
-const APP_UPDATED = '05/11/2026 20:00';
+const APP_VERSION = 'v241';
+const APP_UPDATED = '07/11/2026 12:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4454,7 +4455,7 @@ function tipoLabel(tipo){
     asistente_consulta:'Consulta al asistente IA', almacenamiento_huerfanos_eliminados:'Archivos huérfanos eliminados (almacenamiento)', almacenamiento_pdfs_comprimidos:'Archivos comprimidos (almacenamiento)',
     reg_foto_creado:'Registro fotográfico creado', reg_foto_eliminado:'Registro fotográfico eliminado', reg_foto_iniciado:'Registro fotográfico iniciado (borrador)',
     reg_foto_confirmado:'Registro fotográfico confirmado', reg_foto_descartado:'Borrador de registro fotográfico descartado', reg_foto_exportado:'Registro fotográfico exportado',
-    reg_foto_reabierto:'Registro fotográfico abierto para modificar', reg_foto_modificado:'Registro fotográfico modificado', reg_foto_modificacion_cancelada:'Modificación de registro fotográfico cancelada', reg_foto_apto_ajuste:'Registro fotográfico: apto para ajuste', reg_foto_posicion_cambiada:'Registro fotográfico: posición cambiada', reg_foto_layout_marca:'Registro fotográfico: posición bloqueada / merma / por inventariar', reg_foto_fusionado:'Registros fotográficos fusionados',
+    reg_foto_reabierto:'Registro fotográfico abierto para modificar', reg_foto_modificado:'Registro fotográfico modificado', reg_foto_modificacion_cancelada:'Modificación de registro fotográfico cancelada', reg_foto_apto_ajuste:'Registro fotográfico: apto para ajuste', reg_foto_posicion_cambiada:'Registro fotográfico: posición cambiada', reg_foto_layout_marca:'Registro fotográfico: posición bloqueada / merma / por inventariar', reg_foto_fusionado:'Registros fotográficos fusionados', reg_foto_sku_editado:'Registro fotográfico: código / descripción editados',
     ingreso:'Entrada de pallet', movimiento:'Movimiento', retiro:'Salida (pallet completo)',
     retiro_campana:'Salida (campaña)', retiro_campana_revertido:'↺ Retiro de campaña revertido', producto_agregado:'Adición de producto', transferencia:'Transferencia entre pallets',
     bloqueo:'Bloqueo de posición', desbloqueo:'Desbloqueo de posición',
@@ -19491,7 +19492,7 @@ function rfSiReportes(){
   if($('rfsub-panel-aptos').style.display !== 'none') renderRfAptos();
 }
 // ---- Aptos: listado tipo Excel por código (suma de cantidad y posiciones distintas) ----
-let rfaOrden = { campo: 'cantidad', dir: -1 }, rfaPag = 0, rfaAbierto = null;
+let rfaOrden = { campo: 'cantidad', dir: -1 }, rfaPag = 0, rfaAbierto = null, rfaEditando = null;
 const RFA_POR_PAGINA = 50;
 // Filtro numérico de una columna: "10", ">10", ">=10", "<5", "<=5", "=3" o "2-8".
 function rfaNum(v, f){
@@ -19552,13 +19553,63 @@ function renderRfAptos(){
       const abierto = rfaAbierto === g.sku;
       let tr = `<tr class="rfa-fila${abierto ? ' abierta' : ''}" data-rfa-sku="${esc(g.sku)}"><td><span class="rf-rep-flecha">${abierto ? '▾' : '▸'}</span> <b>${esc(g.sku)}</b></td><td>${esc(g.descripcion)}</td>` +
         `<td class="num"><b>${esc(anFmt(g.cantidad))}</b></td><td class="num">${esc(g.posiciones)}</td><td class="num">${esc(g.registros)}</td><td>${esc([...g.tiendas].join(', '))}</td></tr>`;
-      if(abierto) tr += `<tr class="rf-rep-exp"><td colspan="6"><div class="rf-rep-scroll"><table class="rf-rep-det"><thead><tr><th>Tienda</th><th>Posición</th><th class="num">Cantidad</th><th>Registros</th></tr></thead><tbody>` +
+      if(abierto) tr += `<tr class="rf-rep-exp"><td colspan="6">${rfaEditorHtml(g)}<div class="rf-rep-scroll"><table class="rf-rep-det"><thead><tr><th>Tienda</th><th>Posición</th><th class="num">Cantidad</th><th>Registros</th></tr></thead><tbody>` +
         [...g.pos.values()].sort((a, b)=> b.cantidad - a.cantidad || rfOrdCod(a.posicion, b.posicion)).map(p=> `<tr><td>🏬 ${esc(p.tienda)}</td><td><b>📍 ${esc(p.posicion)}</b></td><td class="num">${esc(anFmt(p.cantidad))}</td><td>${[...p.rfs].map(id=> `<button type="button" class="rfa-rf" data-rfa-ver="${esc(id)}">${esc(id)}</button>`).join(' ')}</td></tr>`).join('') +
         `</tbody></table></div></td></tr>`;
       return tr; }).join('')
     : `<tr><td colspan="6" class="hint">${rfLista.length ? 'Ningún código cumple los filtros.' : 'Aún no hay registros.'}</td></tr>`;
   $('rfa-foot').innerHTML = `<tr><th>${esc(anFmt(G.length))} código(s)</th><th></th><th class="num">${esc(anFmt(G.reduce((s, g)=> s + g.cantidad, 0)))}</th><th class="num">${esc(anFmt(totPos))}</th><th class="num">${esc(anFmt(totRf))}</th><th></th></tr>`;
   $('rfa-pag').innerHTML = G.length > RFA_POR_PAGINA ? `<div class="vo-pag"><button type="button" data-rfa-pag="-1" ${rfaPag ? '' : 'disabled'}>‹ Anterior</button><span>${esc(rfaPag * RFA_POR_PAGINA + 1)}–${esc(Math.min(G.length, (rfaPag + 1) * RFA_POR_PAGINA))} de ${esc(G.length)} · página ${esc(rfaPag + 1)} de ${esc(pags)}</span><button type="button" data-rfa-pag="1" ${rfaPag < pags - 1 ? '' : 'disabled'}>Siguiente ›</button></div>` : '';
+}
+// ---- Editar código y descripción desde Aptos ----
+// Cambia el SKU y la descripción en los registros de esa fila (los que se ven con los filtros elegidos).
+const rfaPuedeEditar = ()=> !!(currentPermisos.admin || currentPermisos.eliminar || currentPermisos.rf_todos);
+function rfaEditorHtml(g){
+  if(!rfaPuedeEditar()) return '';
+  if(rfaEditando !== g.sku) return `<div class="rfa-edit"><button type="button" class="btn btn-ghost btn-sm" data-rfa-editar="${esc(g.sku)}">✏ Editar código / descripción</button></div>`;
+  return `<div class="rfa-edit"><label>Código<input id="rfa-e-sku" value="${esc(g.sku)}" maxlength="60" autocomplete="off"></label>` +
+    `<label class="rfa-e-desc">Descripción<input id="rfa-e-desc" value="${esc(g.descripcion)}" maxlength="200" autocomplete="off"></label>` +
+    `<button type="button" class="btn btn-primary btn-sm" data-rfa-guardar="${esc(g.sku)}">💾 Guardar</button><button type="button" class="btn btn-ghost btn-sm" data-rfa-cancelar>Cancelar</button>` +
+    `<span class="hint" style="width:100%;">Se cambia en ${esc(g.registros)} registro(s) (${esc(g.posiciones)} posición(es)) de esta fila. Si el código nuevo ya está en el mismo registro, se suman las cantidades.</span></div>`;
+}
+async function rfaGuardarEdicion(viejo){
+  const g = rfaAgrupar(rfaFiltrados()).find(x=> x.sku === viejo); if(!g) return;
+  const nuevo = $('rfa-e-sku').value.trim().toUpperCase(), desc = $('rfa-e-desc').value.trim();
+  if(!nuevo){ showToast('El código no puede quedar vacío.', 'err'); return; }
+  if(nuevo === viejo && desc === g.descripcion){ rfaEditando = null; renderRfAptos(); return; }
+  const regs = [...g.rfs].map(id=> rfLista.find(r=> r.id === id)).filter(Boolean);
+  const omitidos = regs.filter(r=> rfEstadoReg(r) !== 'CONFIRMADO' || r.modificando), ok = regs.filter(r=> !omitidos.includes(r));
+  if(!ok.length){ showToast('Solo se editan registros confirmados (estos están en borrador o en modificación).', 'err'); return; }
+  if(!confirm(`¿Cambiar ${viejo} → ${nuevo}${desc !== g.descripcion ? ` y la descripción a "${desc}"` : ''} en ${ok.length} registro(s)?` + (omitidos.length ? `\n\nNo se tocan ${omitidos.length} en borrador o en modificación.` : ''))) return;
+  const ahora = new Date().toISOString(), cambio = { de: viejo, a: nuevo, descripcion_antes: g.descripcion, descripcion: desc, por: currentUserAlias, por_email: currentUserEmail, en: ahora };
+  // Las líneas que quedan con el código nuevo dentro de un mismo registro se juntan en una (cantidades sumadas, fotos de ambas).
+  const cambiosDe = r=>{
+    const items = [];
+    (r.items || []).forEach(it=>{
+      const k = String(it.sku || '').trim().toUpperCase(), x = Object.assign({}, it, { fotos: [...(it.fotos || [])] });
+      if(k === viejo) x.sku = nuevo;
+      if(String(x.sku || '').trim().toUpperCase() === nuevo){
+        x.descripcion = desc;
+        const y = items.find(z=> String(z.sku || '').trim().toUpperCase() === nuevo);
+        if(y){ y.cantidad = (Number(y.cantidad) || 0) + (Number(x.cantidad) || 0); y.fotos.push(...x.fotos); return; }
+      }
+      items.push(x);
+    });
+    return { items, cant_items: items.length, unidades: items.reduce((t, it)=> t + (Number(it.cantidad) || 0), 0), skus: items.map(it=> it.sku), actualizado_en: ahora };
+  };
+  try{
+    const cambios = new Map(ok.map(r=> [r.id, cambiosDe(r)]));
+    for(let i = 0; i < ok.length; i += 400){
+      const batch = db.batch();
+      ok.slice(i, i + 400).forEach(r=> batch.update(registrosFotoRef.doc(r.id), Object.assign({}, cambios.get(r.id), { cambios_sku: firebase.firestore.FieldValue.arrayUnion(cambio) })));
+      await batch.commit();
+    }
+    ok.forEach(r=> Object.assign(r, cambios.get(r.id), { cambios_sku: [...(r.cambios_sku || []), cambio] }));
+    await logAccion('reg_foto_sku_editado', { detalle: `${viejo} → ${nuevo}${desc !== g.descripcion ? ` · descripción "${g.descripcion}" → "${desc}"` : ''} · ${ok.length} registro(s): ${ok.map(r=> r.id).join(', ').slice(0, 900)}` });
+    rfaEditando = null; rfaAbierto = nuevo;
+    showToast(`Código actualizado en ${ok.length} registro(s).` + (omitidos.length ? ` ${omitidos.length} sin tocar (borrador / en modificación).` : ''), 'ok');
+    renderRfAptos(); renderRfLista(); rfSiReportes();
+  }catch(err){ console.error(err); showToast('No se pudo guardar: ' + (err.message || err), 'err'); }
 }
 function rfaExcel(){
   const G = rfaFilas();
@@ -19578,11 +19629,15 @@ $('rfsub-panel-aptos').addEventListener('click', e=>{
   const ver = e.target.closest('[data-rfa-ver]'), th = e.target.closest('[data-rfa-orden]'), fila = e.target.closest('[data-rfa-sku]'), pag = e.target.closest('[data-rfa-pag]');
   if(ver){ setRfSubtab('lista'); rfSel = ver.dataset.rfaVer; setTimeout(()=> rfAbrir(ver.dataset.rfaVer), 50); return; }
   if(e.target.closest('#btn-rfa-excel')){ rfaExcel(); return; }
+  const ed = e.target.closest('[data-rfa-editar]'); if(ed){ rfaEditando = ed.dataset.rfaEditar; renderRfAptos(); setTimeout(()=>{ const i = $('rfa-e-sku'); if(i){ i.focus(); i.select(); } }, 0); return; }
+  if(e.target.closest('[data-rfa-cancelar]')){ rfaEditando = null; renderRfAptos(); return; }
+  const gu = e.target.closest('[data-rfa-guardar]'); if(gu){ rfaGuardarEdicion(gu.dataset.rfaGuardar); return; }
+  if(e.target.closest('.rfa-edit')) return;
   if(e.target.closest('#btn-rfa-limpiar')){ ['rfa-q','rfa-f-sku','rfa-f-desc','rfa-f-cant','rfa-f-pos','rfa-f-rf','rfa-desde','rfa-hasta','rfa-tienda','rfa-usuario'].forEach(id=> $(id).value = ''); $('rfa-apto').value = 'SI'; $('rfa-estado').value = 'CONFIRMADO'; rfaPag = 0; renderRfAptos(); return; }
   if(e.target.closest('#btn-rfa-recargar')){ rfCargar(true); return; }
   if(th){ const c = th.dataset.rfaOrden; rfaOrden = rfaOrden.campo === c ? { campo: c, dir: -rfaOrden.dir } : { campo: c, dir: (c === 'sku' || c === 'descripcion') ? 1 : -1 }; renderRfAptos(); return; }
   if(pag){ if(!pag.disabled){ rfaPag += Number(pag.dataset.rfaPag); rfaAbierto = null; renderRfAptos(); } return; }
-  if(fila){ rfaAbierto = rfaAbierto === fila.dataset.rfaSku ? null : fila.dataset.rfaSku; renderRfAptos(); }
+  if(fila){ rfaAbierto = rfaAbierto === fila.dataset.rfaSku ? null : fila.dataset.rfaSku; rfaEditando = null; renderRfAptos(); }
 });
 ['rfa-apto','rfa-estado','rfa-tienda','rfa-usuario','rfa-desde','rfa-hasta'].forEach(id=> $(id).addEventListener('change', ()=>{ rfaPag = 0; renderRfAptos(); }));
 ['rfa-q','rfa-f-sku','rfa-f-desc','rfa-f-cant','rfa-f-pos','rfa-f-rf'].forEach(id=> $(id).addEventListener('input', ()=>{ rfaPag = 0; renderRfAptos(); }));
