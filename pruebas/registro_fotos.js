@@ -145,6 +145,14 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   const res = await page.textContent('#rf-resumen'), listo = await page.evaluate(()=> $('btn-rf-guardar').classList.contains('listo'));
   verificar(/2 producto\(s\) listo\(s\) · 8 und · 4 foto\(s\)/.test(res) && listo, `Resumen: ${res}; el botón Guardar se pone verde (el producto 3 en blanco no cuenta)`);
   await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_nuevo.png'), fullPage: true });
+  // La descripción es obligatoria: un producto con SKU, cantidad y foto pero sin descripción no está completo.
+  await page.evaluate(()=>{ rfItems[2] = Object.assign(rfNuevoItem(), { sku:'Z1', cantidad:'2', fotos: rfItems[1].fotos.slice() }); rfAvisarIncompleto(2); });
+  await page.waitForFunction(()=> !$('rf-aviso').hidden, null, { timeout: 5000 });
+  const sinDesc = await page.evaluate(()=> ({ txt: $('rf-aviso-txt').textContent, roja: !!document.querySelector('#rf-items [data-rf-item="2"] [data-rf-campo="descripcion"].rf-falta'), lbl: document.querySelector('#rf-items [data-rf-item="2"] .rf-desc label').textContent, completo: !!rfCompleto(rfItems[2]) }));
+  await page.click('#btn-rf-aviso-ok');
+  await page.evaluate(()=>{ rfItems[2] = rfNuevoItem(); renderRfForm(); });
+  verificar(/falta la descripción/.test(sinDesc.txt) && sinDesc.roja && /Descripción \*/.test(sinDesc.lbl) && !sinDesc.completo,
+    `Descripción obligatoria: sin ella el producto no está completo ("${sinDesc.txt}") y el campo se marca en rojo`);
   await page.click('#btn-rf-guardar');
   await page.waitForFunction(()=> !$('rf-ok').hidden, null, { timeout: 30000 });
   const tras = await page.evaluate(()=> ({ ok: $('rf-ok').innerText, inicio: !$('rf-inicio').hidden, form: $('rf-form').hidden, foco: document.activeElement.id, borr: rfBorrador }));

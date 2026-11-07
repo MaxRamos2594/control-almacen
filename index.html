@@ -3945,8 +3945,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v241';
-const APP_UPDATED = '07/11/2026 12:00';
+const APP_VERSION = 'v242';
+const APP_UPDATED = '07/11/2026 15:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -18810,14 +18810,14 @@ function rfPrepararForm(){
   rfMostrarInicio();
   if(rfBorrador){ if(!rfItems.length) rfItems.push(rfNuevoItem()); renderRfForm(); }
 }
-const rfVacio = it=> !it.sku.trim() && !String(it.cantidad).trim() && !it.fotos.length;
-const rfCompleto = it=> it.sku.trim() && Number(it.cantidad) > 0 && it.fotos.length;
+const rfVacio = it=> !it.sku.trim() && !String(it.cantidad).trim() && !String(it.descripcion || '').trim() && !it.fotos.length;
+const rfCompleto = it=> it.sku.trim() && String(it.descripcion || '').trim() && Number(it.cantidad) > 0 && it.fotos.length;
 // Un producto solo cuenta con SKU, cantidad mayor a 0 y al menos una foto: lo que falte se marca en rojo.
-const rfFaltan = it=> [!it.sku.trim() && 'sku', !(Number(it.cantidad) > 0) && 'cantidad', !it.fotos.length && 'fotos'].filter(Boolean);
-const RF_FALTA_TXT = { sku:'el SKU', cantidad:'la cantidad (mayor a 0)', fotos:'al menos una foto' };
+const rfFaltan = it=> [!it.sku.trim() && 'sku', !(Number(it.cantidad) > 0) && 'cantidad', !String(it.descripcion || '').trim() && 'descripcion', !it.fotos.length && 'fotos'].filter(Boolean);
+const RF_FALTA_TXT = { sku:'el SKU', cantidad:'la cantidad (mayor a 0)', descripcion:'la descripción', fotos:'al menos una foto' };
 function rfAvisarIncompleto(i){
   const it = rfItems[i]; it._faltan = rfFaltan(it); renderRfForm();
-  const txt = `Producto ${i + 1}${it.sku ? ' (' + it.sku + ')' : ''}: falta ${it._faltan.map(f=> RF_FALTA_TXT[f]).join(', ')}. No se agrega sin foto.`;
+  const txt = `Producto ${i + 1}${it.sku ? ' (' + it.sku + ')' : ''}: falta ${it._faltan.map(f=> RF_FALTA_TXT[f]).join(', ')}.${it._faltan.includes('fotos') ? ' No se agrega sin foto.' : ''}`;
   showMsg('rf-msg', 'err', txt);
   const el = document.querySelector(`#rf-items [data-rf-item="${i}"]`); if(el) el.scrollIntoView({ behavior:'smooth', block:'center' });
   rfAviso(`Completa el producto ${i + 1}`, txt, ()=>{ const f = it._faltan[0]; if(f === 'fotos') rfCamaraItem(i); else rfFoco(i, f); });
@@ -18828,6 +18828,7 @@ function rfActualizarMarcas(i){
   it._faltan = rfFaltan(it).filter(f=> it._faltan.includes(f));
   caja.querySelector('[data-rf-campo="sku"]').classList.toggle('rf-falta', it._faltan.includes('sku'));
   caja.querySelector('[data-rf-campo="cantidad"]').classList.toggle('rf-falta', it._faltan.includes('cantidad'));
+  caja.querySelector('[data-rf-campo="descripcion"]').classList.toggle('rf-falta', it._faltan.includes('descripcion'));
   caja.querySelector('.rf-fotos').classList.toggle('rf-falta', it._faltan.includes('fotos'));
 }
 function rfThumbs(fotos, clave, max){
@@ -18851,7 +18852,7 @@ function renderRfForm(){
     `<div class="rf-item-grid"><div class="rf-sku-box"><label>SKU *</label><div class="rf-sku-fila"><input type="text" class="upper${(it._faltan || []).includes('sku') ? ' rf-falta' : ''}" data-rf-campo="sku" value="${esc(it.sku)}" autocomplete="off" autocapitalize="characters" enterkeyhint="next" placeholder="Código o descripción">` +
       `<button type="button" class="rf-scan" data-rf-scan="${esc(i)}" title="Escanear código de barras con la cámara" aria-label="Escanear código de barras">▦</button></div><div class="rf-sug" hidden></div></div>` +
     `<div class="rf-cant"><label>Cantidad * <span class="hint">(mayor a 0)</span></label><div class="rf-stepper"><button type="button" data-rf-paso="-1" aria-label="Menos">−</button><input type="number" min="1" step="1" inputmode="numeric" enterkeyhint="go" data-rf-campo="cantidad" value="${esc(it.cantidad)}" placeholder="0" class="${(it._faltan || []).includes('cantidad') ? 'rf-falta' : ''}"><button type="button" data-rf-paso="1" aria-label="Más">+</button></div></div>` +
-    `<div class="rf-desc"><label>Descripción</label><input type="text" data-rf-campo="descripcion" value="${esc(it.descripcion)}" placeholder="Se completa con el SKU si existe"></div></div>` +
+    `<div class="rf-desc"><label>Descripción *</label><input type="text" data-rf-campo="descripcion" value="${esc(it.descripcion)}" placeholder="Se completa con el SKU si existe" class="${(it._faltan || []).includes('descripcion') ? 'rf-falta' : ''}"></div></div>` +
     `<span class="rf-lbl">📷 Fotos del producto * <span class="hint">(una o varias)</span></span><div class="rf-fotos${(it._faltan || []).includes('fotos') ? ' rf-falta' : ''}">${rfThumbs(it.fotos, 'item:' + i, 20)}</div></div>`).join('');
   rfPasos();
 }
@@ -18912,7 +18913,7 @@ $('rf-items').addEventListener('keydown', e=>{
   else if(campo === 'descripcion') rfFoco(i, 'cantidad');
 });
 $('rf-items').addEventListener('focusout', e=>{ if(e.target.dataset.rfCampo === 'sku') setTimeout(()=>{ const c = e.target.closest('.rf-sku-box') && e.target.closest('.rf-sku-box').querySelector('.rf-sug'); if(c) c.hidden = true; }, 200); });
-// "+ Agregar producto" solo si los anteriores están completos (SKU, cantidad > 0 y foto).
+// "+ Agregar producto" solo si los anteriores están completos (SKU, cantidad > 0, descripción y foto).
 $('btn-rf-add').addEventListener('click', ()=>{
   const i = rfItems.findIndex(it=> !rfVacio(it) && !rfCompleto(it));
   if(i >= 0){ rfAvisarIncompleto(i); return; }
@@ -19576,6 +19577,7 @@ async function rfaGuardarEdicion(viejo){
   const g = rfaAgrupar(rfaFiltrados()).find(x=> x.sku === viejo); if(!g) return;
   const nuevo = $('rfa-e-sku').value.trim().toUpperCase(), desc = $('rfa-e-desc').value.trim();
   if(!nuevo){ showToast('El código no puede quedar vacío.', 'err'); return; }
+  if(!desc){ showToast('La descripción no puede quedar vacía.', 'err'); return; }
   if(nuevo === viejo && desc === g.descripcion){ rfaEditando = null; renderRfAptos(); return; }
   const regs = [...g.rfs].map(id=> rfLista.find(r=> r.id === id)).filter(Boolean);
   const omitidos = regs.filter(r=> rfEstadoReg(r) !== 'CONFIRMADO' || r.modificando), ok = regs.filter(r=> !omitidos.includes(r));
