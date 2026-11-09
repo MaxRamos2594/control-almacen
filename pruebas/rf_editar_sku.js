@@ -22,6 +22,7 @@ async function esperar(page, fn, arg, ms){
   await page.evaluate(async email=>{
     const base = { estado:'CONFIRMADO', participante:'CD VENEZUELA', usuario:'Administrador', usuario_email: email };
     const foto = n=> ({ url:'https://ejemplo.com/' + n + '.jpg', path:'registros_foto/x/' + n + '.jpg', tam: 100 });
+    await productosRef.doc('P2').set({ descripcion:'CAJA', costo: 3 });
     await registrosFotoRef.doc('RF-ADM-00001').set(Object.assign({}, base, { posicion:'A01', fecha_creacion:'2026-11-01T10:00:00.000Z', apto_ajuste:'SI',
       items:[{ sku:'P1', descripcion:'PELOTA', cantidad:5, fotos:[foto('a')] }, { sku:'P2', descripcion:'CAJA', cantidad:3, fotos:[] }], cant_items:2, unidades:8, skus:['P1','P2'] }));
     await registrosFotoRef.doc('RF-ADM-00002').set(Object.assign({}, base, { posicion:'A02', fecha_creacion:'2026-11-02T10:00:00.000Z', apto_ajuste:'SI',
@@ -53,9 +54,48 @@ async function esperar(page, fn, arg, ms){
   verificar(tabla === 'P1X|PELOTA ROJA|11 / P2|CAJA|3' && /P1 → P1X/.test(log) && /2 registro\(s\)/.test(log),
     `La tabla queda ${tabla}; bitácora: ${log}`);
 
+  // Costos: falta costo en P1X; "Sin costo" filtra; pegar listado tipo Excel.
+  const res0 = await page.evaluate(()=> $('rfa-costos-res').innerText.replace(/\s+/g, ' '));
+  await page.selectOption('#rfa-f-costo', 'SIN');
+  const soloSin = await page.evaluate(()=> [...document.querySelectorAll('#rfa-body .rfa-fila')].map(tr=> tr.dataset.rfaSku).join());
+  await page.selectOption('#rfa-f-costo', '');
+  await page.click('#btn-rfa-costos');
+  await page.fill('#rfa-costos-txt', 'CÓDIGO\tDESCRIPCIÓN\tCOSTO\nP1X\tPELOTA\t2,50\nP2\tCAJA\t3\nZZZ\tOTRO\t9');
+  await page.click('#btn-rfa-costos-revisar');
+  const prev1 = await page.evaluate(()=> $('rfa-costos-prev').innerText.replace(/\s+/g, ' '));
+  await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_aptos_costos.png'), fullPage: true });
+  await page.click('#btn-rfa-costos-aplicar');
+  await esperar(page, async ()=> ((await productosRef.doc('P1X').get()).data() || {}).costo === 2.5, null, 10000);
+  const p1x = await page.evaluate(async ()=> (await productosRef.doc('P1X').get()).data());
+  const fila = ()=> page.evaluate(()=> [...document.querySelectorAll('#rfa-body .rfa-fila')].map(tr=> [tr.cells[0], tr.cells[5], tr.cells[6]].map(c=> c ? c.innerText.replace(/[▸▾]/g, '').trim() : '').join('|')).join(' / '));
+  await page.waitForFunction(()=> /2\.50/.test(($('rfa-body').querySelector('[data-rfa-sku="P1X"]') || {}).innerText || ''), null, { timeout: 10000 }).catch(()=>{});
+  const tras1 = await fila(), fin1 = await page.evaluate(()=> $('rfa-costos-prev').innerText.replace(/\s+/g, ' '));
+  verificar(/1 de 2 código\(s\) sin costo/.test(res0) && soloSin === 'P1X' &&
+    /3 código\(s\) en el listado: 1 igual\(es\) · 0 con costo distinto \(se reemplaza\) · 1 sin costo \(se asigna\) · 1 no están en la tabla/.test(prev1) && /todos los códigos de la tabla tendrán costo/.test(prev1) &&
+    p1x.descripcion === 'PELOTA ROJA' && p1x.creado_desde === 'registro_fotografico' && /P1X\|S\/ 2\.50\|S\/ 27\.50/.test(tras1) && /P2\|S\/ 3\.00\|S\/ 9\.00/.test(tras1) && /Todos los códigos de la tabla tienen costo/.test(fin1),
+    `Costos: antes "${res0}" (filtro sin costo → ${soloSin}); al pegar: "${prev1.slice(0, 160)}…"; queda ${tras1}`);
+  // Costo distinto → se reemplaza.
+  await page.fill('#rfa-costos-txt', 'P2\t4');
+  await page.click('#btn-rfa-costos-revisar');
+  const prev2 = await page.evaluate(()=> $('rfa-costos-prev').innerText.replace(/\s+/g, ' '));
+  await page.click('#btn-rfa-costos-aplicar');
+  await esperar(page, async ()=> ((await productosRef.doc('P2').get()).data() || {}).costo === 4, null, 10000);
+  verificar(/1 con costo distinto/.test(prev2) && /S\/ 3\.00 → S\/ 4\.00/.test(prev2), `Costo distinto se reemplaza: ${prev2.slice(0, 140)}`);
+  // Editar el costo como el código y la descripción.
+  await page.click('#btn-rfa-costos-cerrar');
+  await page.click('#rfa-body [data-rfa-sku="P2"]');
+  await page.click('[data-rfa-editar="P2"]');
+  await page.fill('#rfa-e-costo', '5.5');
+  await page.click('[data-rfa-guardar="P2"]');
+  await esperar(page, async ()=> ((await productosRef.doc('P2').get()).data() || {}).costo === 5.5, null, 10000);
+  await page.waitForFunction(()=> /S\/ 5\.50/.test(($('rfa-body').querySelector('[data-rfa-sku="P2"]') || {}).innerText || ''), null, { timeout: 10000 }).catch(()=>{});
+  const tras3 = await fila();
+  const logC = await page.evaluate(async ()=> (await movimientosRef.where('tipo', '==', 'reg_foto_costos').get()).size);
+  verificar(/P2\|S\/ 5\.50\|S\/ 16\.50/.test(tras3) && logC === 3, `Editar costo de P2 a 5.5 → ${tras3}; bitácora con ${logC} cambios de costo`);
+
   // Sin permiso (solo registrar) no aparece el botón.
   await page.evaluate(()=>{ currentPermisos = Object.assign({}, currentPermisos, { admin:false, eliminar:false, rf_todos:false }); rfaAbierto = 'P2'; renderRfAptos(); });
-  const sinBoton = await page.evaluate(()=> !document.querySelector('[data-rfa-editar]'));
+  const sinBoton = await page.evaluate(()=> !document.querySelector('[data-rfa-editar]') && $('btn-rfa-costos').hidden);
   verificar(sinBoton, 'Sin permiso no aparece "Editar código / descripción"');
 
   verificar(!errores.length, 'Sin errores de JavaScript' + (errores.length ? ': ' + errores.join(' | ') : ''));
