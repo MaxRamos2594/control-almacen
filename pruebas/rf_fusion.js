@@ -42,6 +42,18 @@ async function esperar(page, fn, arg, ms){
   await page.evaluate(()=>{ switchTab('regfoto'); setRfSubtab('layout'); });
   await page.waitForFunction(()=> document.querySelector('#rfl-mapa .slot[data-id="A03"].rfl-n'), null, { timeout: 15000 });
 
+  // 0) Filtro por producto (código o descripción, sin importar tildes): solo se pintan las posiciones con ese producto.
+  const pinta = ()=> page.evaluate(()=> ['A01','A02','A03','A04'].map(c=>{ const el = document.querySelector(`#rfl-mapa .slot[data-id="${c}"]`); return el.classList.contains('rfl-n') ? 'n' : el.classList.contains('rfl-1') ? '1' : '0'; }).join(''));
+  const buscar = async t=>{ await page.fill('#rfl-q', t); await page.waitForFunction(t=> t ? $('rfl-resumen').innerText.includes('«' + t + '»') : !$('rfl-resumen').innerText.includes('🔍'), t, { timeout: 5000 }); return pinta(); };
+  const fMuneca = await buscar('muneca'), fCaja = await buscar('caja'), fP1 = await buscar('p1 pelota'), fNada = await buscar('zzz');
+  const resF = await page.evaluate(()=> $('rfl-resumen').innerText.replace(/\s+/g, ' '));
+  await page.click('#rfl-mapa .slot[data-id="A03"]');   // sin RF con "zzz": no abre nada
+  const abreNada = await page.evaluate(()=> $('rf-det-modal').hidden);
+  const fTodo = await buscar('');
+  verificar(fMuneca === '00n0' && fCaja === '0100' && fP1 === '1100' && fNada === '0000' && /Solo posiciones con «zzz» \(0 con RF\)/.test(resF) && abreNada && fTodo === '11n0',
+    `Filtro por producto en el layout: "muneca" → ${fMuneca}, "caja" → ${fCaja}, "p1 pelota" → ${fP1}, "zzz" → ${fNada}; sin filtro → ${fTodo}`);
+  await buscar('muñeca'); await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_layout_filtro.png') }); await buscar('');
+
   // 1) Misma posición: A03 tiene 2 registros → quedan en uno (el más antiguo) y P9 se suma (2 + 6).
   await page.click('#rfl-mapa .slot[data-id="A03"]', { button: 'right' });
   const menu3 = await page.evaluate(()=> $('ctx-menu').innerText.replace(/\s+/g, ' '));

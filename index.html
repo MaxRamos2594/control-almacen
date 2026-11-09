@@ -298,7 +298,7 @@
   .rf-det-grupo-nav button{border:1px solid var(--line-strong); background:#fff; border-radius:8px; padding:6px 12px; font:inherit; font-weight:700; cursor:pointer;} .rf-det-grupo-nav button:disabled{opacity:.4; cursor:default;}
   .rf-pos-cambiar{margin-top:4px; border:1px solid var(--line-strong); background:#fff; border-radius:6px; padding:2px 8px; font:inherit; font-size:11.5px; cursor:pointer; align-self:flex-start;}
   #rf-det-pos input{width:100%; margin:4px 0; font-size:15px; padding:6px 8px;} .rf-det-datos .rf-pos-acc{display:flex; gap:6px; flex-wrap:wrap; background:none; padding:0;}
-  .rfl-barra{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:8px;}
+  .rfl-barra{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:8px;} #rfl-q{min-width:240px; flex:0 1 300px; margin:0;}
   .rfl-leyenda{display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--ink-soft);} .rfl-leyenda span{display:inline-flex; align-items:center; gap:5px;}
   .rfl-leyenda i{display:inline-block; width:14px; height:14px; border-radius:3px; border:1px solid;}
   .rfl-resumen{display:flex; flex-wrap:wrap; gap:8px; align-items:center;} .rfl-k{padding:4px 10px; border-radius:999px; font-size:12.5px; border:1px solid;}
@@ -3480,6 +3480,7 @@
         <select id="rfl-estado" title="Qué registros se cuentan"><option value="CONFIRMADO">✔ Solo confirmados</option><option value="">Todos (incluye borradores)</option></select>
         <select id="rfl-usuario" title="De qué usuario"></select>
         <select id="rfl-apto" title="Apto para ajuste"><option value="">⚖ Apto ajuste: todos</option><option value="SI">✔ Aptos para ajuste</option><option value="NO">✖ No aptos</option><option value="SIN">… Sin marcar</option></select>
+        <input type="search" id="rfl-q" placeholder="🔍 Código o descripción del producto…" autocomplete="off" title="Solo se pintan las posiciones con ese producto">
         <div class="rfl-leyenda"><span><i class="rfl-0"></i>Sin RF</span><span><i class="rfl-1"></i>1 RF</span><span><i class="rfl-n"></i>Más de 1 RF</span><span><i class="rfl-bloq"></i>🔒 Bloqueada</span><span><i class="rfl-merma"></i>♻ Merma</span><span><i class="rfl-inv"></i>📋 Por inventariar</span></div>
         <button type="button" class="btn btn-ghost btn-sm" id="btn-rfl-recargar">↻ Actualizar</button>
       </div>
@@ -3955,8 +3956,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v243';
-const APP_UPDATED = '07/11/2026 18:00';
+const APP_VERSION = 'v244';
+const APP_UPDATED = '09/11/2026 12:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -19766,9 +19767,14 @@ function rflLlenarUsuarios(){
   sel.innerHTML = '<option value="">👤 Todos los usuarios</option>' + L.map(([e, a])=> `<option value="${esc(e)}">${esc(a)}</option>`).join('');
   sel.value = L.some(([e])=> e === v) ? v : '';
 }
+// Producto buscado: todas las palabras deben estar en el código o la descripción de un mismo producto del registro.
+function rflTieneProducto(r, palabras){
+  return !palabras.length || (r.items || []).some(it=>{ const t = normalizarTexto(`${it.sku || ''} ${it.descripcion || ''}`); return palabras.every(p=> t.includes(p)); });
+}
+const rflPalabras = ()=> normalizarTexto(($('rfl-q') || {}).value || '').split(/\s+/).filter(Boolean);
 function rflConteo(){
-  const est = $('rfl-estado').value, us = $('rfl-usuario').value, apto = $('rfl-apto').value, por = new Map();
-  rfLista.filter(r=> rfEsCD(rfTiendaDe(r)) && (!est || rfEstadoReg(r) === est) && (!us || r.usuario_email === us) && rfAptoCumple(r, apto)).forEach(r=>{ const k = r.posicion || ''; if(!por.has(k)) por.set(k, []); por.get(k).push(r); });
+  const est = $('rfl-estado').value, us = $('rfl-usuario').value, apto = $('rfl-apto').value, q = rflPalabras(), por = new Map();
+  rfLista.filter(r=> rfEsCD(rfTiendaDe(r)) && (!est || rfEstadoReg(r) === est) && (!us || r.usuario_email === us) && rfAptoCumple(r, apto) && rflTieneProducto(r, q)).forEach(r=>{ const k = r.posicion || ''; if(!por.has(k)) por.set(k, []); por.get(k).push(r); });
   return por;
 }
 // Qué registros ve el usuario (para que se entienda por qué otro ve más o menos).
@@ -19819,7 +19825,8 @@ function renderRfLayout(){
   const fuera = [...por.keys()].filter(k=> !posiciones[k]).length;
   $('rfl-resumen').innerHTML = `<span class="rfl-k k1"><b>${esc(c1)}</b> con 1 RF</span><span class="rfl-k kn"><b>${esc(cn)}</b> con más de 1</span><span class="rfl-k k0"><b>${esc(c0)}</b> sin RF</span>` +
     (cb ? `<span class="rfl-k kb"><b>${esc(cb)}</b> bloqueada(s)</span>` : '') + (cm ? `<span class="rfl-k km"><b>${esc(cm)}</b> de merma</span>` : '') + (ci ? `<span class="rfl-k ki"><b>${esc(ci)}</b> por inventariar</span>` : '') +
-    (fuera ? `<span class="hint">· ${esc(fuera)} posición(es) con RF fuera del layout</span>` : '') + rfAvisoAlcance();
+    (fuera ? `<span class="hint">· ${esc(fuera)} posición(es) con RF fuera del layout</span>` : '') +
+    ($('rfl-q').value.trim() ? `<span class="hint">· 🔍 Solo posiciones con «${esc($('rfl-q').value.trim())}» (${esc(c1 + cn)} con RF)</span>` : '') + rfAvisoAlcance();
   $('rfl-detalle').style.display = 'none';
   $('rfl-ayuda-marcas').textContent = rflPuedeMarcar() ? '🖱 Clic derecho (o mantener presionado en celular/tablet) sobre una posición para bloquearla, marcarla como merma o por inventariar, o fusionar sus registros.' : '';
 }
@@ -19979,6 +19986,8 @@ $('rfsub-panel-layout').addEventListener('click', e=>{
   }
 });
 ['rfl-estado', 'rfl-usuario', 'rfl-apto'].forEach(id=> $(id).addEventListener('change', ()=>{ rflSel = null; renderRfLayout(); }));
+let rflQTimer = null;
+$('rfl-q').addEventListener('input', ()=>{ clearTimeout(rflQTimer); rflQTimer = setTimeout(()=>{ rflSel = null; renderRfLayout(); }, 250); });
 $('btn-rfl-recargar').addEventListener('click', ()=>{ rflMarcasLeidas = false; rfCargar(true); });
 document.addEventListener('keydown', e=>{ if(e.key === 'Escape' && rflFusion) rflFusionCancelar(); });
 // Clic derecho en una posición → menú de bloquear / merma. En celular y tablet: mantener presionado.
