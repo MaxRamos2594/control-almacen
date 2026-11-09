@@ -56,9 +56,13 @@ async function esperar(page, fn, arg, ms){
 
   // Costos: falta costo en P1X; "Sin costo" filtra; pegar listado tipo Excel.
   const res0 = await page.evaluate(()=> $('rfa-costos-res').innerText.replace(/\s+/g, ' '));
-  await page.selectOption('#rfa-f-costo', 'SIN');
-  const soloSin = await page.evaluate(()=> [...document.querySelectorAll('#rfa-body .rfa-fila')].map(tr=> tr.dataset.rfaSku).join());
-  await page.selectOption('#rfa-f-costo', '');
+  // Botón junto al aviso: "Ver solo los sin costo" ↔ "Ver todos".
+  await page.click('[data-rfa-solo-sin]');
+  const soloSin = await page.evaluate(()=> [...document.querySelectorAll('#rfa-body .rfa-fila')].map(tr=> tr.dataset.rfaSku).join() + '|' + $('rfa-f-costo').value + '|' + document.querySelector('[data-rfa-solo-sin]').textContent);
+  await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_aptos_sin_costo.png') });
+  await page.click('[data-rfa-solo-sin]');
+  const todosOtraVez = await page.evaluate(()=> document.querySelectorAll('#rfa-body .rfa-fila').length);
+  verificar(soloSin === 'P1X|SIN|↩ Ver todos' && todosOtraVez === 2, `Botón "👁 Ver solo los sin costo": muestra ${soloSin.split('|')[0]}; "↩ Ver todos" vuelve a los ${todosOtraVez}`);
   await page.click('#btn-rfa-costos');
   await page.fill('#rfa-costos-txt', 'CÓDIGO\tDESCRIPCIÓN\tCOSTO\nP1X\tPELOTA\t2,50\nP2\tCAJA\t3\nZZZ\tOTRO\t9');
   await page.click('#btn-rfa-costos-revisar');
@@ -70,7 +74,7 @@ async function esperar(page, fn, arg, ms){
   const fila = ()=> page.evaluate(()=> [...document.querySelectorAll('#rfa-body .rfa-fila')].map(tr=> [tr.cells[0], tr.cells[5], tr.cells[6]].map(c=> c ? c.innerText.replace(/[▸▾]/g, '').trim() : '').join('|')).join(' / '));
   await page.waitForFunction(()=> /2\.50/.test(($('rfa-body').querySelector('[data-rfa-sku="P1X"]') || {}).innerText || ''), null, { timeout: 10000 }).catch(()=>{});
   const tras1 = await fila(), fin1 = await page.evaluate(()=> $('rfa-costos-prev').innerText.replace(/\s+/g, ' '));
-  verificar(/1 de 2 código\(s\) sin costo/.test(res0) && soloSin === 'P1X' &&
+  verificar(/1 de 2 código\(s\) sin costo/.test(res0) &&
     /3 código\(s\) en el listado: 1 igual\(es\) · 0 con costo distinto \(se reemplaza\) · 1 sin costo \(se asigna\) · 1 no están en la tabla/.test(prev1) && /todos los códigos de la tabla tendrán costo/.test(prev1) &&
     p1x.descripcion === 'PELOTA ROJA' && p1x.creado_desde === 'registro_fotografico' && /P1X\|S\/ 2\.50\|S\/ 27\.50/.test(tras1) && /P2\|S\/ 3\.00\|S\/ 9\.00/.test(tras1) && /Todos los códigos de la tabla tienen costo/.test(fin1),
     `Costos: antes "${res0}" (filtro sin costo → ${soloSin}); al pegar: "${prev1.slice(0, 160)}…"; queda ${tras1}`);
