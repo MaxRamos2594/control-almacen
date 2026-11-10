@@ -136,6 +136,14 @@
   .rf-acciones .btn{min-width:200px;}
   /* Más cómodo para operarios: letras y botones grandes (16 px evita el zoom del iPhone) */
   #view-regfoto input, #view-regfoto select{font-size:16px; min-height:44px; box-sizing:border-box;}
+  #view-saldos #sd-inicio input, #view-saldos #sd-inicio select, #view-saldos #sd-items input{font-size:16px; min-height:44px; box-sizing:border-box;}
+  .sd-cajas{display:flex; flex-wrap:wrap; gap:8px;} .sd-caja-chip{border:2px solid var(--line-strong); background:#fff; border-radius:10px; padding:8px 12px; text-align:left; cursor:pointer; min-width:150px;}
+  .sd-caja-chip b{display:block; font-size:15px;} .sd-caja-chip span{font-size:12px; color:var(--muted);} .sd-caja-chip.activa{border-color:var(--blue); background:var(--blue-bg);} .sd-caja-chip.vacia{border-style:dashed;}
+  .sd-caja-cab{display:flex; justify-content:space-between; align-items:center; gap:8px;} .sd-caja-cab h3{margin:0;}
+  .sd-fila{display:flex; flex-wrap:wrap; justify-content:space-between; gap:6px 14px; width:100%; text-align:left; background:#fff; border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin-bottom:6px; cursor:pointer;}
+  .sd-fila:hover{background:#f6f9fd;} .sd-fila .t{font-weight:800;} .sd-est{font-size:11px; font-weight:800; padding:2px 7px; border-radius:10px; background:#e8f5e9; color:#1b5e20;} .sd-est.ABIERTO{background:#fff3e0; color:#a14a00;}
+  .sd-det-caja{border:1px solid var(--line); border-radius:8px; padding:10px; margin:10px 0;} .sd-det-caja table{width:100%; border-collapse:collapse; font-size:13px;} .sd-det-caja td, .sd-det-caja th{padding:5px 6px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top;}
+  .sd-det-caja .num{text-align:right;} .sd-bultos{font-size:22px; font-weight:900;}
   #view-regfoto .rf-pos-campo input{font-size:20px; font-weight:800; letter-spacing:.06em; border:2px solid #2b4c6f;}
   .rf-pasos{display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;}
   .rf-paso{flex:1 1 0; min-width:0; display:flex; gap:8px; align-items:center; background:#fff; border:1px solid var(--line); border-radius:12px; padding:8px 12px; font-weight:700; font-size:13px; color:var(--ink-soft);}
@@ -290,7 +298,7 @@
   .rf-det-caja{width:min(1100px, 100%); border-radius:14px; box-shadow:0 18px 50px rgba(0,0,0,.35); background:#fff;}
   .rf-det-barra{position:sticky; top:0; z-index:2; display:flex; justify-content:space-between; align-items:center; gap:8px; background:#1b2430; border-radius:14px 14px 0 0; padding:8px 10px;}
   .rf-det-barra button{border:none; background:none; color:#fff; font:inherit; font-weight:800; font-size:15px; padding:8px 10px; cursor:pointer; border-radius:8px;} .rf-det-barra button:hover{background:rgba(255,255,255,.12);}
-  .rf-det-caja #rf-detalle{margin:0; border:none; border-radius:0 0 14px 14px; box-shadow:none;}
+  .rf-det-caja #rf-detalle, .rf-det-caja #sd-detalle{margin:0; border:none; border-radius:0 0 14px 14px; box-shadow:none;}
   body.rf-modal-abierto{overflow:hidden;}
   @media (max-width:640px){ .rf-det-modal{padding:0;} .rf-det-caja{border-radius:0; min-height:100%;} .rf-det-barra{border-radius:0;} .rf-det-caja #rf-detalle{border-radius:0;} }
   .rf-det-grupo{display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px; padding:10px 14px; background:#fff3cd; border-bottom:1px solid #f0d58a; font-size:14px; position:sticky; top:48px; z-index:2;}
@@ -1969,6 +1977,7 @@
     <button data-tab="inventario" id="tab-inventario">Inventario</button>
     <button data-tab="toma_inventario" id="tab-toma_inventario">Toma de Inventario</button>
     <button data-tab="regfoto" id="tab-regfoto">Registro fotográfico</button>
+    <button data-tab="saldos" id="tab-saldos">Saldos</button>
     <button data-tab="kardex" id="tab-kardex">Kardex</button>
     <button data-tab="merma" id="tab-merma">Merma</button>
   </div>
@@ -3531,6 +3540,58 @@
 </div>
 <div class="rf-lightbox" id="rf-lightbox" hidden><img id="rf-lightbox-img" alt=""><div class="rf-lb-pie" id="rf-lightbox-pie"></div><button type="button" class="rf-lb-x" id="rf-lightbox-x">✕</button><button type="button" class="rf-lb-nav ant" id="rf-lb-ant" aria-label="Foto anterior">‹</button><button type="button" class="rf-lb-nav sig" id="rf-lb-sig" aria-label="Foto siguiente">›</button></div>
 
+<!-- SALDOS: traslado de saldos por cajas (cada caja con su correlativo) -->
+<div class="view" id="view-saldos">
+  <div class="subtabs">
+    <button class="active" id="sdsub-nuevo">📦 Nuevo traslado</button>
+    <button id="sdsub-lista">🗂 Registros</button>
+  </div>
+  <div id="sdsub-panel-nuevo">
+    <div class="rf-ok" id="sd-ok" hidden></div>
+    <div class="panel rf-inicio" id="sd-inicio">
+      <label class="rf-tienda-inicio">🏬 Tienda <select id="sd-tienda"></select></label>
+      <label class="rf-tienda-inicio">📅 Fecha <input type="date" id="sd-fecha"></label>
+      <button type="button" class="rf-iniciar" id="btn-sd-iniciar">▶ Iniciar traslado de saldos</button>
+      <p class="hint">Se crea el traslado (<b>TS-…</b>) de esa tienda y fecha. Después creas cada caja (<b>CJ-…</b>, un número por caja) y le agregas sus productos. Al terminar, cierras el traslado: el conteo de bultos es el número de cajas.</p>
+      <div id="sd-abiertos"></div>
+    </div>
+    <div id="sd-form" hidden>
+      <div class="rf-borrador-bar"><span class="rf-chip-borrador">📦 ABIERTO</span><b id="sd-bar-corr"></b><span id="sd-bar-info"></span><span class="rf-nube" id="sd-nube"></span></div>
+      <div class="panel" style="margin-bottom:12px;">
+        <h3>Cajas del traslado</h3>
+        <div class="sd-cajas" id="sd-cajas"></div>
+        <button type="button" class="rf-iniciar" id="btn-sd-caja" style="margin-top:8px;">📦 Crear caja</button>
+      </div>
+      <div class="panel" id="sd-caja-panel" style="margin-bottom:12px;" hidden>
+        <div class="sd-caja-cab"><h3 id="sd-caja-tit">Caja</h3><button type="button" class="btn btn-ghost btn-sm" id="btn-sd-caja-quitar" style="color:#8A332A;">🗑 Quitar caja</button></div>
+        <div id="sd-items"></div>
+        <button type="button" class="btn btn-ghost" id="btn-sd-add" style="width:100%; margin-top:8px;">+ Agregar producto</button>
+      </div>
+      <div class="rf-acciones"><span class="hint" id="sd-resumen"></span><button type="button" class="btn btn-primary" id="btn-sd-cerrar">🔒 Cerrar traslado</button></div>
+    </div>
+    <div class="msg" id="sd-msg"></div>
+  </div>
+  <div id="sdsub-panel-lista" style="display:none;">
+    <div class="panel" style="margin-bottom:12px;">
+      <div class="rf-filtros">
+        <select id="sd-estado-f" title="Estado"><option value="">Todos</option><option value="CERRADO">🔒 Cerrados</option><option value="ABIERTO">📦 Abiertos</option></select>
+        <select id="sd-tienda-f" title="Tienda"></select><select id="sd-usuario-f" title="Usuario"></select>
+        <label>Desde <input type="date" id="sd-desde"></label><label>Hasta <input type="date" id="sd-hasta"></label>
+        <input type="search" id="sd-q" placeholder="Buscar traslado, caja, código o descripción…" autocomplete="off">
+      </div>
+      <div class="rfa-acciones"><button type="button" class="btn btn-primary btn-sm" id="btn-sd-excel">⬇ Exportar a Excel</button><button type="button" class="btn btn-ghost btn-sm" id="btn-sd-recargar">↻ Actualizar</button></div>
+      <div id="sd-lista-res" class="hint" style="margin:6px 0;"></div>
+      <div id="sd-lista"></div>
+    </div>
+  </div>
+  <div class="rf-det-modal" id="sd-det-modal" hidden>
+    <div class="rf-det-caja" role="dialog" aria-modal="true" aria-label="Detalle del traslado de saldos">
+      <div class="rf-det-barra"><button type="button" id="btn-sd-det-volver">← Volver a la lista</button><button type="button" id="btn-sd-det-cerrar" aria-label="Cerrar">✕</button></div>
+      <div class="panel" id="sd-detalle"></div>
+    </div>
+  </div>
+</div>
+
 <!-- MERMA -->
 <div class="view" id="view-merma">
   <div class="subtabs">
@@ -3829,6 +3890,7 @@
         <b>📸 Registro fotográfico</b>
         <div class="field" style="margin:6px 0;"><label>Prefijo de su correlativo <span class="hint">(2 a 5 letras; sus registros serán RF-PREFIJO-00001…)</span></label><input type="text" id="us-rf-prefijo" class="upper" maxlength="5" placeholder="Automático: primeras letras del alias"></div>
         <label class="us-extra" style="margin:0;"><input type="checkbox" id="us-rf-todos"> Ver los registros fotográficos de todos los usuarios <span class="hint">(en Registros, Reportes y Layout; si no, solo ve los suyos)</span></label>
+        <label class="us-extra" style="margin:0;"><input type="checkbox" id="us-saldos-todos"> Ver los traslados de saldos de todos los usuarios <span class="hint">(si no, solo ve los suyos)</span></label>
         <div class="us-rf-part" id="us-rf-part-box"><span class="hint">Además de los suyos, ver los registros de estos participantes (de cualquier usuario):</span><div class="us-chips" id="us-rf-part"></div></div>
       </div>
       <div class="us-resumen" id="us-resumen"></div>
@@ -3956,8 +4018,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v245';
-const APP_UPDATED = '09/11/2026 16:00';
+const APP_VERSION = 'v246';
+const APP_UPDATED = '10/11/2026 12:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4182,7 +4244,7 @@ async function loadPermisos(user){
 }
 
 // Permisos: clave en usuarios/{correo}.permisos de cada opción del menú.
-const PERM_TAB_CLAVE = { diseno:'diseno', mov:'movimientos', pallets:'pallets', productos:'productos', inventario:'inventario', toma_inventario:'toma_inventario', regfoto:'reg_fotos',
+const PERM_TAB_CLAVE = { diseno:'diseno', mov:'movimientos', pallets:'pallets', productos:'productos', inventario:'inventario', toma_inventario:'toma_inventario', regfoto:'reg_fotos', saldos:'saldos',
   kardex:'kardex', merma:'merma', retiros:'retiros', campanas:'campanas', rotulos:'rotulos', ventaonline:'venta_online', reportes:'reportes', bitacora:'bitacora', asistente:'asistente' };
 // Opciones con secciones que se permiten una por una: permisos.subs[opción] = ids de las
 // secciones permitidas (sin lista = todas, como antes).
@@ -4466,7 +4528,7 @@ function tipoLabel(tipo){
     asistente_consulta:'Consulta al asistente IA', almacenamiento_huerfanos_eliminados:'Archivos huérfanos eliminados (almacenamiento)', almacenamiento_pdfs_comprimidos:'Archivos comprimidos (almacenamiento)',
     reg_foto_creado:'Registro fotográfico creado', reg_foto_eliminado:'Registro fotográfico eliminado', reg_foto_iniciado:'Registro fotográfico iniciado (borrador)',
     reg_foto_confirmado:'Registro fotográfico confirmado', reg_foto_descartado:'Borrador de registro fotográfico descartado', reg_foto_exportado:'Registro fotográfico exportado',
-    reg_foto_reabierto:'Registro fotográfico abierto para modificar', reg_foto_modificado:'Registro fotográfico modificado', reg_foto_modificacion_cancelada:'Modificación de registro fotográfico cancelada', reg_foto_apto_ajuste:'Registro fotográfico: apto para ajuste', reg_foto_posicion_cambiada:'Registro fotográfico: posición cambiada', reg_foto_layout_marca:'Registro fotográfico: posición bloqueada / merma / por inventariar', reg_foto_fusionado:'Registros fotográficos fusionados', reg_foto_sku_editado:'Registro fotográfico: código / descripción editados', reg_foto_costos:'Registro fotográfico: costos asignados',
+    reg_foto_reabierto:'Registro fotográfico abierto para modificar', reg_foto_modificado:'Registro fotográfico modificado', reg_foto_modificacion_cancelada:'Modificación de registro fotográfico cancelada', reg_foto_apto_ajuste:'Registro fotográfico: apto para ajuste', reg_foto_posicion_cambiada:'Registro fotográfico: posición cambiada', reg_foto_layout_marca:'Registro fotográfico: posición bloqueada / merma / por inventariar', reg_foto_fusionado:'Registros fotográficos fusionados', reg_foto_sku_editado:'Registro fotográfico: código / descripción editados', reg_foto_costos:'Registro fotográfico: costos asignados', saldos_iniciado:'Saldos: traslado iniciado', saldos_caja_creada:'Saldos: caja creada', saldos_caja_quitada:'Saldos: caja quitada', saldos_cerrado:'Saldos: traslado cerrado', saldos_reabierto:'Saldos: traslado reabierto', saldos_eliminado:'Saldos: traslado eliminado', saldos_exportado:'Saldos: exportado a Excel',
     ingreso:'Entrada de pallet', movimiento:'Movimiento', retiro:'Salida (pallet completo)',
     retiro_campana:'Salida (campaña)', retiro_campana_revertido:'↺ Retiro de campaña revertido', producto_agregado:'Adición de producto', transferencia:'Transferencia entre pallets',
     bloqueo:'Bloqueo de posición', desbloqueo:'Desbloqueo de posición',
@@ -20192,6 +20254,418 @@ $('rf-detalle').addEventListener('click', async e=>{
   }catch(err){ console.error(err); showToast('No se pudo eliminar: ' + err.message, 'err'); }
 });
 
+// -------- Saldos: traslado de saldos por cajas --------
+// Un traslado (TS-00001) es de una tienda (participante) y un día. Dentro se crean cajas (CJ-00001, número
+// global, uno por caja) y a cada caja se le agregan productos con la misma dinámica del registro fotográfico
+// (SKU con buscador / escáner, cantidad, descripción y al menos una foto). Al cerrar: bultos = cajas.
+// Cada usuario ve sus traslados; admin o "saldos_todos" ven todos (las reglas de Firestore hacen lo mismo).
+const saldosTrasladosRef = db.collection('saldos_traslados'), saldosCajasRef = db.collection('saldos_cajas');
+let sdTraslado = null, sdCajas = [], sdActiva = -1, sdFotoN = 0, sdGuardarTimer = null, sdGuardando = Promise.resolve();
+let sdLista = [], sdLeidos = false, sdSel = null;
+const sdVeTodos = ()=> !!(currentPermisos.admin || currentPermisos.saldos_todos);
+const sdPuedeEliminar = ()=> !!(currentPermisos.admin || currentPermisos.eliminar);
+const sdHoy = ()=>{ const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const sdFechaTxt = f=> f ? String(f).split('-').reverse().join('/') : '';
+const sdNuevoItem = ()=> ({ sku:'', descripcion:'', cantidad:'', fotos:[] });
+const sdCaja = ()=> sdCajas[sdActiva] || null;
+function setSdSubtab(name){
+  sdCerrarDetalle();
+  ['nuevo', 'lista'].forEach(n=>{ $('sdsub-' + n).classList.toggle('active', n === name); $('sdsub-panel-' + n).style.display = n === name ? 'block' : 'none'; });
+  if(name === 'lista') sdCargarLista(); else sdPreparar();
+}
+$('sdsub-nuevo').addEventListener('click', ()=> setSdSubtab('nuevo'));
+$('sdsub-lista').addEventListener('click', ()=> setSdSubtab('lista'));
+$('tab-saldos').addEventListener('click', ()=>{ if($('sdsub-panel-nuevo').style.display !== 'none') sdPreparar(); else sdCargarLista(); });
+async function sdCorrelativo(clave, pref){
+  const ref = contadoresRef.doc(clave);
+  const n = await db.runTransaction(async tx=>{ const snap = await tx.get(ref), nuevo = ((snap.exists ? snap.data().ultimo : 0) || 0) + 1; tx.set(ref, { ultimo: nuevo }, { merge: true }); return nuevo; });
+  return `${pref}-${String(n).padStart(5, '0')}`;
+}
+// ---- Inicio: tienda + fecha ----
+function sdPreparar(){
+  const sel = $('sd-tienda'), v = sel.value || (()=>{ try{ return localStorage.getItem('sd:tienda') || ''; }catch(e){ return ''; } })();
+  const L = rfTiendas(); sel.innerHTML = L.map(t=> `<option value="${esc(t)}">${esc(t)}</option>`).join(''); sel.value = L.includes(v) ? v : L[0];
+  if(!$('sd-fecha').value) $('sd-fecha').value = sdHoy();
+  $('sd-inicio').hidden = !!sdTraslado; $('sd-form').hidden = !sdTraslado;
+  if(sdTraslado) renderSdForm(); else sdListarAbiertos();
+}
+async function sdListarAbiertos(){
+  const caja = $('sd-abiertos'); caja.innerHTML = '';
+  try{
+    const L = (await saldosTrasladosRef.where('usuario_email', '==', currentUserEmail).get()).docs.map(d=> Object.assign({ id: d.id }, d.data()))
+      .filter(t=> t.estado === 'ABIERTO').sort((a, b)=> String(b.fecha_creacion).localeCompare(String(a.fecha_creacion)));
+    if(L.length) caja.innerHTML = `<div class="rf-borradores"><b>Tienes ${esc(L.length)} traslado(s) sin cerrar:</b>` + L.map(t=> `<button type="button" data-sd-continuar="${esc(t.id)}">` +
+      `<b style="display:inline; font-size:14px; color:inherit;">✏ Continuar ${esc(t.id)}</b><span>🏬 ${esc(t.tienda)} · 📅 ${esc(sdFechaTxt(t.fecha))} · 📦 ${esc(t.cajas || 0)} caja(s)</span></button>`).join('') + '</div>';
+  }catch(err){ console.warn('Traslados abiertos:', err); }
+}
+async function sdIniciar(){
+  const tienda = $('sd-tienda').value, fecha = $('sd-fecha').value;
+  if(!tienda || !fecha){ showMsg('sd-msg', 'err', 'Elige la tienda y la fecha.'); return; }
+  $('btn-sd-iniciar').disabled = true;
+  try{
+    try{ localStorage.setItem('sd:tienda', tienda); }catch(e){}
+    const id = await sdCorrelativo('saldos_traslado', 'TS'), ahora = new Date().toISOString();
+    const t = { correlativo: id, estado:'ABIERTO', tienda, fecha, usuario: currentUserAlias, usuario_email: currentUserEmail, fecha_creacion: ahora, actualizado_en: ahora, cajas: 0, bultos: 0, unidades: 0 };
+    await saldosTrasladosRef.doc(id).set(Object.assign({ creado_en: firebase.firestore.FieldValue.serverTimestamp() }, t));
+    await logAccion('saldos_iniciado', { detalle: `${id} · ${tienda} · ${sdFechaTxt(fecha)}` });
+    sdLeidos = false; sdCargarEnForm(Object.assign({ id }, t), []);
+    showMsg('sd-msg', 'ok', `Traslado ${id} iniciado. Crea la primera caja.`);
+  }catch(err){ console.error(err); showMsg('sd-msg', 'err', 'No se pudo iniciar el traslado: ' + err.message); }
+  finally{ $('btn-sd-iniciar').disabled = false; }
+}
+function sdCargarEnForm(t, cajas){
+  sdTraslado = t;
+  const foto = (f, nombre)=> ({ id: 'sf' + (++sdFotoN), url: f.url, remoto: f.url, path: f.path, tam: f.tam, nombre });
+  sdCajas = cajas.map(c=> ({ id: c.id, items: [...(c.items || []).map((it, i)=> ({ sku: it.sku || '', descripcion: it.descripcion || '', cantidad: String(it.cantidad || ''), fotos: (it.fotos || []).map(f=> foto(f, 'item' + (i + 1))) })), sdNuevoItem()] }));
+  sdActiva = sdCajas.length - 1;
+  $('sd-ok').hidden = true; $('sd-inicio').hidden = true; $('sd-form').hidden = false; renderSdForm(); sdNube('ok');
+}
+async function sdContinuar(id){
+  try{
+    await sdGuardarAhora();
+    const snap = await saldosTrasladosRef.doc(id).get();
+    if(!snap.exists || snap.data().estado !== 'ABIERTO'){ showToast(`${id} ya está cerrado.`, 'err'); return; }
+    const t = Object.assign({ id }, snap.data());
+    let q = saldosCajasRef.where('traslado_id', '==', id); if(!sdVeTodos()) q = q.where('usuario_email', '==', currentUserEmail);
+    const cajas = (await q.get()).docs.map(d=> Object.assign({ id: d.id }, d.data())).sort((a, b)=> a.id.localeCompare(b.id));
+    setSdSubtab('nuevo'); sdLimpiarForm(); sdCargarEnForm(t, cajas);
+  }catch(err){ console.error(err); showToast('No se pudo abrir el traslado: ' + err.message, 'err'); }
+}
+function sdLimpiarForm(){ sdCajas.forEach(c=> c.items.forEach(it=> it.fotos.forEach(f=>{ if(f.blob) URL.revokeObjectURL(f.url); }))); sdTraslado = null; sdCajas = []; sdActiva = -1; clearTimeout(sdGuardarTimer); }
+// ---- Formulario: cajas y productos ----
+const sdVacio = it=> !it.sku.trim() && !String(it.cantidad).trim() && !String(it.descripcion || '').trim() && !it.fotos.length;
+const sdCompleto = it=> it.sku.trim() && String(it.descripcion || '').trim() && Number(it.cantidad) > 0 && it.fotos.length;
+const sdFaltan = it=> [!it.sku.trim() && 'sku', !(Number(it.cantidad) > 0) && 'cantidad', !String(it.descripcion || '').trim() && 'descripcion', !it.fotos.length && 'fotos'].filter(Boolean);
+const sdProds = c=> c.items.filter(it=> !sdVacio(it));
+const sdUnd = c=> sdProds(c).reduce((s, it)=> s + (Number(it.cantidad) || 0), 0);
+function sdThumbs(fotos, i){
+  return fotos.map((f, j)=> `<div class="rf-thumb${f.subiendo ? ' subiendo' : ''}${f.error ? ' error' : ''}" data-sd-fid="${esc(f.id)}" data-sd-ver="${esc(f.url)}"><img src="${esc(f.url)}" alt=""><button type="button" class="rf-quitar" data-sd-quitar="${esc(i)}" data-sd-j="${esc(j)}" title="Quitar foto">✕</button></div>`).join('') +
+    (fotos.length < 20 ? `<button type="button" class="rf-add-foto" data-sd-camara="${esc(i)}"><span>📷</span>${fotos.length ? 'Otra foto' : 'Tomar foto'}</button>` : '');
+}
+function renderSdForm(){
+  if(!sdTraslado) return;
+  $('sd-bar-corr').textContent = sdTraslado.id;
+  $('sd-bar-info').textContent = `🏬 ${sdTraslado.tienda} · 📅 ${sdFechaTxt(sdTraslado.fecha)}`;
+  $('btn-sd-cerrar').textContent = `🔒 Cerrar traslado de saldos del ${sdFechaTxt(sdTraslado.fecha)} · ${sdTraslado.tienda}`;
+  $('sd-cajas').innerHTML = sdCajas.length ? sdCajas.map((c, i)=> `<button type="button" class="sd-caja-chip${i === sdActiva ? ' activa' : ''}${sdProds(c).length ? '' : ' vacia'}" data-sd-caja="${esc(i)}"><b>📦 ${esc(c.id)}</b><span>${esc(sdProds(c).length)} producto(s) · ${esc(anFmt(sdUnd(c)))} und</span></button>`).join('')
+    : '<p class="hint">Todavía no hay cajas. Toca <b>📦 Crear caja</b>.</p>';
+  const c = sdCaja(); $('sd-caja-panel').hidden = !c;
+  if(c){
+    $('sd-caja-tit').textContent = `📦 Caja ${c.id}`;
+    $('sd-items').innerHTML = c.items.map((it, i)=> `<div class="rf-item${sdCompleto(it) ? ' completo' : ''}" data-sd-item="${esc(i)}"><div class="rf-item-cab"><b>${sdCompleto(it) ? '✓ ' : ''}Producto ${esc(i + 1)}</b>${c.items.length > 1 && !sdVacio(it) ? `<button type="button" class="rf-del" data-sd-del="${esc(i)}">✕ Quitar</button>` : ''}</div>` +
+      `<div class="rf-item-grid"><div class="rf-sku-box"><label>SKU *</label><div class="rf-sku-fila"><input type="text" class="upper${(it._faltan || []).includes('sku') ? ' rf-falta' : ''}" data-sd-campo="sku" value="${esc(it.sku)}" autocomplete="off" autocapitalize="characters" enterkeyhint="next" placeholder="Código o descripción">` +
+        `<button type="button" class="rf-scan" data-sd-scan="${esc(i)}" title="Escanear código de barras con la cámara" aria-label="Escanear código de barras">▦</button></div><div class="rf-sug" hidden></div></div>` +
+      `<div class="rf-cant"><label>Cantidad * <span class="hint">(mayor a 0)</span></label><div class="rf-stepper"><button type="button" data-sd-paso="-1" aria-label="Menos">−</button><input type="number" min="1" step="1" inputmode="numeric" enterkeyhint="go" data-sd-campo="cantidad" value="${esc(it.cantidad)}" placeholder="0" class="${(it._faltan || []).includes('cantidad') ? 'rf-falta' : ''}"><button type="button" data-sd-paso="1" aria-label="Más">+</button></div></div>` +
+      `<div class="rf-desc"><label>Descripción *</label><input type="text" data-sd-campo="descripcion" value="${esc(it.descripcion)}" placeholder="Se completa con el SKU si existe" class="${(it._faltan || []).includes('descripcion') ? 'rf-falta' : ''}"></div></div>` +
+      `<span class="rf-lbl">📷 Fotos del producto * <span class="hint">(una o varias)</span></span><div class="rf-fotos${(it._faltan || []).includes('fotos') ? ' rf-falta' : ''}">${sdThumbs(it.fotos, i)}</div></div>`).join('');
+  }
+  sdResumen();
+}
+function sdResumen(){
+  const n = sdCajas.length, prods = sdCajas.reduce((s, c)=> s + sdProds(c).length, 0), und = sdCajas.reduce((s, c)=> s + sdUnd(c), 0);
+  $('sd-resumen').textContent = `${n} caja(s) = ${n} bulto(s) · ${prods} producto(s) · ${anFmt(und)} und`;
+  // El aviso de "falta…" se borra apenas no queda nada a medias.
+  if(/\berr\b/.test($('sd-msg').className) && !sdCajas.some(c=> c.items.some(it=> !sdVacio(it) && !sdCompleto(it)))){ $('sd-msg').className = 'msg'; $('sd-msg').textContent = ''; }
+}
+function sdFoco(i, campo){ const el = document.querySelector(`#sd-items [data-sd-item="${i}"] [data-sd-campo="${campo}"]`); if(el){ el.focus(); if(el.select) el.select(); el.scrollIntoView({ behavior:'smooth', block:'center' }); } }
+function sdActualizarMarcas(i){
+  const it = (sdCaja() || {}).items[i], caja = document.querySelector(`#sd-items [data-sd-item="${i}"]`); if(!it || !it._faltan || !caja) return;
+  it._faltan = sdFaltan(it).filter(f=> it._faltan.includes(f));
+  ['sku', 'cantidad', 'descripcion'].forEach(k=> caja.querySelector(`[data-sd-campo="${k}"]`).classList.toggle('rf-falta', it._faltan.includes(k)));
+  caja.querySelector('.rf-fotos').classList.toggle('rf-falta', it._faltan.includes('fotos'));
+}
+function sdAvisarIncompleto(ci, i){
+  if(ci !== sdActiva){ sdActiva = ci; }
+  const it = sdCajas[ci].items[i]; it._faltan = sdFaltan(it); renderSdForm();
+  const txt = `Caja ${sdCajas[ci].id}, producto ${i + 1}${it.sku ? ' (' + it.sku + ')' : ''}: falta ${it._faltan.map(f=> RF_FALTA_TXT[f]).join(', ')}.`;
+  showMsg('sd-msg', 'err', txt);
+  rfAviso(`Completa el producto ${i + 1}`, txt, ()=>{ const f = it._faltan[0]; if(f === 'fotos') sdCamaraItem(i); else sdFoco(i, f); });
+}
+function sdSugerencias(inp){
+  const caja = inp.closest('.rf-sku-box').querySelector('.rf-sug'), q = normalizarTexto(inp.value);
+  if(q.length < 2){ caja.hidden = true; return; }
+  const L = [];
+  for(const [cod, p] of Object.entries(productos || {})){
+    const c = normalizarTexto(cod), d = normalizarTexto(p.descripcion || '');
+    const puntos = c === q ? 0 : c.startsWith(q) ? 1 : c.includes(q) ? 2 : d.includes(q) ? 3 : -1;
+    if(puntos >= 0) L.push([puntos, cod, p.descripcion || '']);
+    if(L.length > 400) break;
+  }
+  L.sort((a, b)=> a[0] - b[0] || a[1].localeCompare(b[1]));
+  caja.innerHTML = L.slice(0, 8).map(([, cod, d])=> `<button type="button" data-sd-sug="${esc(cod)}"><b>${esc(cod)}</b><span>${esc(d)}</span></button>`).join('');
+  caja.hidden = !L.length;
+}
+function sdElegirSku(i, cod){ const it = sdCaja().items[i], p = productos[cod]; it.sku = cod; if(p && p.descripcion) it.descripcion = p.descripcion; renderSdForm(); sdFoco(i, 'cantidad'); sdAutoguardar(); }
+function sdEscanearSku(i){
+  abrirEscaner(cod=>{
+    const it = (sdCaja() || {}).items[i]; if(!it) return;
+    it.sku = cod; const p = productos[cod];
+    if(p && p.descripcion) it.descripcion = p.descripcion; else showToast(`Código ${cod} leído. No está en Productos: escribe la descripción.`, 'ok');
+    if(it._faltan) it._faltan = sdFaltan(it);
+    renderSdForm(); sdFoco(i, p ? 'cantidad' : 'descripcion'); sdAutoguardar();
+  });
+}
+function sdCamaraItem(i){
+  const c = sdCaja(), it = c.items[i];
+  abrirCamara(`Caja ${c.id} · fotos de ${it.sku || 'producto ' + (i + 1)}`, 20 - it.fotos.length, f=>{
+    const nf = Object.assign(f, { id: 'sf' + (++sdFotoN), nombre: 'item' + (i + 1), subiendo: false, error: false }); it.fotos.push(nf);
+    if(it._faltan) it._faltan = it._faltan.filter(x=> x !== 'fotos'); renderSdForm(); sdSubirFoto(nf, c.id);
+  }, ()=>{
+    if(sdCompleto(it) && i === c.items.length - 1){ c.items.push(sdNuevoItem()); renderSdForm(); sdFoco(c.items.length - 1, 'sku'); }
+    else if(!sdCompleto(it) && !sdVacio(it)) sdAvisarIncompleto(sdActiva, i);
+  });
+}
+async function sdSubirFoto(f, cajaId){
+  f.subiendo = true; f.error = false; sdMarcarFoto(f);
+  try{
+    const ref = storage.ref().child(`saldos/${cajaId}/${f.nombre}_${Date.now()}.jpg`);
+    await ref.put(f.blob, { contentType:'image/jpeg', cacheControl:'private, max-age=31536000' });
+    f.remoto = await ref.getDownloadURL(); f.path = ref.fullPath; f.tam = f.blob.size;
+  }catch(err){ console.error(err); f.error = true; showToast('No se pudo subir una foto. Tócala para reintentar.', 'err'); }
+  f.subiendo = false; sdMarcarFoto(f); sdResumen(); sdAutoguardar(cajaId);
+}
+function sdMarcarFoto(f){ const el = document.querySelector(`#view-saldos [data-sd-fid="${f.id}"]`); if(el){ el.classList.toggle('subiendo', !!f.subiendo); el.classList.toggle('error', !!f.error); } }
+function sdBorrarArchivo(f){ if(f && f.path) storage.ref().child(f.path).delete().catch(err=> console.warn('No se pudo borrar la foto', err)); if(f && f.blob) URL.revokeObjectURL(f.url); }
+// ---- Autoguardado de la caja (como el borrador del registro fotográfico) ----
+function sdNube(estado){
+  const t = { pendiente:'✎ Cambios por guardar…', guardando:'☁ Guardando…', ok:'☁ Guardado automáticamente ✓', error:'⚠ No se pudo guardar (sin conexión): se reintenta solo' }[estado] || '';
+  $('sd-nube').textContent = t; $('sd-nube').classList.toggle('error', estado === 'error');
+}
+const sdPendientes = new Set();
+function sdAutoguardar(cajaId){ const c = cajaId ? sdCajas.find(x=> x.id === cajaId) : sdCaja(); if(!c) return; sdPendientes.add(c.id); sdNube('pendiente'); clearTimeout(sdGuardarTimer); sdGuardarTimer = setTimeout(sdGuardarAhora, 700); }
+function sdDatosCaja(c){
+  const items = sdProds(c).map(it=> ({ sku: it.sku.trim().toUpperCase(), descripcion: it.descripcion.trim(), cantidad: Number(it.cantidad) || 0, fotos: it.fotos.filter(f=> f.path).map(f=> ({ url: f.remoto, path: f.path, tam: f.tam || 0 })) }));
+  return { items, cant_items: items.length, unidades: items.reduce((s, it)=> s + it.cantidad, 0), skus: items.map(it=> it.sku), actualizado_en: new Date().toISOString() };
+}
+function sdGuardarAhora(){
+  clearTimeout(sdGuardarTimer);
+  const ids = [...sdPendientes]; sdPendientes.clear();
+  if(!ids.length || !sdTraslado) return sdGuardando;
+  const tid = sdTraslado.id, datos = ids.map(id=> [id, sdDatosCaja(sdCajas.find(c=> c.id === id) || { items: [] })]);
+  sdNube('guardando');
+  sdGuardando = sdGuardando.then(()=> Promise.all(datos.map(([id, d])=> saldosCajasRef.doc(id).update(d)))).then(()=>{ if(sdTraslado && sdTraslado.id === tid) sdNube('ok'); },
+    err=>{ console.error(err); ids.forEach(id=> sdPendientes.add(id)); if(sdTraslado && sdTraslado.id === tid){ sdNube('error'); clearTimeout(sdGuardarTimer); sdGuardarTimer = setTimeout(sdGuardarAhora, 5000); } });
+  return sdGuardando;
+}
+window.addEventListener('beforeunload', ()=>{ if(sdPendientes.size) sdGuardarAhora(); });
+// La caja está lista si tiene al menos un producto y ninguno a medias.
+function sdRevisarCaja(ci){
+  const c = sdCajas[ci], i = c.items.findIndex(it=> !sdVacio(it) && !sdCompleto(it));
+  if(i >= 0){ sdAvisarIncompleto(ci, i); return false; }
+  if(!sdProds(c).length){ sdActiva = ci; renderSdForm(); rfAviso(`La caja ${c.id} está vacía`, `Agrégale al menos un producto (SKU, cantidad, descripción y foto) o quítala con «🗑 Quitar caja».`, ()=> sdFoco(0, 'sku')); return false; }
+  return true;
+}
+async function sdCrearCaja(){
+  if(!sdTraslado) return;
+  if(sdActiva >= 0 && !sdRevisarCaja(sdActiva)) return;
+  $('btn-sd-caja').disabled = true;
+  try{
+    await sdGuardarAhora();
+    const id = await sdCorrelativo('saldos_caja', 'CJ'), ahora = new Date().toISOString();
+    // La caja es del dueño del traslado (así la ve aunque la haya creado un admin); se guarda quién la creó.
+    await saldosCajasRef.doc(id).set({ correlativo: id, traslado_id: sdTraslado.id, tienda: sdTraslado.tienda, fecha: sdTraslado.fecha, usuario: sdTraslado.usuario || currentUserAlias, usuario_email: sdTraslado.usuario_email || currentUserEmail, creado_por: currentUserAlias, creado_por_email: currentUserEmail,
+      items: [], cant_items: 0, unidades: 0, skus: [], fecha_creacion: ahora, actualizado_en: ahora, creado_en: firebase.firestore.FieldValue.serverTimestamp() });
+    sdCajas.push({ id, items: [sdNuevoItem()] }); sdActiva = sdCajas.length - 1;
+    await saldosTrasladosRef.doc(sdTraslado.id).update({ cajas: sdCajas.length, actualizado_en: ahora });
+    await logAccion('saldos_caja_creada', { detalle: `${id} en ${sdTraslado.id} · ${sdTraslado.tienda}` });
+    sdLeidos = false; renderSdForm(); showToast(`Caja ${id} creada.`, 'ok'); sdFoco(0, 'sku');
+  }catch(err){ console.error(err); showToast('No se pudo crear la caja: ' + err.message, 'err'); }
+  finally{ $('btn-sd-caja').disabled = false; }
+}
+async function sdQuitarCaja(){
+  const c = sdCaja(); if(!c) return;
+  if(!confirm(`¿Quitar la caja ${c.id}${sdProds(c).length ? ` y sus ${sdProds(c).length} producto(s)` : ''}? Se borran sus fotos. El número ${c.id} no se vuelve a usar.`)) return;
+  try{
+    sdPendientes.delete(c.id); await sdGuardando;
+    c.items.forEach(it=> it.fotos.forEach(sdBorrarArchivo));
+    await saldosCajasRef.doc(c.id).delete();
+    sdCajas.splice(sdActiva, 1); sdActiva = sdCajas.length - 1;
+    await saldosTrasladosRef.doc(sdTraslado.id).update({ cajas: sdCajas.length, actualizado_en: new Date().toISOString() });
+    await logAccion('saldos_caja_quitada', { detalle: `${c.id} quitada de ${sdTraslado.id}` });
+    sdLeidos = false; renderSdForm(); showToast(`Caja ${c.id} quitada.`, 'ok');
+  }catch(err){ console.error(err); showToast('No se pudo quitar la caja: ' + err.message, 'err'); }
+}
+async function sdCerrar(){
+  if(!sdTraslado) return;
+  if(!sdCajas.length){ rfAviso('No hay cajas', 'Crea al menos una caja con sus productos antes de cerrar el traslado.'); return; }
+  for(let ci = 0; ci < sdCajas.length; ci++) if(!sdRevisarCaja(ci)) return;
+  if(sdCajas.some(c=> c.items.some(it=> it.fotos.some(f=> f.subiendo || !f.path)))){ rfAviso('Fotos subiendo', 'Espera a que terminen de subir las fotos (o toca las que tienen error para reintentar).'); return; }
+  const t = sdTraslado, n = sdCajas.length, und = sdCajas.reduce((s, c)=> s + sdUnd(c), 0);
+  if(!confirm(`¿Cerrar el traslado de saldos ${t.id} del ${sdFechaTxt(t.fecha)}, tienda ${t.tienda}?\n\nBultos: ${n} (cajas: ${sdCajas.map(c=> c.id).join(', ')}) · ${und} und.`)) return;
+  $('btn-sd-cerrar').disabled = true;
+  try{
+    sdCajas.forEach(c=> sdPendientes.add(c.id)); await sdGuardarAhora();
+    const ahora = new Date().toISOString();
+    await saldosTrasladosRef.doc(t.id).update({ estado:'CERRADO', cajas: n, bultos: n, cajas_ids: sdCajas.map(c=> c.id), unidades: und, cant_items: sdCajas.reduce((s, c)=> s + sdProds(c).length, 0),
+      cerrado_por: currentUserAlias, cerrado_por_email: currentUserEmail, cerrado_en: ahora, actualizado_en: ahora });
+    await logAccion('saldos_cerrado', { detalle: `${t.id} · ${t.tienda} · ${sdFechaTxt(t.fecha)} · ${n} bulto(s), ${und} und` });
+    sdLimpiarForm(); sdLeidos = false;
+    $('sd-ok').innerHTML = `<div class="sd-bultos">✔ ${esc(t.id)} cerrado · Bultos: ${esc(n)}</div><span>🏬 ${esc(t.tienda)} · 📅 ${esc(sdFechaTxt(t.fecha))} · ${esc(n)} caja(s) · ${esc(anFmt(und))} und</span>` +
+      `<div style="margin-top:8px;"><button type="button" class="btn btn-primary btn-sm" data-sd-ver-reg="${esc(t.id)}">🗂 Ver en Registros</button></div>`;
+    $('sd-ok').hidden = false; showMsg('sd-msg', 'ok', ''); sdPreparar();
+  }catch(err){ console.error(err); showToast('No se pudo cerrar el traslado: ' + err.message, 'err'); }
+  finally{ $('btn-sd-cerrar').disabled = false; }
+}
+$('btn-sd-iniciar').addEventListener('click', sdIniciar);
+$('btn-sd-caja').addEventListener('click', sdCrearCaja);
+$('btn-sd-caja-quitar').addEventListener('click', sdQuitarCaja);
+$('btn-sd-cerrar').addEventListener('click', sdCerrar);
+$('sd-abiertos').addEventListener('click', e=>{ const b = e.target.closest('[data-sd-continuar]'); if(b) sdContinuar(b.dataset.sdContinuar); });
+$('btn-sd-add').addEventListener('click', ()=>{
+  const c = sdCaja(); if(!c) return;
+  const i = c.items.findIndex(it=> !sdVacio(it) && !sdCompleto(it)); if(i >= 0){ sdAvisarIncompleto(sdActiva, i); return; }
+  const u = c.items.length - 1;
+  if(u >= 0 && sdVacio(c.items[u])){ rfAviso(`Registra el producto ${u + 1}`, `Antes de agregar uno nuevo, registra el producto ${u + 1}: SKU, cantidad, descripción y al menos una foto.`, ()=> sdFoco(u, 'sku')); return; }
+  c.items.push(sdNuevoItem()); renderSdForm(); sdFoco(c.items.length - 1, 'sku');
+});
+$('sd-items').addEventListener('input', e=>{
+  const campo = e.target.dataset.sdCampo; if(!campo) return;
+  const i = Number(e.target.closest('[data-sd-item]').dataset.sdItem), it = sdCaja().items[i];
+  it[campo] = campo === 'sku' ? e.target.value.toUpperCase() : e.target.value;
+  if(campo === 'sku'){
+    const p = productos[it.sku.trim()];
+    if(p && p.descripcion){ it.descripcion = p.descripcion; e.target.closest('.rf-item').querySelector('[data-sd-campo="descripcion"]').value = p.descripcion; }
+    sdSugerencias(e.target);
+  }
+  sdActualizarMarcas(i); sdResumen(); sdAutoguardar();
+});
+$('sd-items').addEventListener('keydown', e=>{
+  const campo = e.target.dataset.sdCampo; if(!campo || e.key !== 'Enter') return;
+  e.preventDefault();
+  const i = Number(e.target.closest('[data-sd-item]').dataset.sdItem), it = sdCaja().items[i];
+  if(campo === 'sku'){ const primera = e.target.closest('.rf-sku-box').querySelector('[data-sd-sug]'); if(primera && !productos[it.sku.trim()]) sdElegirSku(i, primera.dataset.sdSug); else if(it.sku.trim()){ e.target.closest('.rf-sku-box').querySelector('.rf-sug').hidden = true; sdFoco(i, 'cantidad'); } }
+  else if(campo === 'cantidad'){ if(!(Number(it.cantidad) > 0)){ it._faltan = ['cantidad']; sdActualizarMarcas(i); showMsg('sd-msg', 'err', `Producto ${i + 1}: la cantidad debe ser mayor a 0.`); return; } e.target.blur(); if(!it.fotos.length) sdCamaraItem(i); }
+  else if(campo === 'descripcion') sdFoco(i, 'cantidad');
+});
+$('sd-items').addEventListener('focusout', e=>{ if(e.target.dataset.sdCampo === 'sku') setTimeout(()=>{ const c = e.target.closest('.rf-sku-box') && e.target.closest('.rf-sku-box').querySelector('.rf-sug'); if(c) c.hidden = true; }, 200); });
+$('sdsub-panel-nuevo').addEventListener('click', e=>{
+  const chip = e.target.closest('[data-sd-caja]'), cam = e.target.closest('[data-sd-camara]'), qui = e.target.closest('[data-sd-quitar]'), del = e.target.closest('[data-sd-del]'), ver = e.target.closest('[data-sd-ver]');
+  const sug = e.target.closest('[data-sd-sug]'), paso = e.target.closest('[data-sd-paso]'), scan = e.target.closest('[data-sd-scan]'), reg = e.target.closest('[data-sd-ver-reg]');
+  if(reg){ const id = reg.dataset.sdVerReg; setSdSubtab('lista'); sdAbrirPendiente = id; return; }
+  if(chip){ const ci = Number(chip.dataset.sdCaja); if(ci !== sdActiva){ sdGuardarAhora(); sdActiva = ci; renderSdForm(); } return; }
+  const c = sdCaja(); if(!c) return;
+  if(scan) sdEscanearSku(Number(scan.dataset.sdScan));
+  else if(sug) sdElegirSku(Number(sug.closest('[data-sd-item]').dataset.sdItem), sug.dataset.sdSug);
+  else if(paso){
+    const i = Number(paso.closest('[data-sd-item]').dataset.sdItem), it = c.items[i];
+    it.cantidad = String(Math.max(1, (Number(it.cantidad) || 0) + Number(paso.dataset.sdPaso)));
+    paso.parentElement.querySelector('input').value = it.cantidad; sdActualizarMarcas(i); sdResumen(); sdAutoguardar();
+  }else if(cam) sdCamaraItem(Number(cam.dataset.sdCamara));
+  else if(qui){ e.stopPropagation(); const [f] = c.items[Number(qui.dataset.sdQuitar)].fotos.splice(Number(qui.dataset.sdJ), 1); sdBorrarArchivo(f); renderSdForm(); sdAutoguardar(); }
+  else if(del){ const i = Number(del.dataset.sdDel); c.items[i].fotos.forEach(sdBorrarArchivo); c.items.splice(i, 1); if(!c.items.length) c.items.push(sdNuevoItem()); renderSdForm(); sdAutoguardar(); }
+  else if(ver && ver.classList.contains('error')){ const f = c.items.flatMap(it=> it.fotos).find(x=> x.id === ver.dataset.sdFid); if(f) sdSubirFoto(f, c.id); }
+  else if(ver){ const L = c.items.flatMap(it=> it.fotos.map((f, j)=> ({ url: f.url, pie: `${c.id} · ${it.sku} (foto ${j + 1})` }))); rfVerFoto(ver.dataset.sdVer, '', L); }
+});
+// ---- Registros: traslados con sus cajas ----
+let sdAbrirPendiente = null;
+async function sdCargarLista(forzar){
+  if(sdLeidos && !forzar){ renderSdLista(); sdAbrirSiPendiente(); return; }
+  $('sd-lista').innerHTML = '<div class="hint">⏳ Cargando traslados…</div>';
+  try{
+    const todos = sdVeTodos();
+    const [ts, cs] = await Promise.all([todos ? saldosTrasladosRef.get() : saldosTrasladosRef.where('usuario_email', '==', currentUserEmail).get(),
+      todos ? saldosCajasRef.get() : saldosCajasRef.where('usuario_email', '==', currentUserEmail).get()]);
+    const cajas = cs.docs.map(d=> Object.assign({ id: d.id }, d.data()));
+    sdLista = ts.docs.map(d=> Object.assign({ id: d.id }, d.data())).sort((a, b)=> String(b.fecha || '').localeCompare(String(a.fecha || '')) || b.id.localeCompare(a.id));
+    sdLista.forEach(t=>{
+      t.cajasLista = cajas.filter(c=> c.traslado_id === t.id).sort((a, b)=> a.id.localeCompare(b.id));
+      t._und = t.cajasLista.reduce((s, c)=> s + (Number(c.unidades) || 0), 0);
+      t._txt = normalizarTexto([t.id, t.tienda, t.usuario, t.estado, ...t.cajasLista.flatMap(c=> [c.id, ...(c.items || []).map(it=> `${it.sku} ${it.descripcion}`)])].join(' '));
+    });
+    sdLeidos = true;
+    const tiendas = [...new Set(sdLista.map(t=> t.tienda))].sort(), usuarios = [...new Map(sdLista.map(t=> [t.usuario_email, t.usuario || t.usuario_email])).entries()];
+    const vt = $('sd-tienda-f').value, vu = $('sd-usuario-f').value;
+    $('sd-tienda-f').innerHTML = '<option value="">🏬 Todas las tiendas</option>' + tiendas.map(x=> `<option value="${esc(x)}">${esc(x)}</option>`).join(''); $('sd-tienda-f').value = tiendas.includes(vt) ? vt : '';
+    $('sd-usuario-f').innerHTML = '<option value="">👤 Todos los usuarios</option>' + usuarios.map(([e, a])=> `<option value="${esc(e)}">${esc(a)}</option>`).join(''); $('sd-usuario-f').value = usuarios.some(([e])=> e === vu) ? vu : '';
+  }catch(err){ console.error(err); $('sd-lista').innerHTML = `<div class="hint">⚠ No se pudieron leer los traslados: ${esc(err.message)}</div>`; return; }
+  renderSdLista(); sdAbrirSiPendiente();
+}
+function sdAbrirSiPendiente(){ if(sdAbrirPendiente){ const id = sdAbrirPendiente; sdAbrirPendiente = null; sdAbrir(id); } }
+function sdFiltrados(){
+  const est = $('sd-estado-f').value, ti = $('sd-tienda-f').value, us = $('sd-usuario-f').value, d = $('sd-desde').value, h = $('sd-hasta').value;
+  const q = normalizarTexto($('sd-q').value).split(/\s+/).filter(Boolean);
+  return sdLista.filter(t=> (!est || t.estado === est) && (!ti || t.tienda === ti) && (!us || t.usuario_email === us) && (!d || t.fecha >= d) && (!h || t.fecha <= h) && q.every(p=> t._txt.includes(p)));
+}
+function renderSdLista(){
+  const L = sdFiltrados();
+  $('sd-lista-res').textContent = `${L.length} traslado(s) · ${L.reduce((s, t)=> s + t.cajasLista.length, 0)} caja(s) / bulto(s) · ${anFmt(L.reduce((s, t)=> s + t._und, 0))} und`;
+  $('sd-lista').innerHTML = L.length ? L.slice(0, 300).map(t=> `<button type="button" class="sd-fila" data-sd-abrir="${esc(t.id)}"><span><span class="t">${esc(t.id)}</span> <span class="sd-est ${esc(t.estado)}">${t.estado === 'CERRADO' ? '🔒 CERRADO' : '📦 ABIERTO'}</span><br>` +
+      `<span class="hint">🏬 ${esc(t.tienda)} · 📅 ${esc(sdFechaTxt(t.fecha))} · 👤 ${esc(t.usuario || '')}</span></span><span style="text-align:right;"><b>${esc(t.cajasLista.length)} bulto(s)</b><br><span class="hint">${esc(anFmt(t._und))} und</span></span></button>`).join('') +
+      (L.length > 300 ? `<p class="hint">Se muestran 300 de ${esc(L.length)}: usa los filtros.</p>` : '')
+    : `<div class="hint">${sdLista.length ? 'Ningún traslado cumple los filtros.' : 'Aún no hay traslados de saldos.'}</div>`;
+}
+const sdFotosDe = t=> t.cajasLista.flatMap(c=> (c.items || []).flatMap(it=> (it.fotos || []).map((f, j)=> ({ url: f.url, pie: `${c.id} · ${it.sku} · ${it.descripcion || ''} (foto ${j + 1})` }))));
+function sdAbrir(id){
+  const t = sdLista.find(x=> x.id === id); if(!t) return;
+  sdSel = id;
+  const dueno = t.usuario_email === currentUserEmail;
+  $('sd-detalle').innerHTML = `<div class="rf-det-cab"><div><span class="hint">Traslado de saldos <span class="sd-est ${esc(t.estado)}">${t.estado === 'CERRADO' ? '🔒 CERRADO' : '📦 ABIERTO'}</span></span><h2>${esc(t.id)}</h2></div><div class="rf-det-acc">` +
+      (t.estado === 'ABIERTO' && (dueno || sdVeTodos()) ? `<button type="button" class="btn btn-primary btn-sm" data-sd-det-continuar="${esc(t.id)}">✏ Continuar</button>` : '') +
+      (t.estado === 'CERRADO' && (dueno || sdPuedeEliminar()) ? `<button type="button" class="btn btn-ghost btn-sm" data-sd-det-reabrir="${esc(t.id)}">↩ Reabrir</button>` : '') +
+      `<button type="button" class="btn btn-ghost btn-sm" data-sd-det-excel="${esc(t.id)}">⬇ Excel</button>` +
+      (sdPuedeEliminar() ? `<button type="button" class="btn btn-ghost btn-sm" data-sd-det-eliminar="${esc(t.id)}" style="color:#8A332A;">🗑 Eliminar</button>` : '') + `</div></div>` +
+    `<div class="rf-det-datos"><div><span>Tienda</span><b>🏬 ${esc(t.tienda)}</b></div><div><span>Fecha</span><b>📅 ${esc(sdFechaTxt(t.fecha))}</b></div><div><span>Usuario</span><b>👤 ${esc(t.usuario || '')}</b></div>` +
+      `<div><span>Bultos (cajas)</span><b class="sd-bultos">${esc(t.cajasLista.length)}</b></div><div><span>Unidades</span><b>${esc(anFmt(t._und))}</b></div>` +
+      (t.cerrado_en ? `<div><span>Cerrado</span><b>${esc(t.cerrado_por || '')} · ${esc(rfFechaTxt(t.cerrado_en))}</b></div>` : '') + `</div>` +
+    (t.cajasLista.length ? t.cajasLista.map(c=> `<div class="sd-det-caja"><b>📦 ${esc(c.id)}</b> <span class="hint">· ${esc((c.items || []).length)} producto(s) · ${esc(anFmt(c.unidades || 0))} und</span>` +
+      `<table><thead><tr><th>SKU</th><th>Descripción</th><th class="num">Cantidad</th><th>Fotos</th></tr></thead><tbody>` +
+      ((c.items || []).map(it=> `<tr><td><b>${esc(it.sku)}</b></td><td>${esc(it.descripcion || '')}</td><td class="num">${esc(anFmt(it.cantidad))}</td><td><div class="rf-fotos">${(it.fotos || []).map(f=> `<div class="rf-thumb" data-sd-det-ver="${esc(f.url)}"><img src="${esc(f.url)}" alt="" loading="lazy"></div>`).join('')}</div></td></tr>`).join('') || '<tr><td colspan="4" class="hint">Caja sin productos.</td></tr>') +
+      `</tbody></table></div>`).join('') : '<p class="hint">Este traslado no tiene cajas.</p>');
+  $('sd-det-modal').hidden = false; document.body.classList.add('rf-modal-abierto');
+}
+function sdCerrarDetalle(){ if($('sd-det-modal') && !$('sd-det-modal').hidden){ $('sd-det-modal').hidden = true; document.body.classList.remove('rf-modal-abierto'); } }
+function sdExcel(L, nombre){
+  if(!L.length){ showToast('No hay traslados para exportar con estos filtros.', 'err'); return; }
+  const fecha = f=> rfExcelFecha(f ? f + 'T12:00:00' : '');
+  const resumen = L.map(t=> ({ 'Traslado': t.id, 'Estado': t.estado, 'Tienda': t.tienda, 'Fecha': fecha(t.fecha), 'Bultos (cajas)': t.cajasLista.length, 'Unidades': t._und, 'Usuario': t.usuario || '', 'Cerrado por': t.cerrado_por || '', 'Fecha de cierre': rfExcelFecha(t.cerrado_en), 'Hora de cierre': rfExcelHora(t.cerrado_en) }));
+  const detalle = L.flatMap(t=> t.cajasLista.flatMap(c=> (c.items || []).map(it=> ({ 'Traslado': t.id, 'Tienda': t.tienda, 'Fecha': fecha(t.fecha), 'Caja': c.id, 'SKU': it.sku, 'Descripción': it.descripcion || '', 'Cantidad': Number(it.cantidad) || 0, 'N° fotos': (it.fotos || []).length, 'Usuario': c.usuario || '' }))));
+  const wb = XLSX.utils.book_new();
+  const ws1 = XLSX.utils.json_to_sheet(resumen); ws1['!cols'] = [12, 10, 26, 12, 14, 10, 18, 18, 14, 10].map(w=> ({ wch: w })); ws1['!autofilter'] = { ref: ws1['!ref'] }; rfExcelFormatoFechas(ws1, ['Fecha', 'Fecha de cierre']);
+  const ws2 = XLSX.utils.json_to_sheet(detalle.length ? detalle : [{ 'Traslado': '' }]); ws2['!cols'] = [12, 26, 12, 12, 16, 44, 10, 9, 18].map(w=> ({ wch: w })); ws2['!autofilter'] = { ref: ws2['!ref'] }; rfExcelFormatoFechas(ws2, ['Fecha']);
+  XLSX.utils.book_append_sheet(wb, ws1, 'Traslados'); XLSX.utils.book_append_sheet(wb, ws2, 'Detalle por caja');
+  XLSX.writeFile(wb, nombre);
+  logAccion('saldos_exportado', { detalle: `Excel de saldos: ${L.length} traslado(s), ${detalle.length} fila(s)` });
+  showToast(`Excel con ${L.length} traslado(s).`, 'ok');
+}
+async function sdEliminar(id){
+  const t = sdLista.find(x=> x.id === id); if(!t || !sdPuedeEliminar()) return;
+  if(!confirm(`¿Eliminar el traslado ${id} con sus ${t.cajasLista.length} caja(s) y todas sus fotos? No se puede deshacer.`)) return;
+  try{
+    const paths = t.cajasLista.flatMap(c=> (c.items || []).flatMap(it=> (it.fotos || []).map(f=> f.path))).filter(Boolean);
+    const batch = db.batch(); t.cajasLista.forEach(c=> batch.delete(saldosCajasRef.doc(c.id))); batch.delete(saldosTrasladosRef.doc(id)); await batch.commit();
+    await Promise.allSettled(paths.map(p=> storage.ref().child(p).delete()));
+    await logAccion('saldos_eliminado', { detalle: `${id} · ${t.tienda} · ${t.cajasLista.length} caja(s), ${paths.length} foto(s)` });
+    sdLista = sdLista.filter(x=> x.id !== id); sdCerrarDetalle(); renderSdLista(); showToast(`Traslado ${id} eliminado.`, 'ok');
+  }catch(err){ console.error(err); showToast('No se pudo eliminar: ' + err.message, 'err'); }
+}
+async function sdReabrir(id){
+  const t = sdLista.find(x=> x.id === id); if(!t) return;
+  if(!confirm(`¿Reabrir ${id} para agregar o corregir cajas? Al terminar, vuelve a cerrarlo.`)) return;
+  try{
+    const ahora = new Date().toISOString();
+    await saldosTrasladosRef.doc(id).update({ estado:'ABIERTO', reabierto_por: currentUserAlias, reabierto_en: ahora, actualizado_en: ahora });
+    await logAccion('saldos_reabierto', { detalle: `${id} reabierto` });
+    t.estado = 'ABIERTO'; sdCerrarDetalle(); sdContinuar(id);
+  }catch(err){ console.error(err); showToast('No se pudo reabrir: ' + err.message, 'err'); }
+}
+$('sdsub-panel-lista').addEventListener('click', e=>{
+  const ab = e.target.closest('[data-sd-abrir]'); if(ab){ sdAbrir(ab.dataset.sdAbrir); return; }
+  if(e.target.closest('#btn-sd-excel')){ sdExcel(sdFiltrados(), `saldos_${new Date().toISOString().slice(0, 10)}.xlsx`); return; }
+  if(e.target.closest('#btn-sd-recargar')) sdCargarLista(true);
+});
+['sd-estado-f', 'sd-tienda-f', 'sd-usuario-f', 'sd-desde', 'sd-hasta'].forEach(id=> $(id).addEventListener('change', renderSdLista));
+$('sd-q').addEventListener('input', renderSdLista);
+$('sd-det-modal').addEventListener('click', e=>{
+  if(e.target.id === 'sd-det-modal' || e.target.closest('#btn-sd-det-volver') || e.target.closest('#btn-sd-det-cerrar')){ sdCerrarDetalle(); return; }
+  const ver = e.target.closest('[data-sd-det-ver]'), t = sdLista.find(x=> x.id === sdSel);
+  if(ver && t){ rfVerFoto(ver.dataset.sdDetVer, '', sdFotosDe(t)); return; }
+  const co = e.target.closest('[data-sd-det-continuar]'); if(co){ sdCerrarDetalle(); sdContinuar(co.dataset.sdDetContinuar); return; }
+  const re = e.target.closest('[data-sd-det-reabrir]'); if(re){ sdReabrir(re.dataset.sdDetReabrir); return; }
+  const xl = e.target.closest('[data-sd-det-excel]'); if(xl && t){ sdExcel([t], `saldos_${t.id}.xlsx`); return; }
+  const el = e.target.closest('[data-sd-det-eliminar]'); if(el) sdEliminar(el.dataset.sdDetEliminar);
+});
+window.addEventListener('keydown', e=>{ if(e.key === 'Escape' && !$('sd-det-modal').hidden && $('rf-lightbox').hidden && $('rf-aviso').hidden && $('cam-modal').hidden) sdCerrarDetalle(); }, true);
+
 // -------- Usuarios: lista y permisos a detalle (menú → opción → sección) --------
 let usLista = [], usSel = null;
 const usTabs = ()=> [...document.querySelectorAll('#us-arbol [data-us-tab]')];
@@ -20245,7 +20719,7 @@ function usRfParticipantes(marcados){
 $('us-rf-todos').addEventListener('change', ()=> $('us-rf-part-box').classList.toggle('bloqueado', $('us-rf-todos').checked || $('us-admin').checked));
 function usLlenar(p){
   const base = Object.assign({}, p, { admin:false });
-  $('us-admin').checked = !!p.admin; $('us-eliminar').checked = !!p.eliminar; $('us-rf-todos').checked = !!p.rf_todos;
+  $('us-admin').checked = !!p.admin; $('us-eliminar').checked = !!p.eliminar; $('us-rf-todos').checked = !!p.rf_todos; $('us-saldos-todos').checked = !!p.saldos_todos;
   usRfParticipantes(p.rf_participantes || []);
   usTabs().forEach(cb=>{
     const tab = cb.dataset.usTab; cb.checked = !!p.admin || permTabPermitida(base, tab);
@@ -20255,7 +20729,7 @@ function usLlenar(p){
   usRefrescar();
 }
 function usLeer(){
-  const permisos = { admin: $('us-admin').checked, eliminar: $('us-eliminar').checked, rf_todos: $('us-rf-todos').checked, vo_vouchers: false, subs: {},
+  const permisos = { admin: $('us-admin').checked, eliminar: $('us-eliminar').checked, rf_todos: $('us-rf-todos').checked, saldos_todos: $('us-saldos-todos').checked, vo_vouchers: false, subs: {},
     rf_participantes: [...document.querySelectorAll('#us-rf-part [data-us-rf-part]:checked')].map(x=> x.dataset.usRfPart) };
   usTabs().forEach(cb=>{
     const tab = cb.dataset.usTab; permisos[PERM_TAB_CLAVE[tab]] = cb.checked;
