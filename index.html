@@ -3464,7 +3464,7 @@
         <table class="rfa-tabla" id="rfa-tabla">
           <thead>
             <tr><th data-rfa-orden="sku">Código<span class="rfa-fl"></span></th><th data-rfa-orden="descripcion">Descripción<span class="rfa-fl"></span></th><th class="num" data-rfa-orden="cantidad">Cantidad total<span class="rfa-fl"></span></th><th class="num" data-rfa-orden="posiciones">Posiciones (distintas)<span class="rfa-fl"></span></th><th class="num" data-rfa-orden="registros">Registros (RF)<span class="rfa-fl"></span></th><th class="num" data-rfa-orden="costo">Costo unit.<span class="rfa-fl"></span></th><th class="num" data-rfa-orden="costoTotal">Costo total<span class="rfa-fl"></span></th><th>Tiendas</th></tr>
-            <tr class="rfa-filtros-col"><th><input id="rfa-f-sku" placeholder="Filtrar…"></th><th><input id="rfa-f-desc" placeholder="Filtrar…"></th><th><input id="rfa-f-cant" placeholder="&gt;10, 5-20…"></th><th><input id="rfa-f-pos" placeholder="&gt;1…"></th><th><input id="rfa-f-rf" placeholder="&gt;1…"></th><th colspan="2"><select id="rfa-f-costo" title="Costo"><option value="">Todos</option><option value="CON">Con costo</option><option value="SIN">⚠ Sin costo</option></select></th><th></th></tr>
+            <tr class="rfa-filtros-col"><th><input id="rfa-f-sku" placeholder="Filtrar…"></th><th><input id="rfa-f-desc" placeholder="Filtrar…"></th><th><input id="rfa-f-cant" placeholder="&gt;10, 5-20…"></th><th><input id="rfa-f-pos" placeholder="&gt;1…"></th><th><input id="rfa-f-rf" placeholder="&gt;1…"></th><th colspan="2"><select id="rfa-f-costo" title="Costo"><option value="">Todos</option><option value="CON">Con costo</option><option value="SIN">⚠ Solo sin costo</option></select></th><th></th></tr>
           </thead>
           <tbody id="rfa-body"></tbody>
           <tfoot id="rfa-foot"></tfoot>
@@ -3956,8 +3956,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v244';
-const APP_UPDATED = '09/11/2026 12:00';
+const APP_VERSION = 'v245';
+const APP_UPDATED = '09/11/2026 16:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -19574,7 +19574,10 @@ function renderRfAptos(){
     : `<tr><td colspan="8" class="hint">${rfLista.length ? 'Ningún código cumple los filtros.' : 'Aún no hay registros.'}</td></tr>`;
   $('rfa-foot').innerHTML = `<tr><th>${esc(anFmt(G.length))} código(s)</th><th></th><th class="num">${esc(anFmt(G.reduce((s, g)=> s + g.cantidad, 0)))}</th><th class="num">${esc(anFmt(totPos))}</th><th class="num">${esc(anFmt(totRf))}</th><th></th><th class="num">${esc(rfaSoles(G.reduce((s, g)=> s + (g.costoTotal || 0), 0)))}</th><th></th></tr>`;
   const todos = rfaAgrupar(rfaFiltrados()), sin = todos.filter(g=> g.costo == null).length;
-  $('rfa-costos-res').innerHTML = todos.length ? (sin ? `⚠ <b>${esc(anFmt(sin))}</b> de ${esc(anFmt(todos.length))} código(s) <b>sin costo</b> (con los filtros de arriba).` : `✔ Los ${esc(anFmt(todos.length))} código(s) tienen costo.`) : '';
+  const soloSin = $('rfa-f-costo').value === 'SIN';
+  $('rfa-costos-res').innerHTML = todos.length ? (sin ? `⚠ <b>${esc(anFmt(sin))}</b> de ${esc(anFmt(todos.length))} código(s) <b>sin costo</b> (con los filtros de arriba). ` +
+      `<button type="button" class="btn ${soloSin ? 'btn-ghost' : 'btn-primary'} btn-sm" data-rfa-solo-sin>${soloSin ? '↩ Ver todos' : '👁 Ver solo los sin costo'}</button>`
+    : `✔ Los ${esc(anFmt(todos.length))} código(s) tienen costo.` + (soloSin ? ` <button type="button" class="btn btn-ghost btn-sm" data-rfa-solo-sin>↩ Ver todos</button>` : '')) : '';
   $('btn-rfa-costos').hidden = !rfaPuedeCosto();
   $('rfa-pag').innerHTML = G.length > RFA_POR_PAGINA ? `<div class="vo-pag"><button type="button" data-rfa-pag="-1" ${rfaPag ? '' : 'disabled'}>‹ Anterior</button><span>${esc(rfaPag * RFA_POR_PAGINA + 1)}–${esc(Math.min(G.length, (rfaPag + 1) * RFA_POR_PAGINA))} de ${esc(G.length)} · página ${esc(rfaPag + 1)} de ${esc(pags)}</span><button type="button" data-rfa-pag="1" ${rfaPag < pags - 1 ? '' : 'disabled'}>Siguiente ›</button></div>` : '';
 }
@@ -19740,6 +19743,7 @@ $('rfsub-panel-aptos').addEventListener('click', e=>{
   const ver = e.target.closest('[data-rfa-ver]'), th = e.target.closest('[data-rfa-orden]'), fila = e.target.closest('[data-rfa-sku]'), pag = e.target.closest('[data-rfa-pag]');
   if(ver){ setRfSubtab('lista'); rfSel = ver.dataset.rfaVer; setTimeout(()=> rfAbrir(ver.dataset.rfaVer), 50); return; }
   if(e.target.closest('#btn-rfa-excel')){ rfaExcel(); return; }
+  if(e.target.closest('[data-rfa-solo-sin]')){ $('rfa-f-costo').value = $('rfa-f-costo').value === 'SIN' ? '' : 'SIN'; rfaPag = 0; rfaAbierto = null; renderRfAptos(); return; }
   if(e.target.closest('#btn-rfa-costos')){ $('rfa-costos').hidden = !$('rfa-costos').hidden; if(!$('rfa-costos').hidden) $('rfa-costos-txt').focus(); return; }
   if(e.target.closest('#btn-rfa-costos-cerrar')){ $('rfa-costos').hidden = true; return; }
   if(e.target.closest('#btn-rfa-costos-revisar')){ rfaRevisarCostos(); return; }
