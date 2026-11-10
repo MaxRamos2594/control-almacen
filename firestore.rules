@@ -10,6 +10,7 @@ rules_version = '2';
 //   - El kardex no se puede borrar; solo admin/eliminar lo corrige (fusión).
 //   - El maestro de participantes solo lo edita un admin.
 //   - Registro fotográfico: cada usuario solo ve los suyos (admin o "rf_todos" ven todos).
+//   - Saldos (traslados y cajas): igual, con el permiso "saldos_todos".
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -39,6 +40,11 @@ service cloud.firestore {
     }
     function esDuenoRF() {
       return resource.data.get('usuario_email', '') == request.auth.token.email;
+    }
+    // Saldos: ve los traslados de todos (admin o permiso "saldos_todos").
+    function saldosTodos() {
+      return registered()
+        && (perms().get('admin', false) == true || perms().get('saldos_todos', false) == true);
     }
     // Participantes cuyos registros fotográficos puede ver (aunque los haya hecho otro usuario).
     function rfDeSuParticipante() {
@@ -87,6 +93,22 @@ service cloud.firestore {
       allow delete: if registered() && (esDuenoRF() || canDelete());
     }
 
+    // Saldos (traslados y sus cajas): cada usuario ve los suyos; admin o "saldos_todos" ven todos.
+    match /saldos_traslados/{id} {
+      allow read: if registered() && (resource == null || esDuenoRF() || saldosTodos());
+      allow create: if registered()
+        && (request.resource.data.get('usuario_email', '') == request.auth.token.email || saldosTodos());
+      allow update: if registered() && (esDuenoRF() || saldosTodos() || canDelete());
+      allow delete: if registered() && (esDuenoRF() || canDelete());
+    }
+    match /saldos_cajas/{id} {
+      allow read: if registered() && (resource == null || esDuenoRF() || saldosTodos());
+      allow create: if registered()
+        && (request.resource.data.get('usuario_email', '') == request.auth.token.email || saldosTodos());
+      allow update: if registered() && (esDuenoRF() || saldosTodos() || canDelete());
+      allow delete: if registered() && (esDuenoRF() || canDelete());
+    }
+
     // Link público de Venta Online para el cliente: cualquiera que tenga el link puede leer
     // ESE documento (su id es un código aleatorio de 32 caracteres, imposible de adivinar);
     // nadie puede listar la colección. Solo los usuarios registrados lo crean o cambian
@@ -98,7 +120,7 @@ service cloud.firestore {
     // Resto de colecciones de la app: cualquier usuario registrado.
     match /{coleccion}/{id} {
       allow read, write: if registered()
-        && !(coleccion in ['usuarios', 'movimientos', 'kardex', 'participantes_maestro', 'registros_foto']);
+        && !(coleccion in ['usuarios', 'movimientos', 'kardex', 'participantes_maestro', 'registros_foto', 'saldos_traslados', 'saldos_cajas']);
     }
   }
 }
