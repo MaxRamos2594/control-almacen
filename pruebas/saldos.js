@@ -192,6 +192,21 @@ const png = path.join(__dirname, 'salida', 'sd_foto.png');
     `PDF para gerencia con lo filtrado (${pdfG.nombre}): A4 vertical (${pdfGx.w}×${pdfGx.h}), resumen por traslado; con «Incluir fotos»: ${pdfGx.fotos} foto(s) (1 por código), sin total por código`);
   verificar(pdfSinX.fotos === 0 && !/\bFoto\b/.test(pdfSin.txt) && /PELOTA ROJA/.test(pdfSin.txt) && /TOTAL\s+2\s+7\s+2/.test(pdfSin.txt) && !(await page.evaluate(()=> $('sd-pdf-fotos').checked)),
     `PDF para gerencia sin marcar «Incluir fotos» (por defecto): ${pdfSinX.fotos} foto(s), sin columna Foto, con los ítems y totales`);
+  // Registros se abre con la fecha del día; un traslado de otra fecha solo se ve con «📅 Todas las fechas».
+  await page.evaluate(async email=> saldosTrasladosRef.doc('TS-08888').set({ correlativo:'TS-08888', estado:'CERRADO', tienda:'COMAS', fecha:'2026-01-15', usuario:'Administrador', usuario_email: email, cajas: 0, bultos: 0, cajas_ids: [], fecha_creacion:'2026-01-15T10:00:00.000Z' }), ADMIN.email);
+  await page.evaluate(()=>{ $('sd-desde').value = $('sd-hasta').value = ''; setSdSubtab('nuevo'); setSdSubtab('lista'); });
+  await page.click('#btn-sd-recargar');
+  await page.waitForFunction(()=> sdLista.some(t=> t.id === 'TS-08888'), null, { timeout: 10000 });
+  await page.evaluate(()=> renderSdLista());
+  const conHoy = await page.evaluate(()=> ({ d: $('sd-desde').value, h: $('sd-hasta').value, hoy: sdHoy(), ids: [...document.querySelectorAll('#sd-lista [data-sd-abrir]')].map(x=> x.dataset.sdAbrir).join() }));
+  await page.click('#btn-sd-todas-fechas');
+  const todas = await page.evaluate(()=> ({ d: $('sd-desde').value, ids: [...document.querySelectorAll('#sd-lista [data-sd-abrir]')].map(x=> x.dataset.sdAbrir).join() }));
+  await page.evaluate(()=>{ setSdSubtab('nuevo'); setSdSubtab('lista'); });
+  const otraVez = await page.evaluate(()=> $('sd-desde').value === sdHoy() && $('sd-hasta').value === sdHoy());
+  verificar(conHoy.d === conHoy.hoy && conHoy.h === conHoy.hoy && conHoy.ids === 'TS-00001' && todas.d === '' && /TS-08888/.test(todas.ids) && /TS-00001/.test(todas.ids) && otraVez,
+    `Registros filtra por defecto la fecha del día (${conHoy.d}): ${conHoy.ids}; «📅 Todas las fechas» → ${todas.ids}; al volver a entrar, otra vez hoy`);
+  await page.evaluate(()=> saldosTrasladosRef.doc('TS-08888').delete());
+  await page.evaluate(()=>{ sdLista = sdLista.filter(t=> t.id !== 'TS-08888'); renderSdLista(); });
   await page.fill('#sd-q', 'caja azul'); const busca = await page.evaluate(()=> document.querySelectorAll('#sd-lista [data-sd-abrir]').length);
   await page.fill('#sd-q', 'zzz'); const nada = await page.evaluate(()=> document.querySelectorAll('#sd-lista [data-sd-abrir]').length);
   await page.fill('#sd-q', '');

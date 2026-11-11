@@ -3594,7 +3594,7 @@
       <div class="rf-filtros">
         <select id="sd-estado-f" title="Estado"><option value="">Todos</option><option value="CERRADO">🔒 Cerrados</option><option value="ABIERTO">📦 Abiertos</option></select>
         <select id="sd-tienda-f" title="Tienda"></select><select id="sd-usuario-f" title="Usuario"></select>
-        <label>Desde <input type="date" id="sd-desde"></label><label>Hasta <input type="date" id="sd-hasta"></label>
+        <label>Desde <input type="date" id="sd-desde"></label><label>Hasta <input type="date" id="sd-hasta"></label><button type="button" class="btn btn-ghost btn-sm" id="btn-sd-todas-fechas" title="Quitar el filtro de fechas">📅 Todas las fechas</button>
         <input type="search" id="sd-q" placeholder="Buscar traslado, caja, código o descripción…" autocomplete="off">
       </div>
       <div class="rfa-acciones"><button type="button" class="btn btn-primary btn-sm" id="btn-sd-excel">⬇ Exportar a Excel</button><button type="button" class="btn btn-primary btn-sm" id="btn-sd-pdf">⬇ PDF para gerencia</button><label class="sd-pdf-fotos" title="Descarga 1 foto por código: el PDF demora más y consume más datos"><input type="checkbox" id="sd-pdf-fotos"> Incluir fotos</label><button type="button" class="btn btn-ghost btn-sm" id="btn-sd-recargar">↻ Actualizar</button></div>
@@ -4150,8 +4150,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v264';
-const APP_UPDATED = '15/11/2026 22:00';
+const APP_VERSION = 'v265';
+const APP_UPDATED = '16/11/2026 09:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -20438,8 +20438,11 @@ const sdCaja = ()=> sdCajas[sdActiva] || null;
 function setSdSubtab(name){
   sdCerrarDetalle();
   ['nuevo', 'lista'].forEach(n=>{ $('sdsub-' + n).classList.toggle('active', n === name); $('sdsub-panel-' + n).style.display = n === name ? 'block' : 'none'; });
-  if(name === 'lista') sdCargarLista(); else sdPreparar();
+  if(name === 'lista'){ sdFechasHoy(); sdCargarLista(); } else sdPreparar();
 }
+// Registros se abre siempre con la fecha del día (Desde y Hasta = hoy); «📅 Todas las fechas» quita el filtro.
+function sdFechasHoy(){ $('sd-desde').value = $('sd-hasta').value = sdHoy(); }
+$('btn-sd-todas-fechas').addEventListener('click', ()=>{ $('sd-desde').value = $('sd-hasta').value = ''; renderSdLista(); });
 $('sdsub-nuevo').addEventListener('click', ()=> setSdSubtab('nuevo'));
 $('sdsub-lista').addEventListener('click', ()=> setSdSubtab('lista'));
 $('tab-saldos').addEventListener('click', sdAlEntrar);
@@ -20457,7 +20460,7 @@ function sdLlenarTiendas(){
   if(!$('sd-fecha').value) $('sd-fecha').value = sdHoy();
 }
 // Al abrir Saldos (desde el menú, al recargar en esta opción o al entrar directo).
-function sdAlEntrar(){ if($('sdsub-panel-nuevo').style.display !== 'none') sdPreparar(); else sdCargarLista(); }
+function sdAlEntrar(){ if($('sdsub-panel-nuevo').style.display !== 'none') sdPreparar(); else { sdFechasHoy(); sdCargarLista(); } }
 function sdPreparar(){
   sdLlenarTiendas();
   $('sd-inicio').hidden = !!sdTraslado; $('sd-form').hidden = !sdTraslado;
