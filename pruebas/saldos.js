@@ -41,6 +41,11 @@ const png = path.join(__dirname, 'salida', 'sd_foto.png');
   const hoy = await page.evaluate(()=> sdHoy() === $('sd-fecha').value && $('sd-fecha').value);
   verificar(/PRODUCTOS E INVENTARIO: .*Registro fotográfico, Saldos/i.test(grupo) && !!hoy, `Opción "Saldos" en ${grupo}; la fecha por defecto es hoy (${hoy})`);
 
+  // Recargar la página estando en Saldos: tiendas y fecha se llenan solas (antes quedaban vacías).
+  await page.reload();
+  await page.waitForFunction(()=> $('status-text').textContent === 'Sincronizado en vivo' && $('view-saldos').classList.contains('active'), null, { timeout: 20000 });
+  const recarga = await page.waitForFunction(()=> [...$('sd-tienda').options].some(o=> o.value === 'COMAS') && $('sd-fecha').value === sdHoy(), null, { timeout: 10000 }).then(()=> true, ()=> false);
+  verificar(recarga, 'Al recargar la página estando en Saldos, la lista de tiendas y la fecha de hoy se llenan solas');
   // 1-2) Tienda + fecha → iniciar traslado.
   await page.selectOption('#sd-tienda', 'COMAS');
   await page.click('#btn-sd-iniciar');
@@ -147,6 +152,9 @@ const png = path.join(__dirname, 'salida', 'sd_foto.png');
   ({ browser, page, errores } = await abrirApp({ usuario: YOLANDA }));
   await listo(page);
   const menu = await page.evaluate(()=> !$('tab-saldos').classList.contains('hidden-perm') && $('tab-regfoto').classList.contains('hidden-perm'));
+  // Con Saldos como única opción entra directo y ya ve las tiendas.
+  const directo = await page.waitForFunction(()=> $('view-saldos').classList.contains('active') && [...$('sd-tienda').options].some(o=> o.value === 'COMAS'), null, { timeout: 10000 }).then(()=> true, ()=> false);
+  verificar(directo, 'Un usuario con solo Saldos entra directo y ve la lista de tiendas');
   await page.evaluate(()=>{ switchTab('saldos'); setSdSubtab('lista'); });
   await page.waitForFunction(()=> sdLeidos, null, { timeout: 10000 });
   const vacia = await page.evaluate(()=> $('sd-lista').innerText);
