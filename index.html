@@ -4008,7 +4008,94 @@ const db = firebase.firestore();
 // la app, las colecciones se leen del equipo y Firestore solo envía (y cobra) lo que cambió. Si el navegador no lo
 // permite (modo privado, otra pestaña antigua), la app funciona igual, leyendo todo como antes.
 let firestoreCacheLocal = false;
+try{ db.settings({ cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED, merge: true }); }catch(e){ console.warn('Caché de Firestore:', e); }
 try{ db.enablePersistence({ synchronizeTabs: true }).then(()=>{ firestoreCacheLocal = true; }).catch(err=> console.warn('Sin caché local de Firestore:', err.code || err)); }catch(e){ console.warn('Sin caché local de Firestore:', e); }
+// ---- Sincronización incremental (ahorro de lecturas aunque pasen días) ----
+// Toda escritura en estas colecciones guarda la hora del servidor en "sync_en" (se agrega aquí, en un solo lugar, para
+// que no se escape ninguna) y todo borrado deja una marca en "borrados_<colección>". Así cada equipo guarda su copia y
+// después solo pide al servidor lo que cambió o se borró desde la última vez. Cada 7 días (o si la copia del equipo
+// está incompleta) se vuelve a leer todo, por seguridad.
+const SYNC_COLS = new Set(['productos', 'registros_foto', 'saldos_traslados', 'saldos_cajas']);
+// Margen: se vuelve a pedir lo que cambió en los últimos 5 minutos (las horas son del servidor; cubre escrituras simultáneas).
+// Sin ninguna marca todavía (datos de antes de este cambio) se usa la hora del equipo con 1 hora de margen.
+const SYNC_MARGEN = window.__syncMargen != null ? window.__syncMargen : 5 * 60e3, SYNC_SIN_MARCA = 3600e3, SYNC_COMPLETO_CADA = 7 * 86400e3;
+(function parcheSync(){
+  const F = firebase.firestore, ts = ()=> F.FieldValue.serverTimestamp(), col = ref=> ref && ref.parent ? ref.parent.id : '';
+  const es = ref=> SYNC_COLS.has(col(ref)), conMarca = (ref, d)=> es(ref) && d && typeof d === 'object' ? Object.assign({}, d, { sync_en: ts() }) : d;
+  const opciones = (ref, o)=> es(ref) && o && Array.isArray(o.mergeFields) ? Object.assign({}, o, { mergeFields: [...o.mergeFields, 'sync_en'] }) : o;
+  const porCampos = a=> typeof a === 'string' || a instanceof F.FieldPath;
+  const tumba = ref=> db.collection('borrados_' + col(ref)).doc(ref.id);
+  const D = F.DocumentReference.prototype, dSet = D.set, dUpd = D.update, dDel = D.delete;
+  D.set = function(data, o){ return dSet.call(this, conMarca(this, data), opciones(this, o)); };
+  D.update = function(a, ...r){ if(!es(this)) return dUpd.call(this, a, ...r); return porCampos(a) ? dUpd.call(this, a, ...r, 'sync_en', ts()) : dUpd.call(this, conMarca(this, a)); };
+  D.delete = function(){ if(!es(this)) return dDel.call(this); const b = db.batch(); b.delete(this); return b.commit(); };   // el lote deja la marca de borrado
+  [F.WriteBatch.prototype, F.Transaction.prototype].forEach(P=>{
+    const pSet = P.set, pUpd = P.update, pDel = P.delete;
+    P.set = function(ref, data, o){ return pSet.call(this, ref, conMarca(ref, data), opciones(ref, o)); };
+    P.update = function(ref, a, ...r){ if(!es(ref)) return pUpd.call(this, ref, a, ...r); return porCampos(a) ? pUpd.call(this, ref, a, ...r, 'sync_en', ts()) : pUpd.call(this, ref, conMarca(ref, a)); };
+    P.delete = function(ref){ const x = pDel.call(this, ref); if(es(ref)) pSet.call(this, tumba(ref), { en: ts() }); return x; };
+  });
+})();
+const syncMs = v=> v && v.toMillis ? v.toMillis() : 0;
+const syncModo = {};   // última forma en que se leyó cada colección en esta sesión: 'completo' o 'incremental' (se ve en Almacenamiento)
+function syncClave(col, quien){ return `sync:v1:${firebase.app().options.projectId}:${col}:${quien}`; }
+function syncMeta(col, quien){ try{ return JSON.parse(localStorage.getItem(syncClave(col, quien)) || 'null'); }catch(e){ return null; } }
+function syncGuardar(col, quien, m){ try{ localStorage.setItem(syncClave(col, quien), JSON.stringify(m)); }catch(e){} }
+function syncAvanzar(col, quien, ms){ const m = syncMeta(col, quien); if(m && ms > m.desde){ m.desde = ms; syncGuardar(col, quien, m); } }
+// Un documento borrado sigue en la copia del equipo: se pregunta al servidor por él (1 lectura) para que lo saque.
+function syncPurgar(ref, id){ ref.doc(id).get().catch(()=>{}); }
+// Devuelve { docs: Map(id → datos), desde (ms), modo }.
+async function syncLeer(col, ref, quien){
+  const m = syncMeta(col, quien), ahora = Date.now();
+  if(m && firestoreCacheLocal && ahora - m.completo_en < SYNC_COMPLETO_CADA){
+    try{
+      const cache = await ref.get({ source: 'cache' });
+      if(cache.size >= Math.floor(m.n * 0.98)){
+        const docs = new Map(cache.docs.map(d=> [d.id, d.data()]));
+        const desde = firebase.firestore.Timestamp.fromMillis(m.desde - SYNC_MARGEN);
+        const [cambios, tumbas] = await Promise.all([ref.where('sync_en', '>', desde).get(), db.collection('borrados_' + col).where('en', '>', desde).get()]);
+        if(!cambios.metadata.fromCache){
+          lecturasServidor += cambios.size + tumbas.size;
+          let max = m.desde;
+          cambios.docs.forEach(d=>{ docs.set(d.id, d.data()); max = Math.max(max, syncMs(d.data().sync_en)); });
+          tumbas.docs.forEach(t=>{ max = Math.max(max, syncMs(t.data().en)); if(docs.has(t.id)){ docs.delete(t.id); syncPurgar(ref, t.id); } });
+          syncGuardar(col, quien, { desde: max, n: docs.size, completo_en: m.completo_en });
+          syncModo[col] = 'incremental'; return { docs, desde: max, modo: 'incremental' };
+        }
+      }
+    }catch(err){ console.warn('Sincronización incremental de', col, err); }
+  }
+  // Primera vez en este equipo (o cada 7 días, o copia incompleta): se lee todo.
+  const snap = await ref.get();
+  const docs = new Map(snap.docs.map(d=> [d.id, d.data()]));
+  const max = snap.docs.reduce((x, d)=> Math.max(x, syncMs(d.data().sync_en)), 0) || (ahora - SYNC_SIN_MARCA);
+  if(!snap.metadata.fromCache){ lecturasServidor += snap.size; syncGuardar(col, quien, { desde: max, n: docs.size, completo_en: ahora }); }
+  syncModo[col] = 'completo'; return { docs, desde: max, modo: 'completo' };
+}
+// Como onSnapshot, pero incremental: carga la copia del equipo + lo que cambió, y luego escucha en vivo solo los cambios.
+// aplicar(id, datos | null). Devuelve la función para dejar de escuchar.
+function syncEscuchar(col, ref, quien, aplicar, alListo, alCambiar){
+  const unsubs = []; let parado = false;
+  (async ()=>{
+    try{
+      const r = await syncLeer(col, ref, quien);
+      if(parado) return;
+      r.docs.forEach((d, id)=> aplicar(id, d)); alListo();
+      const desde = firebase.firestore.Timestamp.fromMillis(r.desde - SYNC_MARGEN);
+      unsubs.push(ref.where('sync_en', '>', desde).onSnapshot(snap=>{
+        contarLecturas(snap); let n = 0;
+        snap.docChanges().forEach(ch=>{ if(ch.type === 'removed') return; const d = ch.doc.data(); aplicar(ch.doc.id, d); n++; if(!snap.metadata.fromCache) syncAvanzar(col, quien, syncMs(d.sync_en)); });
+        if(n) alCambiar();
+      }, onErr));
+      unsubs.push(db.collection('borrados_' + col).where('en', '>', desde).onSnapshot(snap=>{
+        contarLecturas(snap); let n = 0;
+        snap.docChanges().forEach(ch=>{ if(ch.type !== 'added') return; aplicar(ch.doc.id, null); syncPurgar(ref, ch.doc.id); n++; });
+        if(n) alCambiar();
+      }, onErr));
+    }catch(err){ onErr(err); }
+  })();
+  return ()=>{ parado = true; unsubs.forEach(u=>{ try{ u(); }catch(e){} }); };
+}
 // Las pantallas de campañas/guías guardan sus lecturas en caché de memoria para
 // ahorrar lecturas de Firestore. Cualquier escritura por lotes puede dejar esa
 // caché obsoleta, así que se limpia al confirmar el batch.
@@ -4035,8 +4122,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v252';
-const APP_UPDATED = '12/11/2026 12:00';
+const APP_VERSION = 'v253';
+const APP_UPDATED = '12/11/2026 18:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4645,7 +4732,10 @@ function startListeners(){
   // Rejas (divisores físicos del layout): no cuenta para checkReady() — es un
   // detalle visual adicional del layout, no una de las 5 colecciones núcleo.
   if(usa('layout')) listenerUnsubs.push(rejasRef.onSnapshot(snap=>{ aplicarCambios(snap, rejas); renderAll(); }, onErr));
-  listenerUnsubs.push(productosRef.onSnapshot(snap=>{ aplicarCambios(snap, productos, docIdACodigo); invalidarInventario(); checkReady('productos'); renderProductosTabla(); renderInventario(); poblarProveedoresToma(); poblarDatalistsProductos(); if($('rfsub-panel-aptos').style.display !== 'none' && !rfaEditando) renderRfAptos(); }, onErr));
+  // Productos (la colección más grande): incremental, solo llega lo que cambió desde la última vez en este equipo.
+  const prodCambio = ()=>{ invalidarInventario(); renderProductosTabla(); renderInventario(); poblarProveedoresToma(); poblarDatalistsProductos(); if($('rfsub-panel-aptos').style.display !== 'none' && !rfaEditando) renderRfAptos(); };
+  listenerUnsubs.push(syncEscuchar('productos', productosRef, 'todos', (id, d)=>{ const k = docIdACodigo(id); if(d) productos[k] = d; else delete productos[k]; },
+    ()=>{ prodCambio(); checkReady('productos'); }, prodCambio));
   listenerUnsubs.push(participantesMaestroRef.onSnapshot(snap=>{
     contarLecturas(snap);
     participantesMaestroCache = {};
@@ -20045,12 +20135,13 @@ async function rfFusionar(regs, posFinal){
     batch.update(registrosFotoRef.doc(destino.id), cambios);
     otros.forEach(r=> batch.delete(registrosFotoRef.doc(r.id)));
     await batch.commit();
-    await Promise.allSettled(borrar.map(p=> storage.ref().child(p).delete()));
-    await logAccion('reg_foto_fusionado', { detalle: `${otros.map(r=> r.id).join(', ')} → ${destino.id} · posición ${posFinal} · ${items.length} producto(s), ${cambios.unidades} und` });
+    // Se muestra al momento; las fotos sobrantes y la bitácora se procesan después.
     Object.assign(destino, cambios);
     const fuera = new Set(otros.map(r=> r.id)); rfLista = rfLista.filter(r=> !fuera.has(r.id));
     showToast(`Fusionado: queda ${destino.id} en ${posFinal} (${items.length} producto(s), ${cambios.unidades} und).`, 'ok');
     renderRfLista(); rfSiReportes(); renderRfLayout();
+    await Promise.allSettled(borrar.map(p=> storage.ref().child(p).delete()));
+    await logAccion('reg_foto_fusionado', { detalle: `${otros.map(r=> r.id).join(', ')} → ${destino.id} · posición ${posFinal} · ${items.length} producto(s), ${cambios.unidades} und` });
   }catch(err){ console.error(err); showToast('No se pudo fusionar: ' + (err.message || err), 'err'); }
 }
 
@@ -20129,10 +20220,14 @@ async function rfCargar(forzar){
   try{
     // Cada usuario lee solo los suyos; admin o "rf_todos" leen todos (las reglas de Firestore hacen lo mismo).
     // Además de los suyos, los de los participantes permitidos (una consulta por participante, como piden las reglas).
-    const consultas = rfVeTodos() ? [registrosFotoRef.get()]
-      : [registrosFotoRef.where('usuario_email', '==', currentUserEmail).get(), ...rfParticipantesVisibles().map(t=> registrosFotoRef.where('participante', '==', t).get())];
     const porId = new Map();
-    (await Promise.all(consultas)).forEach(snap=> snap.docs.forEach(d=> porId.set(d.id, Object.assign({ id: d.id }, d.data()))));
+    if(rfVeTodos()){
+      // Quien ve todos: incremental (la copia del equipo + lo que cambió desde la última vez).
+      (await syncLeer('registros_foto', registrosFotoRef, 'todos')).docs.forEach((d, id)=> porId.set(id, Object.assign({ id }, d)));
+    }else{
+      const consultas = [registrosFotoRef.where('usuario_email', '==', currentUserEmail).get(), ...rfParticipantesVisibles().map(t=> registrosFotoRef.where('participante', '==', t).get())];
+      (await Promise.all(consultas)).forEach(snap=> snap.docs.forEach(d=> porId.set(d.id, Object.assign({ id: d.id }, d.data()))));
+    }
     rfLista = [...porId.values()]
       .sort((a, b)=> String(b.fecha_creacion || '').localeCompare(String(a.fecha_creacion || '')) || b.id.localeCompare(a.id));
     rfLlenarFiltros();
@@ -20674,10 +20769,12 @@ async function sdCargarLista(forzar){
   $('sd-lista').innerHTML = '<div class="hint">⏳ Cargando traslados…</div>';
   try{
     const todos = sdVeTodos();
-    const [ts, cs] = await Promise.all([todos ? saldosTrasladosRef.get() : saldosTrasladosRef.where('usuario_email', '==', currentUserEmail).get(),
-      todos ? saldosCajasRef.get() : saldosCajasRef.where('usuario_email', '==', currentUserEmail).get()]);
-    const cajas = cs.docs.map(d=> Object.assign({ id: d.id }, d.data()));
-    sdLista = ts.docs.map(d=> Object.assign({ id: d.id }, d.data())).sort((a, b)=> String(b.fecha || '').localeCompare(String(a.fecha || '')) || b.id.localeCompare(a.id));
+    const comoLista = snap=> snap.docs.map(d=> Object.assign({ id: d.id }, d.data())), deMapa = r=> [...r.docs].map(([id, d])=> Object.assign({ id }, d));
+    // Quien ve todos: incremental; cada usuario: solo los suyos (pocos).
+    const [ts, cs] = await Promise.all(todos ? [syncLeer('saldos_traslados', saldosTrasladosRef, 'todos').then(deMapa), syncLeer('saldos_cajas', saldosCajasRef, 'todos').then(deMapa)]
+      : [saldosTrasladosRef.where('usuario_email', '==', currentUserEmail).get().then(comoLista), saldosCajasRef.where('usuario_email', '==', currentUserEmail).get().then(comoLista)]);
+    const cajas = cs;
+    sdLista = ts.sort((a, b)=> String(b.fecha || '').localeCompare(String(a.fecha || '')) || b.id.localeCompare(a.id));
     sdLista.forEach(t=>{
       t.cajasLista = cajas.filter(c=> c.traslado_id === t.id).sort((a, b)=> a.id.localeCompare(b.id));
       t._und = t.cajasLista.reduce((s, c)=> s + (Number(c.unidades) || 0), 0);
@@ -21209,6 +21306,7 @@ function renderAlmConsumo(){
   const nec = escuchasNecesarias();
   $('alm-consumo').innerHTML = `📡 Esta sesión descargó <b>${esc(anFmt(lecturasServidor))}</b> documento(s) del servidor en las escuchas en vivo. ` +
     `Caché local: <b>${firestoreCacheLocal ? '✔ activa' : '✖ no disponible en este navegador'}</b>` + (firestoreCacheLocal ? ' (al recargar solo llega lo que cambió).' : '.') +
+    (Object.keys(syncModo).length ? `<br>Sincronización: ${Object.entries(syncModo).map(([c, m])=> `${esc(c)} <b>${m === 'incremental' ? 'solo cambios' : 'completa'}</b>`).join(' · ')}.` : '') +
     `<br><span class="hint">Plan gratuito: 50 000 lecturas, 20 000 escrituras y 20 000 borrados por día. El consumo del día de todos los usuarios está en Firebase Console → Firestore Database → Uso.${nec ? '' : ''}</span>`;
 }
 function renderAlm(){
