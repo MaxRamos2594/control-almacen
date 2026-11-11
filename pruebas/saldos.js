@@ -128,6 +128,31 @@ const png = path.join(__dirname, 'salida', 'sd_foto.png');
     c1.traslado_id === 'TS-00001' && c1.estado === 'CERRADA' && c1.items[0].sku === 'P100' && c1.items[0].cantidad === 5 && c1.items[0].descripcion === 'PELOTA ROJA',
     `"${txtCerrar}" → "${ok}"; en la base: ${t.estado}, ${t.bultos} bultos (${t.cajas_ids.join(', ')})`);
 
+  // Rótulos: uno por caja, 4 por hoja A4 horizontal (formato del Excel "ROTULO ENVIO A TIENDAS").
+  const rot = await page.evaluate(async ()=>{
+    const { jsPDF } = window.jspdf, saveOrig = jsPDF.API.save; let b64 = '', b64b = '';
+    jsPDF.API.save = function(){ (b64 ? (s=> b64b = s) : (s=> b64 = s))(this.output('datauristring').split(',')[1]); };
+    try{
+      document.querySelector('#sd-ok [data-sd-rotulos]').click();
+      // 5 cajas → 2 hojas (4 + 1).
+      sdRotulosPdf({ id:'TS-09999', tienda:'SAN JUAN DE LURIGANCHO', fecha:'2026-11-11', usuario:'YOLANDA', cajasLista: [1,2,3,4,5].map(n=> ({ id: 'CJ-0000' + n })) });
+    } finally { jsPDF.API.save = saveOrig; }
+    const leer = async b=>{ const pdf = await pdfjsLib.getDocument({ data: Uint8Array.from(atob(b), c=> c.charCodeAt(0)) }).promise; const pg = await pdf.getPage(1), vp = pg.getViewport({ scale: 1 });
+      const txt = []; for(let i = 1; i <= pdf.numPages; i++) txt.push((await (await pdf.getPage(i)).getTextContent()).items.map(x=> x.str).join(' '));
+      // Imagen de la hoja 1 para revisarla.
+      const v2 = pg.getViewport({ scale: 2 }), cv = document.createElement('canvas'); cv.width = v2.width; cv.height = v2.height; await pg.render({ canvasContext: cv.getContext('2d'), viewport: v2 }).promise;
+      return { paginas: pdf.numPages, ancho: Math.round(vp.width), alto: Math.round(vp.height), txt, png: cv.toDataURL('image/png').split(',')[1] }; };
+    return { a: await leer(b64), b: await leer(b64b), b64 };
+  });
+  fs.writeFileSync(path.join(__dirname, 'salida', 'saldos_rotulos.pdf'), Buffer.from(rot.b64, 'base64'));
+  fs.writeFileSync(path.join(__dirname, 'salida', 'saldos_rotulos.png'), Buffer.from(rot.a.png, 'base64'));
+  fs.writeFileSync(path.join(__dirname, 'salida', 'saldos_rotulos_5.png'), Buffer.from(rot.b.png, 'base64'));
+  const t1 = rot.a.txt[0], veces = (re, t)=> (t.match(re) || []).length;
+  verificar(rot.a.paginas === 1 && rot.a.ancho === 842 && rot.a.alto === 595 && veces(/ORIGEN:/g, t1) === 2 && veces(/CD VENEZUELA/g, t1) === 2 && veces(/COMAS/g, t1) === 2 &&
+    /CJ-00001/.test(t1) && /CJ-00002/.test(t1) && veces(/TS-00001/g, t1) === 2 && veces(/SALDOS PREPARADOS POR: Administrador/g, t1) === 2 && veces(/NRO TRANSACCIÓN/g, t1) === 2 && /TOTAL BULTOS:/.test(t1) && new RegExp(hoy.split('-').reverse().join('/')).test(t1),
+    `Rótulos del traslado: ${rot.a.paginas} hoja A4 horizontal (${rot.a.ancho}×${rot.a.alto}) con 2 rótulos: origen CD VENEZUELA, destino COMAS, CJ-00001 / CJ-00002, TS-00001, "SALDOS PREPARADOS POR: Administrador"`);
+  verificar(rot.b.paginas === 2 && veces(/ORIGEN:/g, rot.b.txt[0]) === 4 && veces(/ORIGEN:/g, rot.b.txt[1]) === 1 && /CJ-00005/.test(rot.b.txt[1]) && /SAN JUAN DE LURIGANCHO/.test(rot.b.txt[0]),
+    `5 cajas → ${rot.b.paginas} hojas (4 + 1 rótulos)`);
   // 9) Registros: el traslado con sus cajas.
   await page.click('#sd-ok [data-sd-ver-reg]');
   await page.waitForFunction(()=> !$('sd-det-modal').hidden, null, { timeout: 10000 });
@@ -141,7 +166,7 @@ const png = path.join(__dirname, 'salida', 'sd_foto.png');
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#btn-sd-excel')]);
   const xl = path.join(__dirname, 'salida', 'saldos.xlsx'); await dl.saveAs(xl);
   const wb = XLSX.readFile(xl), r1 = XLSX.utils.sheet_to_json(wb.Sheets['Traslados']), r2 = XLSX.utils.sheet_to_json(wb.Sheets['Detalle por caja']);
-  verificar(/TS-00001/.test(det) && /CERRADO/.test(det) && /COMAS/.test(det) && /Bultos \(cajas\) 2/i.test(det) && /CJ-00001/.test(det) && /CJ-00002/.test(det) && /P100 PELOTA ROJA 5/.test(det) && /X-9 CAJA AZUL 2/.test(det) &&
+  verificar(/Rótulos PDF/.test(det) && /TS-00001/.test(det) && /CERRADO/.test(det) && /COMAS/.test(det) && /Bultos \(cajas\) 2/i.test(det) && /CJ-00001/.test(det) && /CJ-00002/.test(det) && /P100 PELOTA ROJA 5/.test(det) && /X-9 CAJA AZUL 2/.test(det) &&
     /TS-00001 🔒 CERRADO/.test(fila) && /2 bulto\(s\)/.test(fila) && busca === 1 && nada === 0 &&
     r1.length === 1 && r1[0]['Bultos (cajas)'] === 2 && r2.length === 2 && r2[0]['Caja'] === 'CJ-00001' && r2[1]['SKU'] === 'X-9',
     `Registros: ${fila}; detalle con las 2 cajas y sus productos; búsqueda "caja azul" → ${busca}; Excel ${r1.length} traslado y ${r2.length} filas`);

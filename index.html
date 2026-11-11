@@ -4027,8 +4027,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v249';
-const APP_UPDATED = '11/11/2026 19:00';
+const APP_VERSION = 'v250';
+const APP_UPDATED = '11/11/2026 22:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4538,7 +4538,7 @@ function tipoLabel(tipo){
     asistente_consulta:'Consulta al asistente IA', almacenamiento_huerfanos_eliminados:'Archivos huérfanos eliminados (almacenamiento)', almacenamiento_pdfs_comprimidos:'Archivos comprimidos (almacenamiento)',
     reg_foto_creado:'Registro fotográfico creado', reg_foto_eliminado:'Registro fotográfico eliminado', reg_foto_iniciado:'Registro fotográfico iniciado (borrador)',
     reg_foto_confirmado:'Registro fotográfico confirmado', reg_foto_descartado:'Borrador de registro fotográfico descartado', reg_foto_exportado:'Registro fotográfico exportado',
-    reg_foto_reabierto:'Registro fotográfico abierto para modificar', reg_foto_modificado:'Registro fotográfico modificado', reg_foto_modificacion_cancelada:'Modificación de registro fotográfico cancelada', reg_foto_apto_ajuste:'Registro fotográfico: apto para ajuste', reg_foto_posicion_cambiada:'Registro fotográfico: posición cambiada', reg_foto_layout_marca:'Registro fotográfico: posición bloqueada / merma / por inventariar', reg_foto_fusionado:'Registros fotográficos fusionados', reg_foto_sku_editado:'Registro fotográfico: código / descripción editados', reg_foto_costos:'Registro fotográfico: costos asignados', saldos_iniciado:'Saldos: traslado iniciado', saldos_caja_creada:'Saldos: caja creada', saldos_caja_quitada:'Saldos: caja quitada', saldos_caja_cerrada:'Saldos: caja cerrada', saldos_caja_abierta:'Saldos: caja abierta de nuevo', saldos_cerrado:'Saldos: traslado cerrado', saldos_reabierto:'Saldos: traslado reabierto', saldos_eliminado:'Saldos: traslado eliminado', saldos_exportado:'Saldos: exportado a Excel',
+    reg_foto_reabierto:'Registro fotográfico abierto para modificar', reg_foto_modificado:'Registro fotográfico modificado', reg_foto_modificacion_cancelada:'Modificación de registro fotográfico cancelada', reg_foto_apto_ajuste:'Registro fotográfico: apto para ajuste', reg_foto_posicion_cambiada:'Registro fotográfico: posición cambiada', reg_foto_layout_marca:'Registro fotográfico: posición bloqueada / merma / por inventariar', reg_foto_fusionado:'Registros fotográficos fusionados', reg_foto_sku_editado:'Registro fotográfico: código / descripción editados', reg_foto_costos:'Registro fotográfico: costos asignados', saldos_iniciado:'Saldos: traslado iniciado', saldos_caja_creada:'Saldos: caja creada', saldos_caja_quitada:'Saldos: caja quitada', saldos_caja_cerrada:'Saldos: caja cerrada', saldos_caja_abierta:'Saldos: caja abierta de nuevo', saldos_cerrado:'Saldos: traslado cerrado', saldos_reabierto:'Saldos: traslado reabierto', saldos_eliminado:'Saldos: traslado eliminado', saldos_exportado:'Saldos: exportado a Excel', saldos_rotulos:'Saldos: rótulos impresos',
     ingreso:'Entrada de pallet', movimiento:'Movimiento', retiro:'Salida (pallet completo)',
     retiro_campana:'Salida (campaña)', retiro_campana_revertido:'↺ Retiro de campaña revertido', producto_agregado:'Adición de producto', transferencia:'Transferencia entre pallets',
     bloqueo:'Bloqueo de posición', desbloqueo:'Desbloqueo de posición',
@@ -20568,9 +20568,11 @@ async function sdCerrar(){
     await saldosTrasladosRef.doc(t.id).update({ estado:'CERRADO', cajas: n, bultos: n, cajas_ids: sdCajas.map(c=> c.id), unidades: und, cant_items: sdCajas.reduce((s, c)=> s + sdProds(c).length, 0),
       cerrado_por: currentUserAlias, cerrado_por_email: currentUserEmail, cerrado_en: ahora, actualizado_en: ahora });
     await logAccion('saldos_cerrado', { detalle: `${t.id} · ${t.tienda} · ${sdFechaTxt(t.fecha)} · ${n} bulto(s), ${und} und` });
+    const cajasCerradas = sdCajas.map(c=> ({ id: c.id }));
     sdLimpiarForm(); sdLeidos = false;
     $('sd-ok').innerHTML = `<div class="sd-bultos">✔ ${esc(t.id)} cerrado · Bultos: ${esc(n)}</div><span>🏬 ${esc(t.tienda)} · 📅 ${esc(sdFechaTxt(t.fecha))} · ${esc(n)} caja(s) · ${esc(anFmt(und))} und</span>` +
-      `<div style="margin-top:8px;"><button type="button" class="btn btn-primary btn-sm" data-sd-ver-reg="${esc(t.id)}">🗂 Ver en Registros</button></div>`;
+      `<div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;"><button type="button" class="btn btn-primary btn-sm" data-sd-rotulos="${esc(t.id)}">🏷 Imprimir rótulos (${esc(n)})</button><button type="button" class="btn btn-ghost btn-sm" data-sd-ver-reg="${esc(t.id)}">🗂 Ver en Registros</button></div>`;
+    sdUltimoCerrado = Object.assign({}, t, { estado:'CERRADO', cajasLista: cajasCerradas });
     $('sd-ok').hidden = false; showMsg('sd-msg', 'ok', ''); sdPreparar();
   }catch(err){ console.error(err); showToast('No se pudo cerrar el traslado: ' + err.message, 'err'); }
   finally{ $('btn-sd-cerrar').disabled = false; }
@@ -20613,6 +20615,7 @@ $('sdsub-panel-nuevo').addEventListener('click', e=>{
   const chip = e.target.closest('[data-sd-caja]'), cam = e.target.closest('[data-sd-camara]'), qui = e.target.closest('[data-sd-quitar]'), del = e.target.closest('[data-sd-del]'), ver = e.target.closest('[data-sd-ver]');
   const sug = e.target.closest('[data-sd-sug]'), paso = e.target.closest('[data-sd-paso]'), scan = e.target.closest('[data-sd-scan]'), reg = e.target.closest('[data-sd-ver-reg]');
   if(reg){ const id = reg.dataset.sdVerReg; setSdSubtab('lista'); sdAbrirPendiente = id; return; }
+  const rot = e.target.closest('[data-sd-rotulos]'); if(rot && sdUltimoCerrado && sdUltimoCerrado.id === rot.dataset.sdRotulos){ sdRotulosPdf(sdUltimoCerrado); return; }
   const tg = e.target.closest('[data-sd-tg]');
   if(tg){ const ci = Number(tg.dataset.sdTg); tg.disabled = true;
     (async ()=>{ if(sdCajas[ci].cerrada) await sdAbrirCaja(ci); else { sdActiva = ci; await sdBotonCerrarCaja(); } renderSdForm(); })();   // repinta también si no se pudo (vuelve el botón)
@@ -20632,7 +20635,7 @@ $('sdsub-panel-nuevo').addEventListener('click', e=>{
   else if(ver){ const L = c.items.flatMap(it=> it.fotos.map((f, j)=> ({ url: f.url, pie: `${c.id} · ${it.sku} (foto ${j + 1})` }))); rfVerFoto(ver.dataset.sdVer, '', L); }
 });
 // ---- Registros: traslados con sus cajas ----
-let sdAbrirPendiente = null;
+let sdAbrirPendiente = null, sdUltimoCerrado = null;
 async function sdCargarLista(forzar){
   if(sdLeidos && !forzar){ renderSdLista(); sdAbrirSiPendiente(); return; }
   $('sd-lista').innerHTML = '<div class="hint">⏳ Cargando traslados…</div>';
@@ -20677,6 +20680,7 @@ function sdAbrir(id){
   $('sd-detalle').innerHTML = `<div class="rf-det-cab"><div><span class="hint">Traslado de saldos <span class="sd-est ${esc(t.estado)}">${t.estado === 'CERRADO' ? '🔒 CERRADO' : '📦 ABIERTO'}</span></span><h2>${esc(t.id)}</h2></div><div class="rf-det-acc">` +
       (t.estado === 'ABIERTO' && (dueno || sdVeTodos()) ? `<button type="button" class="btn btn-primary btn-sm" data-sd-det-continuar="${esc(t.id)}">✏ Continuar</button>` : '') +
       (t.estado === 'CERRADO' && (dueno || sdPuedeEliminar()) ? `<button type="button" class="btn btn-ghost btn-sm" data-sd-det-reabrir="${esc(t.id)}">↩ Reabrir</button>` : '') +
+      (t.estado === 'CERRADO' ? `<button type="button" class="btn btn-primary btn-sm" data-sd-det-rotulos="${esc(t.id)}">🏷 Rótulos PDF</button>` : '') +
       `<button type="button" class="btn btn-ghost btn-sm" data-sd-det-excel="${esc(t.id)}">⬇ Excel</button>` +
       (sdPuedeEliminar() ? `<button type="button" class="btn btn-ghost btn-sm" data-sd-det-eliminar="${esc(t.id)}" style="color:#8A332A;">🗑 Eliminar</button>` : '') + `</div></div>` +
     `<div class="rf-det-datos"><div><span>Tienda</span><b>🏬 ${esc(t.tienda)}</b></div><div><span>Fecha</span><b>📅 ${esc(sdFechaTxt(t.fecha))}</b></div><div><span>Usuario</span><b>👤 ${esc(t.usuario || '')}</b></div>` +
@@ -20689,6 +20693,63 @@ function sdAbrir(id){
   $('sd-det-modal').hidden = false; document.body.classList.add('rf-modal-abierto');
 }
 function sdCerrarDetalle(){ if($('sd-det-modal') && !$('sd-det-modal').hidden){ $('sd-det-modal').hidden = true; document.body.classList.remove('rf-modal-abierto'); } }
+// ---- Rótulos de envío a tiendas (uno por caja / bulto) ----
+// Mismo formato del Excel "ROTULO ENVIO A TIENDAS": 4 rótulos por hoja A4 horizontal, casi sin márgenes.
+// Encabezados negros con letra blanca; debajo el dato en Arial grande con borde grueso.
+// Origen: CD VENEZUELA · Destino: la tienda del traslado · Total bultos: cajas · Nro bulto: CJ-…
+// Observaciones: "SALDOS PREPARADOS POR: <usuario>" · Abajo a la izquierda: Nro transacción (TS-…) · Fecha.
+// Alto de cada parte del rótulo, en puntos del Excel (se escala para que entren 4 exactos en la hoja).
+const SD_ROT_FILAS = [['cab', 16.2, ['ORIGEN:']], ['val', 28.2, ['origen'], 24], ['cab', 18, ['DESTINO:']], ['val', 28.2, ['destino'], 24],
+  ['cab', 16.2, ['TOTAL BULTOS:', 'NRO BULTO']], ['val', 29.4, ['total', 'bulto'], 24], ['cab', 16.2, ['OBSERVACIONES']], ['val', 60, ['obs'], 12],
+  ['cab', 16.2, ['NRO TRANSACCIÓN', 'FECHA']], ['val', 28.8, ['ts', 'fecha'], 22]];
+function sdRotuloDibujar(doc, x, y, w, h, d){
+  const total = SD_ROT_FILAS.reduce((s, f)=> s + f[1], 0), k = h / total, izq = w * 10 / 21;   // columnas como en el Excel: 10 + 11 de 21
+  doc.setLineWidth(1.6); doc.setDrawColor(0);
+  let yy = y;
+  SD_ROT_FILAS.forEach(([tipo, alto, campos, pt])=>{
+    const hh = alto * k, partes = campos.length === 2 ? [[x, izq], [x + izq, w - izq]] : [[x, w]];
+    partes.forEach(([px, pw], i)=>{
+      if(tipo === 'cab'){
+        doc.setFillColor(0, 0, 0); doc.rect(px, yy, pw, hh, 'FD');
+        doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(Math.min(14, 12 * k * 1.05));
+        doc.text(campos[i], px + pw / 2, yy + hh / 2, { align: 'center', baseline: 'middle' });
+      }else{
+        doc.setFillColor(255, 255, 255); doc.rect(px, yy, pw, hh, 'D');
+        doc.setTextColor(0, 0, 0); doc.setFont('helvetica', 'normal');
+        const txt = String(d[campos[i]] || '');
+        // Tamaño como en el Excel; si el texto no entra a lo ancho, se achica (o pasa a dos líneas en Observaciones).
+        let fs = pt * k; doc.setFontSize(fs);
+        if(campos[i] === 'obs'){
+          let lineas = doc.splitTextToSize(txt, pw - 10);
+          while(lineas.length * fs * 1.2 > hh - 6 && fs > 7){ fs -= 0.5; doc.setFontSize(fs); lineas = doc.splitTextToSize(txt, pw - 10); }
+          doc.text(lineas, px + pw / 2, yy + hh / 2 - (lineas.length - 1) * fs * 0.6, { align: 'center', baseline: 'middle' });
+        }else{
+          while(doc.getTextWidth(txt) > pw - 8 && fs > 8){ fs -= 0.5; doc.setFontSize(fs); }
+          doc.text(txt, px + pw / 2, yy + hh / 2, { align: 'center', baseline: 'middle' });
+        }
+      }
+    });
+    yy += hh;
+  });
+  doc.setLineWidth(2.2); doc.rect(x, y, w, h, 'D');   // marco exterior más grueso: guía para cortar
+}
+function sdRotulosPdf(t){
+  const cajas = t.cajasLista || [];
+  if(!cajas.length){ showToast('Este traslado no tiene cajas.', 'err'); return; }
+  const doc = new jspdf.jsPDF({ unit:'pt', format:'a4', orientation:'landscape' });
+  const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), m = 6, g = 8;   // márgenes casi nulos
+  const w = (W - 2 * m - g) / 2, h = (H - 2 * m - g) / 2;
+  const base = { origen: RF_CD, destino: t.tienda, total: String(cajas.length), obs: `SALDOS PREPARADOS POR: ${t.usuario || ''}`, ts: t.id, fecha: sdFechaTxt(t.fecha) };
+  cajas.forEach((c, i)=>{
+    if(i && i % 4 === 0) doc.addPage('a4', 'landscape');
+    const p = i % 4;
+    sdRotuloDibujar(doc, m + (p % 2) * (w + g), m + Math.floor(p / 2) * (h + g), w, h, Object.assign({ bulto: c.id }, base));
+  });
+  doc.setProperties({ title: `Rótulos ${t.id}` });
+  doc.save(`rotulos_${t.id}.pdf`);
+  logAccion('saldos_rotulos', { detalle: `${t.id} · ${t.tienda} · ${cajas.length} rótulo(s)` });
+  showToast(`Rótulos de ${t.id}: ${cajas.length} (${Math.ceil(cajas.length / 4)} hoja(s) A4).`, 'ok');
+}
 function sdExcel(L, nombre){
   if(!L.length){ showToast('No hay traslados para exportar con estos filtros.', 'err'); return; }
   const fecha = f=> rfExcelFecha(f ? f + 'T12:00:00' : '');
@@ -20737,6 +20798,7 @@ $('sd-det-modal').addEventListener('click', e=>{
   const co = e.target.closest('[data-sd-det-continuar]'); if(co){ sdCerrarDetalle(); sdContinuar(co.dataset.sdDetContinuar); return; }
   const re = e.target.closest('[data-sd-det-reabrir]'); if(re){ sdReabrir(re.dataset.sdDetReabrir); return; }
   const xl = e.target.closest('[data-sd-det-excel]'); if(xl && t){ sdExcel([t], `saldos_${t.id}.xlsx`); return; }
+  const ro = e.target.closest('[data-sd-det-rotulos]'); if(ro && t){ sdRotulosPdf(t); return; }
   const el = e.target.closest('[data-sd-det-eliminar]'); if(el) sdEliminar(el.dataset.sdDetEliminar);
 });
 window.addEventListener('keydown', e=>{ if(e.key === 'Escape' && !$('sd-det-modal').hidden && $('rf-lightbox').hidden && $('rf-aviso').hidden && $('cam-modal').hidden) sdCerrarDetalle(); }, true);
