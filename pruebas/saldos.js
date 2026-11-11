@@ -88,20 +88,29 @@ const png = path.join(__dirname, 'salida', 'sd_foto.png');
   await page.screenshot({ path: path.join(__dirname, 'salida', 'saldos_nuevo.png'), fullPage: true });
   const chips = await page.evaluate(()=> [...document.querySelectorAll('#sd-cajas .sd-caja-chip')].map(b=> b.innerText.replace(/\s+/g, ' ')).join(' | '));
   const resumen = await page.textContent('#sd-resumen');
-  verificar(desc1 === 'PELOTA ROJA' && /está vacía/.test(avisoVacia) && /falta la descripción/.test(avisoDesc) && /CJ-00001 1 producto\(s\) · 5 und 🔒 CERRADA \| .*CJ-00002 1 producto\(s\) · 2 und ✏ ABIERTA/.test(chips) && /2 caja\(s\) = 2 bulto\(s\) \(1 cerrada\(s\)\)/.test(resumen),
+  const contador = await page.evaluate(()=> [$('sd-contador').innerText, $('sd-contador2').innerText, $('sd-contador3').innerText].map(t=> t.replace(/\s+/g, ' ').trim()).join(' | '));
+  const centrado = await page.evaluate(()=> ['sku', 'descripcion'].map(k=> getComputedStyle(document.querySelector(`#sd-items [data-sd-campo="${k}"]`)).textAlign).join());
+  verificar(contador === '📦 Bultos: 2 | 📦 2 bultos | 📦 Bultos: 2' && centrado === 'center,center', `Contador de bultos visible (${contador}); código y descripción centrados`);
+  verificar(desc1 === 'PELOTA ROJA' && /está vacía/.test(avisoVacia) && /falta la descripción/.test(avisoDesc) && /CJ-00001 1 producto\(s\) · 5 und 🔒 CERRADA 🔓 Abrir caja \| .*CJ-00002 1 producto\(s\) · 2 und ✏ ABIERTA 🔒 Cerrar caja/.test(chips) && /2 caja\(s\) = 2 bulto\(s\) \(1 cerrada\(s\)\)/.test(resumen),
     `Cajas: ${chips}; "${resumen}"; caja vacía → "${avisoVacia}"; sin descripción → "${avisoDesc}"; desc1=${desc1}`);
   // Autoguardado de cada caja.
   await esperar(page, async ()=>{ const d = (await saldosCajasRef.doc('CJ-00002').get()).data(); return d && d.items.length === 1 && d.items[0].fotos.length === 1 && !!d.items[0].fotos[0].path; }, null, 15000);
   // Tocar la caja 1 (cerrada) la muestra; «🔓 Abrir caja» la abre y cierra sola la caja 2 (que estaba completa).
   await page.click('#sd-cajas [data-sd-caja="0"]');
   const vuelve = await page.evaluate(()=> $('sd-caja-tit').textContent + ' ' + sdCaja().items[0].sku);
-  await page.click('#btn-sd-caja-abrir');
+  await page.click('#sd-cajas [data-sd-tg="0"]');   // botón «🔓 Abrir caja» en la tarjeta de la caja
   await page.waitForFunction(()=> !sdCajas[0].cerrada && sdCajas[1].cerrada && !!document.querySelector('#sd-items [data-sd-campo]'), null, { timeout: 10000 });
   const abre = await page.evaluate(async ()=> ({ edit: !!document.querySelector('#sd-items [data-sd-item="0"] [data-sd-campo="sku"]'), e1: (await saldosCajasRef.doc('CJ-00001').get()).data().estado, e2: (await saldosCajasRef.doc('CJ-00002').get()).data().estado,
     chips: [...document.querySelectorAll('#sd-cajas .sd-caja-chip i')].map(x=> x.textContent).join(' / ') }));
   verificar(/CJ-00001 · 🔒 CERRADA P100/.test(vuelve) && abre.edit && abre.e1 === 'ABIERTA' && abre.e2 === 'CERRADA' && abre.chips === '✏ ABIERTA / 🔒 CERRADA',
     `Tocar una caja cerrada la muestra (${vuelve}); «🔓 Abrir caja» la abre para editar y cierra la otra (${abre.chips})`);
 
+  // Celular: tarjetas de caja con su botón y el contador de bultos a la vista.
+  await page.setViewportSize({ width: 390, height: 860 }); await page.evaluate(()=> window.scrollTo(0, 0)); await page.waitForTimeout(300);
+  await page.screenshot({ path: path.join(__dirname, 'salida', 'saldos_celular.png') });
+  const anchoCel = await page.evaluate(()=> document.documentElement.scrollWidth);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  verificar(anchoCel <= 392, `En celular entra en la pantalla (${anchoCel}px)`);
   // 6, 8) Cerrar traslado del día, tienda → bultos = cajas.
   const txtCerrar = await page.textContent('#btn-sd-cerrar');
   await page.click('#btn-sd-cerrar');

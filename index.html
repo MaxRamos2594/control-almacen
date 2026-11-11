@@ -140,6 +140,12 @@
   .sd-cajas{display:flex; flex-wrap:wrap; gap:8px;} .sd-caja-chip{border:2px solid var(--line-strong); background:#fff; border-radius:10px; padding:8px 12px; text-align:left; cursor:pointer; min-width:150px;}
   .sd-caja-chip b{display:block; font-size:15px;} .sd-caja-chip span{font-size:12px; color:var(--muted);} .sd-caja-chip.activa{border-color:var(--blue); background:var(--blue-bg);} .sd-caja-chip.vacia{border-style:dashed;}
   .sd-caja-cab{display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;} .sd-caja-cab h3{margin:0;} .sd-caja-acc{display:flex; gap:6px; flex-wrap:wrap;}
+  .sd-contador{display:inline-flex; align-items:center; gap:4px; background:#1b2430; color:#fff; border-radius:999px; padding:4px 12px; font-weight:800; font-size:14px; white-space:nowrap;} .sd-contador b{font-size:18px;}
+  .sd-contador.grande{font-size:18px; padding:6px 16px; background:#2E7D4F;}
+  .sd-caja-chip{display:flex; flex-direction:column; gap:2px;} .sd-caja-chip .sd-tg{margin-top:6px; border:none; border-radius:8px; padding:7px 10px; font:inherit; font-weight:800; font-size:13px; cursor:pointer; color:#fff; background:#2b4c6f;}
+  .sd-caja-chip.cerrada .sd-tg{background:#2E7D4F;} .sd-caja-chip .sd-tg:disabled{opacity:.6; cursor:wait;}
+  #view-saldos #sd-items [data-sd-campo="sku"], #view-saldos #sd-items [data-sd-campo="descripcion"]{text-align:center;}
+  #view-saldos .sd-solo-lect .sl-txt{text-align:center;} #view-saldos .sd-det-caja td:nth-child(1), #view-saldos .sd-det-caja td:nth-child(2), #view-saldos .sd-det-caja th:nth-child(1), #view-saldos .sd-det-caja th:nth-child(2){text-align:center;}
   .sd-caja-chip.cerrada{background:#f1f3f5; border-color:#9aa4ae;} .sd-caja-chip.cerrada.activa{border-color:var(--blue); background:#e9eef5;} .sd-caja-chip i{font-style:normal; font-size:11px; font-weight:800; display:block; margin-top:2px;} .sd-caja-chip.abierta i{color:#1b7a3d;} .sd-caja-chip.cerrada i{color:#55606b;}
   .sd-solo-lect{display:flex; gap:10px; align-items:center; padding:8px 0; border-bottom:1px solid var(--line);} .sd-solo-lect .rf-fotos{margin:0;} .sd-solo-lect .rf-thumb{width:52px; height:52px;} .sd-solo-lect .sl-txt{flex:1;} .sd-solo-lect .sl-cant{font-weight:900; font-size:16px; white-space:nowrap;}
   .sd-cerrada-aviso{background:#f1f3f5; border-radius:8px; padding:8px 10px; margin:8px 0; font-size:13px;}
@@ -3559,9 +3565,9 @@
       <div id="sd-abiertos"></div>
     </div>
     <div id="sd-form" hidden>
-      <div class="rf-borrador-bar"><span class="rf-chip-borrador">📦 ABIERTO</span><b id="sd-bar-corr"></b><span id="sd-bar-info"></span><span class="rf-nube" id="sd-nube"></span></div>
+      <div class="rf-borrador-bar"><span class="rf-chip-borrador">📦 ABIERTO</span><b id="sd-bar-corr"></b><span id="sd-bar-info"></span><span class="sd-contador" id="sd-contador" title="Bultos = cajas registradas">📦 Bultos: <b>0</b></span><span class="rf-nube" id="sd-nube"></span></div>
       <div class="panel" style="margin-bottom:12px;">
-        <h3>Cajas del traslado</h3>
+        <div class="sd-caja-cab"><h3>Cajas del traslado</h3><span class="sd-contador grande" id="sd-contador2">📦 0 bultos</span></div>
         <div class="sd-cajas" id="sd-cajas"></div>
         <button type="button" class="rf-iniciar" id="btn-sd-caja" style="margin-top:8px;">📦 Crear caja</button>
       </div>
@@ -3570,7 +3576,7 @@
         <div id="sd-items"></div>
         <button type="button" class="btn btn-ghost" id="btn-sd-add" style="width:100%; margin-top:8px;">+ Agregar producto</button>
       </div>
-      <div class="rf-acciones"><span class="hint" id="sd-resumen"></span><button type="button" class="btn btn-primary" id="btn-sd-cerrar">🔒 Cerrar traslado</button></div>
+      <div class="rf-acciones"><span class="sd-contador" id="sd-contador3">📦 Bultos: <b>0</b></span><span class="hint" id="sd-resumen"></span><button type="button" class="btn btn-primary" id="btn-sd-cerrar">🔒 Cerrar traslado</button></div>
     </div>
     <div class="msg" id="sd-msg"></div>
   </div>
@@ -4021,8 +4027,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v247';
-const APP_UPDATED = '11/11/2026 12:00';
+const APP_VERSION = 'v248';
+const APP_UPDATED = '11/11/2026 16:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -20351,7 +20357,8 @@ function renderSdForm(){
   $('sd-bar-corr').textContent = sdTraslado.id;
   $('sd-bar-info').textContent = `🏬 ${sdTraslado.tienda} · 📅 ${sdFechaTxt(sdTraslado.fecha)}`;
   $('btn-sd-cerrar').textContent = `🔒 Cerrar traslado de saldos del ${sdFechaTxt(sdTraslado.fecha)} · ${sdTraslado.tienda}`;
-  $('sd-cajas').innerHTML = sdCajas.length ? sdCajas.map((c, i)=> `<button type="button" class="sd-caja-chip ${c.cerrada ? 'cerrada' : 'abierta'}${i === sdActiva ? ' activa' : ''}${sdProds(c).length ? '' : ' vacia'}" data-sd-caja="${esc(i)}"><b>📦 ${esc(c.id)}</b><span>${esc(sdProds(c).length)} producto(s) · ${esc(anFmt(sdUnd(c)))} und</span><i>${c.cerrada ? '🔒 CERRADA' : '✏ ABIERTA'}</i></button>`).join('')
+  $('sd-cajas').innerHTML = sdCajas.length ? sdCajas.map((c, i)=> `<div role="button" tabindex="0" class="sd-caja-chip ${c.cerrada ? 'cerrada' : 'abierta'}${i === sdActiva ? ' activa' : ''}${sdProds(c).length ? '' : ' vacia'}" data-sd-caja="${esc(i)}"><b>📦 ${esc(c.id)}</b><span>${esc(sdProds(c).length)} producto(s) · ${esc(anFmt(sdUnd(c)))} und</span><i>${c.cerrada ? '🔒 CERRADA' : '✏ ABIERTA'}</i>` +
+      `<button type="button" class="sd-tg" data-sd-tg="${esc(i)}">${c.cerrada ? '🔓 Abrir caja' : '🔒 Cerrar caja'}</button></div>`).join('')
     : '<p class="hint">Todavía no hay cajas. Toca <b>📦 Crear caja</b>.</p>';
   const c = sdCaja(); $('sd-caja-panel').hidden = !c;
   if(c){
@@ -20376,6 +20383,7 @@ function renderSdForm(){
 function sdResumen(){
   const n = sdCajas.length, prods = sdCajas.reduce((s, c)=> s + sdProds(c).length, 0), und = sdCajas.reduce((s, c)=> s + sdUnd(c), 0);
   const cerradas = sdCajas.filter(c=> c.cerrada).length;
+  $('sd-contador').innerHTML = `📦 Bultos: <b>${esc(n)}</b>`; $('sd-contador3').innerHTML = `📦 Bultos: <b>${esc(n)}</b>`; $('sd-contador2').textContent = `📦 ${n} bulto${n === 1 ? '' : 's'}`;
   $('sd-resumen').textContent = `${n} caja(s) = ${n} bulto(s) (${cerradas} cerrada(s)) · ${prods} producto(s) · ${anFmt(und)} und`;
   // El aviso de "falta…" se borra apenas no queda nada a medias.
   if(/\berr\b/.test($('sd-msg').className) && !sdCajas.some(c=> c.items.some(it=> !sdVacio(it) && !sdCompleto(it)))){ $('sd-msg').className = 'msg'; $('sd-msg').textContent = ''; }
@@ -20596,6 +20604,10 @@ $('sdsub-panel-nuevo').addEventListener('click', e=>{
   const chip = e.target.closest('[data-sd-caja]'), cam = e.target.closest('[data-sd-camara]'), qui = e.target.closest('[data-sd-quitar]'), del = e.target.closest('[data-sd-del]'), ver = e.target.closest('[data-sd-ver]');
   const sug = e.target.closest('[data-sd-sug]'), paso = e.target.closest('[data-sd-paso]'), scan = e.target.closest('[data-sd-scan]'), reg = e.target.closest('[data-sd-ver-reg]');
   if(reg){ const id = reg.dataset.sdVerReg; setSdSubtab('lista'); sdAbrirPendiente = id; return; }
+  const tg = e.target.closest('[data-sd-tg]');
+  if(tg){ const ci = Number(tg.dataset.sdTg); tg.disabled = true;
+    (async ()=>{ if(sdCajas[ci].cerrada) await sdAbrirCaja(ci); else { sdActiva = ci; await sdBotonCerrarCaja(); } renderSdForm(); })();   // repinta también si no se pudo (vuelve el botón)
+    return; }
   if(chip){ const ci = Number(chip.dataset.sdCaja); if(ci !== sdActiva){ sdGuardarAhora(); sdActiva = ci; renderSdForm(); } return; }
   const c = sdCaja(); if(!c) return;
   if(scan) sdEscanearSku(Number(scan.dataset.sdScan));
