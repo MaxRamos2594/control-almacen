@@ -67,6 +67,7 @@ function iniciarServidor(){
       if(u.pathname === '/' || u.pathname === '/index.html'){
         res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8'}); return res.end(htmlDePrueba());
       }
+      if(u.pathname === '/version.json'){ res.writeHead(200, {'Content-Type': 'application/json'}); return res.end(fs.readFileSync(path.join(RAIZ, 'version.json'))); }
       const archivo = u.pathname.startsWith('/lib/') && LIBRERIAS[path.basename(u.pathname)];
       if(archivo){ res.writeHead(200, {'Content-Type': 'application/javascript'}); return res.end(fs.readFileSync(path.join(NM, archivo))); }
       res.writeHead(404); res.end();
