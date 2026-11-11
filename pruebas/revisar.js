@@ -61,5 +61,8 @@ walk.full(ast, n => {
   });
 });
 
+// version.json (aviso de versión nueva en los equipos) debe decir la misma versión que APP_VERSION.
+const verApp = (html.match(/const APP_VERSION = '([^']+)'/) || [])[1], verJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version;
+if(verApp !== verJson){ console.log(`✗ version.json dice ${verJson} pero APP_VERSION es ${verApp}: actualiza version.json.`); process.exit(1); }
 if(problemas.length){ console.log('✗ Problemas de escape de HTML:\n  ' + [...new Set(problemas)].join('\n  ')); process.exit(1); }
 console.log('✓ Escape de HTML revisado: sin datos sin escapar ni HTML escapado por error.');

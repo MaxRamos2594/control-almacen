@@ -390,6 +390,8 @@
   .us-chip{display:inline-flex; gap:5px; align-items:center; border:1px solid var(--line-strong); border-radius:14px; padding:3px 9px; font-size:12px; cursor:pointer; background:#fff; user-select:none;}
   .us-chip:has(input:checked){background:#eef4fb; border-color:var(--blue); color:#1E3A5A; font-weight:600;}
     .alm-consumo{background:#eef6ff; border:1px solid #c8dcf3; border-radius:8px; padding:8px 10px; margin-bottom:10px; font-size:13px; line-height:1.5;}
+  .aviso-version{position:fixed; top:8px; left:50%; transform:translateX(-50%); z-index:9500; background:#1565C0; color:#fff; padding:10px 14px; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.25); font-size:14px; display:flex; gap:10px; align-items:center; max-width:calc(100% - 24px);}
+  .aviso-version[hidden]{display:none;} .aviso-version button{border:none; border-radius:6px; padding:6px 10px; font:inherit; font-weight:800; cursor:pointer;} #btn-aviso-version{background:#fff; color:#1565C0;} #btn-aviso-version-x{background:transparent; color:#fff;}
   .us-resumen{font-size:12px; color:var(--ink-soft); background:#f6f8fa; border-radius:8px; padding:8px 10px; margin-bottom:10px; line-height:1.5;}
   .panel h3{margin:0 0 12px; font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); font-weight:600; display:flex; justify-content:space-between; align-items:center;}
   .panel.collapsed h3{margin-bottom:0;}
@@ -3614,6 +3616,7 @@
   </div>
 </div>
 
+<div class="aviso-version" id="aviso-version" hidden>🔄 Hay una versión nueva de la app (<b id="aviso-version-n"></b>). <button type="button" id="btn-aviso-version">Actualizar ahora</button><button type="button" id="btn-aviso-version-x" aria-label="Cerrar">✕</button></div>
 <!-- MERMA -->
 <div class="view" id="view-merma">
   <div class="subtabs">
@@ -4022,6 +4025,23 @@ const db = firebase.firestore();
 let firestoreCacheLocal = false;
 try{ db.settings({ cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED, merge: true }); }catch(e){ console.warn('Caché de Firestore:', e); }
 try{ db.enablePersistence({ synchronizeTabs: true }).then(()=>{ firestoreCacheLocal = true; }).catch(err=> console.warn('Sin caché local de Firestore:', err.code || err)); }catch(e){ console.warn('Sin caché local de Firestore:', e); }
+// ---- Aviso de versión nueva: version.json (junto a index.html) dice la última publicada ----
+// Así ningún equipo se queda con una versión antigua sin saberlo (cada 15 minutos y al volver a la app).
+let versionRevisadaEn = 0;
+async function revisarVersion(){
+  if(Date.now() - versionRevisadaEn < 5 * 60e3) return; versionRevisadaEn = Date.now();
+  try{
+    const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); if(!r.ok) return;
+    const v = String((await r.json()).version || ''), num = x=> parseInt(String(x).replace(/\D/g, ''), 10) || 0;
+    if(num(v) > num(APP_VERSION)){ $('aviso-version-n').textContent = v; $('aviso-version').hidden = false; }
+  }catch(e){}
+}
+(function(){ const ini = ()=>{
+  $('btn-aviso-version').addEventListener('click', ()=> location.reload());
+  $('btn-aviso-version-x').addEventListener('click', ()=>{ $('aviso-version').hidden = true; });
+  setTimeout(revisarVersion, 20e3); setInterval(revisarVersion, 15 * 60e3);
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) revisarVersion(); });
+}; if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ini); else ini(); })();
 // ---- Sincronización incremental (ahorro de lecturas aunque pasen días) ----
 // Toda escritura en estas colecciones guarda la hora del servidor en "sync_en" (se agrega aquí, en un solo lugar, para
 // que no se escape ninguna) y todo borrado deja una marca en "borrados_<colección>". Así cada equipo guarda su copia y
@@ -4030,7 +4050,7 @@ try{ db.enablePersistence({ synchronizeTabs: true }).then(()=>{ firestoreCacheLo
 const SYNC_COLS = new Set(['productos', 'registros_foto', 'saldos_traslados', 'saldos_cajas']);
 // Margen: se vuelve a pedir lo que cambió en los últimos 5 minutos (las horas son del servidor; cubre escrituras simultáneas).
 // Sin ninguna marca todavía (datos de antes de este cambio) se usa la hora del equipo con 1 hora de margen.
-const SYNC_MARGEN = window.__syncMargen != null ? window.__syncMargen : 5 * 60e3, SYNC_SIN_MARCA = 3600e3, SYNC_COMPLETO_CADA = 7 * 86400e3;
+const SYNC_MARGEN = window.__syncMargen != null ? window.__syncMargen : 5 * 60e3, SYNC_SIN_MARCA = 3600e3, SYNC_COMPLETO_CADA = 86400e3;   // lectura completa: 1 vez al día por equipo (por si algún equipo con una versión antigua escribió sin marca)
 (function parcheSync(){
   const F = firebase.firestore, ts = ()=> F.FieldValue.serverTimestamp(), col = ref=> ref && ref.parent ? ref.parent.id : '';
   const es = ref=> SYNC_COLS.has(col(ref)), conMarca = (ref, d)=> es(ref) && d && typeof d === 'object' ? Object.assign({}, d, { sync_en: ts() }) : d;
@@ -4057,9 +4077,10 @@ function syncAvanzar(col, quien, ms){ const m = syncMeta(col, quien); if(m && ms
 // Un documento borrado sigue en la copia del equipo: se pregunta al servidor por él (1 lectura) para que lo saque.
 function syncPurgar(ref, id){ ref.doc(id).get().catch(()=>{}); }
 // Devuelve { docs: Map(id → datos), desde (ms), modo }.
-async function syncLeer(col, ref, quien){
+// completo = true: se lee todo (botón «Actualizar»), para traer también lo que se haya escrito sin marca.
+async function syncLeer(col, ref, quien, completo){
   const m = syncMeta(col, quien), ahora = Date.now();
-  if(m && firestoreCacheLocal && ahora - m.completo_en < SYNC_COMPLETO_CADA){
+  if(!completo && m && firestoreCacheLocal && ahora - m.completo_en < SYNC_COMPLETO_CADA){
     try{
       const cache = await ref.get({ source: 'cache' });
       if(cache.size >= Math.floor(m.n * 0.98)){
@@ -4134,8 +4155,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v258';
-const APP_UPDATED = '14/11/2026 18:00';
+const APP_VERSION = 'v259';
+const APP_UPDATED = '14/11/2026 22:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -20235,7 +20256,7 @@ async function rfCargar(forzar){
     const porId = new Map();
     if(rfVeTodos()){
       // Quien ve todos: incremental (la copia del equipo + lo que cambió desde la última vez).
-      (await syncLeer('registros_foto', registrosFotoRef, 'todos')).docs.forEach((d, id)=> porId.set(id, Object.assign({ id }, d)));
+      (await syncLeer('registros_foto', registrosFotoRef, 'todos', !!forzar)).docs.forEach((d, id)=> porId.set(id, Object.assign({ id }, d)));
     }else{
       const consultas = [registrosFotoRef.where('usuario_email', '==', currentUserEmail).get(), ...rfParticipantesVisibles().map(t=> registrosFotoRef.where('participante', '==', t).get())];
       (await Promise.all(consultas)).forEach(snap=> snap.docs.forEach(d=> porId.set(d.id, Object.assign({ id: d.id }, d.data()))));
@@ -20789,7 +20810,7 @@ async function sdCargarLista(forzar){
     const todos = sdVeTodos();
     const comoLista = snap=> snap.docs.map(d=> Object.assign({ id: d.id }, d.data())), deMapa = r=> [...r.docs].map(([id, d])=> Object.assign({ id }, d));
     // Quien ve todos: incremental; cada usuario: solo los suyos (pocos).
-    const [ts, cs] = await Promise.all(todos ? [syncLeer('saldos_traslados', saldosTrasladosRef, 'todos').then(deMapa), syncLeer('saldos_cajas', saldosCajasRef, 'todos').then(deMapa)]
+    const [ts, cs] = await Promise.all(todos ? [syncLeer('saldos_traslados', saldosTrasladosRef, 'todos', !!forzar).then(deMapa), syncLeer('saldos_cajas', saldosCajasRef, 'todos', !!forzar).then(deMapa)]
       : [saldosTrasladosRef.where('usuario_email', '==', currentUserEmail).get().then(comoLista), saldosCajasRef.where('usuario_email', '==', currentUserEmail).get().then(comoLista)]);
     const cajas = cs;
     sdLista = ts.sort((a, b)=> String(b.fecha || '').localeCompare(String(a.fecha || '')) || b.id.localeCompare(a.id));

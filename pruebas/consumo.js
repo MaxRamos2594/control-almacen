@@ -2,7 +2,7 @@
 //  - Caché local: al recargar, solo llega lo que cambió (no todo de nuevo).
 //  - Un usuario que solo usa Registro fotográfico / Saldos no descarga pallets, validadores ni retiros.
 // Requiere los emuladores encendidos (npm run emuladores).
-const { abrirApp, limpiarEmuladores } = require('./app');
+const { abrirApp, limpiarEmuladores, PROYECTO } = require('./app');
 
 let fallas = 0;
 function verificar(condicion, texto){
@@ -56,9 +56,9 @@ const SIN_MARGEN = 'window.__syncMargen = 0;';
   await otro.browser.close();
   // En vivo: los cambios llegan solos.
   const vivo = await page.waitForFunction(()=> productos.P5 && productos.P5.costo === 9 && !!productos.P999 && !productos.P7, null, { timeout: 15000 }).then(()=> true, ()=> false);
-  // Registros: «Actualizar» trae solo lo nuevo.
+  // Registros: al volver a abrirlos solo llega lo nuevo (incremental).
   const antesRf = await lecturas(page);
-  await page.evaluate(()=> rfCargar(true));
+  await page.evaluate(()=>{ rfLeidos = false; return rfCargar(); });
   const rf2 = await page.evaluate(()=> ({ n: rfLista.length, modo: syncModo.registros_foto })), lectRf = (await lecturas(page)) - antesRf;
   // Al volver a abrir: incremental; el producto borrado no vuelve.
   await page.reload(); await listo(page); await page.waitForTimeout(1500);
@@ -67,7 +67,20 @@ const SIN_MARGEN = 'window.__syncMargen = 0;';
   const tras2 = await page.evaluate(()=> ({ p7: !!productos.P7, n: Object.keys(productos).length, modo: syncModo.productos }));
   verificar(mod1 === 'incremental' && marcas.sync && marcas.tumba && vivo && tras.modo === 'incremental' && tras.p5 === 9 && tras.p999 && !tras.p7 && tras.n === 300 && !tras2.p7 && tras2.n === 300,
     `Productos incrementales: al abrir de nuevo solo se piden los cambios (${tras.modo}, ${tras.lect} lecturas en total); el cambio de costo, el nuevo y el borrado llegan en vivo y quedan al volver a abrir (${tras.n} productos, el borrado no vuelve)`);
-  verificar(rf1 === 1 && rf2.n === 2 && rf2.modo === 'incremental' && lectRf <= 3, `Registros (ve todos): «Actualizar» trae solo lo nuevo (${rf2.n} registros, ${lectRf} lecturas)`);
+  verificar(rf1 === 1 && rf2.n === 2 && rf2.modo === 'incremental' && lectRf <= 3, `Registros (ve todos): al volver a abrirlos solo llega lo nuevo (${rf2.n} registros, ${lectRf} lecturas)`);
+  // Un equipo con una versión antigua escribe un traslado SIN marca de cambio: «↻ Actualizar» lo trae igual (lectura completa).
+  await page.evaluate(async ()=>{ switchTab('saldos'); setSdSubtab('lista'); await new Promise(r=> setTimeout(r, 1500)); });
+  const r = await fetch(`http://127.0.0.1:8080/v1/projects/${PROYECTO}/databases/(default)/documents/saldos_traslados?documentId=TS-09999`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer owner' },
+    body: JSON.stringify({ fields: { correlativo: { stringValue: 'TS-09999' }, estado: { stringValue: 'CERRADO' }, tienda: { stringValue: 'COMAS' }, fecha: { stringValue: '2026-11-11' }, usuario: { stringValue: 'CELULAR VIEJO' }, usuario_email: { stringValue: 'viejo@ejemplo.com' } } }) });
+  const sinMarca = await page.evaluate(async ()=>{ await sdCargarLista(false); return sdLista.some(t=> t.id === 'TS-09999'); });
+  await page.click('#btn-sd-recargar');
+  const conActualizar = await page.waitForFunction(()=> sdLista.some(t=> t.id === 'TS-09999'), null, { timeout: 10000 }).then(()=> true, ()=> false);
+  verificar(r.ok && !sinMarca && conActualizar, `Traslado escrito por una versión antigua (sin marca): al abrir no se ve (${sinMarca}); «↻ Actualizar» lo trae (${conActualizar})`);
+  // Aviso de versión nueva.
+  const aviso = await page.evaluate(async ()=>{ const f = window.fetch; window.fetch = async ()=> ({ ok: true, json: async ()=> ({ version: 'v99999' }) });
+    versionRevisadaEn = 0; await revisarVersion(); window.fetch = f; return { visible: !$('aviso-version').hidden, txt: $('aviso-version').innerText }; });
+  const igual = await page.evaluate(async ()=>{ $('aviso-version').hidden = true; versionRevisadaEn = 0; await revisarVersion(); return $('aviso-version').hidden; });
+  verificar(aviso.visible && /v99999/.test(aviso.txt) && igual, `Aviso de versión nueva: "${aviso.txt.replace(/\s+/g, ' ').trim()}"; con la misma versión no aparece`);
   verificar(!errores.length, 'Sin errores de JavaScript (admin)' + (errores.length ? ': ' + errores.join(' | ') : ''));
   await browser.close();
 
