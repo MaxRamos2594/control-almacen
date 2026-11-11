@@ -3904,6 +3904,7 @@
       </div>
       <div class="us-resumen" id="us-resumen"></div>
       <button class="btn btn-primary" id="btn-guardar-usuario" style="width:100%;">Guardar permisos</button>
+      <button type="button" class="btn btn-ghost" id="btn-eliminar-usuario" style="width:100%; margin-top:8px; color:#8A332A; border-color:#e3b4ae;" hidden>🗑 Eliminar usuario</button>
       <div class="msg" id="us-msg"></div>
     </div>
   </div>
@@ -4027,8 +4028,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v250';
-const APP_UPDATED = '11/11/2026 22:00';
+const APP_VERSION = 'v251';
+const APP_UPDATED = '11/11/2026 23:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4543,7 +4544,7 @@ function tipoLabel(tipo){
     retiro_campana:'Salida (campaña)', retiro_campana_revertido:'↺ Retiro de campaña revertido', producto_agregado:'Adición de producto', transferencia:'Transferencia entre pallets',
     bloqueo:'Bloqueo de posición', desbloqueo:'Desbloqueo de posición',
     bloque_creado:'Bloque creado', bloque_eliminado:'Bloque eliminado', nicho_creado:'Nicho creado', nicho_eliminado:'Nicho eliminado', nicho_reordenado:'Nicho reordenado', nicho_renombrado:'Nicho renombrado', pasillo_actualizado:'Pasillo actualizado',
-    producto_registrado:'Producto registrado', producto_fusionado:'Producto fusionado', permisos_actualizados:'Permisos actualizados',
+    producto_registrado:'Producto registrado', producto_fusionado:'Producto fusionado', permisos_actualizados:'Permisos actualizados', usuario_eliminado:'Usuario eliminado',
     sesion_cerrada:'Cierre de sesión', sesion_cerrada_inactividad:'Cierre por inactividad', sesion_iniciada:'Inicio de sesión',
     toma_inventario_generada:'Toma de inventario: generada', toma_inventario_finalizada:'Toma de inventario: finalizada',
     toma_inventario_eliminada:'Toma de inventario: eliminada', toma_inventario_pdf_subido:'Toma de inventario: PDF subido',
@@ -20876,7 +20877,7 @@ function usLeer(){
   return permisos;
 }
 function limpiarFormularioUsuario(){
-  usSel = null;
+  usSel = null; usBotonEliminar();
   $('us-email').value = ''; $('us-alias').value = ''; $('us-rf-prefijo').value = ''; $('us-titulo').textContent = 'Nuevo usuario';
   usLlenar({ rotulos:false });
   $('us-load-hint').textContent = 'Al escribir un correo ya existente, sus permisos actuales se cargan aquí para que no se sobreescriban por accidente.';
@@ -20915,7 +20916,25 @@ function usAbrir(email){
   usSel = email; $('us-email').value = email; $('us-alias').value = u.alias || ''; $('us-titulo').textContent = u.alias || email; $('us-rf-prefijo').value = u.rf_prefijo || '';
   usLlenar(u.permisos || {});
   $('us-load-hint').textContent = `✓ Permisos actuales de ${email}. Cambia lo que necesites y guarda.`; $('us-load-hint').style.color = '#245C46';
-  renderUsLista();
+  usBotonEliminar(); renderUsLista();
+}
+// Eliminar usuario: borra su documento de permisos (deja de poder entrar). No se puede eliminar a uno mismo
+// ni al administrador principal. Sus registros (registro fotográfico, saldos, bitácora…) se conservan.
+const US_ADMIN_PRINCIPAL = 'mramos@corporaciongrit.com';
+function usBotonEliminar(){ $('btn-eliminar-usuario').hidden = !usSel || usSel === currentUserEmail || usSel === US_ADMIN_PRINCIPAL || !currentPermisos.admin; }
+async function usEliminar(){
+  const email = usSel, u = usLista.find(x=> x.id === email); if(!email || !u) return;
+  if(email === currentUserEmail || email === US_ADMIN_PRINCIPAL){ showMsg('us-msg', 'err', 'Ese usuario no se puede eliminar.'); return; }
+  if(!confirm(`¿Eliminar al usuario ${u.alias || email} (${email})?\n\nYa no podrá entrar a la app. Lo que registró (registro fotográfico, saldos, bitácora…) se conserva.`)) return;
+  $('btn-eliminar-usuario').disabled = true;
+  try{
+    await usuariosRef.doc(email).delete();
+    await logAccion('usuario_eliminado', { detalle: `Usuario ${email}${u.alias ? ' (' + u.alias + ')' : ''} eliminado` });
+    limpiarFormularioUsuario(); await cargarUsuarios(); usModoEditor(false);
+    showMsg('us-msg', 'ok', `Usuario ${email} eliminado: ya no puede entrar. Si quieres borrar también su cuenta de acceso: Firebase Console → Authentication.`);
+    showToast(`Usuario ${email} eliminado.`, 'ok');
+  }catch(err){ console.error(err); showMsg('us-msg', 'err', 'No se pudo eliminar: ' + (err.message || err)); }
+  finally{ $('btn-eliminar-usuario').disabled = false; }
 }
 usArmarArbol(); usLlenar({ rotulos:false });
 $('us-buscar').addEventListener('input', renderUsLista);
@@ -20965,6 +20984,7 @@ $('us-email').addEventListener('blur', async ()=>{
     }
   }catch(err){ console.error(err); }
 });
+$('btn-eliminar-usuario').addEventListener('click', usEliminar);
 $('btn-guardar-usuario').addEventListener('click', async ()=>{
   const email = $('us-email').value.trim();
   const alias = $('us-alias').value.trim().toUpperCase();
