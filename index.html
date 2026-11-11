@@ -4027,8 +4027,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v248';
-const APP_UPDATED = '11/11/2026 16:00';
+const APP_VERSION = 'v249';
+const APP_UPDATED = '11/11/2026 19:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4245,6 +4245,7 @@ async function loadPermisos(user){
   if(btnGuardada && !btnGuardada.classList.contains('hidden-perm')) switchTab(tabGuardada);
   // Quien entra directo a Registro fotográfico (su única opción) también tiene su pantalla de inicio lista.
   if($('view-regfoto').classList.contains('active') && $('rfsub-panel-nuevo').style.display !== 'none') rfPrepararForm();
+  if($('view-saldos').classList.contains('active')) sdAlEntrar();
   $('login-screen').style.display='none';
   $('app-shell').style.display='block';
   if(!listenersStarted){ listenersStarted = true; startListeners(); }
@@ -4620,6 +4621,7 @@ function startListeners(){
     renderParticipantesMaestro();
     renderParticipantesNuevos();
     rfRefrescarTiendas();
+    if(typeof sdLlenarTiendas === 'function') sdLlenarTiendas();
   }, onErr));
   listenerUnsubs.push(validadoresMaestroRef.onSnapshot(snap=>{
     validadoresMaestroCache = {};
@@ -20284,17 +20286,24 @@ function setSdSubtab(name){
 }
 $('sdsub-nuevo').addEventListener('click', ()=> setSdSubtab('nuevo'));
 $('sdsub-lista').addEventListener('click', ()=> setSdSubtab('lista'));
-$('tab-saldos').addEventListener('click', ()=>{ if($('sdsub-panel-nuevo').style.display !== 'none') sdPreparar(); else sdCargarLista(); });
+$('tab-saldos').addEventListener('click', sdAlEntrar);
 async function sdCorrelativo(clave, pref){
   const ref = contadoresRef.doc(clave);
   const n = await db.runTransaction(async tx=>{ const snap = await tx.get(ref), nuevo = ((snap.exists ? snap.data().ultimo : 0) || 0) + 1; tx.set(ref, { ultimo: nuevo }, { merge: true }); return nuevo; });
   return `${pref}-${String(n).padStart(5, '0')}`;
 }
 // ---- Inicio: tienda + fecha ----
-function sdPreparar(){
+// Tiendas (participantes) y fecha de hoy: se llenan al entrar y cada vez que llegan o cambian los participantes
+// (así no quedan vacías si se entra directo a Saldos o se recarga la página en esta opción).
+function sdLlenarTiendas(){
   const sel = $('sd-tienda'), v = sel.value || (()=>{ try{ return localStorage.getItem('sd:tienda') || ''; }catch(e){ return ''; } })();
   const L = rfTiendas(); sel.innerHTML = L.map(t=> `<option value="${esc(t)}">${esc(t)}</option>`).join(''); sel.value = L.includes(v) ? v : L[0];
   if(!$('sd-fecha').value) $('sd-fecha').value = sdHoy();
+}
+// Al abrir Saldos (desde el menú, al recargar en esta opción o al entrar directo).
+function sdAlEntrar(){ if($('sdsub-panel-nuevo').style.display !== 'none') sdPreparar(); else sdCargarLista(); }
+function sdPreparar(){
+  sdLlenarTiendas();
   $('sd-inicio').hidden = !!sdTraslado; $('sd-form').hidden = !sdTraslado;
   if(sdTraslado) renderSdForm(); else sdListarAbiertos();
 }
