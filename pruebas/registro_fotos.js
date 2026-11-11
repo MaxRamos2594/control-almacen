@@ -212,9 +212,14 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   const pdfPath = path.join(__dirname, 'salida', 'rf_export.pdf'); await pdf.saveAs(pdfPath);
   const crudo = fs.readFileSync(pdfPath, 'latin1'), imagenes = (crudo.match(/\/Subtype \/Image/g) || []).length;
   const textoPdf = await page.evaluate(async b64=>{ pdfjsLib.GlobalWorkerOptions.workerSrc = '/lib/pdf.worker.min.js';
-    const d = await pdfjsLib.getDocument({ data: Uint8Array.from(atob(b64), c=> c.charCodeAt(0)) }).promise; return (await (await d.getPage(1)).getTextContent()).items.map(i=> i.str).join(' '); }, fs.readFileSync(pdfPath).toString('base64'));
-  verificar(imagenes >= 4 && /RF-ADM-00001/.test(textoPdf) && /A02/.test(textoPdf) && /CONFIRMADO/.test(textoPdf) && /P100/.test(textoPdf) && /X-55/.test(textoPdf) && /CD VENEZUELA/.test(textoPdf),
-    `PDF con fotos: ${imagenes} imágenes, cabecera y productos`);
+    const d = await pdfjsLib.getDocument({ data: Uint8Array.from(atob(b64), c=> c.charCodeAt(0)) }).promise;
+    // Fotos dibujadas (jsPDF guarda una sola vez dos fotos idénticas, así que se cuentan las veces que se dibuja una imagen).
+    let dibujadas = 0; for(let i = 1; i <= d.numPages; i++){ const ops = await (await d.getPage(i)).getOperatorList(); dibujadas += ops.fnArray.filter(f=> f === pdfjsLib.OPS.paintImageXObject || f === pdfjsLib.OPS.paintJpegXObject).length; }
+    window.__fotosPdf = dibujadas;
+    return (await (await d.getPage(1)).getTextContent()).items.map(i=> i.str).join(' '); }, fs.readFileSync(pdfPath).toString('base64'));
+  const dibujadas = await page.evaluate(()=> window.__fotosPdf);
+  verificar(dibujadas >= 4 && /RF-ADM-00001/.test(textoPdf) && /A02/.test(textoPdf) && /CONFIRMADO/.test(textoPdf) && /P100/.test(textoPdf) && /X-55/.test(textoPdf) && /CD VENEZUELA/.test(textoPdf),
+    `PDF con fotos: ${dibujadas} fotos dibujadas (${imagenes} distintas), cabecera y productos`);
   await page.evaluate(async b64=>{ const d = await pdfjsLib.getDocument({ data: Uint8Array.from(atob(b64), c=> c.charCodeAt(0)) }).promise; const pg = await d.getPage(1), vp = pg.getViewport({ scale: 1.3 });
     const cv = document.createElement('canvas'); cv.width = vp.width; cv.height = vp.height * 0.6; await pg.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise; window.__pdfPng = cv.toDataURL('image/png'); }, fs.readFileSync(pdfPath).toString('base64'));
   fs.writeFileSync(path.join(__dirname, 'salida', 'rf_export_pdf.png'), Buffer.from((await page.evaluate(()=> window.__pdfPng)).split(',')[1], 'base64'));

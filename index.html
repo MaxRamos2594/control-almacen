@@ -382,6 +382,7 @@
   .us-chips{display:flex; flex-wrap:wrap; gap:5px;}
   .us-chip{display:inline-flex; gap:5px; align-items:center; border:1px solid var(--line-strong); border-radius:14px; padding:3px 9px; font-size:12px; cursor:pointer; background:#fff; user-select:none;}
   .us-chip:has(input:checked){background:#eef4fb; border-color:var(--blue); color:#1E3A5A; font-weight:600;}
+    .alm-consumo{background:#eef6ff; border:1px solid #c8dcf3; border-radius:8px; padding:8px 10px; margin-bottom:10px; font-size:13px; line-height:1.5;}
   .us-resumen{font-size:12px; color:var(--ink-soft); background:#f6f8fa; border-radius:8px; padding:8px 10px; margin-bottom:10px; line-height:1.5;}
   .panel h3{margin:0 0 12px; font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); font-weight:600; display:flex; justify-content:space-between; align-items:center;}
   .panel.collapsed h3{margin-bottom:0;}
@@ -3935,6 +3936,7 @@
   <div class="panel" style="margin-bottom:12px;">
     <h3>💾 Gestión de almacenamiento</h3>
     <p class="hint" style="margin-bottom:10px;">Muestra en qué se gasta el espacio de la cuenta de Firebase: los <b>archivos</b> (fotos y PDFs en Storage) y la <b>base de datos</b> (Firestore), por módulo, carpeta, tipo y mes. Solo lo ven los administradores.</p>
+    <div class="alm-consumo" id="alm-consumo"></div>
     <div class="alm-acciones">
       <button type="button" class="btn btn-primary" id="btn-alm-archivos">🔍 Analizar archivos</button>
       <button type="button" class="btn btn-ghost" id="btn-alm-base">🗄 Analizar base de datos</button>
@@ -4002,6 +4004,11 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+// Ahorro de lecturas (plan gratuito): los datos quedan guardados en este equipo. Al volver a abrir o recargar
+// la app, las colecciones se leen del equipo y Firestore solo envía (y cobra) lo que cambió. Si el navegador no lo
+// permite (modo privado, otra pestaña antigua), la app funciona igual, leyendo todo como antes.
+let firestoreCacheLocal = false;
+try{ db.enablePersistence({ synchronizeTabs: true }).then(()=>{ firestoreCacheLocal = true; }).catch(err=> console.warn('Sin caché local de Firestore:', err.code || err)); }catch(e){ console.warn('Sin caché local de Firestore:', e); }
 // Las pantallas de campañas/guías guardan sus lecturas en caché de memoria para
 // ahorrar lecturas de Firestore. Cualquier escritura por lotes puede dejar esa
 // caché obsoleta, así que se limpia al confirmar el batch.
@@ -4028,8 +4035,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v251';
-const APP_UPDATED = '11/11/2026 23:30';
+const APP_VERSION = 'v252';
+const APP_UPDATED = '12/11/2026 12:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4327,6 +4334,7 @@ function switchTab(name){
     if(name==='mov') renderRejas('mov-bloques', false);
   }
   if(name==='ventaonline' && $('vosub-panel-vouchers').style.display !== 'none') voCargar();
+  if(name==='almacenamiento' && typeof renderAlmConsumo === 'function') renderAlmConsumo();
   // Usuarios se carga al abrir la pestaña de cualquier forma (menú o al recargar la página estando en ella).
   if(name==='usuarios' && typeof cargarUsuarios === 'function') cargarUsuarios();
   try{ history.replaceState(null, '', '#tab-'+name); }catch(e){}
@@ -4567,16 +4575,22 @@ function tipoLabel(tipo){
 let readyCount = 0;
 let datosListos = false;
 let listenerUnsubs = [];
-function checkReady(){
-  readyCount++;
-  if(readyCount>=5){
+// "Sincronizado en vivo" cuando llegó la primera carga de cada colección núcleo que este usuario escucha.
+let readyListos = new Set(), readyEsperados = 5;
+function checkReady(clave){
+  if(clave){ readyListos.add(clave); readyCount = readyListos.size; } else readyCount++;
+  if(readyCount>=readyEsperados){
     datosListos = true;
     $('dot').classList.add('live'); $('status-text').textContent='Sincronizado en vivo';
   }
 }
 // Aplica sólo los documentos que cambiaron en vez de reconstruir la colección
 // completa en cada snapshot.
+// Documentos que llegaron del servidor en esta sesión (lo que cobra Firestore) — para revisar el consumo.
+let lecturasServidor = 0;
+function contarLecturas(snap){ if(snap && snap.metadata && !snap.metadata.fromCache) lecturasServidor += snap.docChanges ? snap.docChanges().length : (snap.exists ? 1 : 0); }
 function aplicarCambios(snap, destino, mapId){
+  contarLecturas(snap);
   snap.docChanges().forEach(ch=>{
     const clave = mapId ? mapId(ch.doc.id) : ch.doc.id;
     if(ch.type==='removed') delete destino[clave];
@@ -4587,23 +4601,39 @@ function stopListeners(){
   listenerUnsubs.forEach(un=>{ try{ un(); }catch(e){} });
   listenerUnsubs = [];
   listenersStarted = false;
-  readyCount = 0; datosListos = false;
+  readyCount = 0; datosListos = false; readyListos = new Set();
   $('dot').classList.remove('live');
   $('status-text').textContent = 'Desconectado';
 }
 function onErr(err){ $('status-text').textContent='Error de conexión'; $('dot').classList.remove('live'); console.error(err); }
 
+// Qué datos se escuchan en vivo según las opciones del usuario (ahorro de lecturas). Quien solo usa Registro
+// fotográfico y/o Saldos (los operarios en el celular) no descarga pallets, validadores ni retiros de campaña.
+// Cualquier otra opción del menú (o admin) escucha todo, como siempre.
+// Rótulos PDF no usa datos en vivo (a los usuarios antiguos se les permite por defecto).
+const ESCUCHAS_POR_OPCION = { regfoto: ['layout', 'productos', 'participantes'], saldos: ['productos', 'participantes'], rotulos: [] };
+function escuchasNecesarias(){
+  const tabs = Object.keys(PERM_TAB_CLAVE).filter(t=> permTabPermitida(currentPermisos || {}, t));
+  if(currentPermisos.admin || !tabs.length || tabs.some(t=> !ESCUCHAS_POR_OPCION[t])) return null;   // null = todas
+  return new Set(tabs.flatMap(t=> ESCUCHAS_POR_OPCION[t]));
+}
 function startListeners(){
-  listenerUnsubs.push(bloquesRef.onSnapshot(snap=>{ aplicarCambios(snap, bloques); checkReady(); renderAll(); }, onErr));
-  listenerUnsubs.push(nichosRef.onSnapshot(snap=>{ aplicarCambios(snap, nichos); checkReady(); renderAll(); }, onErr));
-  listenerUnsubs.push(posicionesRef.onSnapshot(snap=>{ aplicarCambios(snap, posiciones); checkReady(); renderAll(); }, onErr));
-  listenerUnsubs.push(palletsRef.onSnapshot(snap=>{ aplicarCambios(snap, pallets); invalidarInventario(); checkReady(); renderAll(); }, onErr));
+  const nec = escuchasNecesarias(), usa = g=> !nec || nec.has(g);
+  const nucleo = [usa('layout') && 'bloques', usa('layout') && 'nichos', usa('layout') && 'posiciones', !nec && 'pallets', 'productos'].filter(Boolean);
+  readyEsperados = nucleo.length; readyListos = new Set();
+  if(usa('layout')){
+  listenerUnsubs.push(bloquesRef.onSnapshot(snap=>{ aplicarCambios(snap, bloques); checkReady('bloques'); renderAll(); }, onErr));
+  listenerUnsubs.push(nichosRef.onSnapshot(snap=>{ aplicarCambios(snap, nichos); checkReady('nichos'); renderAll(); }, onErr));
+  listenerUnsubs.push(posicionesRef.onSnapshot(snap=>{ aplicarCambios(snap, posiciones); checkReady('posiciones'); renderAll(); }, onErr));
+  }
+  if(!nec) listenerUnsubs.push(palletsRef.onSnapshot(snap=>{ aplicarCambios(snap, pallets); invalidarInventario(); checkReady('pallets'); renderAll(); }, onErr));
   // Config del Mezzanine (tamaño de la grilla): reutiliza el mismo documento de
   // contadores/global (ya usado para nicho_index), en vez de una colección nueva,
   // para no depender de reglas de seguridad de Firestore que aún no contemplan una
   // colección nueva. No cuenta para checkReady() — es un detalle adicional del
   // layout, no una de las 5 colecciones núcleo que definen "sincronizado en vivo".
-  listenerUnsubs.push(contadorRef.onSnapshot(snap=>{
+  if(usa('layout')) listenerUnsubs.push(contadorRef.onSnapshot(snap=>{
+    contarLecturas(snap);
     const d = snap.exists ? snap.data() : {};
     mezanineConfig = {
       filas: d.mezanine_filas || 6,
@@ -4614,9 +4644,10 @@ function startListeners(){
   }, onErr));
   // Rejas (divisores físicos del layout): no cuenta para checkReady() — es un
   // detalle visual adicional del layout, no una de las 5 colecciones núcleo.
-  listenerUnsubs.push(rejasRef.onSnapshot(snap=>{ aplicarCambios(snap, rejas); renderAll(); }, onErr));
-  listenerUnsubs.push(productosRef.onSnapshot(snap=>{ aplicarCambios(snap, productos, docIdACodigo); invalidarInventario(); checkReady(); renderProductosTabla(); renderInventario(); poblarProveedoresToma(); poblarDatalistsProductos(); if($('rfsub-panel-aptos').style.display !== 'none' && !rfaEditando) renderRfAptos(); }, onErr));
+  if(usa('layout')) listenerUnsubs.push(rejasRef.onSnapshot(snap=>{ aplicarCambios(snap, rejas); renderAll(); }, onErr));
+  listenerUnsubs.push(productosRef.onSnapshot(snap=>{ aplicarCambios(snap, productos, docIdACodigo); invalidarInventario(); checkReady('productos'); renderProductosTabla(); renderInventario(); poblarProveedoresToma(); poblarDatalistsProductos(); if($('rfsub-panel-aptos').style.display !== 'none' && !rfaEditando) renderRfAptos(); }, onErr));
   listenerUnsubs.push(participantesMaestroRef.onSnapshot(snap=>{
+    contarLecturas(snap);
     participantesMaestroCache = {};
     snap.forEach(d=> participantesMaestroCache[d.id] = Object.assign({id:d.id}, d.data()));
     renderParticipantesMaestro();
@@ -4624,12 +4655,14 @@ function startListeners(){
     rfRefrescarTiendas();
     if(typeof sdLlenarTiendas === 'function') sdLlenarTiendas();
   }, onErr));
-  listenerUnsubs.push(validadoresMaestroRef.onSnapshot(snap=>{
+  if(!nec) listenerUnsubs.push(validadoresMaestroRef.onSnapshot(snap=>{
+    contarLecturas(snap);
     validadoresMaestroCache = {};
     snap.forEach(d=> validadoresMaestroCache[d.id] = Object.assign({dni:d.id}, d.data()));
     renderValidadoresMaestroTabla();
   }, onErr));
-  listenerUnsubs.push(retirosCampanaRef.orderBy('timestamp','desc').limit(300).onSnapshot(snap=>{
+  if(!nec) listenerUnsubs.push(retirosCampanaRef.orderBy('timestamp','desc').limit(300).onSnapshot(snap=>{
+    contarLecturas(snap);
     const body = $('retiros-body');
     if(snap.empty){ body.innerHTML=''; $('retiros-empty').style.display='block'; return; }
     $('retiros-empty').style.display='none';
@@ -20033,9 +20066,8 @@ async function rflMarcar(id, accion){
     else await rfMarcasRef.doc(id).set(datos);
     if(sinMarca) rflMarcas.delete(id); else rflMarcas.set(id, datos);
     const txt = { bloquear:'bloqueada', desbloquear:'desbloqueada', merma:'marcada como merma', 'quitar-merma':'sin merma', inventariar:'marcada por inventariar', 'quitar-inventariar':'ya no está por inventariar' }[accion];
+    renderRfLayout(); showToast(`Posición ${id} ${txt}.`);   // se repinta al momento; la bitácora se escribe después
     await logAccion('reg_foto_layout_marca', { detalle: `Posición ${id} ${txt} (layout del registro fotográfico)` });
-    showToast(`Posición ${id} ${txt}.`);
-    renderRfLayout();
   }catch(err){ console.error(err); showToast('No se pudo guardar la marca: ' + (err.message || err), 'err'); }
 }
 function rflDetalle(id, desplazar){
@@ -21172,7 +21204,15 @@ function almPaginador(attr, pag, total){
   const pags = Math.max(1, Math.ceil(total / ALM_POR_PAGINA));
   return total > ALM_POR_PAGINA ? `<div class="vo-pag"><button type="button" ${attr}="-1" ${pag ? '' : 'disabled'}>‹ Anterior</button><span>${esc(pag * ALM_POR_PAGINA + 1)}–${esc(Math.min(total, (pag + 1) * ALM_POR_PAGINA))} de ${esc(total)} · página ${esc(pag + 1)} de ${esc(pags)}</span><button type="button" ${attr}="1" ${pag < pags - 1 ? '' : 'disabled'}>Siguiente ›</button></div>` : '';
 }
+// Consumo de lecturas de esta sesión (lo que cobra Firestore). El total del día está en Firebase Console → Firestore → Uso.
+function renderAlmConsumo(){
+  const nec = escuchasNecesarias();
+  $('alm-consumo').innerHTML = `📡 Esta sesión descargó <b>${esc(anFmt(lecturasServidor))}</b> documento(s) del servidor en las escuchas en vivo. ` +
+    `Caché local: <b>${firestoreCacheLocal ? '✔ activa' : '✖ no disponible en este navegador'}</b>` + (firestoreCacheLocal ? ' (al recargar solo llega lo que cambió).' : '.') +
+    `<br><span class="hint">Plan gratuito: 50 000 lecturas, 20 000 escrituras y 20 000 borrados por día. El consumo del día de todos los usuarios está en Firebase Console → Firestore Database → Uso.${nec ? '' : ''}</span>`;
+}
 function renderAlm(){
+  renderAlmConsumo();
   const A = almArchivos, totA = A ? A.reduce((s, f)=> s + f.tam, 0) : 0;
   const totB = almBase ? Object.values(almBase).reduce((s, r)=> s + r.bytes, 0) : 0;
   const huerf = almHuerfanos();
