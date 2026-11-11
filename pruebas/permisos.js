@@ -1,7 +1,7 @@
 // Usuarios: lista de usuarios y permisos a detalle (opción del menú y sus secciones).
 // Requiere los emuladores encendidos (npm run emuladores).
 const path = require('path');
-const { abrirApp, limpiarEmuladores } = require('./app');
+const { abrirApp, limpiarEmuladores, ADMIN } = require('./app');
 
 let fallas = 0;
 function verificar(condicion, texto){
@@ -81,6 +81,19 @@ const visibles = (page, sel)=> page.evaluate(sel=> [...document.querySelectorAll
   verificar(m1.lista && !m1.editor && !m2.lista && m2.editor && tit === 'YOLANDA' && m3.lista && !m3.editor && m4.editor && !m4.lista && Math.max(m1.ancho, m2.ancho) <= 390,
     'Celular: la lista ocupa la pantalla; tocar un usuario abre su editor y «← Usuarios» vuelve; «+ Nuevo» abre el editor; sin desplazarse a los lados');
   await page.setViewportSize({ width: 1440, height: 900 });
+  // Eliminar usuario: el botón sale para otros usuarios (no para uno mismo) y borra su documento de permisos.
+  await page.evaluate(async ()=>{ await usuariosRef.doc('borrar@ejemplo.com').set({ email:'borrar@ejemplo.com', alias:'BORRAR', permisos:{ campanas:true } }); await cargarUsuarios(); });
+  await page.click('#us-lista [data-us-email="' + ADMIN.email + '"]');
+  const propio = await page.evaluate(()=> $('btn-eliminar-usuario').hidden);
+  await page.click('#btn-us-nuevo'); const nuevo = await page.evaluate(()=> $('btn-eliminar-usuario').hidden);
+  await page.click('#us-lista [data-us-email="borrar@ejemplo.com"]');
+  const otro = await page.evaluate(()=> !$('btn-eliminar-usuario').hidden);
+  await page.click('#btn-eliminar-usuario');
+  await page.waitForFunction(()=> /eliminado/.test($('us-msg').textContent), null, { timeout: 10000 });
+  const borrado = await page.evaluate(async ()=> ({ doc: (await usuariosRef.doc('borrar@ejemplo.com').get()).exists, lista: !!document.querySelector('#us-lista [data-us-email="borrar@ejemplo.com"]'), msg: $('us-msg').textContent,
+    log: (await movimientosRef.where('tipo', '==', 'usuario_eliminado').get()).size }));
+  verificar(propio && nuevo && otro && !borrado.doc && !borrado.lista && borrado.log === 1,
+    `Eliminar usuario: no sale para uno mismo ni en "Nuevo"; para otro sí; al eliminarlo se borra (${borrado.msg})`);
   await browser.close();
 
   // Entrar como cada usuario.
