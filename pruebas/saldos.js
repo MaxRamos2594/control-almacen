@@ -182,7 +182,7 @@ const png = path.join(__dirname, 'salida', 'sd_foto.png');
   fs.writeFileSync(path.join(__dirname, 'salida', 'saldos_gerencia.png'), Buffer.from(pdfG.png, 'base64'));
   const pdfGx = await page.evaluate(()=> window.__pdfG);
   await page.selectOption('#sd-tienda-f', '');
-  verificar(/^saldos_gerencia_\d{4}-\d{2}-\d{2}\.pdf$/.test(pdfG.nombre) && /Traslados de saldos/.test(pdfG.txt) && /Tienda: COMAS/.test(pdfG.txt) && /1 traslado\(s\)\s+·\s+2 bulto\(s\)\s+·\s+7 unidades/.test(pdfG.txt) &&
+  verificar(/^saldos_gerencia_\d{4}-\d{2}-\d{2}\.pdf$/.test(pdfG.nombre) && /Traslados de saldos/.test(pdfG.txt) && /Tienda: COMAS/.test(pdfG.txt) && /1 traslado\(s\)\s+·\s+2 bulto\(s\)\s+·\s+2 ítem\(s\)\s+·\s+7 unidades/.test(pdfG.txt) && /TOTAL\s+2\s+7\s+2/.test(pdfG.txt) &&
     /TS-00001/.test(pdfG.txt) && /PELOTA ROJA/.test(pdfG.txt) && !/Total por código/.test(pdfG.txt) && /Página 1 de/.test(pdfG.txt) && pdfGx.w === 595 && pdfGx.h === 842 && pdfGx.fotos >= 2,
     `PDF para gerencia con lo filtrado (${pdfG.nombre}): A4 vertical (${pdfGx.w}×${pdfGx.h}), resumen por traslado, ítems con ${pdfGx.fotos} foto(s), sin total por código`);
   await page.fill('#sd-q', 'caja azul'); const busca = await page.evaluate(()=> document.querySelectorAll('#sd-lista [data-sd-abrir]').length);

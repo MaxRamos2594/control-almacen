@@ -4149,8 +4149,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v262';
-const APP_UPDATED = '15/11/2026 19:00';
+const APP_VERSION = 'v263';
+const APP_UPDATED = '15/11/2026 21:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -21059,11 +21059,12 @@ async function sdPdfGerencia(L){
     doc.text(`Origen: ${RF_CD} · ${filtros.length ? filtros.join(' · ') : 'Sin filtros (todos los traslados)'}`, m, 56, { maxWidth: W - 2 * m });
     doc.text(`Generado por ${currentUserAlias} el ${new Date().toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' })}`, m, 68);
     doc.setTextColor(0); doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
-    doc.text(`${L.length} traslado(s)   ·   ${bultos} bulto(s)   ·   ${anFmt(und)} unidades`, m, 88);
+    const items = L.reduce((s, t)=> s + porTs.get(t.id).length, 0);   // suma de los ítems de cada traslado
+    doc.text(`${L.length} traslado(s)   ·   ${bultos} bulto(s)   ·   ${anFmt(items)} ítem(s)   ·   ${anFmt(und)} unidades`, m, 88);
     const estilo = { styles: { fontSize: 8, cellPadding: 3, halign: 'center', valign: 'middle' }, headStyles: { fillColor: [27, 36, 48], textColor: 255, halign: 'center' }, margin: { left: m, right: m, bottom: 30 } };
     doc.autoTable(Object.assign({ startY: 98, head: [['Traslado', 'Fecha', 'Tienda (destino)', 'Estado', 'Bultos', 'Und.', 'Ítems', 'Preparado por', 'Guía']],
       body: L.map(t=> [t.id, sdFechaTxt(t.fecha), t.tienda, t.estado, t.cajasLista.length, anFmt(t._und), porTs.get(t.id).length, t.usuario || '', t.guia_pdf ? 'SÍ' : 'NO']),
-      foot: [['TOTAL', '', '', '', bultos, anFmt(und), '', '', '']], footStyles: { fillColor: [234, 241, 251], textColor: 0, fontStyle: 'bold', halign: 'center' } }, estilo));
+      foot: [['TOTAL', '', '', '', bultos, anFmt(und), anFmt(items), '', '']], footStyles: { fillColor: [234, 241, 251], textColor: 0, fontStyle: 'bold', halign: 'center' } }, estilo));
     // Detalle: ítems de cada traslado, con sus fotos.
     const FOTO = 46;
     L.forEach(t=>{
