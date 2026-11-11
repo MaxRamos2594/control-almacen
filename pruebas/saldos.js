@@ -149,9 +149,9 @@ const png = path.join(__dirname, 'salida', 'sd_foto.png');
   fs.writeFileSync(path.join(__dirname, 'salida', 'saldos_rotulos_5.png'), Buffer.from(rot.b.png, 'base64'));
   const t1 = rot.a.txt[0], veces = (re, t)=> (t.match(re) || []).length;
   verificar(rot.a.paginas === 1 && rot.a.ancho === 842 && rot.a.alto === 595 && veces(/ORIGEN:/g, t1) === 2 && veces(/CD VENEZUELA/g, t1) === 2 && veces(/COMAS/g, t1) === 2 &&
-    /CJ-00001/.test(t1) && /CJ-00002/.test(t1) && veces(/TS-00001/g, t1) === 2 && veces(/SALDOS PREPARADOS POR: Administrador/g, t1) === 2 && veces(/NRO TRANSACCIÓN/g, t1) === 2 && /TOTAL BULTOS:/.test(t1) && new RegExp(hoy.split('-').reverse().join('/')).test(t1),
+    /CJ-00001/.test(t1) && /CJ-00002/.test(t1) && /\b1\/2\b/.test(t1) && /\b2\/2\b/.test(t1) && veces(/TS-00001/g, t1) === 2 && veces(/SALDOS PREPARADOS POR: Administrador/g, t1) === 2 && veces(/NRO TRANSACCIÓN/g, t1) === 2 && /TOTAL BULTOS:/.test(t1) && new RegExp(hoy.split('-').reverse().join('/')).test(t1),
     `Rótulos del traslado: ${rot.a.paginas} hoja A4 horizontal (${rot.a.ancho}×${rot.a.alto}) con 2 rótulos: origen CD VENEZUELA, destino COMAS, CJ-00001 / CJ-00002, TS-00001, "SALDOS PREPARADOS POR: Administrador"`);
-  verificar(rot.b.paginas === 2 && veces(/ORIGEN:/g, rot.b.txt[0]) === 4 && veces(/ORIGEN:/g, rot.b.txt[1]) === 1 && /CJ-00005/.test(rot.b.txt[1]) && /SAN JUAN DE LURIGANCHO/.test(rot.b.txt[0]),
+  verificar(rot.b.paginas === 2 && veces(/ORIGEN:/g, rot.b.txt[0]) === 4 && veces(/ORIGEN:/g, rot.b.txt[1]) === 1 && /CJ-00005/.test(rot.b.txt[1]) && /\b5\/5\b/.test(rot.b.txt[1]) && /\b1\/5\b/.test(rot.b.txt[0]) && /SAN JUAN DE LURIGANCHO/.test(rot.b.txt[0]),
     `5 cajas → ${rot.b.paginas} hojas (4 + 1 rótulos)`);
   // 9) Registros: el traslado con sus cajas.
   await page.click('#sd-ok [data-sd-ver-reg]');
@@ -166,24 +166,10 @@ const png = path.join(__dirname, 'salida', 'sd_foto.png');
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#btn-sd-excel')]);
   const xl = path.join(__dirname, 'salida', 'saldos.xlsx'); await dl.saveAs(xl);
   const wb = XLSX.readFile(xl), r1 = XLSX.utils.sheet_to_json(wb.Sheets['Traslados']), r2 = XLSX.utils.sheet_to_json(wb.Sheets['Detalle por caja']);
-  verificar(/Rótulos A4/.test(det) && /Imprimir etiquetas \(Godex\)/.test(det) && /PDF 4×3/.test(det) && /TS-00001/.test(det) && /CERRADO/.test(det) && /COMAS/.test(det) && /Bultos \(cajas\) 2/i.test(det) && /CJ-00001/.test(det) && /CJ-00002/.test(det) && /P100 PELOTA ROJA 5/.test(det) && /X-9 CAJA AZUL 2/.test(det) &&
+  verificar(/Rótulos A4/.test(det) && /Imprimir etiquetas \(Godex\)/.test(det) && !/PDF 4×3|Configurar Godex/.test(det) && /TS-00001/.test(det) && /CERRADO/.test(det) && /COMAS/.test(det) && /Bultos \(cajas\) 2/i.test(det) && /CJ-00001/.test(det) && /CJ-00002/.test(det) && /P100 PELOTA ROJA 5/.test(det) && /X-9 CAJA AZUL 2/.test(det) &&
     /TS-00001 🔒 CERRADO/.test(fila) && /2 bulto\(s\)/.test(fila) && busca === 1 && nada === 0 &&
     r1.length === 1 && r1[0]['Bultos (cajas)'] === 2 && r2.length === 2 && r2[0]['Caja'] === 'CJ-00001' && r2[1]['SKU'] === 'X-9',
     `Registros: ${fila}; detalle con las 2 cajas y sus productos; búsqueda "caja azul" → ${busca}; Excel ${r1.length} traslado y ${r2.length} filas`);
-  // Etiquetas para la Godex: 4 × 3 pulgadas, una por caja.
-  const eti = await page.evaluate(async ()=>{
-    const { jsPDF } = window.jspdf, saveOrig = jsPDF.API.save; let b64 = '';
-    jsPDF.API.save = function(){ b64 = this.output('datauristring').split(',')[1]; };
-    try{ sdEtiquetasPdf(sdLista.find(t=> t.id === 'TS-00001')); } finally { jsPDF.API.save = saveOrig; }
-    const pdf = await pdfjsLib.getDocument({ data: Uint8Array.from(atob(b64), c=> c.charCodeAt(0)) }).promise, pg = await pdf.getPage(1), vp = pg.getViewport({ scale: 1 });
-    const txt = []; for(let i = 1; i <= pdf.numPages; i++) txt.push((await (await pdf.getPage(i)).getTextContent()).items.map(x=> x.str).join(' '));
-    const v2 = pg.getViewport({ scale: 3 }), cv = document.createElement('canvas'); cv.width = v2.width; cv.height = v2.height; await pg.render({ canvasContext: cv.getContext('2d'), viewport: v2 }).promise;
-    return { paginas: pdf.numPages, w: Math.round(vp.width), h: Math.round(vp.height), txt, png: cv.toDataURL('image/png').split(',')[1] };
-  });
-  fs.writeFileSync(path.join(__dirname, 'salida', 'saldos_etiqueta_godex.png'), Buffer.from(eti.png, 'base64'));
-  verificar(eti.paginas === 2 && eti.w === 288 && eti.h === 216 && /CJ-00001/.test(eti.txt[0]) && /CJ-00002/.test(eti.txt[1]) && /TS-00001/.test(eti.txt[0]) && /COMAS/.test(eti.txt[0]),
-    `Etiquetas Godex: ${eti.paginas} etiquetas de 4 × 3 pulgadas (${eti.w}×${eti.h} pt), una por caja`);
-
   // Imprimir directo (sin PDF): una página por etiqueta de exactamente 4 × 3 pulgadas, sin márgenes.
   const htmlEtq = await page.evaluate(()=>{ window.__sdNoImprimir = true; sdEtiquetasImprimir(sdLista.find(t=> t.id === 'TS-00001')); return $('sd-etq-frame').contentDocument.documentElement.outerHTML; });
   const pEtq = await page.context().newPage();
@@ -196,7 +182,7 @@ const png = path.join(__dirname, 'salida', 'sd_foto.png');
   await pEtq.close();
   const paginasEtq = await page.evaluate(async b=>{ const d = await pdfjsLib.getDocument({ data: Uint8Array.from(atob(b), c=> c.charCodeAt(0)) }).promise; const vp = (await d.getPage(1)).getViewport({ scale: 1 }); return { n: d.numPages, w: Math.round(vp.width), h: Math.round(vp.height) }; }, Buffer.from(pdfEtq).toString('base64'));
   const botonImp = await page.evaluate(()=> !!document.querySelector('[data-sd-det-imprimir], #sd-ok [data-sd-imprimir]') || /Imprimir etiquetas/.test(document.body.innerHTML));
-  verificar(medida.n === 2 && medida.w === 384 && medida.h === 288 && medida.desborde === 0 && /ORIGEN: CD VENEZUELA DESTINO: COMAS/.test(medida.txt) && /TS-00001/.test(medida.txt) &&
+  verificar(medida.n === 2 && medida.w === 384 && medida.h === 288 && medida.desborde === 0 && /ORIGEN: CD VENEZUELA DESTINO: COMAS/.test(medida.txt) && /TS-00001/.test(medida.txt) && /TOTAL BULTOS: NRO BULTO 1\/2 CJ-00001/.test(medida.txt) &&
     paginasEtq.n === 2 && paginasEtq.w === 288 && paginasEtq.h === 216 && botonImp,
     `Imprimir directo: ${medida.n} etiquetas de 4 × 3 in (${medida.w}×${medida.h} px), ${paginasEtq.n} páginas de impresión de ${paginasEtq.w}×${paginasEtq.h} pt, todo el texto dentro de la etiqueta`);
   // Ajustes de la etiqueta (esta PC): alto y corrimiento; «Imprimir 1 de prueba» saca una sola.

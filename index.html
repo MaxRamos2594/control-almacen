@@ -114,6 +114,10 @@
   .panel{background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:16px;}
   /* Registro fotográfico */
   .rf-cab-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px;}
+  /* Nuevo registro: títulos y datos centrados */
+  #rfsub-panel-nuevo .field label, #rfsub-panel-nuevo .rf-item-grid label, #rfsub-panel-nuevo .rf-lbl, #rfsub-panel-nuevo h3, #rfsub-panel-nuevo .rf-item-cab b, #rfsub-panel-nuevo .rf-tienda-inicio{text-align:center;}
+  #rfsub-panel-nuevo input, #rfsub-panel-nuevo select{text-align:center; text-align-last:center;}
+  #rfsub-panel-nuevo .rf-fotos{justify-content:center;} #rfsub-panel-nuevo .rf-item-cab{justify-content:center; position:relative;} #rfsub-panel-nuevo .rf-item-cab .rf-del{position:absolute; right:0;}
   .rf-cab-grid input[readonly]{background:#f3f5f8; color:var(--ink-soft);}
   .rf-foto-box{margin-top:6px;} .rf-lbl{display:block; font-size:12px; font-weight:700; margin-bottom:6px;}
   .rf-fotos{display:flex; flex-wrap:wrap; gap:8px;}
@@ -4123,8 +4127,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v256';
-const APP_UPDATED = '13/11/2026 21:00';
+const APP_VERSION = 'v257';
+const APP_UPDATED = '14/11/2026 12:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -20700,7 +20704,7 @@ async function sdCerrar(){
     const cajasCerradas = sdCajas.map(c=> ({ id: c.id }));
     sdLimpiarForm(); sdLeidos = false;
     $('sd-ok').innerHTML = `<div class="sd-bultos">✔ ${esc(t.id)} cerrado · Bultos: ${esc(n)}</div><span>🏬 ${esc(t.tienda)} · 📅 ${esc(sdFechaTxt(t.fecha))} · ${esc(n)} caja(s) · ${esc(anFmt(und))} und</span>` +
-      `<div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;"><button type="button" class="btn btn-primary btn-sm" data-sd-rotulos="${esc(t.id)}">🏷 Rótulos A4 (${esc(n)})</button><button type="button" class="btn btn-primary btn-sm" data-sd-imprimir="${esc(t.id)}">🖨 Imprimir etiquetas (Godex)</button><button type="button" class="btn btn-ghost btn-sm" data-sd-etiquetas="${esc(t.id)}">PDF 4×3</button><button type="button" class="btn btn-ghost btn-sm" data-sd-ayuda-godex>ℹ Configurar Godex</button><button type="button" class="btn btn-ghost btn-sm" data-sd-ver-reg="${esc(t.id)}">🗂 Ver en Registros</button></div>`;
+      `<div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;"><button type="button" class="btn btn-primary btn-sm" data-sd-rotulos="${esc(t.id)}">🏷 Rótulos A4 (${esc(n)})</button><button type="button" class="btn btn-primary btn-sm" data-sd-imprimir="${esc(t.id)}">🖨 Imprimir etiquetas (Godex)</button><button type="button" class="btn btn-ghost btn-sm" data-sd-ver-reg="${esc(t.id)}">🗂 Ver en Registros</button></div>`;
     sdUltimoCerrado = Object.assign({}, t, { estado:'CERRADO', cajasLista: cajasCerradas });
     $('sd-ok').hidden = false; showMsg('sd-msg', 'ok', ''); sdPreparar();
   }catch(err){ console.error(err); showToast('No se pudo cerrar el traslado: ' + err.message, 'err'); }
@@ -20746,8 +20750,6 @@ $('sdsub-panel-nuevo').addEventListener('click', e=>{
   if(reg){ const id = reg.dataset.sdVerReg; setSdSubtab('lista'); sdAbrirPendiente = id; return; }
   const rot = e.target.closest('[data-sd-rotulos]'); if(rot && sdUltimoCerrado && sdUltimoCerrado.id === rot.dataset.sdRotulos){ sdRotulosPdf(sdUltimoCerrado); return; }
   const imp = e.target.closest('[data-sd-imprimir]'); if(imp && sdUltimoCerrado && sdUltimoCerrado.id === imp.dataset.sdImprimir){ sdEtiquetasImprimir(sdUltimoCerrado); return; }
-  if(e.target.closest('[data-sd-ayuda-godex]')){ sdAyudaGodex(); return; }
-  const eti = e.target.closest('[data-sd-etiquetas]'); if(eti && sdUltimoCerrado && sdUltimoCerrado.id === eti.dataset.sdEtiquetas){ sdEtiquetasPdf(sdUltimoCerrado); return; }
   const tg = e.target.closest('[data-sd-tg]');
   if(tg){ const ci = Number(tg.dataset.sdTg); tg.disabled = true;
     (async ()=>{ if(sdCajas[ci].cerrada) await sdAbrirCaja(ci); else { sdActiva = ci; await sdBotonCerrarCaja(); } renderSdForm(); })();   // repinta también si no se pudo (vuelve el botón)
@@ -20814,7 +20816,7 @@ function sdAbrir(id){
   $('sd-detalle').innerHTML = `<div class="rf-det-cab"><div><span class="hint">Traslado de saldos <span class="sd-est ${esc(t.estado)}">${t.estado === 'CERRADO' ? '🔒 CERRADO' : '📦 ABIERTO'}</span></span><h2>${esc(t.id)}</h2></div><div class="rf-det-acc">` +
       (t.estado === 'ABIERTO' && (dueno || sdVeTodos()) ? `<button type="button" class="btn btn-primary btn-sm" data-sd-det-continuar="${esc(t.id)}">✏ Continuar</button>` : '') +
       (t.estado === 'CERRADO' && (dueno || sdPuedeEliminar()) ? `<button type="button" class="btn btn-ghost btn-sm" data-sd-det-reabrir="${esc(t.id)}">↩ Reabrir</button>` : '') +
-      (t.estado === 'CERRADO' ? `<button type="button" class="btn btn-primary btn-sm" data-sd-det-rotulos="${esc(t.id)}">🏷 Rótulos A4</button><button type="button" class="btn btn-primary btn-sm" data-sd-det-imprimir="${esc(t.id)}">🖨 Imprimir etiquetas (Godex)</button><button type="button" class="btn btn-ghost btn-sm" data-sd-det-etiquetas="${esc(t.id)}">PDF 4×3</button><button type="button" class="btn btn-ghost btn-sm" data-sd-ayuda-godex>ℹ Configurar Godex</button>` : '') +
+      (t.estado === 'CERRADO' ? `<button type="button" class="btn btn-primary btn-sm" data-sd-det-rotulos="${esc(t.id)}">🏷 Rótulos A4</button><button type="button" class="btn btn-primary btn-sm" data-sd-det-imprimir="${esc(t.id)}">🖨 Imprimir etiquetas (Godex)</button>` : '') +
       `<button type="button" class="btn btn-ghost btn-sm" data-sd-det-excel="${esc(t.id)}">⬇ Excel</button>` +
       (sdPuedeEliminar() ? `<button type="button" class="btn btn-ghost btn-sm" data-sd-det-eliminar="${esc(t.id)}" style="color:#8A332A;">🗑 Eliminar</button>` : '') + `</div></div>` +
     `<div class="rf-det-datos"><div><span>Tienda</span><b>🏬 ${esc(t.tienda)}</b></div><div><span>Fecha</span><b>📅 ${esc(sdFechaTxt(t.fecha))}</b></div><div><span>Usuario</span><b>👤 ${esc(t.usuario || '')}</b></div>` +
@@ -20921,11 +20923,11 @@ function sdEtiquetasHtml(t, soloPrimera){
   const cajas = soloPrimera ? (t.cajasLista || []).slice(0, 1) : (t.cajasLista || []);
   const W = SD_ETQ.ancho - 2 * SD_ETQ.borde, H = SD_ETQ.alto - 2 * SD_ETQ.borde;
   const total = SD_ROT_FILAS.reduce((s, f)=> s + f[1], 0), k = H * 72 / total;   // escala: puntos del Excel → puntos de la etiqueta
-  const base = { origen: RF_CD, destino: t.tienda, total: String(cajas.length), obs: `SALDOS PREPARADOS POR: ${t.usuario || ''}`, ts: t.id, fecha: sdFechaTxt(t.fecha) };
+  const n = (t.cajasLista || []).length, base = { origen: RF_CD, destino: t.tienda, obs: `SALDOS PREPARADOS POR: ${t.usuario || ''}`, ts: t.id, fecha: sdFechaTxt(t.fecha) };
   const renglon = ([tipo, alto, campos, pt], d)=> `<div class="f ${campos.length === 2 ? 'dos' : ''}" style="height:${(alto / total * H).toFixed(4)}in">` +
     campos.map(c=> tipo === 'cab' ? `<div class="cab" style="font-size:${Math.min(14, 12 * k * 1.05).toFixed(1)}pt">${esc(c)}</div>`
       : `<div class="val${c === 'obs' ? ' obs' : ''}"><span style="font-size:${(pt * k).toFixed(1)}pt">${esc(d[c] || '')}</span></div>`).join('') + `</div>`;
-  const etiquetas = cajas.map(c=>{ const d = Object.assign({ bulto: c.id }, base); return `<div class="et"><div class="r">${SD_ROT_FILAS.map(f=> renglon(f, d)).join('')}</div></div>`; }).join('');
+  const etiquetas = cajas.map((c, i)=>{ const d = Object.assign({ bulto: c.id, total: `${i + 1}/${n}` }, base); return `<div class="et"><div class="r">${SD_ROT_FILAS.map(f=> renglon(f, d)).join('')}</div></div>`; }).join('');
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Etiquetas ${esc(t.id)}</title><style>
 @page{ size:${SD_ETQ.ancho}in ${SD_ETQ.alto}in; margin:0; }
 *{ box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
@@ -20957,15 +20959,6 @@ function sdEtiquetasImprimir(t, soloPrimera){
   setTimeout(()=>{ try{ fr.contentWindow.focus(); fr.contentWindow.print(); }catch(err){ console.error(err); showToast('No se pudo abrir la impresión: ' + err.message, 'err'); } }, 250);
   showToast(soloPrimera ? 'Etiqueta de prueba: revisa que quede centrada y ajusta ↕ ↔ si hace falta.' : `Imprimiendo ${cajas.length} etiqueta(s) de ${t.id}: Godex, papel ${sdEtqConfig().ancho}×${sdEtqConfig().alto}, márgenes "Ninguno", sin encabezados.`, 'ok');
 }
-function sdAyudaGodex(){
-  const c = sdEtqConfig();
-  rfAviso('Configurar la Godex (una sola vez)',
-    `1) CALIBRAR: con la Godex encendida y el rollo puesto, mantén presionado FEED hasta que avance varias etiquetas y suéltalo: así detecta dónde empieza cada etiqueta (si no, el rótulo sale corrido hacia arriba). ` +
-    `2) DRIVER: Windows → Dispositivos e impresoras → Godex G500 → Preferencias de impresión → Papel (Stock): crea uno de ${c.ancho} × ${c.alto} pulgadas, orientación horizontal, tipo "Etiquetas con separación (gap)". ` +
-    `3) AL IMPRIMIR (Chrome): Destino Godex → "Más opciones de configuración": Tamaño del papel = el de ${c.ancho} × ${c.alto}; Márgenes = Ninguno; Escala = Predeterminada (100 %); DESMARCA "Encabezados y pies de página"; MARCA "Gráficos de fondo". ` +
-    `4) Si aún queda corrido: usa "⚙ Ajustes de la etiqueta" (↕ en mm: positivo baja, negativo sube) y "Imprimir 1 de prueba". ` +
-    `5) Sin el cuadro de impresión: Godex como predeterminada y Chrome abierto con un acceso directo que termine en --kiosk-printing.`);
-}
 function sdEtqAjustesHtml(t){
   const c = sdEtqConfig();
   return `<details class="sd-etq-aj"><summary>⚙ Ajustes de la etiqueta (esta PC): ${esc(c.ancho)} × ${esc(c.alto)} in${c.dx || c.dy ? ` · ↔ ${esc(c.dx)} mm ↕ ${esc(c.dy)} mm` : ''}</summary>` +
@@ -20974,24 +20967,7 @@ function sdEtqAjustesHtml(t){
     `<label>↕ Bajar / subir (mm)<input type="number" step="0.5" min="-20" max="20" data-sd-etq="dy" value="${esc(c.dy)}"></label>` +
     `<label>↔ Derecha / izquierda (mm)<input type="number" step="0.5" min="-20" max="20" data-sd-etq="dx" value="${esc(c.dx)}"></label>` +
     `<button type="button" class="btn btn-primary btn-sm" data-sd-etq-prueba="${esc(t.id)}">🖨 Imprimir 1 de prueba</button><button type="button" class="btn btn-ghost btn-sm" data-sd-etq-reset>↺ Valores de fábrica</button></div>` +
-    `<p class="hint">Positivo en ↕ baja el rótulo; negativo lo sube. Se guarda solo en esta computadora (la de la Godex).</p></details>`;
-}
-// Etiqueta en PDF (alternativa): 4 × 3 pulgadas (288 × 216 pt), un rótulo por etiqueta.
-function sdEtiquetasPdf(t){
-  const cajas = t.cajasLista || [];
-  if(!cajas.length){ showToast('Este traslado no tiene cajas.', 'err'); return; }
-  const doc = new jspdf.jsPDF({ unit:'pt', format:[288, 216], orientation:'landscape' });
-  const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), m = 4;
-  const base = { origen: RF_CD, destino: t.tienda, total: String(cajas.length), obs: `SALDOS PREPARADOS POR: ${t.usuario || ''}`, ts: t.id, fecha: sdFechaTxt(t.fecha) };
-  cajas.forEach((c, i)=>{
-    if(i) doc.addPage([288, 216], 'landscape');
-    sdRotuloDibujar(doc, m, m, W - 2 * m, H - 2 * m, Object.assign({ bulto: c.id }, base));
-  });
-  doc.setProperties({ title: `Etiquetas ${t.id}` });
-  try{ doc.viewerPreferences({ PrintScaling: 'None' }); }catch(e){}   // que se imprima a tamaño real
-  doc.save(`etiquetas_${t.id}_4x3.pdf`);
-  logAccion('saldos_rotulos', { detalle: `${t.id} · ${t.tienda} · ${cajas.length} etiqueta(s) 4×3 (térmica)` });
-  showToast(`Etiquetas de ${t.id}: ${cajas.length} de 4 × 3 pulgadas. Imprímelas a tamaño real (100 %).`, 'ok');
+    `<p class="hint">Positivo en ↕ baja el rótulo; negativo lo sube. Se guarda solo en esta computadora (la de la Godex). Al imprimir: Godex con papel 4 × 3, márgenes "Ninguno", sin encabezados y pies de página, con gráficos de fondo.</p></details>`;
 }
 function sdRotulosPdf(t){
   const cajas = t.cajasLista || [];
@@ -20999,11 +20975,11 @@ function sdRotulosPdf(t){
   const doc = new jspdf.jsPDF({ unit:'pt', format:'a4', orientation:'landscape' });
   const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), m = 6, g = 8;   // márgenes casi nulos
   const w = (W - 2 * m - g) / 2, h = (H - 2 * m - g) / 2;
-  const base = { origen: RF_CD, destino: t.tienda, total: String(cajas.length), obs: `SALDOS PREPARADOS POR: ${t.usuario || ''}`, ts: t.id, fecha: sdFechaTxt(t.fecha) };
+  const base = { origen: RF_CD, destino: t.tienda, obs: `SALDOS PREPARADOS POR: ${t.usuario || ''}`, ts: t.id, fecha: sdFechaTxt(t.fecha) };
   cajas.forEach((c, i)=>{
     if(i && i % 4 === 0) doc.addPage('a4', 'landscape');
     const p = i % 4;
-    sdRotuloDibujar(doc, m + (p % 2) * (w + g), m + Math.floor(p / 2) * (h + g), w, h, Object.assign({ bulto: c.id }, base));
+    sdRotuloDibujar(doc, m + (p % 2) * (w + g), m + Math.floor(p / 2) * (h + g), w, h, Object.assign({ bulto: c.id, total: `${i + 1}/${cajas.length}` }, base));
   });
   doc.setProperties({ title: `Rótulos ${t.id}` });
   try{ doc.viewerPreferences({ PrintScaling: 'None' }); }catch(e){}
@@ -21064,9 +21040,7 @@ $('sd-det-modal').addEventListener('click', e=>{
   const re = e.target.closest('[data-sd-det-reabrir]'); if(re){ sdReabrir(re.dataset.sdDetReabrir); return; }
   const xl = e.target.closest('[data-sd-det-excel]'); if(xl && t){ sdExcel([t], `saldos_${t.id}.xlsx`); return; }
   const ro = e.target.closest('[data-sd-det-rotulos]'); if(ro && t){ sdRotulosPdf(t); return; }
-  const et = e.target.closest('[data-sd-det-etiquetas]'); if(et && t){ sdEtiquetasPdf(t); return; }
   const im = e.target.closest('[data-sd-det-imprimir]'); if(im && t){ sdEtiquetasImprimir(t); return; }
-  if(e.target.closest('[data-sd-ayuda-godex]')){ sdAyudaGodex(); return; }
   if(e.target.closest('[data-sd-guia-adjuntar]')){ $('sd-guia-file').click(); return; }
   const pr = e.target.closest('[data-sd-etq-prueba]'); if(pr && t){ sdEtiquetasImprimir(t, true); return; }
   if(e.target.closest('[data-sd-etq-reset]') && t){ sdEtqGuardar({}); const ab = !!document.querySelector('.sd-etq-aj[open]'); sdAbrir(t.id); if(ab) document.querySelector('.sd-etq-aj').open = true; return; }
