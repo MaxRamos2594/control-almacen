@@ -168,7 +168,7 @@ const png = path.join(__dirname, 'salida', 'sd_foto.png');
   verificar(/2 bulto\(s\) 2 ítem\(s\) · 7 und/.test(itemsLista.fila) && !itemsLista.tabla && /2 ítem\(s\)/.test(itemsLista.res), `Registros: cada traslado muestra el conteo de ítems ("${itemsLista.fila}"), sin la tabla`);
   // PDF para gerencia: exporta lo filtrado (aquí, solo COMAS).
   await page.selectOption('#sd-tienda-f', 'COMAS');
-  const pdfG = await page.evaluate(async ()=>{
+  const generarPdfG = ()=> page.evaluate(async ()=>{
     const { jsPDF } = window.jspdf, saveOrig = jsPDF.API.save; let b64 = '', nombre = '';
     jsPDF.API.save = function(n){ nombre = n; b64 = this.output('datauristring').split(',')[1]; };
     try{ document.getElementById('btn-sd-pdf').click(); for(let i = 0; i < 100 && !b64; i++) await new Promise(r=> setTimeout(r, 200)); } finally { jsPDF.API.save = saveOrig; }
@@ -179,12 +179,19 @@ const png = path.join(__dirname, 'salida', 'sd_foto.png');
     const v = (await d.getPage(1)).getViewport({ scale: 1.5 }), cv = document.createElement('canvas'); cv.width = v.width; cv.height = v.height; await (await d.getPage(1)).render({ canvasContext: cv.getContext('2d'), viewport: v }).promise;
     return { nombre, txt, png: cv.toDataURL('image/png').split(',')[1] };
   });
+  const pdfSin = await generarPdfG(), pdfSinX = await page.evaluate(()=> window.__pdfG);
+  fs.writeFileSync(path.join(__dirname, 'salida', 'saldos_gerencia_sin_fotos.png'), Buffer.from(pdfSin.png, 'base64'));
+  await page.check('#sd-pdf-fotos');
+  const pdfG = await generarPdfG();
+  await page.uncheck('#sd-pdf-fotos');
   fs.writeFileSync(path.join(__dirname, 'salida', 'saldos_gerencia.png'), Buffer.from(pdfG.png, 'base64'));
   const pdfGx = await page.evaluate(()=> window.__pdfG);
   await page.selectOption('#sd-tienda-f', '');
   verificar(/^saldos_gerencia_\d{4}-\d{2}-\d{2}\.pdf$/.test(pdfG.nombre) && /Traslados de saldos/.test(pdfG.txt) && /Tienda: COMAS/.test(pdfG.txt) && /1 traslado\(s\)\s+·\s+2 bulto\(s\)\s+·\s+2 ítem\(s\)\s+·\s+7 unidades/.test(pdfG.txt) && /TOTAL\s+2\s+7\s+2/.test(pdfG.txt) &&
-    /TS-00001/.test(pdfG.txt) && /PELOTA ROJA/.test(pdfG.txt) && !/Total por código/.test(pdfG.txt) && /Página 1 de/.test(pdfG.txt) && pdfGx.w === 595 && pdfGx.h === 842 && pdfGx.fotos >= 2,
-    `PDF para gerencia con lo filtrado (${pdfG.nombre}): A4 vertical (${pdfGx.w}×${pdfGx.h}), resumen por traslado, ítems con ${pdfGx.fotos} foto(s), sin total por código`);
+    /TS-00001/.test(pdfG.txt) && /PELOTA ROJA/.test(pdfG.txt) && !/Total por código/.test(pdfG.txt) && /Página 1 de/.test(pdfG.txt) && pdfGx.w === 595 && pdfGx.h === 842 && pdfGx.fotos >= 1 && pdfGx.fotos <= 2 && /Foto/.test(pdfG.txt),
+    `PDF para gerencia con lo filtrado (${pdfG.nombre}): A4 vertical (${pdfGx.w}×${pdfGx.h}), resumen por traslado; con «Incluir fotos»: ${pdfGx.fotos} foto(s) (1 por código), sin total por código`);
+  verificar(pdfSinX.fotos === 0 && !/\bFoto\b/.test(pdfSin.txt) && /PELOTA ROJA/.test(pdfSin.txt) && /TOTAL\s+2\s+7\s+2/.test(pdfSin.txt) && !(await page.evaluate(()=> $('sd-pdf-fotos').checked)),
+    `PDF para gerencia sin marcar «Incluir fotos» (por defecto): ${pdfSinX.fotos} foto(s), sin columna Foto, con los ítems y totales`);
   await page.fill('#sd-q', 'caja azul'); const busca = await page.evaluate(()=> document.querySelectorAll('#sd-lista [data-sd-abrir]').length);
   await page.fill('#sd-q', 'zzz'); const nada = await page.evaluate(()=> document.querySelectorAll('#sd-lista [data-sd-abrir]').length);
   await page.fill('#sd-q', '');

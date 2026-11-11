@@ -298,6 +298,7 @@
   .rf-apto-btns [data-rf-apto="SI"].activo{background:#2E9E5B; color:#fff; border-color:#2E9E5B;} .rf-apto-btns [data-rf-apto="NO"].activo{background:#C4483A; color:#fff; border-color:#C4483A;}
   .rf-apto-chip{display:inline-block; padding:1px 7px; border-radius:999px; font-size:10.5px; font-weight:700;} .rf-apto-chip.si{background:#e7f6ec; color:#1d7a46; border:1px solid #2E9E5B;} .rf-apto-chip.no{background:#fdecea; color:#a3352a; border:1px solid #C4483A;}
   .rfa-acciones{display:flex; flex-wrap:wrap; gap:8px; margin:8px 0;}
+  .sd-pdf-fotos{display:inline-flex; align-items:center; gap:5px; font-size:13px; cursor:pointer;}
   .rfa-tabla{width:100%; border-collapse:collapse; font-size:13px;} .rfa-tabla th, .rfa-tabla td{padding:7px 8px; border-bottom:1px solid var(--line); text-align:left; vertical-align:middle;}
   .rfa-tabla .num{text-align:right; white-space:nowrap;} .rfa-tabla thead th[data-rfa-orden]{cursor:pointer; user-select:none; white-space:nowrap; background:#f1f4f8;} .rfa-tabla thead th[data-rfa-orden]:hover{background:#e6edf6;}
   .rfa-filtros-col th{padding:4px 6px; background:#f8fafc;} #rfa-tabla .rfa-filtros-col input{width:100%; min-width:70px; height:auto; padding:5px 7px; font-size:12px; line-height:1.3; border:1px solid var(--line-strong); border-radius:6px; margin:0;}
@@ -3596,7 +3597,7 @@
         <label>Desde <input type="date" id="sd-desde"></label><label>Hasta <input type="date" id="sd-hasta"></label>
         <input type="search" id="sd-q" placeholder="Buscar traslado, caja, código o descripción…" autocomplete="off">
       </div>
-      <div class="rfa-acciones"><button type="button" class="btn btn-primary btn-sm" id="btn-sd-excel">⬇ Exportar a Excel</button><button type="button" class="btn btn-primary btn-sm" id="btn-sd-pdf">⬇ PDF para gerencia</button><button type="button" class="btn btn-ghost btn-sm" id="btn-sd-recargar">↻ Actualizar</button></div>
+      <div class="rfa-acciones"><button type="button" class="btn btn-primary btn-sm" id="btn-sd-excel">⬇ Exportar a Excel</button><button type="button" class="btn btn-primary btn-sm" id="btn-sd-pdf">⬇ PDF para gerencia</button><label class="sd-pdf-fotos" title="Descarga 1 foto por código: el PDF demora más y consume más datos"><input type="checkbox" id="sd-pdf-fotos"> Incluir fotos</label><button type="button" class="btn btn-ghost btn-sm" id="btn-sd-recargar">↻ Actualizar</button></div>
       <div id="sd-lista-res" class="hint" style="margin:6px 0;"></div>
       <div id="sd-lista"></div>
     </div>
@@ -4149,8 +4150,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v263';
-const APP_UPDATED = '15/11/2026 21:00';
+const APP_VERSION = 'v264';
+const APP_UPDATED = '15/11/2026 22:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -21024,7 +21025,6 @@ function sdRotulosPdf(t){
   logAccion('saldos_rotulos', { detalle: `${t.id} · ${t.tienda} · ${cajas.length} rótulo(s)` });
   showToast(`Rótulos de ${t.id}: ${cajas.length} (${Math.ceil(cajas.length / 4)} hoja(s) A4).`, 'ok');
 }
-// PDF para gerencia: lo que está filtrado en Registros (resumen por traslado, ítems de cada uno y total por código).
 // Miniatura liviana para el PDF (la foto se achica antes de ponerla).
 const sdImgMiniCache = new Map();
 function sdImagenMini(url){
@@ -21037,16 +21037,16 @@ function sdImagenMini(url){
   })().catch(err=>{ sdImgMiniCache.delete(url); throw err; }));
   return sdImgMiniCache.get(url);
 }
-// PDF para gerencia (A4 vertical): lo que está filtrado en Registros — resumen por traslado e ítems de cada uno con
-// sus fotos (hasta 2 por código).
-async function sdPdfGerencia(L){
+// PDF para gerencia (A4 vertical): lo que está filtrado en Registros — resumen por traslado e ítems de cada uno.
+// Fotos solo si se marca «Incluir fotos» (1 por código): descargarlas demora y consume datos.
+async function sdPdfGerencia(L, conFotos){
   if(!L.length){ showToast('No hay traslados para exportar con estos filtros.', 'err'); return; }
   const btn = $('btn-sd-pdf'), txtBtn = btn ? btn.textContent : '';
   if(btn){ btn.disabled = true; }
   try{
     // Primero las fotos (miniaturas), con avance.
     const porTs = new Map(L.map(t=> [t.id, sdAgruparItems(t.cajasLista)]));
-    const urls = [...new Set([...porTs.values()].flatMap(items=> items.flatMap(x=> x.fotos.slice(0, 2))))], imgs = new Map(); let n = 0;
+    const urls = conFotos ? [...new Set([...porTs.values()].flatMap(items=> items.flatMap(x=> x.fotos.slice(0, 1))))] : [], imgs = new Map(); let n = 0;
     for(const u of urls){ n++; if(btn) btn.textContent = `⏳ Fotos ${n} de ${urls.length}…`; try{ imgs.set(u, await sdImagenMini(u)); }catch(e){ console.warn('Foto no disponible para el PDF:', u, e); } }
     if(btn) btn.textContent = '⏳ Armando PDF…';
     const doc = new jspdf.jsPDF({ unit:'pt', format:'a4', orientation:'portrait' }), W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), m = 30;
@@ -21065,20 +21065,26 @@ async function sdPdfGerencia(L){
     doc.autoTable(Object.assign({ startY: 98, head: [['Traslado', 'Fecha', 'Tienda (destino)', 'Estado', 'Bultos', 'Und.', 'Ítems', 'Preparado por', 'Guía']],
       body: L.map(t=> [t.id, sdFechaTxt(t.fecha), t.tienda, t.estado, t.cajasLista.length, anFmt(t._und), porTs.get(t.id).length, t.usuario || '', t.guia_pdf ? 'SÍ' : 'NO']),
       foot: [['TOTAL', '', '', '', bultos, anFmt(und), anFmt(items), '', '']], footStyles: { fillColor: [234, 241, 251], textColor: 0, fontStyle: 'bold', halign: 'center' } }, estilo));
-    // Detalle: ítems de cada traslado, con sus fotos.
+    // Detalle: ítems de cada traslado (con su foto si se pidió).
     const FOTO = 46;
     L.forEach(t=>{
       let y = doc.lastAutoTable.finalY + 18; if(y > H - 110){ doc.addPage(); y = 40; }
       doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.text(`${t.id} · ${t.tienda} · ${sdFechaTxt(t.fecha)} · ${t.cajasLista.length} bulto(s) · ${anFmt(t._und)} und · ${t.estado}`, m, y, { maxWidth: W - 2 * m });
       const it = porTs.get(t.id);
+      if(!conFotos){
+        doc.autoTable(Object.assign({ startY: y + 6, head: [['SKU', 'Descripción', 'Cantidad', 'Cajas']],
+          body: it.length ? it.map(x=> [x.sku, x.descripcion, anFmt(x.cantidad), [...x.cajas].join(', ')]) : [['', 'Sin productos', '', '']],
+          columnStyles: { 1: { cellWidth: 200 } } }, estilo));
+        return;
+      }
       doc.autoTable(Object.assign({ startY: y + 6, head: [['Foto', 'SKU', 'Descripción', 'Cantidad', 'Cajas']],
         body: it.length ? it.map(x=> ['', x.sku, x.descripcion, anFmt(x.cantidad), [...x.cajas].join(', ')]) : [['', '', 'Sin productos', '', '']],
-        columnStyles: { 0: { cellWidth: 2 * FOTO + 10, minCellHeight: FOTO + 6 }, 2: { cellWidth: 170 } },
+        columnStyles: { 0: { cellWidth: FOTO + 10, minCellHeight: FOTO + 6 }, 2: { cellWidth: 190 } },
         didDrawCell: d=>{
           if(d.section !== 'body' || d.column.index !== 0 || !it[d.row.index]) return;
-          it[d.row.index].fotos.slice(0, 2).forEach((u, k)=>{ const im = imgs.get(u); if(!im) return;
-            const e = Math.min(FOTO / im.w, FOTO / im.h), w = im.w * e, h = im.h * e;
-            doc.addImage(im.data, 'JPEG', d.cell.x + 4 + k * (FOTO + 2) + (FOTO - w) / 2, d.cell.y + (d.cell.height - h) / 2, w, h); });
+          const im = imgs.get(it[d.row.index].fotos[0]); if(!im) return;
+          const e = Math.min(FOTO / im.w, FOTO / im.h), w = im.w * e, h = im.h * e;
+          doc.addImage(im.data, 'JPEG', d.cell.x + (d.cell.width - w) / 2, d.cell.y + (d.cell.height - h) / 2, w, h);
         } }, estilo));
     });
     const np = doc.getNumberOfPages();
@@ -21086,7 +21092,7 @@ async function sdPdfGerencia(L){
     doc.setProperties({ title: 'Traslados de saldos' });
     doc.save(`saldos_gerencia_${new Date().toISOString().slice(0, 10)}.pdf`);
     logAccion('saldos_exportado', { detalle: `PDF para gerencia: ${L.length} traslado(s), ${bultos} bulto(s), ${imgs.size} foto(s)${filtros.length ? ' · ' + filtros.join(' · ') : ''}` });
-    showToast(`PDF con ${L.length} traslado(s) y ${imgs.size} foto(s).`, 'ok');
+    showToast(`PDF con ${L.length} traslado(s)${conFotos ? ` y ${imgs.size} foto(s)` : ''}.`, 'ok');
   }catch(err){ console.error(err); showToast('No se pudo armar el PDF: ' + (err.message || err), 'err'); }
   finally{ if(btn){ btn.disabled = false; btn.textContent = txtBtn; } }
 }
@@ -21127,7 +21133,7 @@ async function sdReabrir(id){
 $('sdsub-panel-lista').addEventListener('click', e=>{
   const ab = e.target.closest('[data-sd-abrir]'); if(ab){ sdAbrir(ab.dataset.sdAbrir); return; }
   if(e.target.closest('#btn-sd-excel')){ sdExcel(sdFiltrados(), `saldos_${new Date().toISOString().slice(0, 10)}.xlsx`); return; }
-  if(e.target.closest('#btn-sd-pdf')){ sdPdfGerencia(sdFiltrados()); return; }
+  if(e.target.closest('#btn-sd-pdf')){ sdPdfGerencia(sdFiltrados(), $('sd-pdf-fotos').checked); return; }
   if(e.target.closest('#btn-sd-recargar')) sdCargarLista(true);
 });
 ['sd-estado-f', 'sd-tienda-f', 'sd-usuario-f', 'sd-desde', 'sd-hasta'].forEach(id=> $(id).addEventListener('change', renderSdLista));
