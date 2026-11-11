@@ -166,10 +166,55 @@ const png = path.join(__dirname, 'salida', 'sd_foto.png');
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#btn-sd-excel')]);
   const xl = path.join(__dirname, 'salida', 'saldos.xlsx'); await dl.saveAs(xl);
   const wb = XLSX.readFile(xl), r1 = XLSX.utils.sheet_to_json(wb.Sheets['Traslados']), r2 = XLSX.utils.sheet_to_json(wb.Sheets['Detalle por caja']);
-  verificar(/Rótulos PDF/.test(det) && /TS-00001/.test(det) && /CERRADO/.test(det) && /COMAS/.test(det) && /Bultos \(cajas\) 2/i.test(det) && /CJ-00001/.test(det) && /CJ-00002/.test(det) && /P100 PELOTA ROJA 5/.test(det) && /X-9 CAJA AZUL 2/.test(det) &&
+  verificar(/Rótulos A4/.test(det) && /Etiquetas 4×3/.test(det) && /TS-00001/.test(det) && /CERRADO/.test(det) && /COMAS/.test(det) && /Bultos \(cajas\) 2/i.test(det) && /CJ-00001/.test(det) && /CJ-00002/.test(det) && /P100 PELOTA ROJA 5/.test(det) && /X-9 CAJA AZUL 2/.test(det) &&
     /TS-00001 🔒 CERRADO/.test(fila) && /2 bulto\(s\)/.test(fila) && busca === 1 && nada === 0 &&
     r1.length === 1 && r1[0]['Bultos (cajas)'] === 2 && r2.length === 2 && r2[0]['Caja'] === 'CJ-00001' && r2[1]['SKU'] === 'X-9',
     `Registros: ${fila}; detalle con las 2 cajas y sus productos; búsqueda "caja azul" → ${busca}; Excel ${r1.length} traslado y ${r2.length} filas`);
+  // Etiquetas para la Godex: 4 × 3 pulgadas, una por caja.
+  const eti = await page.evaluate(async ()=>{
+    const { jsPDF } = window.jspdf, saveOrig = jsPDF.API.save; let b64 = '';
+    jsPDF.API.save = function(){ b64 = this.output('datauristring').split(',')[1]; };
+    try{ sdEtiquetasPdf(sdLista.find(t=> t.id === 'TS-00001')); } finally { jsPDF.API.save = saveOrig; }
+    const pdf = await pdfjsLib.getDocument({ data: Uint8Array.from(atob(b64), c=> c.charCodeAt(0)) }).promise, pg = await pdf.getPage(1), vp = pg.getViewport({ scale: 1 });
+    const txt = []; for(let i = 1; i <= pdf.numPages; i++) txt.push((await (await pdf.getPage(i)).getTextContent()).items.map(x=> x.str).join(' '));
+    const v2 = pg.getViewport({ scale: 3 }), cv = document.createElement('canvas'); cv.width = v2.width; cv.height = v2.height; await pg.render({ canvasContext: cv.getContext('2d'), viewport: v2 }).promise;
+    return { paginas: pdf.numPages, w: Math.round(vp.width), h: Math.round(vp.height), txt, png: cv.toDataURL('image/png').split(',')[1] };
+  });
+  fs.writeFileSync(path.join(__dirname, 'salida', 'saldos_etiqueta_godex.png'), Buffer.from(eti.png, 'base64'));
+  verificar(eti.paginas === 2 && eti.w === 288 && eti.h === 216 && /CJ-00001/.test(eti.txt[0]) && /CJ-00002/.test(eti.txt[1]) && /TS-00001/.test(eti.txt[0]) && /COMAS/.test(eti.txt[0]),
+    `Etiquetas Godex: ${eti.paginas} etiquetas de 4 × 3 pulgadas (${eti.w}×${eti.h} pt), una por caja`);
+
+  // Guía de remisión: un PDF pesado (más de 700 KB) se reduce antes de subir y queda en el traslado.
+  const guiaPdf = path.join(__dirname, 'salida', 'guia_prueba.pdf');
+  const b64g = await page.evaluate(()=>{ const cv = document.createElement('canvas'); cv.width = cv.height = 1400; const ctx = cv.getContext('2d'), im = ctx.createImageData(1400, 1400);
+    for(let i = 0; i < im.data.length; i += 4){ const v = Math.random() * 255; im.data[i] = v; im.data[i + 1] = 255 - v; im.data[i + 2] = (v * 7) % 255; im.data[i + 3] = 255; } ctx.putImageData(im, 0, 0);
+    const d = new jspdf.jsPDF({ unit:'pt', format:'a4' }); d.text('GUIA DE REMISION T001-123', 40, 40); d.addImage(cv.toDataURL('image/png'), 'PNG', 40, 60, 500, 500); return d.output('datauristring').split(',')[1]; });
+  fs.writeFileSync(guiaPdf, Buffer.from(b64g, 'base64'));
+  const pesoGuia = fs.statSync(guiaPdf).size;
+  await page.evaluate(()=>{ setSdSubtab('lista'); });
+  await page.waitForSelector('#sd-lista [data-sd-abrir="TS-00001"]', { timeout: 10000 });
+  await page.click('#sd-lista [data-sd-abrir="TS-00001"]');
+  await page.waitForSelector('[data-sd-guia-adjuntar]', { timeout: 10000 });
+  await page.setInputFiles('#sd-guia-file', guiaPdf);
+  await esperar(page, async ()=> !!((await saldosTrasladosRef.doc('TS-00001').get()).data().guia_pdf), null, 60000);
+  await page.waitForSelector('#sd-detalle .sd-guia-link', { timeout: 10000 });
+  const g = await page.evaluate(async ()=> (await saldosTrasladosRef.doc('TS-00001').get()).data().guia_pdf);
+  const enStorage = await page.evaluate(p=> storage.ref().child(p).getMetadata().then(m=> m.size, ()=> 0), g.path);
+  const detGuia = await page.evaluate(()=> document.querySelector('#sd-detalle .sd-guia').innerText.replace(/\s+/g, ' '));
+  const conIcono = await page.evaluate(()=> /📄/.test(document.querySelector('#sd-lista [data-sd-abrir="TS-00001"]').innerText));
+  await page.screenshot({ path: path.join(__dirname, 'salida', 'saldos_guia.png'), fullPage: true });
+  verificar(pesoGuia > 700 * 1024 && g.tam < g.tam_original && g.tam_original === pesoGuia && /^saldos_guias\/TS-00001\//.test(g.path) && enStorage === g.tam && /guia_prueba\.pdf/.test(detGuia) && /reducido de/.test(detGuia) && conIcono,
+    `Guía de remisión: ${Math.round(pesoGuia / 1024)} KB → ${Math.round(g.tam / 1024)} KB, guardada en ${g.path}; el detalle la muestra ("${detGuia.slice(0, 90)}…") y la lista con 📄`);
+  // Almacenamiento: las fotos de las cajas y la guía NO son "huérfanas".
+  await page.evaluate(()=> sdCerrarDetalle());
+  const huerf = await page.evaluate(async ()=>{ ALM_MARGEN_HUERFANO_MS = 0; switchTab('almacenamiento'); await almAnalizarArchivos(); await almAnalizarBase(); return (almHuerfanos() || []).map(f=> f.path).filter(p=> /^saldos/.test(p)); });
+  verificar(huerf.length === 0, `Almacenamiento reconoce las fotos de Saldos y la guía (huérfanos de Saldos: ${huerf.length})`);
+  // Quitar la guía: se borra el PDF.
+  await page.evaluate(()=>{ switchTab('saldos'); setSdSubtab('lista'); sdAbrir('TS-00001'); });
+  await page.click('[data-sd-guia-quitar]');
+  await esperar(page, async ()=> !((await saldosTrasladosRef.doc('TS-00001').get()).data().guia_pdf), null, 10000);
+  const borrada = await esperar(page, p=> storage.ref().child(p).getMetadata().then(()=> false, ()=> true), g.path, 10000).then(()=> true, ()=> false);
+  verificar(borrada, 'Quitar la guía borra el PDF del almacenamiento');
   verificar(!errores.length, 'Sin errores de JavaScript (admin)' + (errores.length ? ': ' + errores.join(' | ') : ''));
   await browser.close();
 

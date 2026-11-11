@@ -152,7 +152,7 @@
   .sd-fila{display:flex; flex-wrap:wrap; justify-content:space-between; gap:6px 14px; width:100%; text-align:left; background:#fff; border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin-bottom:6px; cursor:pointer;}
   .sd-fila:hover{background:#f6f9fd;} .sd-fila .t{font-weight:800;} .sd-est{font-size:11px; font-weight:800; padding:2px 7px; border-radius:10px; background:#e8f5e9; color:#1b5e20;} .sd-est.ABIERTO{background:#fff3e0; color:#a14a00;}
   .sd-det-caja{border:1px solid var(--line); border-radius:8px; padding:10px; margin:10px 0;} .sd-det-caja table{width:100%; border-collapse:collapse; font-size:13px;} .sd-det-caja td, .sd-det-caja th{padding:5px 6px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top;}
-  .sd-det-caja .num{text-align:right;} .sd-bultos{font-size:22px; font-weight:900;}
+  .sd-det-caja .num{text-align:right;} .sd-guia{background:#f6f8fb; border:1px solid var(--line); border-radius:8px; padding:8px 10px; margin:10px 0; display:flex; flex-wrap:wrap; gap:6px; align-items:center;} .sd-guia .hint#sd-guia-msg{width:100%;} .sd-bultos{font-size:22px; font-weight:900;}
   #view-regfoto .rf-pos-campo input{font-size:20px; font-weight:800; letter-spacing:.06em; border:2px solid #2b4c6f;}
   .rf-pasos{display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;}
   .rf-paso{flex:1 1 0; min-width:0; display:flex; gap:8px; align-items:center; background:#fff; border:1px solid var(--line); border-radius:12px; padding:8px 12px; font-weight:700; font-size:13px; color:var(--ink-soft);}
@@ -3594,6 +3594,7 @@
       <div id="sd-lista"></div>
     </div>
   </div>
+  <input type="file" id="sd-guia-file" accept="application/pdf,.pdf" hidden>
   <div class="rf-det-modal" id="sd-det-modal" hidden>
     <div class="rf-det-caja" role="dialog" aria-modal="true" aria-label="Detalle del traslado de saldos">
       <div class="rf-det-barra"><button type="button" id="btn-sd-det-volver">← Volver a la lista</button><button type="button" id="btn-sd-det-cerrar" aria-label="Cerrar">✕</button></div>
@@ -4122,8 +4123,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v253';
-const APP_UPDATED = '12/11/2026 18:00';
+const APP_VERSION = 'v254';
+const APP_UPDATED = '13/11/2026 12:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4634,7 +4635,7 @@ function tipoLabel(tipo){
     asistente_consulta:'Consulta al asistente IA', almacenamiento_huerfanos_eliminados:'Archivos huérfanos eliminados (almacenamiento)', almacenamiento_pdfs_comprimidos:'Archivos comprimidos (almacenamiento)',
     reg_foto_creado:'Registro fotográfico creado', reg_foto_eliminado:'Registro fotográfico eliminado', reg_foto_iniciado:'Registro fotográfico iniciado (borrador)',
     reg_foto_confirmado:'Registro fotográfico confirmado', reg_foto_descartado:'Borrador de registro fotográfico descartado', reg_foto_exportado:'Registro fotográfico exportado',
-    reg_foto_reabierto:'Registro fotográfico abierto para modificar', reg_foto_modificado:'Registro fotográfico modificado', reg_foto_modificacion_cancelada:'Modificación de registro fotográfico cancelada', reg_foto_apto_ajuste:'Registro fotográfico: apto para ajuste', reg_foto_posicion_cambiada:'Registro fotográfico: posición cambiada', reg_foto_layout_marca:'Registro fotográfico: posición bloqueada / merma / por inventariar', reg_foto_fusionado:'Registros fotográficos fusionados', reg_foto_sku_editado:'Registro fotográfico: código / descripción editados', reg_foto_costos:'Registro fotográfico: costos asignados', saldos_iniciado:'Saldos: traslado iniciado', saldos_caja_creada:'Saldos: caja creada', saldos_caja_quitada:'Saldos: caja quitada', saldos_caja_cerrada:'Saldos: caja cerrada', saldos_caja_abierta:'Saldos: caja abierta de nuevo', saldos_cerrado:'Saldos: traslado cerrado', saldos_reabierto:'Saldos: traslado reabierto', saldos_eliminado:'Saldos: traslado eliminado', saldos_exportado:'Saldos: exportado a Excel', saldos_rotulos:'Saldos: rótulos impresos',
+    reg_foto_reabierto:'Registro fotográfico abierto para modificar', reg_foto_modificado:'Registro fotográfico modificado', reg_foto_modificacion_cancelada:'Modificación de registro fotográfico cancelada', reg_foto_apto_ajuste:'Registro fotográfico: apto para ajuste', reg_foto_posicion_cambiada:'Registro fotográfico: posición cambiada', reg_foto_layout_marca:'Registro fotográfico: posición bloqueada / merma / por inventariar', reg_foto_fusionado:'Registros fotográficos fusionados', reg_foto_sku_editado:'Registro fotográfico: código / descripción editados', reg_foto_costos:'Registro fotográfico: costos asignados', saldos_iniciado:'Saldos: traslado iniciado', saldos_caja_creada:'Saldos: caja creada', saldos_caja_quitada:'Saldos: caja quitada', saldos_caja_cerrada:'Saldos: caja cerrada', saldos_caja_abierta:'Saldos: caja abierta de nuevo', saldos_cerrado:'Saldos: traslado cerrado', saldos_reabierto:'Saldos: traslado reabierto', saldos_eliminado:'Saldos: traslado eliminado', saldos_exportado:'Saldos: exportado a Excel', saldos_rotulos:'Saldos: rótulos impresos', saldos_guia_adjuntada:'Saldos: guía de remisión adjuntada', saldos_guia_quitada:'Saldos: guía de remisión quitada',
     ingreso:'Entrada de pallet', movimiento:'Movimiento', retiro:'Salida (pallet completo)',
     retiro_campana:'Salida (campaña)', retiro_campana_revertido:'↺ Retiro de campaña revertido', producto_agregado:'Adición de producto', transferencia:'Transferencia entre pallets',
     bloqueo:'Bloqueo de posición', desbloqueo:'Desbloqueo de posición',
@@ -20699,7 +20700,7 @@ async function sdCerrar(){
     const cajasCerradas = sdCajas.map(c=> ({ id: c.id }));
     sdLimpiarForm(); sdLeidos = false;
     $('sd-ok').innerHTML = `<div class="sd-bultos">✔ ${esc(t.id)} cerrado · Bultos: ${esc(n)}</div><span>🏬 ${esc(t.tienda)} · 📅 ${esc(sdFechaTxt(t.fecha))} · ${esc(n)} caja(s) · ${esc(anFmt(und))} und</span>` +
-      `<div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;"><button type="button" class="btn btn-primary btn-sm" data-sd-rotulos="${esc(t.id)}">🏷 Imprimir rótulos (${esc(n)})</button><button type="button" class="btn btn-ghost btn-sm" data-sd-ver-reg="${esc(t.id)}">🗂 Ver en Registros</button></div>`;
+      `<div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;"><button type="button" class="btn btn-primary btn-sm" data-sd-rotulos="${esc(t.id)}">🏷 Rótulos A4 (${esc(n)})</button><button type="button" class="btn btn-primary btn-sm" data-sd-etiquetas="${esc(t.id)}">🏷 Etiquetas 4×3 (Godex)</button><button type="button" class="btn btn-ghost btn-sm" data-sd-ver-reg="${esc(t.id)}">🗂 Ver en Registros</button></div>`;
     sdUltimoCerrado = Object.assign({}, t, { estado:'CERRADO', cajasLista: cajasCerradas });
     $('sd-ok').hidden = false; showMsg('sd-msg', 'ok', ''); sdPreparar();
   }catch(err){ console.error(err); showToast('No se pudo cerrar el traslado: ' + err.message, 'err'); }
@@ -20744,6 +20745,7 @@ $('sdsub-panel-nuevo').addEventListener('click', e=>{
   const sug = e.target.closest('[data-sd-sug]'), paso = e.target.closest('[data-sd-paso]'), scan = e.target.closest('[data-sd-scan]'), reg = e.target.closest('[data-sd-ver-reg]');
   if(reg){ const id = reg.dataset.sdVerReg; setSdSubtab('lista'); sdAbrirPendiente = id; return; }
   const rot = e.target.closest('[data-sd-rotulos]'); if(rot && sdUltimoCerrado && sdUltimoCerrado.id === rot.dataset.sdRotulos){ sdRotulosPdf(sdUltimoCerrado); return; }
+  const eti = e.target.closest('[data-sd-etiquetas]'); if(eti && sdUltimoCerrado && sdUltimoCerrado.id === eti.dataset.sdEtiquetas){ sdEtiquetasPdf(sdUltimoCerrado); return; }
   const tg = e.target.closest('[data-sd-tg]');
   if(tg){ const ci = Number(tg.dataset.sdTg); tg.disabled = true;
     (async ()=>{ if(sdCajas[ci].cerrada) await sdAbrirCaja(ci); else { sdActiva = ci; await sdBotonCerrarCaja(); } renderSdForm(); })();   // repinta también si no se pudo (vuelve el botón)
@@ -20797,7 +20799,7 @@ function sdFiltrados(){
 function renderSdLista(){
   const L = sdFiltrados();
   $('sd-lista-res').textContent = `${L.length} traslado(s) · ${L.reduce((s, t)=> s + t.cajasLista.length, 0)} caja(s) / bulto(s) · ${anFmt(L.reduce((s, t)=> s + t._und, 0))} und`;
-  $('sd-lista').innerHTML = L.length ? L.slice(0, 300).map(t=> `<button type="button" class="sd-fila" data-sd-abrir="${esc(t.id)}"><span><span class="t">${esc(t.id)}</span> <span class="sd-est ${esc(t.estado)}">${t.estado === 'CERRADO' ? '🔒 CERRADO' : '📦 ABIERTO'}</span><br>` +
+  $('sd-lista').innerHTML = L.length ? L.slice(0, 300).map(t=> `<button type="button" class="sd-fila" data-sd-abrir="${esc(t.id)}"><span><span class="t">${esc(t.id)}</span> <span class="sd-est ${esc(t.estado)}">${t.estado === 'CERRADO' ? '🔒 CERRADO' : '📦 ABIERTO'}</span>${t.guia_pdf ? ' <span title="Tiene guía de remisión">📄</span>' : ''}<br>` +
       `<span class="hint">🏬 ${esc(t.tienda)} · 📅 ${esc(sdFechaTxt(t.fecha))} · 👤 ${esc(t.usuario || '')}</span></span><span style="text-align:right;"><b>${esc(t.cajasLista.length)} bulto(s)</b><br><span class="hint">${esc(anFmt(t._und))} und</span></span></button>`).join('') +
       (L.length > 300 ? `<p class="hint">Se muestran 300 de ${esc(L.length)}: usa los filtros.</p>` : '')
     : `<div class="hint">${sdLista.length ? 'Ningún traslado cumple los filtros.' : 'Aún no hay traslados de saldos.'}</div>`;
@@ -20810,17 +20812,57 @@ function sdAbrir(id){
   $('sd-detalle').innerHTML = `<div class="rf-det-cab"><div><span class="hint">Traslado de saldos <span class="sd-est ${esc(t.estado)}">${t.estado === 'CERRADO' ? '🔒 CERRADO' : '📦 ABIERTO'}</span></span><h2>${esc(t.id)}</h2></div><div class="rf-det-acc">` +
       (t.estado === 'ABIERTO' && (dueno || sdVeTodos()) ? `<button type="button" class="btn btn-primary btn-sm" data-sd-det-continuar="${esc(t.id)}">✏ Continuar</button>` : '') +
       (t.estado === 'CERRADO' && (dueno || sdPuedeEliminar()) ? `<button type="button" class="btn btn-ghost btn-sm" data-sd-det-reabrir="${esc(t.id)}">↩ Reabrir</button>` : '') +
-      (t.estado === 'CERRADO' ? `<button type="button" class="btn btn-primary btn-sm" data-sd-det-rotulos="${esc(t.id)}">🏷 Rótulos PDF</button>` : '') +
+      (t.estado === 'CERRADO' ? `<button type="button" class="btn btn-primary btn-sm" data-sd-det-rotulos="${esc(t.id)}">🏷 Rótulos A4</button><button type="button" class="btn btn-primary btn-sm" data-sd-det-etiquetas="${esc(t.id)}">🏷 Etiquetas 4×3 (Godex)</button>` : '') +
       `<button type="button" class="btn btn-ghost btn-sm" data-sd-det-excel="${esc(t.id)}">⬇ Excel</button>` +
       (sdPuedeEliminar() ? `<button type="button" class="btn btn-ghost btn-sm" data-sd-det-eliminar="${esc(t.id)}" style="color:#8A332A;">🗑 Eliminar</button>` : '') + `</div></div>` +
     `<div class="rf-det-datos"><div><span>Tienda</span><b>🏬 ${esc(t.tienda)}</b></div><div><span>Fecha</span><b>📅 ${esc(sdFechaTxt(t.fecha))}</b></div><div><span>Usuario</span><b>👤 ${esc(t.usuario || '')}</b></div>` +
       `<div><span>Bultos (cajas)</span><b class="sd-bultos">${esc(t.cajasLista.length)}</b></div><div><span>Unidades</span><b>${esc(anFmt(t._und))}</b></div>` +
       (t.cerrado_en ? `<div><span>Cerrado</span><b>${esc(t.cerrado_por || '')} · ${esc(rfFechaTxt(t.cerrado_en))}</b></div>` : '') + `</div>` +
+    sdGuiaHtml(t, dueno) +
     (t.cajasLista.length ? t.cajasLista.map(c=> `<div class="sd-det-caja"><b>📦 ${esc(c.id)}</b> <span class="sd-est ${c.estado === 'ABIERTA' ? 'ABIERTO' : ''}">${c.estado === 'ABIERTA' ? '✏ ABIERTA' : '🔒 CERRADA'}</span> <span class="hint">· ${esc((c.items || []).length)} producto(s) · ${esc(anFmt(c.unidades || 0))} und</span>` +
       `<table><thead><tr><th>SKU</th><th>Descripción</th><th class="num">Cantidad</th><th>Fotos</th></tr></thead><tbody>` +
       ((c.items || []).map(it=> `<tr><td><b>${esc(it.sku)}</b></td><td>${esc(it.descripcion || '')}</td><td class="num">${esc(anFmt(it.cantidad))}</td><td><div class="rf-fotos">${(it.fotos || []).map(f=> `<div class="rf-thumb" data-sd-det-ver="${esc(f.url)}"><img src="${esc(f.url)}" alt="" loading="lazy"></div>`).join('')}</div></td></tr>`).join('') || '<tr><td colspan="4" class="hint">Caja sin productos.</td></tr>') +
       `</tbody></table></div>`).join('') : '<p class="hint">Este traslado no tiene cajas.</p>');
   $('sd-det-modal').hidden = false; document.body.classList.add('rf-modal-abierto');
+}
+// ---- Guía de remisión (PDF) del traslado: se reduce antes de subir (como en Venta Online / agencias) ----
+const sdPuedeGuia = (t, dueno)=> dueno || sdVeTodos() || sdPuedeEliminar();
+function sdGuiaHtml(t, dueno){
+  const g = t.guia_pdf, puede = sdPuedeGuia(t, dueno);
+  return `<div class="sd-guia"><b>📄 Guía de remisión</b> ` +
+    (g ? `<a href="${esc(g.url)}" target="_blank" rel="noopener" class="sd-guia-link">${esc(g.nombre || 'guia.pdf')}</a> <span class="hint">· ${esc(almFmt(g.tam || 0))}${g.tam_original && g.tam_original > g.tam ? ` (reducido de ${esc(almFmt(g.tam_original))})` : ''} · ${esc(g.subido_por || '')} · ${esc(rfFechaTxt(g.subido_en))}</span>` : '<span class="hint">Sin guía adjunta.</span>') +
+    (puede ? ` <button type="button" class="btn btn-ghost btn-sm" data-sd-guia-adjuntar>${g ? '🔁 Reemplazar' : '📎 Adjuntar guía (PDF)'}</button>` + (g ? ` <button type="button" class="btn btn-ghost btn-sm" data-sd-guia-quitar style="color:#8A332A;">✕ Quitar</button>` : '') : '') +
+    `<div class="hint" id="sd-guia-msg"></div></div>`;
+}
+async function sdSubirGuia(t, f){
+  if(!f) return;
+  if(!/pdf/i.test(f.type) && !/\.pdf$/i.test(f.name)){ showToast('Elige un archivo PDF.', 'err'); return; }
+  const msg = txt=>{ const el = $('sd-guia-msg'); if(el) el.textContent = txt; };
+  try{
+    msg('Reduciendo el PDF…');
+    const red = await voReducir(new File([f], f.name, { type: 'application/pdf' }), msg);
+    msg('Subiendo…');
+    const ref = storage.ref().child(`saldos_guias/${t.id}/${Date.now()}_${vchNombreArchivo(f.name)}`);
+    await ref.put(red, red.size < f.size ? vchMetaPdf(f.size) : { contentType:'application/pdf', cacheControl:'private, max-age=31536000' });
+    const guia = { url: await ref.getDownloadURL(), path: ref.fullPath, nombre: f.name, tam: red.size, tam_original: f.size, subido_por: currentUserAlias, subido_por_email: currentUserEmail, subido_en: new Date().toISOString() };
+    const antes = t.guia_pdf;
+    await saldosTrasladosRef.doc(t.id).update({ guia_pdf: guia });
+    if(antes && antes.path) storage.ref().child(antes.path).delete().catch(err=> console.warn('Guía anterior', err));
+    t.guia_pdf = guia;
+    await logAccion('saldos_guia_adjuntada', { detalle: `${t.id} · guía ${f.name} · ${almFmt(red.size)}${red.size < f.size ? ` (de ${almFmt(f.size)})` : ''}` });
+    showToast(`Guía adjuntada a ${t.id}` + (red.size < f.size ? ` (reducida de ${almFmt(f.size)} a ${almFmt(red.size)}).` : '.'), 'ok');
+    renderSdLista(); sdAbrir(t.id);
+  }catch(err){ console.error(err); msg(''); showToast('No se pudo adjuntar la guía: ' + (err.message || err), 'err'); }
+}
+async function sdQuitarGuia(t){
+  const g = t.guia_pdf; if(!g || !confirm(`¿Quitar la guía de remisión de ${t.id}? Se borra el PDF.`)) return;
+  try{
+    await saldosTrasladosRef.doc(t.id).update({ guia_pdf: firebase.firestore.FieldValue.delete() });
+    if(g.path) await storage.ref().child(g.path).delete().catch(err=> console.warn('Guía', err));
+    delete t.guia_pdf;
+    await logAccion('saldos_guia_quitada', { detalle: `${t.id} · guía ${g.nombre || ''} quitada` });
+    renderSdLista(); sdAbrir(t.id); showToast('Guía quitada.', 'ok');
+  }catch(err){ console.error(err); showToast('No se pudo quitar la guía: ' + (err.message || err), 'err'); }
 }
 function sdCerrarDetalle(){ if($('sd-det-modal') && !$('sd-det-modal').hidden){ $('sd-det-modal').hidden = true; document.body.classList.remove('rf-modal-abierto'); } }
 // ---- Rótulos de envío a tiendas (uno por caja / bulto) ----
@@ -20863,6 +20905,23 @@ function sdRotuloDibujar(doc, x, y, w, h, d){
   });
   doc.setLineWidth(2.2); doc.rect(x, y, w, h, 'D');   // marco exterior más grueso: guía para cortar
 }
+// Etiqueta para impresora térmica (Godex G500 y similares): 4 × 3 pulgadas (288 × 216 pt), un rótulo por etiqueta.
+function sdEtiquetasPdf(t){
+  const cajas = t.cajasLista || [];
+  if(!cajas.length){ showToast('Este traslado no tiene cajas.', 'err'); return; }
+  const doc = new jspdf.jsPDF({ unit:'pt', format:[288, 216], orientation:'landscape' });
+  const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), m = 4;
+  const base = { origen: RF_CD, destino: t.tienda, total: String(cajas.length), obs: `SALDOS PREPARADOS POR: ${t.usuario || ''}`, ts: t.id, fecha: sdFechaTxt(t.fecha) };
+  cajas.forEach((c, i)=>{
+    if(i) doc.addPage([288, 216], 'landscape');
+    sdRotuloDibujar(doc, m, m, W - 2 * m, H - 2 * m, Object.assign({ bulto: c.id }, base));
+  });
+  doc.setProperties({ title: `Etiquetas ${t.id}` });
+  try{ doc.viewerPreferences({ PrintScaling: 'None' }); }catch(e){}   // que se imprima a tamaño real
+  doc.save(`etiquetas_${t.id}_4x3.pdf`);
+  logAccion('saldos_rotulos', { detalle: `${t.id} · ${t.tienda} · ${cajas.length} etiqueta(s) 4×3 (térmica)` });
+  showToast(`Etiquetas de ${t.id}: ${cajas.length} de 4 × 3 pulgadas. Imprímelas a tamaño real (100 %).`, 'ok');
+}
 function sdRotulosPdf(t){
   const cajas = t.cajasLista || [];
   if(!cajas.length){ showToast('Este traslado no tiene cajas.', 'err'); return; }
@@ -20876,6 +20935,7 @@ function sdRotulosPdf(t){
     sdRotuloDibujar(doc, m + (p % 2) * (w + g), m + Math.floor(p / 2) * (h + g), w, h, Object.assign({ bulto: c.id }, base));
   });
   doc.setProperties({ title: `Rótulos ${t.id}` });
+  try{ doc.viewerPreferences({ PrintScaling: 'None' }); }catch(e){}
   doc.save(`rotulos_${t.id}.pdf`);
   logAccion('saldos_rotulos', { detalle: `${t.id} · ${t.tienda} · ${cajas.length} rótulo(s)` });
   showToast(`Rótulos de ${t.id}: ${cajas.length} (${Math.ceil(cajas.length / 4)} hoja(s) A4).`, 'ok');
@@ -20883,10 +20943,10 @@ function sdRotulosPdf(t){
 function sdExcel(L, nombre){
   if(!L.length){ showToast('No hay traslados para exportar con estos filtros.', 'err'); return; }
   const fecha = f=> rfExcelFecha(f ? f + 'T12:00:00' : '');
-  const resumen = L.map(t=> ({ 'Traslado': t.id, 'Estado': t.estado, 'Tienda': t.tienda, 'Fecha': fecha(t.fecha), 'Bultos (cajas)': t.cajasLista.length, 'Unidades': t._und, 'Usuario': t.usuario || '', 'Cerrado por': t.cerrado_por || '', 'Fecha de cierre': rfExcelFecha(t.cerrado_en), 'Hora de cierre': rfExcelHora(t.cerrado_en) }));
+  const resumen = L.map(t=> ({ 'Traslado': t.id, 'Estado': t.estado, 'Tienda': t.tienda, 'Fecha': fecha(t.fecha), 'Bultos (cajas)': t.cajasLista.length, 'Unidades': t._und, 'Usuario': t.usuario || '', 'Cerrado por': t.cerrado_por || '', 'Guía de remisión': t.guia_pdf ? 'SÍ' : 'NO', 'Fecha de cierre': rfExcelFecha(t.cerrado_en), 'Hora de cierre': rfExcelHora(t.cerrado_en) }));
   const detalle = L.flatMap(t=> t.cajasLista.flatMap(c=> (c.items || []).map(it=> ({ 'Traslado': t.id, 'Tienda': t.tienda, 'Fecha': fecha(t.fecha), 'Caja': c.id, 'SKU': it.sku, 'Descripción': it.descripcion || '', 'Cantidad': Number(it.cantidad) || 0, 'N° fotos': (it.fotos || []).length, 'Usuario': c.usuario || '' }))));
   const wb = XLSX.utils.book_new();
-  const ws1 = XLSX.utils.json_to_sheet(resumen); ws1['!cols'] = [12, 10, 26, 12, 14, 10, 18, 18, 14, 10].map(w=> ({ wch: w })); ws1['!autofilter'] = { ref: ws1['!ref'] }; rfExcelFormatoFechas(ws1, ['Fecha', 'Fecha de cierre']);
+  const ws1 = XLSX.utils.json_to_sheet(resumen); ws1['!cols'] = [12, 10, 26, 12, 14, 10, 18, 18, 10, 14, 10].map(w=> ({ wch: w })); ws1['!autofilter'] = { ref: ws1['!ref'] }; rfExcelFormatoFechas(ws1, ['Fecha', 'Fecha de cierre']);
   const ws2 = XLSX.utils.json_to_sheet(detalle.length ? detalle : [{ 'Traslado': '' }]); ws2['!cols'] = [12, 26, 12, 12, 16, 44, 10, 9, 18].map(w=> ({ wch: w })); ws2['!autofilter'] = { ref: ws2['!ref'] }; rfExcelFormatoFechas(ws2, ['Fecha']);
   XLSX.utils.book_append_sheet(wb, ws1, 'Traslados'); XLSX.utils.book_append_sheet(wb, ws2, 'Detalle por caja');
   XLSX.writeFile(wb, nombre);
@@ -20897,7 +20957,7 @@ async function sdEliminar(id){
   const t = sdLista.find(x=> x.id === id); if(!t || !sdPuedeEliminar()) return;
   if(!confirm(`¿Eliminar el traslado ${id} con sus ${t.cajasLista.length} caja(s) y todas sus fotos? No se puede deshacer.`)) return;
   try{
-    const paths = t.cajasLista.flatMap(c=> (c.items || []).flatMap(it=> (it.fotos || []).map(f=> f.path))).filter(Boolean);
+    const paths = [...t.cajasLista.flatMap(c=> (c.items || []).flatMap(it=> (it.fotos || []).map(f=> f.path))), t.guia_pdf && t.guia_pdf.path].filter(Boolean);
     const batch = db.batch(); t.cajasLista.forEach(c=> batch.delete(saldosCajasRef.doc(c.id))); batch.delete(saldosTrasladosRef.doc(id)); await batch.commit();
     await Promise.allSettled(paths.map(p=> storage.ref().child(p).delete()));
     await logAccion('saldos_eliminado', { detalle: `${id} · ${t.tienda} · ${t.cajasLista.length} caja(s), ${paths.length} foto(s)` });
@@ -20921,6 +20981,7 @@ $('sdsub-panel-lista').addEventListener('click', e=>{
 });
 ['sd-estado-f', 'sd-tienda-f', 'sd-usuario-f', 'sd-desde', 'sd-hasta'].forEach(id=> $(id).addEventListener('change', renderSdLista));
 $('sd-q').addEventListener('input', renderSdLista);
+$('sd-guia-file').addEventListener('change', e=>{ const f = e.target.files[0], t = sdLista.find(x=> x.id === sdSel); e.target.value = ''; if(f && t) sdSubirGuia(t, f); });
 $('sd-det-modal').addEventListener('click', e=>{
   if(e.target.id === 'sd-det-modal' || e.target.closest('#btn-sd-det-volver') || e.target.closest('#btn-sd-det-cerrar')){ sdCerrarDetalle(); return; }
   const ver = e.target.closest('[data-sd-det-ver]'), t = sdLista.find(x=> x.id === sdSel);
@@ -20929,6 +20990,9 @@ $('sd-det-modal').addEventListener('click', e=>{
   const re = e.target.closest('[data-sd-det-reabrir]'); if(re){ sdReabrir(re.dataset.sdDetReabrir); return; }
   const xl = e.target.closest('[data-sd-det-excel]'); if(xl && t){ sdExcel([t], `saldos_${t.id}.xlsx`); return; }
   const ro = e.target.closest('[data-sd-det-rotulos]'); if(ro && t){ sdRotulosPdf(t); return; }
+  const et = e.target.closest('[data-sd-det-etiquetas]'); if(et && t){ sdEtiquetasPdf(t); return; }
+  if(e.target.closest('[data-sd-guia-adjuntar]')){ $('sd-guia-file').click(); return; }
+  if(e.target.closest('[data-sd-guia-quitar]') && t){ sdQuitarGuia(t); return; }
   const el = e.target.closest('[data-sd-det-eliminar]'); if(el) sdEliminar(el.dataset.sdDetEliminar);
 });
 window.addEventListener('keydown', e=>{ if(e.key === 'Escape' && !$('sd-det-modal').hidden && $('rf-lightbox').hidden && $('rf-aviso').hidden && $('cam-modal').hidden) sdCerrarDetalle(); }, true);
@@ -21145,7 +21209,7 @@ const ALM_CUOTA_ARCHIVOS = 5 * 1024 ** 3, ALM_CUOTA_BASE = 1024 ** 3;
 let ALM_MARGEN_HUERFANO_MS = 24 * 3600 * 1000;
 const ALM_CARPETAS = { registros_foto:'Registro fotográfico', vo_comprobantes:'Venta Online · comprobantes', vo_vouchers:'Venta Online · vouchers',
   tomas_inventario:'Toma de inventario', vouchers_agencia:'Campañas · vouchers de agencia', merma_formatos:'Merma · formatos',
-  validadores:'Campañas · fotos de validadores', productos:'Productos · imágenes' };
+  validadores:'Campañas · fotos de validadores', productos:'Productos · imágenes', saldos:'Saldos · fotos de cajas', saldos_guias:'Saldos · guías de remisión' };
 const ALM_COLECCIONES = { movimientos:'Bitácora / historial', kardex:'Kardex', pallets:'Pallets', posiciones:'Layout · posiciones', bloques:'Layout · bloques',
   nichos:'Layout · nichos', rejas:'Layout · rejas', productos:'Productos', usuarios:'Usuarios', contadores:'Correlativos',
   retiros_campana:'Retiros de campaña', campana_items:'Campañas · ítems', campana_registros:'Campañas · registros', guias_registros:'Guías', guia_items:'Guías · ítems',
@@ -21154,7 +21218,8 @@ const ALM_COLECCIONES = { movimientos:'Bitácora / historial', kardex:'Kardex', 
   inventario_observaciones:'Toma de inventario · observaciones', merma_guias:'Merma · guías', merma_guia_items:'Merma · ítems de guías', merma_formatos:'Merma · formatos',
   merma_auditorias:'Merma · auditorías', compras_cargas:'Compras · cargas', compras_items:'Compras · ítems', compras_totales:'Compras · totales',
   compras_campana:'Compras de campaña', compras_campana_items:'Compras de campaña · ítems', vo_comprobantes:'Venta Online · comprobantes',
-  regularizaciones:'Regularizaciones', regularizacion_items:'Regularizaciones · ítems', registros_foto:'Registro fotográfico' };
+  regularizaciones:'Regularizaciones', regularizacion_items:'Regularizaciones · ítems', registros_foto:'Registro fotográfico',
+  saldos_traslados:'Saldos · traslados', saldos_cajas:'Saldos · cajas', rf_marcas:'Registro fotográfico · marcas del layout' };
 let almArchivos = null, almArchivosEn = null, almBase = null, almBaseEn = null, almRefs = null, almBaseCompleta = false, almFallasLista = [];
 // Archivos que los registros dicen tener (ruta → colección y bucket), para avisar si alguno no está en el almacenamiento.
 let almEsperados = null, almFaltPag = 0;
