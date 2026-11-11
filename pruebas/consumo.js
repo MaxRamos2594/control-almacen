@@ -71,7 +71,7 @@ const SIN_MARGEN = 'window.__syncMargen = 0;';
   // Un equipo con una versión antigua escribe un traslado SIN marca de cambio: «↻ Actualizar» lo trae igual (lectura completa).
   await page.evaluate(async ()=>{ switchTab('saldos'); setSdSubtab('lista'); await new Promise(r=> setTimeout(r, 1500)); });
   const r = await fetch(`http://127.0.0.1:8080/v1/projects/${PROYECTO}/databases/(default)/documents/saldos_traslados?documentId=TS-09999`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer owner' },
-    body: JSON.stringify({ fields: { correlativo: { stringValue: 'TS-09999' }, estado: { stringValue: 'CERRADO' }, tienda: { stringValue: 'COMAS' }, fecha: { stringValue: '2026-11-11' }, usuario: { stringValue: 'CELULAR VIEJO' }, usuario_email: { stringValue: 'viejo@ejemplo.com' } } }) });
+    body: JSON.stringify({ fields: { correlativo: { stringValue: 'TS-09999' }, estado: { stringValue: 'CERRADO' }, tienda: { stringValue: 'COMAS' }, fecha: { stringValue: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10) }, usuario: { stringValue: 'CELULAR VIEJO' }, usuario_email: { stringValue: 'viejo@ejemplo.com' } } }) });
   const sinMarca = await page.evaluate(async ()=>{ await sdCargarLista(false); return sdLista.some(t=> t.id === 'TS-09999'); });
   await page.click('#btn-sd-recargar');
   const conActualizar = await page.waitForFunction(()=> sdLista.some(t=> t.id === 'TS-09999'), null, { timeout: 10000 }).then(()=> true, ()=> false);
