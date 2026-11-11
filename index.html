@@ -139,7 +139,10 @@
   #view-saldos #sd-inicio input, #view-saldos #sd-inicio select, #view-saldos #sd-items input{font-size:16px; min-height:44px; box-sizing:border-box;}
   .sd-cajas{display:flex; flex-wrap:wrap; gap:8px;} .sd-caja-chip{border:2px solid var(--line-strong); background:#fff; border-radius:10px; padding:8px 12px; text-align:left; cursor:pointer; min-width:150px;}
   .sd-caja-chip b{display:block; font-size:15px;} .sd-caja-chip span{font-size:12px; color:var(--muted);} .sd-caja-chip.activa{border-color:var(--blue); background:var(--blue-bg);} .sd-caja-chip.vacia{border-style:dashed;}
-  .sd-caja-cab{display:flex; justify-content:space-between; align-items:center; gap:8px;} .sd-caja-cab h3{margin:0;}
+  .sd-caja-cab{display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;} .sd-caja-cab h3{margin:0;} .sd-caja-acc{display:flex; gap:6px; flex-wrap:wrap;}
+  .sd-caja-chip.cerrada{background:#f1f3f5; border-color:#9aa4ae;} .sd-caja-chip.cerrada.activa{border-color:var(--blue); background:#e9eef5;} .sd-caja-chip i{font-style:normal; font-size:11px; font-weight:800; display:block; margin-top:2px;} .sd-caja-chip.abierta i{color:#1b7a3d;} .sd-caja-chip.cerrada i{color:#55606b;}
+  .sd-solo-lect{display:flex; gap:10px; align-items:center; padding:8px 0; border-bottom:1px solid var(--line);} .sd-solo-lect .rf-fotos{margin:0;} .sd-solo-lect .rf-thumb{width:52px; height:52px;} .sd-solo-lect .sl-txt{flex:1;} .sd-solo-lect .sl-cant{font-weight:900; font-size:16px; white-space:nowrap;}
+  .sd-cerrada-aviso{background:#f1f3f5; border-radius:8px; padding:8px 10px; margin:8px 0; font-size:13px;}
   .sd-fila{display:flex; flex-wrap:wrap; justify-content:space-between; gap:6px 14px; width:100%; text-align:left; background:#fff; border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin-bottom:6px; cursor:pointer;}
   .sd-fila:hover{background:#f6f9fd;} .sd-fila .t{font-weight:800;} .sd-est{font-size:11px; font-weight:800; padding:2px 7px; border-radius:10px; background:#e8f5e9; color:#1b5e20;} .sd-est.ABIERTO{background:#fff3e0; color:#a14a00;}
   .sd-det-caja{border:1px solid var(--line); border-radius:8px; padding:10px; margin:10px 0;} .sd-det-caja table{width:100%; border-collapse:collapse; font-size:13px;} .sd-det-caja td, .sd-det-caja th{padding:5px 6px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top;}
@@ -3563,7 +3566,7 @@
         <button type="button" class="rf-iniciar" id="btn-sd-caja" style="margin-top:8px;">📦 Crear caja</button>
       </div>
       <div class="panel" id="sd-caja-panel" style="margin-bottom:12px;" hidden>
-        <div class="sd-caja-cab"><h3 id="sd-caja-tit">Caja</h3><button type="button" class="btn btn-ghost btn-sm" id="btn-sd-caja-quitar" style="color:#8A332A;">🗑 Quitar caja</button></div>
+        <div class="sd-caja-cab"><h3 id="sd-caja-tit">Caja</h3><div class="sd-caja-acc"><button type="button" class="btn btn-primary btn-sm" id="btn-sd-caja-cerrar">🔒 Cerrar caja</button><button type="button" class="btn btn-primary btn-sm" id="btn-sd-caja-abrir" hidden>🔓 Abrir caja</button><button type="button" class="btn btn-ghost btn-sm" id="btn-sd-caja-quitar" style="color:#8A332A;">🗑 Quitar caja</button></div></div>
         <div id="sd-items"></div>
         <button type="button" class="btn btn-ghost" id="btn-sd-add" style="width:100%; margin-top:8px;">+ Agregar producto</button>
       </div>
@@ -4018,8 +4021,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v246';
-const APP_UPDATED = '10/11/2026 12:00';
+const APP_VERSION = 'v247';
+const APP_UPDATED = '11/11/2026 12:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4528,7 +4531,7 @@ function tipoLabel(tipo){
     asistente_consulta:'Consulta al asistente IA', almacenamiento_huerfanos_eliminados:'Archivos huérfanos eliminados (almacenamiento)', almacenamiento_pdfs_comprimidos:'Archivos comprimidos (almacenamiento)',
     reg_foto_creado:'Registro fotográfico creado', reg_foto_eliminado:'Registro fotográfico eliminado', reg_foto_iniciado:'Registro fotográfico iniciado (borrador)',
     reg_foto_confirmado:'Registro fotográfico confirmado', reg_foto_descartado:'Borrador de registro fotográfico descartado', reg_foto_exportado:'Registro fotográfico exportado',
-    reg_foto_reabierto:'Registro fotográfico abierto para modificar', reg_foto_modificado:'Registro fotográfico modificado', reg_foto_modificacion_cancelada:'Modificación de registro fotográfico cancelada', reg_foto_apto_ajuste:'Registro fotográfico: apto para ajuste', reg_foto_posicion_cambiada:'Registro fotográfico: posición cambiada', reg_foto_layout_marca:'Registro fotográfico: posición bloqueada / merma / por inventariar', reg_foto_fusionado:'Registros fotográficos fusionados', reg_foto_sku_editado:'Registro fotográfico: código / descripción editados', reg_foto_costos:'Registro fotográfico: costos asignados', saldos_iniciado:'Saldos: traslado iniciado', saldos_caja_creada:'Saldos: caja creada', saldos_caja_quitada:'Saldos: caja quitada', saldos_cerrado:'Saldos: traslado cerrado', saldos_reabierto:'Saldos: traslado reabierto', saldos_eliminado:'Saldos: traslado eliminado', saldos_exportado:'Saldos: exportado a Excel',
+    reg_foto_reabierto:'Registro fotográfico abierto para modificar', reg_foto_modificado:'Registro fotográfico modificado', reg_foto_modificacion_cancelada:'Modificación de registro fotográfico cancelada', reg_foto_apto_ajuste:'Registro fotográfico: apto para ajuste', reg_foto_posicion_cambiada:'Registro fotográfico: posición cambiada', reg_foto_layout_marca:'Registro fotográfico: posición bloqueada / merma / por inventariar', reg_foto_fusionado:'Registros fotográficos fusionados', reg_foto_sku_editado:'Registro fotográfico: código / descripción editados', reg_foto_costos:'Registro fotográfico: costos asignados', saldos_iniciado:'Saldos: traslado iniciado', saldos_caja_creada:'Saldos: caja creada', saldos_caja_quitada:'Saldos: caja quitada', saldos_caja_cerrada:'Saldos: caja cerrada', saldos_caja_abierta:'Saldos: caja abierta de nuevo', saldos_cerrado:'Saldos: traslado cerrado', saldos_reabierto:'Saldos: traslado reabierto', saldos_eliminado:'Saldos: traslado eliminado', saldos_exportado:'Saldos: exportado a Excel',
     ingreso:'Entrada de pallet', movimiento:'Movimiento', retiro:'Salida (pallet completo)',
     retiro_campana:'Salida (campaña)', retiro_campana_revertido:'↺ Retiro de campaña revertido', producto_agregado:'Adición de producto', transferencia:'Transferencia entre pallets',
     bloqueo:'Bloqueo de posición', desbloqueo:'Desbloqueo de posición',
@@ -20316,8 +20319,9 @@ async function sdIniciar(){
 function sdCargarEnForm(t, cajas){
   sdTraslado = t;
   const foto = (f, nombre)=> ({ id: 'sf' + (++sdFotoN), url: f.url, remoto: f.url, path: f.path, tam: f.tam, nombre });
-  sdCajas = cajas.map(c=> ({ id: c.id, items: [...(c.items || []).map((it, i)=> ({ sku: it.sku || '', descripcion: it.descripcion || '', cantidad: String(it.cantidad || ''), fotos: (it.fotos || []).map(f=> foto(f, 'item' + (i + 1))) })), sdNuevoItem()] }));
-  sdActiva = sdCajas.length - 1;
+  // Las cajas de antes (sin estado) quedan cerradas, menos la última.
+  sdCajas = cajas.map((c, k)=> ({ id: c.id, cerrada: c.estado ? c.estado === 'CERRADA' : k < cajas.length - 1, items: [...(c.items || []).map((it, i)=> ({ sku: it.sku || '', descripcion: it.descripcion || '', cantidad: String(it.cantidad || ''), fotos: (it.fotos || []).map(f=> foto(f, 'item' + (i + 1))) })), sdNuevoItem()] }));
+  const abierta = sdCajas.findIndex(c=> !c.cerrada); sdActiva = abierta >= 0 ? abierta : sdCajas.length - 1;
   $('sd-ok').hidden = true; $('sd-inicio').hidden = true; $('sd-form').hidden = false; renderSdForm(); sdNube('ok');
 }
 async function sdContinuar(id){
@@ -20347,11 +20351,19 @@ function renderSdForm(){
   $('sd-bar-corr').textContent = sdTraslado.id;
   $('sd-bar-info').textContent = `🏬 ${sdTraslado.tienda} · 📅 ${sdFechaTxt(sdTraslado.fecha)}`;
   $('btn-sd-cerrar').textContent = `🔒 Cerrar traslado de saldos del ${sdFechaTxt(sdTraslado.fecha)} · ${sdTraslado.tienda}`;
-  $('sd-cajas').innerHTML = sdCajas.length ? sdCajas.map((c, i)=> `<button type="button" class="sd-caja-chip${i === sdActiva ? ' activa' : ''}${sdProds(c).length ? '' : ' vacia'}" data-sd-caja="${esc(i)}"><b>📦 ${esc(c.id)}</b><span>${esc(sdProds(c).length)} producto(s) · ${esc(anFmt(sdUnd(c)))} und</span></button>`).join('')
+  $('sd-cajas').innerHTML = sdCajas.length ? sdCajas.map((c, i)=> `<button type="button" class="sd-caja-chip ${c.cerrada ? 'cerrada' : 'abierta'}${i === sdActiva ? ' activa' : ''}${sdProds(c).length ? '' : ' vacia'}" data-sd-caja="${esc(i)}"><b>📦 ${esc(c.id)}</b><span>${esc(sdProds(c).length)} producto(s) · ${esc(anFmt(sdUnd(c)))} und</span><i>${c.cerrada ? '🔒 CERRADA' : '✏ ABIERTA'}</i></button>`).join('')
     : '<p class="hint">Todavía no hay cajas. Toca <b>📦 Crear caja</b>.</p>';
   const c = sdCaja(); $('sd-caja-panel').hidden = !c;
   if(c){
-    $('sd-caja-tit').textContent = `📦 Caja ${c.id}`;
+    $('sd-caja-tit').textContent = `📦 Caja ${c.id} · ${c.cerrada ? '🔒 CERRADA' : '✏ ABIERTA'}`;
+    $('btn-sd-caja-cerrar').hidden = c.cerrada; $('btn-sd-caja-abrir').hidden = !c.cerrada; $('btn-sd-add').hidden = c.cerrada;
+  }
+  // Caja cerrada: solo lectura (para cambiarla, «🔓 Abrir caja»).
+  if(c && c.cerrada){
+    $('sd-items').innerHTML = `<div class="sd-cerrada-aviso">🔒 Caja cerrada con ${esc(sdProds(c).length)} producto(s) · ${esc(anFmt(sdUnd(c)))} und. Para agregar o corregir, toca <b>🔓 Abrir caja</b>.</div>` +
+      sdProds(c).map(it=> `<div class="sd-solo-lect"><div class="rf-fotos">${it.fotos.slice(0, 3).map(f=> `<div class="rf-thumb" data-sd-fid="${esc(f.id)}" data-sd-ver="${esc(f.url)}"><img src="${esc(f.url)}" alt=""></div>`).join('')}</div>` +
+        `<div class="sl-txt"><b>${esc(it.sku)}</b><br><span class="hint">${esc(it.descripcion)}</span></div><div class="sl-cant">${esc(anFmt(Number(it.cantidad) || 0))} und</div></div>`).join('');
+  }else if(c){
     $('sd-items').innerHTML = c.items.map((it, i)=> `<div class="rf-item${sdCompleto(it) ? ' completo' : ''}" data-sd-item="${esc(i)}"><div class="rf-item-cab"><b>${sdCompleto(it) ? '✓ ' : ''}Producto ${esc(i + 1)}</b>${c.items.length > 1 && !sdVacio(it) ? `<button type="button" class="rf-del" data-sd-del="${esc(i)}">✕ Quitar</button>` : ''}</div>` +
       `<div class="rf-item-grid"><div class="rf-sku-box"><label>SKU *</label><div class="rf-sku-fila"><input type="text" class="upper${(it._faltan || []).includes('sku') ? ' rf-falta' : ''}" data-sd-campo="sku" value="${esc(it.sku)}" autocomplete="off" autocapitalize="characters" enterkeyhint="next" placeholder="Código o descripción">` +
         `<button type="button" class="rf-scan" data-sd-scan="${esc(i)}" title="Escanear código de barras con la cámara" aria-label="Escanear código de barras">▦</button></div><div class="rf-sug" hidden></div></div>` +
@@ -20363,7 +20375,8 @@ function renderSdForm(){
 }
 function sdResumen(){
   const n = sdCajas.length, prods = sdCajas.reduce((s, c)=> s + sdProds(c).length, 0), und = sdCajas.reduce((s, c)=> s + sdUnd(c), 0);
-  $('sd-resumen').textContent = `${n} caja(s) = ${n} bulto(s) · ${prods} producto(s) · ${anFmt(und)} und`;
+  const cerradas = sdCajas.filter(c=> c.cerrada).length;
+  $('sd-resumen').textContent = `${n} caja(s) = ${n} bulto(s) (${cerradas} cerrada(s)) · ${prods} producto(s) · ${anFmt(und)} und`;
   // El aviso de "falta…" se borra apenas no queda nada a medias.
   if(/\berr\b/.test($('sd-msg').className) && !sdCajas.some(c=> c.items.some(it=> !sdVacio(it) && !sdCompleto(it)))){ $('sd-msg').className = 'msg'; $('sd-msg').textContent = ''; }
 }
@@ -20455,20 +20468,56 @@ function sdRevisarCaja(ci){
   if(!sdProds(c).length){ sdActiva = ci; renderSdForm(); rfAviso(`La caja ${c.id} está vacía`, `Agrégale al menos un producto (SKU, cantidad, descripción y foto) o quítala con «🗑 Quitar caja».`, ()=> sdFoco(0, 'sku')); return false; }
   return true;
 }
+// ---- Cerrar / abrir caja: solo una caja abierta a la vez ----
+const sdAbierta = ()=> sdCajas.findIndex(c=> !c.cerrada);
+async function sdCerrarCaja(ci){
+  const c = sdCajas[ci]; if(!c || c.cerrada) return true;
+  if(!sdRevisarCaja(ci)) return false;
+  if(c.items.some(it=> it.fotos.some(f=> f.subiendo || !f.path))){ rfAviso('Fotos subiendo', `Espera a que terminen de subir las fotos de la caja ${c.id} (o toca las que tienen error para reintentar).`); return false; }
+  const ahora = new Date().toISOString();
+  sdPendientes.delete(c.id); await sdGuardando;
+  await saldosCajasRef.doc(c.id).update(Object.assign(sdDatosCaja(c), { estado:'CERRADA', cerrada_por: currentUserAlias, cerrada_por_email: currentUserEmail, cerrada_en: ahora }));
+  c.cerrada = true; c.items = [...sdProds(c)]; if(!sdPendientes.size) sdNube('ok');
+  await logAccion('saldos_caja_cerrada', { detalle: `${c.id} cerrada (${sdProds(c).length} producto(s), ${sdUnd(c)} und) · ${sdTraslado.id}` });
+  sdLeidos = false;
+  return true;
+}
+async function sdBotonCerrarCaja(){
+  const ci = sdActiva; $('btn-sd-caja-cerrar').disabled = true;
+  try{ if(await sdCerrarCaja(ci)){ renderSdForm(); showToast(`Caja ${sdCajas[ci].id} cerrada. Crea otra caja o cierra el traslado.`, 'ok'); $('btn-sd-caja').scrollIntoView({ behavior:'smooth', block:'center' }); } }
+  catch(err){ console.error(err); showToast('No se pudo cerrar la caja: ' + err.message, 'err'); }
+  finally{ $('btn-sd-caja-cerrar').disabled = false; }
+}
+async function sdAbrirCaja(ci){
+  const c = sdCajas[ci]; if(!c || !c.cerrada) return;
+  $('btn-sd-caja-abrir').disabled = true;
+  try{
+    const otra = sdAbierta();
+    if(otra >= 0 && !(await sdCerrarCaja(otra))) return;   // antes se cierra la que estaba abierta
+    const ahora = new Date().toISOString();
+    await saldosCajasRef.doc(c.id).update({ estado:'ABIERTA', reabierta_por: currentUserAlias, reabierta_en: ahora, actualizado_en: ahora });
+    c.cerrada = false; c.items.push(sdNuevoItem()); sdActiva = ci;
+    await logAccion('saldos_caja_abierta', { detalle: `${c.id} abierta de nuevo · ${sdTraslado.id}` });
+    sdLeidos = false; renderSdForm(); showToast(`Caja ${c.id} abierta.`, 'ok');
+  }catch(err){ console.error(err); showToast('No se pudo abrir la caja: ' + err.message, 'err'); }
+  finally{ $('btn-sd-caja-abrir').disabled = false; }
+}
 async function sdCrearCaja(){
   if(!sdTraslado) return;
-  if(sdActiva >= 0 && !sdRevisarCaja(sdActiva)) return;
+  // La caja abierta se cierra sola (si está completa) antes de crear la siguiente.
+  const ab = sdAbierta();
+  if(ab >= 0){ try{ if(!(await sdCerrarCaja(ab))) return; }catch(err){ console.error(err); showToast('No se pudo cerrar la caja: ' + err.message, 'err'); return; } }
   $('btn-sd-caja').disabled = true;
   try{
     await sdGuardarAhora();
     const id = await sdCorrelativo('saldos_caja', 'CJ'), ahora = new Date().toISOString();
     // La caja es del dueño del traslado (así la ve aunque la haya creado un admin); se guarda quién la creó.
     await saldosCajasRef.doc(id).set({ correlativo: id, traslado_id: sdTraslado.id, tienda: sdTraslado.tienda, fecha: sdTraslado.fecha, usuario: sdTraslado.usuario || currentUserAlias, usuario_email: sdTraslado.usuario_email || currentUserEmail, creado_por: currentUserAlias, creado_por_email: currentUserEmail,
-      items: [], cant_items: 0, unidades: 0, skus: [], fecha_creacion: ahora, actualizado_en: ahora, creado_en: firebase.firestore.FieldValue.serverTimestamp() });
-    sdCajas.push({ id, items: [sdNuevoItem()] }); sdActiva = sdCajas.length - 1;
+      estado:'ABIERTA', items: [], cant_items: 0, unidades: 0, skus: [], fecha_creacion: ahora, actualizado_en: ahora, creado_en: firebase.firestore.FieldValue.serverTimestamp() });
+    sdCajas.push({ id, cerrada: false, items: [sdNuevoItem()] }); sdActiva = sdCajas.length - 1;
     await saldosTrasladosRef.doc(sdTraslado.id).update({ cajas: sdCajas.length, actualizado_en: ahora });
     await logAccion('saldos_caja_creada', { detalle: `${id} en ${sdTraslado.id} · ${sdTraslado.tienda}` });
-    sdLeidos = false; renderSdForm(); showToast(`Caja ${id} creada.`, 'ok'); sdFoco(0, 'sku');
+    sdLeidos = false; renderSdForm(); showMsg('sd-msg', 'ok', ''); showToast(`Caja ${id} creada.`, 'ok'); sdFoco(0, 'sku');
   }catch(err){ console.error(err); showToast('No se pudo crear la caja: ' + err.message, 'err'); }
   finally{ $('btn-sd-caja').disabled = false; }
 }
@@ -20479,7 +20528,7 @@ async function sdQuitarCaja(){
     sdPendientes.delete(c.id); await sdGuardando;
     c.items.forEach(it=> it.fotos.forEach(sdBorrarArchivo));
     await saldosCajasRef.doc(c.id).delete();
-    sdCajas.splice(sdActiva, 1); sdActiva = sdCajas.length - 1;
+    sdCajas.splice(sdActiva, 1); const ab2 = sdAbierta(); sdActiva = ab2 >= 0 ? ab2 : sdCajas.length - 1;
     await saldosTrasladosRef.doc(sdTraslado.id).update({ cajas: sdCajas.length, actualizado_en: new Date().toISOString() });
     await logAccion('saldos_caja_quitada', { detalle: `${c.id} quitada de ${sdTraslado.id}` });
     sdLeidos = false; renderSdForm(); showToast(`Caja ${c.id} quitada.`, 'ok');
@@ -20496,6 +20545,9 @@ async function sdCerrar(){
   try{
     sdCajas.forEach(c=> sdPendientes.add(c.id)); await sdGuardarAhora();
     const ahora = new Date().toISOString();
+    // Las cajas que quedaban abiertas se cierran con el traslado.
+    const abiertas = sdCajas.filter(c=> !c.cerrada);
+    if(abiertas.length){ const b = db.batch(); abiertas.forEach(c=> b.update(saldosCajasRef.doc(c.id), { estado:'CERRADA', cerrada_por: currentUserAlias, cerrada_por_email: currentUserEmail, cerrada_en: ahora })); await b.commit(); }
     await saldosTrasladosRef.doc(t.id).update({ estado:'CERRADO', cajas: n, bultos: n, cajas_ids: sdCajas.map(c=> c.id), unidades: und, cant_items: sdCajas.reduce((s, c)=> s + sdProds(c).length, 0),
       cerrado_por: currentUserAlias, cerrado_por_email: currentUserEmail, cerrado_en: ahora, actualizado_en: ahora });
     await logAccion('saldos_cerrado', { detalle: `${t.id} · ${t.tienda} · ${sdFechaTxt(t.fecha)} · ${n} bulto(s), ${und} und` });
@@ -20509,6 +20561,8 @@ async function sdCerrar(){
 $('btn-sd-iniciar').addEventListener('click', sdIniciar);
 $('btn-sd-caja').addEventListener('click', sdCrearCaja);
 $('btn-sd-caja-quitar').addEventListener('click', sdQuitarCaja);
+$('btn-sd-caja-cerrar').addEventListener('click', sdBotonCerrarCaja);
+$('btn-sd-caja-abrir').addEventListener('click', ()=> sdAbrirCaja(sdActiva));
 $('btn-sd-cerrar').addEventListener('click', sdCerrar);
 $('sd-abiertos').addEventListener('click', e=>{ const b = e.target.closest('[data-sd-continuar]'); if(b) sdContinuar(b.dataset.sdContinuar); });
 $('btn-sd-add').addEventListener('click', ()=>{
@@ -20607,7 +20661,7 @@ function sdAbrir(id){
     `<div class="rf-det-datos"><div><span>Tienda</span><b>🏬 ${esc(t.tienda)}</b></div><div><span>Fecha</span><b>📅 ${esc(sdFechaTxt(t.fecha))}</b></div><div><span>Usuario</span><b>👤 ${esc(t.usuario || '')}</b></div>` +
       `<div><span>Bultos (cajas)</span><b class="sd-bultos">${esc(t.cajasLista.length)}</b></div><div><span>Unidades</span><b>${esc(anFmt(t._und))}</b></div>` +
       (t.cerrado_en ? `<div><span>Cerrado</span><b>${esc(t.cerrado_por || '')} · ${esc(rfFechaTxt(t.cerrado_en))}</b></div>` : '') + `</div>` +
-    (t.cajasLista.length ? t.cajasLista.map(c=> `<div class="sd-det-caja"><b>📦 ${esc(c.id)}</b> <span class="hint">· ${esc((c.items || []).length)} producto(s) · ${esc(anFmt(c.unidades || 0))} und</span>` +
+    (t.cajasLista.length ? t.cajasLista.map(c=> `<div class="sd-det-caja"><b>📦 ${esc(c.id)}</b> <span class="sd-est ${c.estado === 'ABIERTA' ? 'ABIERTO' : ''}">${c.estado === 'ABIERTA' ? '✏ ABIERTA' : '🔒 CERRADA'}</span> <span class="hint">· ${esc((c.items || []).length)} producto(s) · ${esc(anFmt(c.unidades || 0))} und</span>` +
       `<table><thead><tr><th>SKU</th><th>Descripción</th><th class="num">Cantidad</th><th>Fotos</th></tr></thead><tbody>` +
       ((c.items || []).map(it=> `<tr><td><b>${esc(it.sku)}</b></td><td>${esc(it.descripcion || '')}</td><td class="num">${esc(anFmt(it.cantidad))}</td><td><div class="rf-fotos">${(it.fotos || []).map(f=> `<div class="rf-thumb" data-sd-det-ver="${esc(f.url)}"><img src="${esc(f.url)}" alt="" loading="lazy"></div>`).join('')}</div></td></tr>`).join('') || '<tr><td colspan="4" class="hint">Caja sin productos.</td></tr>') +
       `</tbody></table></div>`).join('') : '<p class="hint">Este traslado no tiene cajas.</p>');
