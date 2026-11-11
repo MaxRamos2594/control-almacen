@@ -4149,8 +4149,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v260';
-const APP_UPDATED = '15/11/2026 12:00';
+const APP_VERSION = 'v261';
+const APP_UPDATED = '15/11/2026 16:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -20838,8 +20838,9 @@ function sdAgruparItems(cajas){
   const m = new Map();
   (cajas || []).forEach(c=> (c.items || []).forEach(it=>{
     const k = String(it.sku || '').trim().toUpperCase(); if(!k) return;
-    const x = m.get(k) || { sku: k, descripcion: '', cantidad: 0, cajas: new Set() };
+    const x = m.get(k) || { sku: k, descripcion: '', cantidad: 0, cajas: new Set(), fotos: [] };
     x.cantidad += Number(it.cantidad) || 0; x.cajas.add(c.id); if(!x.descripcion) x.descripcion = it.descripcion || '';
+    (it.fotos || []).forEach(f=>{ if(f && f.url) x.fotos.push(f.url); });
     m.set(k, x);
   }));
   return [...m.values()].sort((a, b)=> b.cantidad - a.cantidad || a.sku.localeCompare(b.sku, 'es', { numeric: true }));
@@ -21024,43 +21025,75 @@ function sdRotulosPdf(t){
   showToast(`Rótulos de ${t.id}: ${cajas.length} (${Math.ceil(cajas.length / 4)} hoja(s) A4).`, 'ok');
 }
 // PDF para gerencia: lo que está filtrado en Registros (resumen por traslado, ítems de cada uno y total por código).
-function sdPdfGerencia(L){
+// Miniatura liviana para el PDF (la foto se achica antes de ponerla).
+const sdImgMiniCache = new Map();
+function sdImagenMini(url){
+  if(!sdImgMiniCache.has(url)) sdImgMiniCache.set(url, (async ()=>{
+    const r = await fetch(url); if(!r.ok) throw new Error('HTTP ' + r.status);
+    const bmp = await createImageBitmap(await r.blob()), k = Math.min(1, 260 / Math.max(bmp.width, bmp.height));
+    const cv = document.createElement('canvas'); cv.width = Math.max(1, Math.round(bmp.width * k)); cv.height = Math.max(1, Math.round(bmp.height * k));
+    const ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height); ctx.drawImage(bmp, 0, 0, cv.width, cv.height);
+    return { data: cv.toDataURL('image/jpeg', 0.7), w: cv.width, h: cv.height };
+  })().catch(err=>{ sdImgMiniCache.delete(url); throw err; }));
+  return sdImgMiniCache.get(url);
+}
+// PDF para gerencia (A4 vertical): lo que está filtrado en Registros — resumen por traslado, ítems de cada uno con
+// sus fotos (hasta 2 por código) y total por código.
+async function sdPdfGerencia(L){
   if(!L.length){ showToast('No hay traslados para exportar con estos filtros.', 'err'); return; }
-  const doc = new jspdf.jsPDF({ unit:'pt', format:'a4', orientation:'landscape' }), W = doc.internal.pageSize.getWidth(), m = 36;
-  const opt = id=> { const el = $(id); return el && el.value ? (el.options ? el.options[el.selectedIndex].text : el.value) : ''; };
-  const filtros = [opt('sd-estado-f') && `Estado: ${opt('sd-estado-f')}`, opt('sd-tienda-f') && `Tienda: ${opt('sd-tienda-f').replace(/^🏬\s*/, '')}`, opt('sd-usuario-f') && `Usuario: ${opt('sd-usuario-f').replace(/^👤\s*/, '')}`,
-    $('sd-desde').value && `Desde: ${sdFechaTxt($('sd-desde').value)}`, $('sd-hasta').value && `Hasta: ${sdFechaTxt($('sd-hasta').value)}`, $('sd-q').value.trim() && `Búsqueda: "${$('sd-q').value.trim()}"`].filter(Boolean);
-  const bultos = L.reduce((s, t)=> s + t.cajasLista.length, 0), und = L.reduce((s, t)=> s + t._und, 0);
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.text('Traslados de saldos', m, 40);
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(90);
-  doc.text(`Origen: ${RF_CD} · ${filtros.length ? filtros.join(' · ') : 'Sin filtros (todos los traslados)'}`, m, 56, { maxWidth: W - 2 * m });
-  doc.text(`Generado por ${currentUserAlias} el ${new Date().toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' })}`, m, 68);
-  doc.setTextColor(0); doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
-  doc.text(`${L.length} traslado(s)   ·   ${bultos} bulto(s)   ·   ${anFmt(und)} unidades`, m, 88);
-  const estilo = { styles: { fontSize: 8.5, cellPadding: 3, halign: 'center' }, headStyles: { fillColor: [27, 36, 48], textColor: 255, halign: 'center' }, margin: { left: m, right: m } };
-  doc.autoTable(Object.assign({ startY: 98, head: [['Traslado', 'Fecha', 'Tienda (destino)', 'Estado', 'Bultos', 'Unidades', 'Códigos', 'Preparado por', 'Guía de remisión']],
-    body: L.map(t=> [t.id, sdFechaTxt(t.fecha), t.tienda, t.estado, t.cajasLista.length, anFmt(t._und), sdAgruparItems(t.cajasLista).length, t.usuario || '', t.guia_pdf ? 'SÍ' : 'NO']),
-    foot: [['TOTAL', '', '', '', bultos, anFmt(und), '', '', '']], footStyles: { fillColor: [234, 241, 251], textColor: 0, fontStyle: 'bold', halign: 'center' } }, estilo));
-  // Detalle: ítems de cada traslado.
-  L.forEach(t=>{
-    let y = doc.lastAutoTable.finalY + 18; if(y > doc.internal.pageSize.getHeight() - 80){ doc.addPage(); y = 40; }
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.text(`${t.id} · ${t.tienda} · ${sdFechaTxt(t.fecha)} · ${t.cajasLista.length} bulto(s) · ${anFmt(t._und)} und · ${t.estado}`, m, y);
-    const it = sdAgruparItems(t.cajasLista);
-    doc.autoTable(Object.assign({ startY: y + 6, head: [['SKU', 'Descripción', 'Cantidad', 'Cajas']], body: it.length ? it.map(x=> [x.sku, x.descripcion, anFmt(x.cantidad), [...x.cajas].join(', ')]) : [['', 'Sin productos', '', '']],
-      columnStyles: { 1: { cellWidth: 300 } } }, estilo));
-  });
-  // Total por código de todo lo filtrado.
-  const tot = sdAgruparItems(L.flatMap(t=> t.cajasLista));
-  let y = doc.lastAutoTable.finalY + 22; if(y > doc.internal.pageSize.getHeight() - 80){ doc.addPage(); y = 40; }
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.text(`Total por código (${tot.length} código(s))`, m, y);
-  doc.autoTable(Object.assign({ startY: y + 6, head: [['SKU', 'Descripción', 'Cantidad total', 'Traslados']],
-    body: tot.map(x=> [x.sku, x.descripcion, anFmt(x.cantidad), L.filter(t=> t.cajasLista.some(c=> x.cajas.has(c.id))).map(t=> t.id).join(', ')]), columnStyles: { 1: { cellWidth: 300 } } }, estilo));
-  const n = doc.getNumberOfPages();
-  for(let i = 1; i <= n; i++){ doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(120); doc.text(`Página ${i} de ${n}`, W - m, doc.internal.pageSize.getHeight() - 16, { align: 'right' }); }
-  doc.setProperties({ title: 'Traslados de saldos' });
-  doc.save(`saldos_gerencia_${new Date().toISOString().slice(0, 10)}.pdf`);
-  logAccion('saldos_exportado', { detalle: `PDF para gerencia: ${L.length} traslado(s), ${bultos} bulto(s)${filtros.length ? ' · ' + filtros.join(' · ') : ''}` });
-  showToast(`PDF con ${L.length} traslado(s).`, 'ok');
+  const btn = $('btn-sd-pdf'), txtBtn = btn ? btn.textContent : '';
+  if(btn){ btn.disabled = true; }
+  try{
+    // Primero las fotos (miniaturas), con avance.
+    const porTs = new Map(L.map(t=> [t.id, sdAgruparItems(t.cajasLista)]));
+    const urls = [...new Set([...porTs.values()].flatMap(items=> items.flatMap(x=> x.fotos.slice(0, 2))))], imgs = new Map(); let n = 0;
+    for(const u of urls){ n++; if(btn) btn.textContent = `⏳ Fotos ${n} de ${urls.length}…`; try{ imgs.set(u, await sdImagenMini(u)); }catch(e){ console.warn('Foto no disponible para el PDF:', u, e); } }
+    if(btn) btn.textContent = '⏳ Armando PDF…';
+    const doc = new jspdf.jsPDF({ unit:'pt', format:'a4', orientation:'portrait' }), W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), m = 30;
+    const opt = id=> { const el = $(id); return el && el.value ? (el.options ? el.options[el.selectedIndex].text : el.value) : ''; };
+    const filtros = [opt('sd-estado-f') && `Estado: ${opt('sd-estado-f')}`, opt('sd-tienda-f') && `Tienda: ${opt('sd-tienda-f').replace(/^🏬\s*/, '')}`, opt('sd-usuario-f') && `Usuario: ${opt('sd-usuario-f').replace(/^👤\s*/, '')}`,
+      $('sd-desde').value && `Desde: ${sdFechaTxt($('sd-desde').value)}`, $('sd-hasta').value && `Hasta: ${sdFechaTxt($('sd-hasta').value)}`, $('sd-q').value.trim() && `Búsqueda: "${$('sd-q').value.trim()}"`].filter(Boolean);
+    const bultos = L.reduce((s, t)=> s + t.cajasLista.length, 0), und = L.reduce((s, t)=> s + t._und, 0);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.text('Traslados de saldos', m, 40);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(90);
+    doc.text(`Origen: ${RF_CD} · ${filtros.length ? filtros.join(' · ') : 'Sin filtros (todos los traslados)'}`, m, 56, { maxWidth: W - 2 * m });
+    doc.text(`Generado por ${currentUserAlias} el ${new Date().toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' })}`, m, 68);
+    doc.setTextColor(0); doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
+    doc.text(`${L.length} traslado(s)   ·   ${bultos} bulto(s)   ·   ${anFmt(und)} unidades`, m, 88);
+    const estilo = { styles: { fontSize: 8, cellPadding: 3, halign: 'center', valign: 'middle' }, headStyles: { fillColor: [27, 36, 48], textColor: 255, halign: 'center' }, margin: { left: m, right: m, bottom: 30 } };
+    doc.autoTable(Object.assign({ startY: 98, head: [['Traslado', 'Fecha', 'Tienda (destino)', 'Estado', 'Bultos', 'Und.', 'Ítems', 'Preparado por', 'Guía']],
+      body: L.map(t=> [t.id, sdFechaTxt(t.fecha), t.tienda, t.estado, t.cajasLista.length, anFmt(t._und), porTs.get(t.id).length, t.usuario || '', t.guia_pdf ? 'SÍ' : 'NO']),
+      foot: [['TOTAL', '', '', '', bultos, anFmt(und), '', '', '']], footStyles: { fillColor: [234, 241, 251], textColor: 0, fontStyle: 'bold', halign: 'center' } }, estilo));
+    // Detalle: ítems de cada traslado, con sus fotos.
+    const FOTO = 46;
+    L.forEach(t=>{
+      let y = doc.lastAutoTable.finalY + 18; if(y > H - 110){ doc.addPage(); y = 40; }
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.text(`${t.id} · ${t.tienda} · ${sdFechaTxt(t.fecha)} · ${t.cajasLista.length} bulto(s) · ${anFmt(t._und)} und · ${t.estado}`, m, y, { maxWidth: W - 2 * m });
+      const it = porTs.get(t.id);
+      doc.autoTable(Object.assign({ startY: y + 6, head: [['Foto', 'SKU', 'Descripción', 'Cantidad', 'Cajas']],
+        body: it.length ? it.map(x=> ['', x.sku, x.descripcion, anFmt(x.cantidad), [...x.cajas].join(', ')]) : [['', '', 'Sin productos', '', '']],
+        columnStyles: { 0: { cellWidth: 2 * FOTO + 10, minCellHeight: FOTO + 6 }, 2: { cellWidth: 170 } },
+        didDrawCell: d=>{
+          if(d.section !== 'body' || d.column.index !== 0 || !it[d.row.index]) return;
+          it[d.row.index].fotos.slice(0, 2).forEach((u, k)=>{ const im = imgs.get(u); if(!im) return;
+            const e = Math.min(FOTO / im.w, FOTO / im.h), w = im.w * e, h = im.h * e;
+            doc.addImage(im.data, 'JPEG', d.cell.x + 4 + k * (FOTO + 2) + (FOTO - w) / 2, d.cell.y + (d.cell.height - h) / 2, w, h); });
+        } }, estilo));
+    });
+    // Total por código de todo lo filtrado.
+    const tot = sdAgruparItems(L.flatMap(t=> t.cajasLista));
+    let y = doc.lastAutoTable.finalY + 22; if(y > H - 110){ doc.addPage(); y = 40; }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.text(`Total por código (${tot.length} código(s))`, m, y);
+    doc.autoTable(Object.assign({ startY: y + 6, head: [['SKU', 'Descripción', 'Cantidad total', 'Traslados']],
+      body: tot.map(x=> [x.sku, x.descripcion, anFmt(x.cantidad), L.filter(t=> t.cajasLista.some(c=> x.cajas.has(c.id))).map(t=> t.id).join(', ')]), columnStyles: { 1: { cellWidth: 200 } } }, estilo));
+    const np = doc.getNumberOfPages();
+    for(let i = 1; i <= np; i++){ doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(120); doc.text(`Página ${i} de ${np}`, W - m, H - 14, { align: 'right' }); }
+    doc.setProperties({ title: 'Traslados de saldos' });
+    doc.save(`saldos_gerencia_${new Date().toISOString().slice(0, 10)}.pdf`);
+    logAccion('saldos_exportado', { detalle: `PDF para gerencia: ${L.length} traslado(s), ${bultos} bulto(s), ${imgs.size} foto(s)${filtros.length ? ' · ' + filtros.join(' · ') : ''}` });
+    showToast(`PDF con ${L.length} traslado(s) y ${imgs.size} foto(s).`, 'ok');
+  }catch(err){ console.error(err); showToast('No se pudo armar el PDF: ' + (err.message || err), 'err'); }
+  finally{ if(btn){ btn.disabled = false; btn.textContent = txtBtn; } }
 }
 function sdExcel(L, nombre){
   if(!L.length){ showToast('No hay traslados para exportar con estos filtros.', 'err'); return; }

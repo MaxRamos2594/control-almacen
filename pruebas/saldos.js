@@ -171,17 +171,20 @@ const png = path.join(__dirname, 'salida', 'sd_foto.png');
   const pdfG = await page.evaluate(async ()=>{
     const { jsPDF } = window.jspdf, saveOrig = jsPDF.API.save; let b64 = '', nombre = '';
     jsPDF.API.save = function(n){ nombre = n; b64 = this.output('datauristring').split(',')[1]; };
-    try{ document.getElementById('btn-sd-pdf').click(); } finally { jsPDF.API.save = saveOrig; }
-    const d = await pdfjsLib.getDocument({ data: Uint8Array.from(atob(b64), c=> c.charCodeAt(0)) }).promise; let txt = '';
-    for(let i = 1; i <= d.numPages; i++) txt += (await (await d.getPage(i)).getTextContent()).items.map(x=> x.str).join(' ') + ' ';
+    try{ document.getElementById('btn-sd-pdf').click(); for(let i = 0; i < 100 && !b64; i++) await new Promise(r=> setTimeout(r, 200)); } finally { jsPDF.API.save = saveOrig; }
+    const d = await pdfjsLib.getDocument({ data: Uint8Array.from(atob(b64), c=> c.charCodeAt(0)) }).promise; let txt = '', fotos = 0;
+    for(let i = 1; i <= d.numPages; i++){ const pg = await d.getPage(i); txt += (await pg.getTextContent()).items.map(x=> x.str).join(' ') + ' ';
+      fotos += (await pg.getOperatorList()).fnArray.filter(f=> f === pdfjsLib.OPS.paintImageXObject || f === pdfjsLib.OPS.paintJpegXObject).length; }
+    const vp1 = (await d.getPage(1)).getViewport({ scale: 1 }); window.__pdfG = { fotos, w: Math.round(vp1.width), h: Math.round(vp1.height) };
     const v = (await d.getPage(1)).getViewport({ scale: 1.5 }), cv = document.createElement('canvas'); cv.width = v.width; cv.height = v.height; await (await d.getPage(1)).render({ canvasContext: cv.getContext('2d'), viewport: v }).promise;
     return { nombre, txt, png: cv.toDataURL('image/png').split(',')[1] };
   });
   fs.writeFileSync(path.join(__dirname, 'salida', 'saldos_gerencia.png'), Buffer.from(pdfG.png, 'base64'));
+  const pdfGx = await page.evaluate(()=> window.__pdfG);
   await page.selectOption('#sd-tienda-f', '');
   verificar(/^saldos_gerencia_\d{4}-\d{2}-\d{2}\.pdf$/.test(pdfG.nombre) && /Traslados de saldos/.test(pdfG.txt) && /Tienda: COMAS/.test(pdfG.txt) && /1 traslado\(s\)\s+·\s+2 bulto\(s\)\s+·\s+7 unidades/.test(pdfG.txt) &&
-    /TS-00001/.test(pdfG.txt) && /PELOTA ROJA/.test(pdfG.txt) && /Total por código/.test(pdfG.txt) && /Página 1 de/.test(pdfG.txt),
-    `PDF para gerencia con lo filtrado (${pdfG.nombre}): resumen por traslado, ítems y total por código`);
+    /TS-00001/.test(pdfG.txt) && /PELOTA ROJA/.test(pdfG.txt) && /Total por código/.test(pdfG.txt) && /Página 1 de/.test(pdfG.txt) && pdfGx.w === 595 && pdfGx.h === 842 && pdfGx.fotos >= 2,
+    `PDF para gerencia con lo filtrado (${pdfG.nombre}): A4 vertical (${pdfGx.w}×${pdfGx.h}), resumen por traslado, ítems con ${pdfGx.fotos} foto(s) y total por código`);
   await page.fill('#sd-q', 'caja azul'); const busca = await page.evaluate(()=> document.querySelectorAll('#sd-lista [data-sd-abrir]').length);
   await page.fill('#sd-q', 'zzz'); const nada = await page.evaluate(()=> document.querySelectorAll('#sd-lista [data-sd-abrir]').length);
   await page.fill('#sd-q', '');
