@@ -199,6 +199,21 @@ const png = path.join(__dirname, 'salida', 'sd_foto.png');
   verificar(medida.n === 2 && medida.w === 384 && medida.h === 288 && medida.desborde === 0 && /ORIGEN: CD VENEZUELA DESTINO: COMAS/.test(medida.txt) && /TS-00001/.test(medida.txt) &&
     paginasEtq.n === 2 && paginasEtq.w === 288 && paginasEtq.h === 216 && botonImp,
     `Imprimir directo: ${medida.n} etiquetas de 4 × 3 in (${medida.w}×${medida.h} px), ${paginasEtq.n} páginas de impresión de ${paginasEtq.w}×${paginasEtq.h} pt, todo el texto dentro de la etiqueta`);
+  // Ajustes de la etiqueta (esta PC): alto y corrimiento; «Imprimir 1 de prueba» saca una sola.
+  await page.evaluate(()=>{ switchTab('saldos'); setSdSubtab('lista'); });
+  await page.waitForSelector('#sd-lista [data-sd-abrir="TS-00001"]', { timeout: 10000 });
+  await page.click('#sd-lista [data-sd-abrir="TS-00001"]');
+  await page.click('.sd-etq-aj summary');
+  await page.fill('[data-sd-etq="alto"]', '3.5'); await page.fill('[data-sd-etq="dy"]', '3');
+  await page.click('[data-sd-etq-prueba]');
+  const aj = await page.evaluate(()=>{ const h = $('sd-etq-frame').contentDocument.documentElement.outerHTML;
+    return { guardado: localStorage.getItem('sd:etq'), n: (h.match(/class="et"/g) || []).length, page: /@page\{ size:4in 3\.5in; margin:0; \}/.test(h), mueve: /translate\(0mm, 3mm\)/.test(h), resumen: document.querySelector('.sd-etq-aj summary').textContent }; });
+  await (await page.$('#sd-detalle')).screenshot({ path: path.join(__dirname, 'salida', 'saldos_etq_ajustes.png') });
+  await page.click('[data-sd-etq-reset]');
+  const reset = await page.evaluate(()=> JSON.stringify(sdEtqConfig()));
+  await page.evaluate(()=> sdCerrarDetalle());
+  verificar(aj.n === 1 && aj.page && aj.mueve && /"alto":3\.5/.test(aj.guardado) && /3 × 3\.5 in|4 × 3\.5 in · ↔ 0 mm ↕ 3 mm/.test(aj.resumen) && reset === '{"ancho":4,"alto":3,"dx":0,"dy":0,"borde":0.04}',
+    `Ajustes de la etiqueta: ${aj.resumen}; la prueba imprime 1 etiqueta de 4 × 3,5 in bajada 3 mm; «Valores de fábrica» vuelve a 4 × 3`);
   // Guía de remisión: un PDF pesado (más de 700 KB) se reduce antes de subir y queda en el traslado.
   const guiaPdf = path.join(__dirname, 'salida', 'guia_prueba.pdf');
   const b64g = await page.evaluate(()=>{ const cv = document.createElement('canvas'); cv.width = cv.height = 1400; const ctx = cv.getContext('2d'), im = ctx.createImageData(1400, 1400);

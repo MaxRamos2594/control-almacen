@@ -152,7 +152,7 @@
   .sd-fila{display:flex; flex-wrap:wrap; justify-content:space-between; gap:6px 14px; width:100%; text-align:left; background:#fff; border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin-bottom:6px; cursor:pointer;}
   .sd-fila:hover{background:#f6f9fd;} .sd-fila .t{font-weight:800;} .sd-est{font-size:11px; font-weight:800; padding:2px 7px; border-radius:10px; background:#e8f5e9; color:#1b5e20;} .sd-est.ABIERTO{background:#fff3e0; color:#a14a00;}
   .sd-det-caja{border:1px solid var(--line); border-radius:8px; padding:10px; margin:10px 0;} .sd-det-caja table{width:100%; border-collapse:collapse; font-size:13px;} .sd-det-caja td, .sd-det-caja th{padding:5px 6px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top;}
-  .sd-det-caja .num{text-align:right;} .sd-guia{background:#f6f8fb; border:1px solid var(--line); border-radius:8px; padding:8px 10px; margin:10px 0; display:flex; flex-wrap:wrap; gap:6px; align-items:center;} .sd-guia .hint#sd-guia-msg{width:100%;} .sd-bultos{font-size:22px; font-weight:900;}
+  .sd-det-caja .num{text-align:right;} .sd-etq-aj{background:#fffbea; border:1px solid #f0d58a; border-radius:8px; padding:6px 10px; margin:6px 0 10px;} .sd-etq-aj summary{cursor:pointer; font-weight:700; font-size:13px;} .sd-etq-aj-c{display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end; margin-top:8px;} .sd-etq-aj-c label{display:flex; flex-direction:column; font-size:11px; font-weight:700; gap:3px;} .sd-etq-aj-c input{width:110px; margin:0; padding:5px 7px;} .sd-guia{background:#f6f8fb; border:1px solid var(--line); border-radius:8px; padding:8px 10px; margin:10px 0; display:flex; flex-wrap:wrap; gap:6px; align-items:center;} .sd-guia .hint#sd-guia-msg{width:100%;} .sd-bultos{font-size:22px; font-weight:900;}
   #view-regfoto .rf-pos-campo input{font-size:20px; font-weight:800; letter-spacing:.06em; border:2px solid #2b4c6f;}
   .rf-pasos{display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;}
   .rf-paso{flex:1 1 0; min-width:0; display:flex; gap:8px; align-items:center; background:#fff; border:1px solid var(--line); border-radius:12px; padding:8px 12px; font-weight:700; font-size:13px; color:var(--ink-soft);}
@@ -4123,8 +4123,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v255';
-const APP_UPDATED = '13/11/2026 17:00';
+const APP_VERSION = 'v256';
+const APP_UPDATED = '13/11/2026 21:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -20820,7 +20820,7 @@ function sdAbrir(id){
     `<div class="rf-det-datos"><div><span>Tienda</span><b>🏬 ${esc(t.tienda)}</b></div><div><span>Fecha</span><b>📅 ${esc(sdFechaTxt(t.fecha))}</b></div><div><span>Usuario</span><b>👤 ${esc(t.usuario || '')}</b></div>` +
       `<div><span>Bultos (cajas)</span><b class="sd-bultos">${esc(t.cajasLista.length)}</b></div><div><span>Unidades</span><b>${esc(anFmt(t._und))}</b></div>` +
       (t.cerrado_en ? `<div><span>Cerrado</span><b>${esc(t.cerrado_por || '')} · ${esc(rfFechaTxt(t.cerrado_en))}</b></div>` : '') + `</div>` +
-    sdGuiaHtml(t, dueno) +
+    sdGuiaHtml(t, dueno) + (t.estado === 'CERRADO' ? sdEtqAjustesHtml(t) : '') +
     (t.cajasLista.length ? t.cajasLista.map(c=> `<div class="sd-det-caja"><b>📦 ${esc(c.id)}</b> <span class="sd-est ${c.estado === 'ABIERTA' ? 'ABIERTO' : ''}">${c.estado === 'ABIERTA' ? '✏ ABIERTA' : '🔒 CERRADA'}</span> <span class="hint">· ${esc((c.items || []).length)} producto(s) · ${esc(anFmt(c.unidades || 0))} und</span>` +
       `<table><thead><tr><th>SKU</th><th>Descripción</th><th class="num">Cantidad</th><th>Fotos</th></tr></thead><tbody>` +
       ((c.items || []).map(it=> `<tr><td><b>${esc(it.sku)}</b></td><td>${esc(it.descripcion || '')}</td><td class="num">${esc(anFmt(it.cantidad))}</td><td><div class="rf-fotos">${(it.fotos || []).map(f=> `<div class="rf-thumb" data-sd-det-ver="${esc(f.url)}"><img src="${esc(f.url)}" alt="" loading="lazy"></div>`).join('')}</div></td></tr>`).join('') || '<tr><td colspan="4" class="hint">Caja sin productos.</td></tr>') +
@@ -20910,9 +20910,15 @@ function sdRotuloDibujar(doc, x, y, w, h, d){
 // ---- Impresión directa de etiquetas (Godex G500 u otra térmica), sin PDF ----
 // Se arma una página por etiqueta de exactamente 4 × 3 pulgadas sin márgenes (@page) y se abre el cuadro de impresión
 // del navegador: se elige la Godex y listo. Mismo diseño que el rótulo (filas con las mismas proporciones).
-const SD_ETQ = { ancho: 4, alto: 3, borde: 0.04 };   // pulgadas
-function sdEtiquetasHtml(t){
-  const cajas = t.cajasLista || [];
+// Tamaño de la etiqueta y corrimiento (mm) para ajustar la impresora: se guardan en esta PC.
+const SD_ETQ_DEF = { ancho: 4, alto: 3, dx: 0, dy: 0 };
+function sdEtqConfig(){ let c = {}; try{ c = JSON.parse(localStorage.getItem('sd:etq') || '{}') || {}; }catch(e){}
+  const n = (v, d, min, max)=> Number.isFinite(+v) && v !== '' && v !== null ? Math.min(max, Math.max(min, +v)) : d;
+  return { ancho: n(c.ancho, 4, 1, 8), alto: n(c.alto, 3, 1, 8), dx: n(c.dx, 0, -20, 20), dy: n(c.dy, 0, -20, 20), borde: 0.04 }; }
+function sdEtqGuardar(c){ try{ localStorage.setItem('sd:etq', JSON.stringify(c)); }catch(e){} }
+function sdEtiquetasHtml(t, soloPrimera){
+  const SD_ETQ = sdEtqConfig();
+  const cajas = soloPrimera ? (t.cajasLista || []).slice(0, 1) : (t.cajasLista || []);
   const W = SD_ETQ.ancho - 2 * SD_ETQ.borde, H = SD_ETQ.alto - 2 * SD_ETQ.borde;
   const total = SD_ROT_FILAS.reduce((s, f)=> s + f[1], 0), k = H * 72 / total;   // escala: puntos del Excel → puntos de la etiqueta
   const base = { origen: RF_CD, destino: t.tienda, total: String(cajas.length), obs: `SALDOS PREPARADOS POR: ${t.usuario || ''}`, ts: t.id, fecha: sdFechaTxt(t.fecha) };
@@ -20926,7 +20932,7 @@ function sdEtiquetasHtml(t){
 html,body{ margin:0; padding:0; background:#fff; }
 .et{ width:${SD_ETQ.ancho}in; height:${SD_ETQ.alto}in; padding:${SD_ETQ.borde}in; overflow:hidden; break-after:page; page-break-after:always; font-family:Arial,Helvetica,sans-serif; }
 .et:last-child{ break-after:auto; page-break-after:auto; }
-.r{ width:${W}in; height:${H}in; border:2.2pt solid #000; display:flex; flex-direction:column; }
+.r{ width:${W}in; height:${H}in; border:2.2pt solid #000; display:flex; flex-direction:column; transform:translate(${SD_ETQ.dx}mm, ${SD_ETQ.dy}mm); }
 .f{ display:flex; width:100%; } .f > div{ flex:1 1 100%; } .f.dos > div:first-child{ flex:0 0 ${(10 / 21 * 100).toFixed(3)}%; border-right:1.6pt solid #000; } .f.dos > div:last-child{ flex:1 1 auto; }
 .cab{ background:#000; color:#fff; font-weight:bold; display:flex; align-items:center; justify-content:center; text-align:center; }
 .val{ display:flex; align-items:center; justify-content:center; text-align:center; border-top:1.6pt solid #000; border-bottom:1.6pt solid #000; overflow:hidden; padding:0 3pt; white-space:nowrap; color:#000; }
@@ -20937,25 +20943,38 @@ document.querySelectorAll('.val span').forEach(s=>{ const c = s.parentNode; let 
   while((s.offsetWidth > c.clientWidth - 4 || s.offsetHeight > c.clientHeight) && fs > 6){ fs -= 0.5; s.style.fontSize = fs + 'pt'; } });
 <\/script></body></html>`;
 }
-function sdEtiquetasImprimir(t){
-  const cajas = t.cajasLista || [];
+function sdEtiquetasImprimir(t, soloPrimera){
+  const cajas = soloPrimera ? (t.cajasLista || []).slice(0, 1) : (t.cajasLista || []);
   if(!cajas.length){ showToast('Este traslado no tiene cajas.', 'err'); return; }
   const previo = $('sd-etq-frame'); if(previo) previo.remove();
   const fr = document.createElement('iframe'); fr.id = 'sd-etq-frame';
   fr.style.cssText = 'position:fixed; right:0; bottom:0; width:0; height:0; border:0; visibility:hidden;';
   document.body.appendChild(fr);
-  const doc = fr.contentWindow.document; doc.open(); doc.write(sdEtiquetasHtml(t)); doc.close();
-  logAccion('saldos_rotulos', { detalle: `${t.id} · ${t.tienda} · ${cajas.length} etiqueta(s) 4×3 impresas directo` });
+  const doc = fr.contentWindow.document; doc.open(); doc.write(sdEtiquetasHtml(t, soloPrimera)); doc.close();
+  const c = sdEtqConfig();
+  logAccion('saldos_rotulos', { detalle: `${t.id} · ${t.tienda} · ${cajas.length} etiqueta(s) ${c.ancho}×${c.alto} impresas directo${soloPrimera ? ' (prueba)' : ''}` });
   if(window.__sdNoImprimir) return;   // pruebas: solo se arma la página
   setTimeout(()=>{ try{ fr.contentWindow.focus(); fr.contentWindow.print(); }catch(err){ console.error(err); showToast('No se pudo abrir la impresión: ' + err.message, 'err'); } }, 250);
-  showToast(`Imprimiendo ${cajas.length} etiqueta(s) de ${t.id}: elige la Godex, márgenes "Ninguno" y escala 100 %.`, 'ok');
+  showToast(soloPrimera ? 'Etiqueta de prueba: revisa que quede centrada y ajusta ↕ ↔ si hace falta.' : `Imprimiendo ${cajas.length} etiqueta(s) de ${t.id}: Godex, papel ${sdEtqConfig().ancho}×${sdEtqConfig().alto}, márgenes "Ninguno", sin encabezados.`, 'ok');
 }
 function sdAyudaGodex(){
+  const c = sdEtqConfig();
   rfAviso('Configurar la Godex (una sola vez)',
-    '1) En Windows: Dispositivos e impresoras → Godex G500 → Preferencias de impresión → Papel / Stock: Ancho 4.00 in, Alto 3.00 in (horizontal), tipo "Etiqueta con separación (gap)". ' +
-    '2) Calibra el rollo: con la impresora encendida, mantén presionado FEED hasta que avance y suéltalo (mide la etiqueta sola). ' +
-    '3) Al imprimir desde la app: Impresora Godex, Márgenes "Ninguno", Escala 100 % y "Gráficos de fondo" activado. ' +
-    '4) Para imprimir sin el cuadro de impresión: abre Chrome con un acceso directo que tenga "--kiosk-printing" y la Godex como impresora predeterminada.');
+    `1) CALIBRAR: con la Godex encendida y el rollo puesto, mantén presionado FEED hasta que avance varias etiquetas y suéltalo: así detecta dónde empieza cada etiqueta (si no, el rótulo sale corrido hacia arriba). ` +
+    `2) DRIVER: Windows → Dispositivos e impresoras → Godex G500 → Preferencias de impresión → Papel (Stock): crea uno de ${c.ancho} × ${c.alto} pulgadas, orientación horizontal, tipo "Etiquetas con separación (gap)". ` +
+    `3) AL IMPRIMIR (Chrome): Destino Godex → "Más opciones de configuración": Tamaño del papel = el de ${c.ancho} × ${c.alto}; Márgenes = Ninguno; Escala = Predeterminada (100 %); DESMARCA "Encabezados y pies de página"; MARCA "Gráficos de fondo". ` +
+    `4) Si aún queda corrido: usa "⚙ Ajustes de la etiqueta" (↕ en mm: positivo baja, negativo sube) y "Imprimir 1 de prueba". ` +
+    `5) Sin el cuadro de impresión: Godex como predeterminada y Chrome abierto con un acceso directo que termine en --kiosk-printing.`);
+}
+function sdEtqAjustesHtml(t){
+  const c = sdEtqConfig();
+  return `<details class="sd-etq-aj"><summary>⚙ Ajustes de la etiqueta (esta PC): ${esc(c.ancho)} × ${esc(c.alto)} in${c.dx || c.dy ? ` · ↔ ${esc(c.dx)} mm ↕ ${esc(c.dy)} mm` : ''}</summary>` +
+    `<div class="sd-etq-aj-c"><label>Ancho (in)<input type="number" step="0.05" min="1" max="8" data-sd-etq="ancho" value="${esc(c.ancho)}"></label>` +
+    `<label>Alto (in)<input type="number" step="0.05" min="1" max="8" data-sd-etq="alto" value="${esc(c.alto)}"></label>` +
+    `<label>↕ Bajar / subir (mm)<input type="number" step="0.5" min="-20" max="20" data-sd-etq="dy" value="${esc(c.dy)}"></label>` +
+    `<label>↔ Derecha / izquierda (mm)<input type="number" step="0.5" min="-20" max="20" data-sd-etq="dx" value="${esc(c.dx)}"></label>` +
+    `<button type="button" class="btn btn-primary btn-sm" data-sd-etq-prueba="${esc(t.id)}">🖨 Imprimir 1 de prueba</button><button type="button" class="btn btn-ghost btn-sm" data-sd-etq-reset>↺ Valores de fábrica</button></div>` +
+    `<p class="hint">Positivo en ↕ baja el rótulo; negativo lo sube. Se guarda solo en esta computadora (la de la Godex).</p></details>`;
 }
 // Etiqueta en PDF (alternativa): 4 × 3 pulgadas (288 × 216 pt), un rótulo por etiqueta.
 function sdEtiquetasPdf(t){
@@ -21033,6 +21052,9 @@ $('sdsub-panel-lista').addEventListener('click', e=>{
 });
 ['sd-estado-f', 'sd-tienda-f', 'sd-usuario-f', 'sd-desde', 'sd-hasta'].forEach(id=> $(id).addEventListener('change', renderSdLista));
 $('sd-q').addEventListener('input', renderSdLista);
+$('sd-det-modal').addEventListener('input', e=>{ const k = e.target.dataset && e.target.dataset.sdEtq; if(!k) return;
+  const c = sdEtqConfig(); c[k] = e.target.value === '' ? SD_ETQ_DEF[k] : +e.target.value; delete c.borde; sdEtqGuardar(c);
+  const s = document.querySelector('.sd-etq-aj summary'), n = sdEtqConfig(); if(s) s.textContent = `⚙ Ajustes de la etiqueta (esta PC): ${n.ancho} × ${n.alto} in` + (n.dx || n.dy ? ` · ↔ ${n.dx} mm ↕ ${n.dy} mm` : ''); });
 $('sd-guia-file').addEventListener('change', e=>{ const f = e.target.files[0], t = sdLista.find(x=> x.id === sdSel); e.target.value = ''; if(f && t) sdSubirGuia(t, f); });
 $('sd-det-modal').addEventListener('click', e=>{
   if(e.target.id === 'sd-det-modal' || e.target.closest('#btn-sd-det-volver') || e.target.closest('#btn-sd-det-cerrar')){ sdCerrarDetalle(); return; }
@@ -21046,6 +21068,8 @@ $('sd-det-modal').addEventListener('click', e=>{
   const im = e.target.closest('[data-sd-det-imprimir]'); if(im && t){ sdEtiquetasImprimir(t); return; }
   if(e.target.closest('[data-sd-ayuda-godex]')){ sdAyudaGodex(); return; }
   if(e.target.closest('[data-sd-guia-adjuntar]')){ $('sd-guia-file').click(); return; }
+  const pr = e.target.closest('[data-sd-etq-prueba]'); if(pr && t){ sdEtiquetasImprimir(t, true); return; }
+  if(e.target.closest('[data-sd-etq-reset]') && t){ sdEtqGuardar({}); const ab = !!document.querySelector('.sd-etq-aj[open]'); sdAbrir(t.id); if(ab) document.querySelector('.sd-etq-aj').open = true; return; }
   if(e.target.closest('[data-sd-guia-quitar]') && t){ sdQuitarGuia(t); return; }
   const el = e.target.closest('[data-sd-det-eliminar]'); if(el) sdEliminar(el.dataset.sdDetEliminar);
 });
