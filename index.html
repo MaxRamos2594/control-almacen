@@ -154,7 +154,10 @@
   .sd-solo-lect{display:flex; gap:10px; align-items:center; padding:8px 0; border-bottom:1px solid var(--line);} .sd-solo-lect .rf-fotos{margin:0;} .sd-solo-lect .rf-thumb{width:52px; height:52px;} .sd-solo-lect .sl-txt{flex:1;} .sd-solo-lect .sl-cant{font-weight:900; font-size:16px; white-space:nowrap;}
   .sd-cerrada-aviso{background:#f1f3f5; border-radius:8px; padding:8px 10px; margin:8px 0; font-size:13px;}
   .sd-fila{display:flex; flex-wrap:wrap; justify-content:space-between; gap:6px 14px; width:100%; text-align:left; background:#fff; border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin-bottom:6px; cursor:pointer;}
-  .sd-fila:hover{background:#f6f9fd;} .sd-fila .t{font-weight:800;} .sd-est{font-size:11px; font-weight:800; padding:2px 7px; border-radius:10px; background:#e8f5e9; color:#1b5e20;} .sd-est.ABIERTO{background:#fff3e0; color:#a14a00;}
+  .sd-fila:hover{background:#f6f9fd;}
+  .sd-fila-c{border:1px solid var(--line); border-radius:8px; margin-bottom:8px; background:#fff; overflow:hidden;} .sd-fila-c .sd-fila{border:none; border-radius:0; margin:0;}
+  .sd-items-mini{width:100%; border-collapse:collapse; font-size:12px; border-top:1px dashed var(--line);} .sd-items-mini th, .sd-items-mini td{padding:4px 10px; text-align:center; border-bottom:1px solid #eef1f4;}
+  .sd-items-mini th{background:#f6f8fb; font-size:11px; text-transform:uppercase; color:var(--ink-soft);} .sd-items-mini td.d{text-align:center;} .sd-items-mini .mas td{color:var(--muted); font-style:italic;} .sd-fila .t{font-weight:800;} .sd-est{font-size:11px; font-weight:800; padding:2px 7px; border-radius:10px; background:#e8f5e9; color:#1b5e20;} .sd-est.ABIERTO{background:#fff3e0; color:#a14a00;}
   .sd-det-caja{border:1px solid var(--line); border-radius:8px; padding:10px; margin:10px 0;} .sd-det-caja table{width:100%; border-collapse:collapse; font-size:13px;} .sd-det-caja td, .sd-det-caja th{padding:5px 6px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top;}
   .sd-det-caja .num{text-align:right;} .sd-etq-aj{background:#fffbea; border:1px solid #f0d58a; border-radius:8px; padding:6px 10px; margin:6px 0 10px;} .sd-etq-aj summary{cursor:pointer; font-weight:700; font-size:13px;} .sd-etq-aj-c{display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end; margin-top:8px;} .sd-etq-aj-c label{display:flex; flex-direction:column; font-size:11px; font-weight:700; gap:3px;} .sd-etq-aj-c input{width:110px; margin:0; padding:5px 7px;} .sd-guia{background:#f6f8fb; border:1px solid var(--line); border-radius:8px; padding:8px 10px; margin:10px 0; display:flex; flex-wrap:wrap; gap:6px; align-items:center;} .sd-guia .hint#sd-guia-msg{width:100%;} .sd-bultos{font-size:22px; font-weight:900;}
   #view-regfoto .rf-pos-campo input{font-size:20px; font-weight:800; letter-spacing:.06em; border:2px solid #2b4c6f;}
@@ -3581,6 +3584,10 @@
         <div id="sd-items"></div>
         <button type="button" class="btn btn-ghost" id="btn-sd-add" style="width:100%; margin-top:8px;">+ Agregar producto</button>
       </div>
+      <div class="panel" id="sd-items-resumen" style="margin-bottom:12px;" hidden>
+        <h3>🧾 Ítems del traslado <span class="hint" id="sd-items-res-txt"></span></h3>
+        <div id="sd-items-tabla"></div>
+      </div>
       <div class="rf-acciones"><span class="sd-contador" id="sd-contador3">📦 Bultos: <b>0</b></span><span class="hint" id="sd-resumen"></span><button type="button" class="btn btn-primary" id="btn-sd-cerrar">🔒 Cerrar traslado</button></div>
     </div>
     <div class="msg" id="sd-msg"></div>
@@ -3593,7 +3600,7 @@
         <label>Desde <input type="date" id="sd-desde"></label><label>Hasta <input type="date" id="sd-hasta"></label>
         <input type="search" id="sd-q" placeholder="Buscar traslado, caja, código o descripción…" autocomplete="off">
       </div>
-      <div class="rfa-acciones"><button type="button" class="btn btn-primary btn-sm" id="btn-sd-excel">⬇ Exportar a Excel</button><button type="button" class="btn btn-ghost btn-sm" id="btn-sd-recargar">↻ Actualizar</button></div>
+      <div class="rfa-acciones"><button type="button" class="btn btn-primary btn-sm" id="btn-sd-excel">⬇ Exportar a Excel</button><button type="button" class="btn btn-primary btn-sm" id="btn-sd-pdf">⬇ PDF para gerencia</button><button type="button" class="btn btn-ghost btn-sm" id="btn-sd-recargar">↻ Actualizar</button></div>
       <div id="sd-lista-res" class="hint" style="margin:6px 0;"></div>
       <div id="sd-lista"></div>
     </div>
@@ -4127,8 +4134,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v257';
-const APP_UPDATED = '14/11/2026 12:00';
+const APP_VERSION = 'v258';
+const APP_UPDATED = '14/11/2026 18:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -20527,6 +20534,11 @@ function sdResumen(){
   const cerradas = sdCajas.filter(c=> c.cerrada).length;
   $('sd-contador').innerHTML = `📦 Bultos: <b>${esc(n)}</b>`; $('sd-contador3').innerHTML = `📦 Bultos: <b>${esc(n)}</b>`; $('sd-contador2').textContent = `📦 ${n} bulto${n === 1 ? '' : 's'}`;
   $('sd-resumen').textContent = `${n} caja(s) = ${n} bulto(s) (${cerradas} cerrada(s)) · ${prods} producto(s) · ${anFmt(und)} und`;
+  // Ítems de todo el traslado (sumados por código), al momento.
+  const items = sdAgruparItems(sdCajas.map(c=> ({ id: c.id, items: sdProds(c).filter(it=> it.sku.trim() && Number(it.cantidad) > 0) })));
+  $('sd-items-resumen').hidden = !items.length;
+  $('sd-items-res-txt').textContent = items.length ? `· ${items.length} código(s) · ${anFmt(items.reduce((s, x)=> s + x.cantidad, 0))} und` : '';
+  $('sd-items-tabla').innerHTML = items.length ? sdItemsTabla(items, 0) : '';
   // El aviso de "falta…" se borra apenas no queda nada a medias.
   if(/\berr\b/.test($('sd-msg').className) && !sdCajas.some(c=> c.items.some(it=> !sdVacio(it) && !sdCompleto(it)))){ $('sd-msg').className = 'msg'; $('sd-msg').textContent = ''; }
 }
@@ -20803,10 +20815,28 @@ function sdFiltrados(){
 function renderSdLista(){
   const L = sdFiltrados();
   $('sd-lista-res').textContent = `${L.length} traslado(s) · ${L.reduce((s, t)=> s + t.cajasLista.length, 0)} caja(s) / bulto(s) · ${anFmt(L.reduce((s, t)=> s + t._und, 0))} und`;
-  $('sd-lista').innerHTML = L.length ? L.slice(0, 300).map(t=> `<button type="button" class="sd-fila" data-sd-abrir="${esc(t.id)}"><span><span class="t">${esc(t.id)}</span> <span class="sd-est ${esc(t.estado)}">${t.estado === 'CERRADO' ? '🔒 CERRADO' : '📦 ABIERTO'}</span>${t.guia_pdf ? ' <span title="Tiene guía de remisión">📄</span>' : ''}<br>` +
-      `<span class="hint">🏬 ${esc(t.tienda)} · 📅 ${esc(sdFechaTxt(t.fecha))} · 👤 ${esc(t.usuario || '')}</span></span><span style="text-align:right;"><b>${esc(t.cajasLista.length)} bulto(s)</b><br><span class="hint">${esc(anFmt(t._und))} und</span></span></button>`).join('') +
+  $('sd-lista').innerHTML = L.length ? L.slice(0, 300).map(t=> `<div class="sd-fila-c"><button type="button" class="sd-fila" data-sd-abrir="${esc(t.id)}"><span><span class="t">${esc(t.id)}</span> <span class="sd-est ${esc(t.estado)}">${t.estado === 'CERRADO' ? '🔒 CERRADO' : '📦 ABIERTO'}</span>${t.guia_pdf ? ' <span title="Tiene guía de remisión">📄</span>' : ''}<br>` +
+      `<span class="hint">🏬 ${esc(t.tienda)} · 📅 ${esc(sdFechaTxt(t.fecha))} · 👤 ${esc(t.usuario || '')}</span></span><span style="text-align:right;"><b>${esc(t.cajasLista.length)} bulto(s)</b><br><span class="hint">${esc(anFmt(t._und))} und</span></span></button>${sdItemsTabla(sdAgruparItems(t.cajasLista), 8, t.id)}</div>`).join('') +
       (L.length > 300 ? `<p class="hint">Se muestran 300 de ${esc(L.length)}: usa los filtros.</p>` : '')
     : `<div class="hint">${sdLista.length ? 'Ningún traslado cumple los filtros.' : 'Aún no hay traslados de saldos.'}</div>`;
+}
+// Ítems de un traslado sumados por código (de todas sus cajas): SKU, descripción, cantidad y en qué cajas está.
+function sdAgruparItems(cajas){
+  const m = new Map();
+  (cajas || []).forEach(c=> (c.items || []).forEach(it=>{
+    const k = String(it.sku || '').trim().toUpperCase(); if(!k) return;
+    const x = m.get(k) || { sku: k, descripcion: '', cantidad: 0, cajas: new Set() };
+    x.cantidad += Number(it.cantidad) || 0; x.cajas.add(c.id); if(!x.descripcion) x.descripcion = it.descripcion || '';
+    m.set(k, x);
+  }));
+  return [...m.values()].sort((a, b)=> b.cantidad - a.cantidad || a.sku.localeCompare(b.sku, 'es', { numeric: true }));
+}
+function sdItemsTabla(L, max, ts){
+  if(!L.length) return '<table class="sd-items-mini"><tbody><tr class="mas"><td>Sin productos todavía.</td></tr></tbody></table>';
+  const ver = max ? L.slice(0, max) : L;
+  return `<table class="sd-items-mini"><thead><tr><th>SKU</th><th>Descripción</th><th>Cantidad</th><th>Cajas</th></tr></thead><tbody>` +
+    ver.map(x=> `<tr><td><b>${esc(x.sku)}</b></td><td class="d">${esc(x.descripcion)}</td><td><b>${esc(anFmt(x.cantidad))}</b></td><td>${esc([...x.cajas].join(', '))}</td></tr>`).join('') +
+    (L.length > ver.length ? `<tr class="mas"><td colspan="4">… y ${esc(L.length - ver.length)} código(s) más${ts ? ' (toca el traslado para ver todo)' : ''}</td></tr>` : '') + `</tbody></table>`;
 }
 const sdFotosDe = t=> t.cajasLista.flatMap(c=> (c.items || []).flatMap(it=> (it.fotos || []).map((f, j)=> ({ url: f.url, pie: `${c.id} · ${it.sku} · ${it.descripcion || ''} (foto ${j + 1})` }))));
 function sdAbrir(id){
@@ -20987,6 +21017,45 @@ function sdRotulosPdf(t){
   logAccion('saldos_rotulos', { detalle: `${t.id} · ${t.tienda} · ${cajas.length} rótulo(s)` });
   showToast(`Rótulos de ${t.id}: ${cajas.length} (${Math.ceil(cajas.length / 4)} hoja(s) A4).`, 'ok');
 }
+// PDF para gerencia: lo que está filtrado en Registros (resumen por traslado, ítems de cada uno y total por código).
+function sdPdfGerencia(L){
+  if(!L.length){ showToast('No hay traslados para exportar con estos filtros.', 'err'); return; }
+  const doc = new jspdf.jsPDF({ unit:'pt', format:'a4', orientation:'landscape' }), W = doc.internal.pageSize.getWidth(), m = 36;
+  const opt = id=> { const el = $(id); return el && el.value ? (el.options ? el.options[el.selectedIndex].text : el.value) : ''; };
+  const filtros = [opt('sd-estado-f') && `Estado: ${opt('sd-estado-f')}`, opt('sd-tienda-f') && `Tienda: ${opt('sd-tienda-f').replace(/^🏬\s*/, '')}`, opt('sd-usuario-f') && `Usuario: ${opt('sd-usuario-f').replace(/^👤\s*/, '')}`,
+    $('sd-desde').value && `Desde: ${sdFechaTxt($('sd-desde').value)}`, $('sd-hasta').value && `Hasta: ${sdFechaTxt($('sd-hasta').value)}`, $('sd-q').value.trim() && `Búsqueda: "${$('sd-q').value.trim()}"`].filter(Boolean);
+  const bultos = L.reduce((s, t)=> s + t.cajasLista.length, 0), und = L.reduce((s, t)=> s + t._und, 0);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.text('Traslados de saldos', m, 40);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(90);
+  doc.text(`Origen: ${RF_CD} · ${filtros.length ? filtros.join(' · ') : 'Sin filtros (todos los traslados)'}`, m, 56, { maxWidth: W - 2 * m });
+  doc.text(`Generado por ${currentUserAlias} el ${new Date().toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' })}`, m, 68);
+  doc.setTextColor(0); doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
+  doc.text(`${L.length} traslado(s)   ·   ${bultos} bulto(s)   ·   ${anFmt(und)} unidades`, m, 88);
+  const estilo = { styles: { fontSize: 8.5, cellPadding: 3, halign: 'center' }, headStyles: { fillColor: [27, 36, 48], textColor: 255, halign: 'center' }, margin: { left: m, right: m } };
+  doc.autoTable(Object.assign({ startY: 98, head: [['Traslado', 'Fecha', 'Tienda (destino)', 'Estado', 'Bultos', 'Unidades', 'Códigos', 'Preparado por', 'Guía de remisión']],
+    body: L.map(t=> [t.id, sdFechaTxt(t.fecha), t.tienda, t.estado, t.cajasLista.length, anFmt(t._und), sdAgruparItems(t.cajasLista).length, t.usuario || '', t.guia_pdf ? 'SÍ' : 'NO']),
+    foot: [['TOTAL', '', '', '', bultos, anFmt(und), '', '', '']], footStyles: { fillColor: [234, 241, 251], textColor: 0, fontStyle: 'bold', halign: 'center' } }, estilo));
+  // Detalle: ítems de cada traslado.
+  L.forEach(t=>{
+    let y = doc.lastAutoTable.finalY + 18; if(y > doc.internal.pageSize.getHeight() - 80){ doc.addPage(); y = 40; }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.text(`${t.id} · ${t.tienda} · ${sdFechaTxt(t.fecha)} · ${t.cajasLista.length} bulto(s) · ${anFmt(t._und)} und · ${t.estado}`, m, y);
+    const it = sdAgruparItems(t.cajasLista);
+    doc.autoTable(Object.assign({ startY: y + 6, head: [['SKU', 'Descripción', 'Cantidad', 'Cajas']], body: it.length ? it.map(x=> [x.sku, x.descripcion, anFmt(x.cantidad), [...x.cajas].join(', ')]) : [['', 'Sin productos', '', '']],
+      columnStyles: { 1: { cellWidth: 300 } } }, estilo));
+  });
+  // Total por código de todo lo filtrado.
+  const tot = sdAgruparItems(L.flatMap(t=> t.cajasLista));
+  let y = doc.lastAutoTable.finalY + 22; if(y > doc.internal.pageSize.getHeight() - 80){ doc.addPage(); y = 40; }
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.text(`Total por código (${tot.length} código(s))`, m, y);
+  doc.autoTable(Object.assign({ startY: y + 6, head: [['SKU', 'Descripción', 'Cantidad total', 'Traslados']],
+    body: tot.map(x=> [x.sku, x.descripcion, anFmt(x.cantidad), L.filter(t=> t.cajasLista.some(c=> x.cajas.has(c.id))).map(t=> t.id).join(', ')]), columnStyles: { 1: { cellWidth: 300 } } }, estilo));
+  const n = doc.getNumberOfPages();
+  for(let i = 1; i <= n; i++){ doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(120); doc.text(`Página ${i} de ${n}`, W - m, doc.internal.pageSize.getHeight() - 16, { align: 'right' }); }
+  doc.setProperties({ title: 'Traslados de saldos' });
+  doc.save(`saldos_gerencia_${new Date().toISOString().slice(0, 10)}.pdf`);
+  logAccion('saldos_exportado', { detalle: `PDF para gerencia: ${L.length} traslado(s), ${bultos} bulto(s)${filtros.length ? ' · ' + filtros.join(' · ') : ''}` });
+  showToast(`PDF con ${L.length} traslado(s).`, 'ok');
+}
 function sdExcel(L, nombre){
   if(!L.length){ showToast('No hay traslados para exportar con estos filtros.', 'err'); return; }
   const fecha = f=> rfExcelFecha(f ? f + 'T12:00:00' : '');
@@ -21024,6 +21093,7 @@ async function sdReabrir(id){
 $('sdsub-panel-lista').addEventListener('click', e=>{
   const ab = e.target.closest('[data-sd-abrir]'); if(ab){ sdAbrir(ab.dataset.sdAbrir); return; }
   if(e.target.closest('#btn-sd-excel')){ sdExcel(sdFiltrados(), `saldos_${new Date().toISOString().slice(0, 10)}.xlsx`); return; }
+  if(e.target.closest('#btn-sd-pdf')){ sdPdfGerencia(sdFiltrados()); return; }
   if(e.target.closest('#btn-sd-recargar')) sdCargarLista(true);
 });
 ['sd-estado-f', 'sd-tienda-f', 'sd-usuario-f', 'sd-desde', 'sd-hasta'].forEach(id=> $(id).addEventListener('change', renderSdLista));
