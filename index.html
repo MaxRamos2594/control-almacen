@@ -4149,8 +4149,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v261';
-const APP_UPDATED = '15/11/2026 16:00';
+const APP_VERSION = 'v262';
+const APP_UPDATED = '15/11/2026 19:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -21037,8 +21037,8 @@ function sdImagenMini(url){
   })().catch(err=>{ sdImgMiniCache.delete(url); throw err; }));
   return sdImgMiniCache.get(url);
 }
-// PDF para gerencia (A4 vertical): lo que está filtrado en Registros — resumen por traslado, ítems de cada uno con
-// sus fotos (hasta 2 por código) y total por código.
+// PDF para gerencia (A4 vertical): lo que está filtrado en Registros — resumen por traslado e ítems de cada uno con
+// sus fotos (hasta 2 por código).
 async function sdPdfGerencia(L){
   if(!L.length){ showToast('No hay traslados para exportar con estos filtros.', 'err'); return; }
   const btn = $('btn-sd-pdf'), txtBtn = btn ? btn.textContent : '';
@@ -21080,12 +21080,6 @@ async function sdPdfGerencia(L){
             doc.addImage(im.data, 'JPEG', d.cell.x + 4 + k * (FOTO + 2) + (FOTO - w) / 2, d.cell.y + (d.cell.height - h) / 2, w, h); });
         } }, estilo));
     });
-    // Total por código de todo lo filtrado.
-    const tot = sdAgruparItems(L.flatMap(t=> t.cajasLista));
-    let y = doc.lastAutoTable.finalY + 22; if(y > H - 110){ doc.addPage(); y = 40; }
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.text(`Total por código (${tot.length} código(s))`, m, y);
-    doc.autoTable(Object.assign({ startY: y + 6, head: [['SKU', 'Descripción', 'Cantidad total', 'Traslados']],
-      body: tot.map(x=> [x.sku, x.descripcion, anFmt(x.cantidad), L.filter(t=> t.cajasLista.some(c=> x.cajas.has(c.id))).map(t=> t.id).join(', ')]), columnStyles: { 1: { cellWidth: 200 } } }, estilo));
     const np = doc.getNumberOfPages();
     for(let i = 1; i <= np; i++){ doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(120); doc.text(`Página ${i} de ${np}`, W - m, H - 14, { align: 'right' }); }
     doc.setProperties({ title: 'Traslados de saldos' });
