@@ -166,7 +166,7 @@ const png = path.join(__dirname, 'salida', 'sd_foto.png');
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#btn-sd-excel')]);
   const xl = path.join(__dirname, 'salida', 'saldos.xlsx'); await dl.saveAs(xl);
   const wb = XLSX.readFile(xl), r1 = XLSX.utils.sheet_to_json(wb.Sheets['Traslados']), r2 = XLSX.utils.sheet_to_json(wb.Sheets['Detalle por caja']);
-  verificar(/Rótulos A4/.test(det) && /Etiquetas 4×3/.test(det) && /TS-00001/.test(det) && /CERRADO/.test(det) && /COMAS/.test(det) && /Bultos \(cajas\) 2/i.test(det) && /CJ-00001/.test(det) && /CJ-00002/.test(det) && /P100 PELOTA ROJA 5/.test(det) && /X-9 CAJA AZUL 2/.test(det) &&
+  verificar(/Rótulos A4/.test(det) && /Imprimir etiquetas \(Godex\)/.test(det) && /PDF 4×3/.test(det) && /TS-00001/.test(det) && /CERRADO/.test(det) && /COMAS/.test(det) && /Bultos \(cajas\) 2/i.test(det) && /CJ-00001/.test(det) && /CJ-00002/.test(det) && /P100 PELOTA ROJA 5/.test(det) && /X-9 CAJA AZUL 2/.test(det) &&
     /TS-00001 🔒 CERRADO/.test(fila) && /2 bulto\(s\)/.test(fila) && busca === 1 && nada === 0 &&
     r1.length === 1 && r1[0]['Bultos (cajas)'] === 2 && r2.length === 2 && r2[0]['Caja'] === 'CJ-00001' && r2[1]['SKU'] === 'X-9',
     `Registros: ${fila}; detalle con las 2 cajas y sus productos; búsqueda "caja azul" → ${busca}; Excel ${r1.length} traslado y ${r2.length} filas`);
@@ -184,6 +184,21 @@ const png = path.join(__dirname, 'salida', 'sd_foto.png');
   verificar(eti.paginas === 2 && eti.w === 288 && eti.h === 216 && /CJ-00001/.test(eti.txt[0]) && /CJ-00002/.test(eti.txt[1]) && /TS-00001/.test(eti.txt[0]) && /COMAS/.test(eti.txt[0]),
     `Etiquetas Godex: ${eti.paginas} etiquetas de 4 × 3 pulgadas (${eti.w}×${eti.h} pt), una por caja`);
 
+  // Imprimir directo (sin PDF): una página por etiqueta de exactamente 4 × 3 pulgadas, sin márgenes.
+  const htmlEtq = await page.evaluate(()=>{ window.__sdNoImprimir = true; sdEtiquetasImprimir(sdLista.find(t=> t.id === 'TS-00001')); return $('sd-etq-frame').contentDocument.documentElement.outerHTML; });
+  const pEtq = await page.context().newPage();
+  await pEtq.setViewportSize({ width: 384, height: 288 }); await pEtq.setContent(htmlEtq); await pEtq.waitForTimeout(300);
+  const medida = await pEtq.evaluate(()=>{ const et = document.querySelectorAll('.et'), r = et[0].getBoundingClientRect();
+    const desborde = [...document.querySelectorAll('.val span')].filter(s=> s.offsetWidth > s.parentNode.clientWidth || s.offsetHeight > s.parentNode.clientHeight).length;
+    return { n: et.length, w: Math.round(r.width), h: Math.round(r.height), desborde, txt: et[0].innerText.replace(/\s+/g, ' ') }; });
+  await (await pEtq.$('.et')).screenshot({ path: path.join(__dirname, 'salida', 'saldos_etiqueta_directa.png') });
+  const pdfEtq = await pEtq.pdf({ preferCSSPageSize: true, printBackground: true });
+  await pEtq.close();
+  const paginasEtq = await page.evaluate(async b=>{ const d = await pdfjsLib.getDocument({ data: Uint8Array.from(atob(b), c=> c.charCodeAt(0)) }).promise; const vp = (await d.getPage(1)).getViewport({ scale: 1 }); return { n: d.numPages, w: Math.round(vp.width), h: Math.round(vp.height) }; }, Buffer.from(pdfEtq).toString('base64'));
+  const botonImp = await page.evaluate(()=> !!document.querySelector('[data-sd-det-imprimir], #sd-ok [data-sd-imprimir]') || /Imprimir etiquetas/.test(document.body.innerHTML));
+  verificar(medida.n === 2 && medida.w === 384 && medida.h === 288 && medida.desborde === 0 && /ORIGEN: CD VENEZUELA DESTINO: COMAS/.test(medida.txt) && /TS-00001/.test(medida.txt) &&
+    paginasEtq.n === 2 && paginasEtq.w === 288 && paginasEtq.h === 216 && botonImp,
+    `Imprimir directo: ${medida.n} etiquetas de 4 × 3 in (${medida.w}×${medida.h} px), ${paginasEtq.n} páginas de impresión de ${paginasEtq.w}×${paginasEtq.h} pt, todo el texto dentro de la etiqueta`);
   // Guía de remisión: un PDF pesado (más de 700 KB) se reduce antes de subir y queda en el traslado.
   const guiaPdf = path.join(__dirname, 'salida', 'guia_prueba.pdf');
   const b64g = await page.evaluate(()=>{ const cv = document.createElement('canvas'); cv.width = cv.height = 1400; const ctx = cv.getContext('2d'), im = ctx.createImageData(1400, 1400);
