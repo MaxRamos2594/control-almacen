@@ -62,6 +62,13 @@ const png = path.join(__dirname, 'salida', 'sd_foto.png');
   };
   await producto(0, 'P100', 5);
   const desc1 = await page.evaluate(()=> sdCaja().items[0].descripcion);
+  // Cerrar caja: queda en solo lectura, con su estado guardado.
+  await page.click('#btn-sd-caja-cerrar');
+  await page.waitForFunction(()=> sdCajas[0].cerrada && !$('btn-sd-caja-abrir').hidden, null, { timeout: 10000 });
+  const cerrada = await page.evaluate(async ()=> ({ chip: document.querySelector('#sd-cajas [data-sd-caja="0"]').innerText.replace(/\s+/g, ' '), lect: !document.querySelector('#sd-items [data-sd-campo]') && /Caja cerrada/.test($('sd-items').innerText),
+    add: $('btn-sd-add').hidden, est: (await saldosCajasRef.doc('CJ-00001').get()).data().estado }));
+  await page.screenshot({ path: path.join(__dirname, 'salida', 'saldos_caja_cerrada.png'), fullPage: true });
+  verificar(/CERRADA/.test(cerrada.chip) && cerrada.lect && cerrada.add && cerrada.est === 'CERRADA', `"🔒 Cerrar caja": ${cerrada.chip}; queda en solo lectura (estado ${cerrada.est})`);
   // 5) Otra caja.
   await page.click('#btn-sd-caja');
   await page.waitForFunction(()=> $('sd-caja-tit').textContent.includes('CJ-00002'), null, { timeout: 10000 });
@@ -81,14 +88,19 @@ const png = path.join(__dirname, 'salida', 'sd_foto.png');
   await page.screenshot({ path: path.join(__dirname, 'salida', 'saldos_nuevo.png'), fullPage: true });
   const chips = await page.evaluate(()=> [...document.querySelectorAll('#sd-cajas .sd-caja-chip')].map(b=> b.innerText.replace(/\s+/g, ' ')).join(' | '));
   const resumen = await page.textContent('#sd-resumen');
-  verificar(desc1 === 'PELOTA ROJA' && /está vacía/.test(avisoVacia) && /falta la descripción/.test(avisoDesc) && /CJ-00001 1 producto\(s\) · 5 und \| .*CJ-00002 1 producto\(s\) · 2 und/.test(chips) && /2 caja\(s\) = 2 bulto\(s\)/.test(resumen),
+  verificar(desc1 === 'PELOTA ROJA' && /está vacía/.test(avisoVacia) && /falta la descripción/.test(avisoDesc) && /CJ-00001 1 producto\(s\) · 5 und 🔒 CERRADA \| .*CJ-00002 1 producto\(s\) · 2 und ✏ ABIERTA/.test(chips) && /2 caja\(s\) = 2 bulto\(s\) \(1 cerrada\(s\)\)/.test(resumen),
     `Cajas: ${chips}; "${resumen}"; caja vacía → "${avisoVacia}"; sin descripción → "${avisoDesc}"; desc1=${desc1}`);
   // Autoguardado de cada caja.
   await esperar(page, async ()=>{ const d = (await saldosCajasRef.doc('CJ-00002').get()).data(); return d && d.items.length === 1 && d.items[0].fotos.length === 1 && !!d.items[0].fotos[0].path; }, null, 15000);
-  // Volver a la caja 1 tocando su chip.
+  // Tocar la caja 1 (cerrada) la muestra; «🔓 Abrir caja» la abre y cierra sola la caja 2 (que estaba completa).
   await page.click('#sd-cajas [data-sd-caja="0"]');
   const vuelve = await page.evaluate(()=> $('sd-caja-tit').textContent + ' ' + sdCaja().items[0].sku);
-  verificar(/CJ-00001 P100/.test(vuelve), `Tocar una caja la abre para seguir editando (${vuelve})`);
+  await page.click('#btn-sd-caja-abrir');
+  await page.waitForFunction(()=> !sdCajas[0].cerrada && sdCajas[1].cerrada && !!document.querySelector('#sd-items [data-sd-campo]'), null, { timeout: 10000 });
+  const abre = await page.evaluate(async ()=> ({ edit: !!document.querySelector('#sd-items [data-sd-item="0"] [data-sd-campo="sku"]'), e1: (await saldosCajasRef.doc('CJ-00001').get()).data().estado, e2: (await saldosCajasRef.doc('CJ-00002').get()).data().estado,
+    chips: [...document.querySelectorAll('#sd-cajas .sd-caja-chip i')].map(x=> x.textContent).join(' / ') }));
+  verificar(/CJ-00001 · 🔒 CERRADA P100/.test(vuelve) && abre.edit && abre.e1 === 'ABIERTA' && abre.e2 === 'CERRADA' && abre.chips === '✏ ABIERTA / 🔒 CERRADA',
+    `Tocar una caja cerrada la muestra (${vuelve}); «🔓 Abrir caja» la abre para editar y cierra la otra (${abre.chips})`);
 
   // 6, 8) Cerrar traslado del día, tienda → bultos = cajas.
   const txtCerrar = await page.textContent('#btn-sd-cerrar');
@@ -99,7 +111,7 @@ const png = path.join(__dirname, 'salida', 'sd_foto.png');
   const c1 = await page.evaluate(async ()=> (await saldosCajasRef.doc('CJ-00001').get()).data());
   verificar(/Cerrar traslado de saldos del \d\d\/\d\d\/\d{4} · COMAS/.test(txtCerrar) && /TS-00001 cerrado · Bultos: 2/.test(ok) && /7 und/.test(ok) &&
     t.estado === 'CERRADO' && t.bultos === 2 && t.cajas_ids.join() === 'CJ-00001,CJ-00002' && t.unidades === 7 && t.tienda === 'COMAS' && t.fecha === hoy &&
-    c1.traslado_id === 'TS-00001' && c1.items[0].sku === 'P100' && c1.items[0].cantidad === 5 && c1.items[0].descripcion === 'PELOTA ROJA',
+    c1.traslado_id === 'TS-00001' && c1.estado === 'CERRADA' && c1.items[0].sku === 'P100' && c1.items[0].cantidad === 5 && c1.items[0].descripcion === 'PELOTA ROJA',
     `"${txtCerrar}" → "${ok}"; en la base: ${t.estado}, ${t.bultos} bultos (${t.cajas_ids.join(', ')})`);
 
   // 9) Registros: el traslado con sus cajas.
