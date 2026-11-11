@@ -93,10 +93,9 @@ const png = path.join(__dirname, 'salida', 'sd_foto.png');
   await page.screenshot({ path: path.join(__dirname, 'salida', 'saldos_nuevo.png'), fullPage: true });
   const chips = await page.evaluate(()=> [...document.querySelectorAll('#sd-cajas .sd-caja-chip')].map(b=> b.innerText.replace(/\s+/g, ' ')).join(' | '));
   const resumen = await page.textContent('#sd-resumen');
-  // Nuevo traslado: ítems de todo el traslado sumados por código, al momento.
-  const itemsNuevo = await page.evaluate(()=> ({ visible: !$('sd-items-resumen').hidden, txt: $('sd-items-resumen').innerText.replace(/\s+/g, ' ') }));
-  verificar(itemsNuevo.visible && /P100 PELOTA ROJA 5 CJ-00001/.test(itemsNuevo.txt) && /X-9 CAJA AZUL 2 CJ-00002/.test(itemsNuevo.txt) && /2 código\(s\) · 7 und/i.test(itemsNuevo.txt),
-    `Nuevo traslado muestra los ítems del traslado: "${itemsNuevo.txt.slice(0, 140)}"`);
+  // Nuevo traslado: conteo de ítems (códigos distintos) junto a los bultos.
+  const itemsNuevo = await page.evaluate(()=> [$('sd-contador-it').innerText, $('sd-contador-it3').innerText].map(t=> t.replace(/\s+/g, ' ').trim()).join(' | '));
+  verificar(itemsNuevo === '🧾 Ítems: 2 | 🧾 Ítems: 2', `Nuevo traslado muestra el conteo de ítems (${itemsNuevo})`);
   const contador = await page.evaluate(()=> [$('sd-contador').innerText, $('sd-contador2').innerText, $('sd-contador3').innerText].map(t=> t.replace(/\s+/g, ' ').trim()).join(' | '));
   const centrado = await page.evaluate(()=> ['sku', 'descripcion'].map(k=> getComputedStyle(document.querySelector(`#sd-items [data-sd-campo="${k}"]`)).textAlign).join());
   verificar(contador === '📦 Bultos: 2 | 📦 2 bultos | 📦 Bultos: 2' && centrado === 'center,center', `Contador de bultos visible (${contador}); código y descripción centrados`);
@@ -164,25 +163,28 @@ const png = path.join(__dirname, 'salida', 'sd_foto.png');
   await page.screenshot({ path: path.join(__dirname, 'salida', 'saldos_detalle.png'), fullPage: true });
   await page.click('#btn-sd-det-volver');
   const fila = await page.evaluate(()=> $('sd-lista').innerText.replace(/\s+/g, ' '));
-  const itemsLista = await page.evaluate(()=> document.querySelector('#sd-lista .sd-fila-c .sd-items-mini').innerText.replace(/\s+/g, ' '));
+  const itemsLista = await page.evaluate(()=> ({ fila: document.querySelector('#sd-lista [data-sd-abrir="TS-00001"]').innerText.replace(/\s+/g, ' '), tabla: !!document.querySelector('#sd-lista table'), res: $('sd-lista-res').textContent }));
   await page.screenshot({ path: path.join(__dirname, 'salida', 'saldos_registros.png'), fullPage: true });
-  verificar(/P100 PELOTA ROJA 5 CJ-00001/.test(itemsLista) && /X-9 CAJA AZUL 2 CJ-00002/.test(itemsLista), `Registros: cada traslado muestra sus ítems ("${itemsLista.slice(0, 120)}")`);
+  verificar(/2 bulto\(s\) 2 ítem\(s\) · 7 und/.test(itemsLista.fila) && !itemsLista.tabla && /2 ítem\(s\)/.test(itemsLista.res), `Registros: cada traslado muestra el conteo de ítems ("${itemsLista.fila}"), sin la tabla`);
   // PDF para gerencia: exporta lo filtrado (aquí, solo COMAS).
   await page.selectOption('#sd-tienda-f', 'COMAS');
   const pdfG = await page.evaluate(async ()=>{
     const { jsPDF } = window.jspdf, saveOrig = jsPDF.API.save; let b64 = '', nombre = '';
     jsPDF.API.save = function(n){ nombre = n; b64 = this.output('datauristring').split(',')[1]; };
-    try{ document.getElementById('btn-sd-pdf').click(); } finally { jsPDF.API.save = saveOrig; }
-    const d = await pdfjsLib.getDocument({ data: Uint8Array.from(atob(b64), c=> c.charCodeAt(0)) }).promise; let txt = '';
-    for(let i = 1; i <= d.numPages; i++) txt += (await (await d.getPage(i)).getTextContent()).items.map(x=> x.str).join(' ') + ' ';
+    try{ document.getElementById('btn-sd-pdf').click(); for(let i = 0; i < 100 && !b64; i++) await new Promise(r=> setTimeout(r, 200)); } finally { jsPDF.API.save = saveOrig; }
+    const d = await pdfjsLib.getDocument({ data: Uint8Array.from(atob(b64), c=> c.charCodeAt(0)) }).promise; let txt = '', fotos = 0;
+    for(let i = 1; i <= d.numPages; i++){ const pg = await d.getPage(i); txt += (await pg.getTextContent()).items.map(x=> x.str).join(' ') + ' ';
+      fotos += (await pg.getOperatorList()).fnArray.filter(f=> f === pdfjsLib.OPS.paintImageXObject || f === pdfjsLib.OPS.paintJpegXObject).length; }
+    const vp1 = (await d.getPage(1)).getViewport({ scale: 1 }); window.__pdfG = { fotos, w: Math.round(vp1.width), h: Math.round(vp1.height) };
     const v = (await d.getPage(1)).getViewport({ scale: 1.5 }), cv = document.createElement('canvas'); cv.width = v.width; cv.height = v.height; await (await d.getPage(1)).render({ canvasContext: cv.getContext('2d'), viewport: v }).promise;
     return { nombre, txt, png: cv.toDataURL('image/png').split(',')[1] };
   });
   fs.writeFileSync(path.join(__dirname, 'salida', 'saldos_gerencia.png'), Buffer.from(pdfG.png, 'base64'));
+  const pdfGx = await page.evaluate(()=> window.__pdfG);
   await page.selectOption('#sd-tienda-f', '');
   verificar(/^saldos_gerencia_\d{4}-\d{2}-\d{2}\.pdf$/.test(pdfG.nombre) && /Traslados de saldos/.test(pdfG.txt) && /Tienda: COMAS/.test(pdfG.txt) && /1 traslado\(s\)\s+·\s+2 bulto\(s\)\s+·\s+7 unidades/.test(pdfG.txt) &&
-    /TS-00001/.test(pdfG.txt) && /PELOTA ROJA/.test(pdfG.txt) && /Total por código/.test(pdfG.txt) && /Página 1 de/.test(pdfG.txt),
-    `PDF para gerencia con lo filtrado (${pdfG.nombre}): resumen por traslado, ítems y total por código`);
+    /TS-00001/.test(pdfG.txt) && /PELOTA ROJA/.test(pdfG.txt) && /Total por código/.test(pdfG.txt) && /Página 1 de/.test(pdfG.txt) && pdfGx.w === 595 && pdfGx.h === 842 && pdfGx.fotos >= 2,
+    `PDF para gerencia con lo filtrado (${pdfG.nombre}): A4 vertical (${pdfGx.w}×${pdfGx.h}), resumen por traslado, ítems con ${pdfGx.fotos} foto(s) y total por código`);
   await page.fill('#sd-q', 'caja azul'); const busca = await page.evaluate(()=> document.querySelectorAll('#sd-lista [data-sd-abrir]').length);
   await page.fill('#sd-q', 'zzz'); const nada = await page.evaluate(()=> document.querySelectorAll('#sd-lista [data-sd-abrir]').length);
   await page.fill('#sd-q', '');
