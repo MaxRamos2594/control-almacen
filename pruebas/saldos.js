@@ -258,13 +258,23 @@ const png = path.join(__dirname, 'salida', 'sd_foto.png');
   await page.waitForSelector('#sd-lista [data-sd-abrir="TS-00001"]', { timeout: 10000 });
   await page.click('#sd-lista [data-sd-abrir="TS-00001"]');
   await page.waitForSelector('[data-sd-guia-adjuntar]', { timeout: 10000 });
-  await page.setInputFiles('#sd-guia-file', guiaPdf);
-  await esperar(page, async ()=> !!((await saldosTrasladosRef.doc('TS-00001').get()).data().guia_pdf), null, 60000);
-  await page.waitForSelector('#sd-detalle .sd-guia-link', { timeout: 10000 });
-  const g = await page.evaluate(async ()=> (await saldosTrasladosRef.doc('TS-00001').get()).data().guia_pdf);
+  // Un traslado antiguo con una sola guía (guia_pdf) se sigue viendo; al adjuntar se pasan todas a la lista.
+  await page.evaluate(async ()=>{ const ref = storage.ref().child('saldos_guias/TS-00001/1_antigua.pdf'); await ref.put(new Blob(['%PDF-1.4 antigua'], { type:'application/pdf' }));
+    await saldosTrasladosRef.doc('TS-00001').update({ guia_pdf: { url: await ref.getDownloadURL(), path: ref.fullPath, nombre:'antigua.pdf', tam: 16, subido_por:'Administrador', subido_en: new Date().toISOString() } });
+    const t = sdLista.find(x=> x.id === 'TS-00001'); t.guia_pdf = (await saldosTrasladosRef.doc('TS-00001').get()).data().guia_pdf; sdAbrir('TS-00001'); });
+  const antigua = await page.evaluate(()=> document.querySelector('#sd-detalle .sd-guia').innerText.replace(/\s+/g, ' '));
+  // Dos guías a la vez (selección múltiple).
+  const guiaPdf2 = path.join(__dirname, 'salida', 'guia_prueba_2.pdf'); fs.copyFileSync(guiaPdf, guiaPdf2);
+  await page.setInputFiles('#sd-guia-file', [guiaPdf, guiaPdf2]);
+  await esperar(page, async ()=> ((await saldosTrasladosRef.doc('TS-00001').get()).data().guias_pdf || []).length === 3, null, 90000);
+  await page.waitForFunction(()=> document.querySelectorAll('#sd-detalle .sd-guia-link').length === 3, null, { timeout: 10000 });
+  const docG = await page.evaluate(async ()=> (await saldosTrasladosRef.doc('TS-00001').get()).data());
+  const g = docG.guias_pdf.find(x=> x.nombre === 'guia_prueba.pdf');
+  verificar(/antigua\.pdf/.test(antigua) && !docG.guia_pdf && docG.guias_pdf.map(x=> x.nombre).join() === 'antigua.pdf,guia_prueba.pdf,guia_prueba_2.pdf',
+    `Varias guías: la antigua (${/antigua\.pdf/.test(antigua) ? 'se ve' : 'no se ve'}) + 2 a la vez → ${docG.guias_pdf.map(x=> x.nombre).join(', ')}`);
   const enStorage = await page.evaluate(p=> storage.ref().child(p).getMetadata().then(m=> m.size, ()=> 0), g.path);
   const detGuia = await page.evaluate(()=> document.querySelector('#sd-detalle .sd-guia').innerText.replace(/\s+/g, ' '));
-  const conIcono = await page.evaluate(()=> /📄/.test(document.querySelector('#sd-lista [data-sd-abrir="TS-00001"]').innerText));
+  const conIcono = await page.evaluate(()=> /📄×3/.test(document.querySelector('#sd-lista [data-sd-abrir="TS-00001"]').innerText));
   await page.screenshot({ path: path.join(__dirname, 'salida', 'saldos_guia.png'), fullPage: true });
   verificar(pesoGuia > 700 * 1024 && g.tam < g.tam_original && g.tam_original === pesoGuia && /^saldos_guias\/TS-00001\//.test(g.path) && enStorage === g.tam && /guia_prueba\.pdf/.test(detGuia) && /reducido de/.test(detGuia) && conIcono,
     `Guía de remisión: ${Math.round(pesoGuia / 1024)} KB → ${Math.round(g.tam / 1024)} KB, guardada en ${g.path}; el detalle la muestra ("${detGuia.slice(0, 90)}…") y la lista con 📄`);
@@ -274,10 +284,11 @@ const png = path.join(__dirname, 'salida', 'sd_foto.png');
   verificar(huerf.length === 0, `Almacenamiento reconoce las fotos de Saldos y la guía (huérfanos de Saldos: ${huerf.length})`);
   // Quitar la guía: se borra el PDF.
   await page.evaluate(()=>{ switchTab('saldos'); setSdSubtab('lista'); sdAbrir('TS-00001'); });
-  await page.click('[data-sd-guia-quitar]');
-  await esperar(page, async ()=> !((await saldosTrasladosRef.doc('TS-00001').get()).data().guia_pdf), null, 10000);
+  await page.click(`[data-sd-guia-quitar="${g.path}"]`);
+  await esperar(page, async ()=> ((await saldosTrasladosRef.doc('TS-00001').get()).data().guias_pdf || []).length === 2, null, 10000);
   const borrada = await esperar(page, p=> storage.ref().child(p).getMetadata().then(()=> false, ()=> true), g.path, 10000).then(()=> true, ()=> false);
-  verificar(borrada, 'Quitar la guía borra el PDF del almacenamiento');
+  const quedan = await page.evaluate(async ()=> (await saldosTrasladosRef.doc('TS-00001').get()).data().guias_pdf.map(x=> x.nombre).join());
+  verificar(borrada && quedan === 'antigua.pdf,guia_prueba_2.pdf', `Quitar una guía borra solo ese PDF; quedan: ${quedan}`);
   verificar(!errores.length, 'Sin errores de JavaScript (admin)' + (errores.length ? ': ' + errores.join(' | ') : ''));
   await browser.close();
 
