@@ -3911,6 +3911,7 @@
         <div class="field" style="margin:6px 0;"><label>Prefijo de su correlativo <span class="hint">(2 a 5 letras; sus registros serán RF-PREFIJO-00001…)</span></label><input type="text" id="us-rf-prefijo" class="upper" maxlength="5" placeholder="Automático: primeras letras del alias"></div>
         <label class="us-extra" style="margin:0;"><input type="checkbox" id="us-rf-todos"> Ver los registros fotográficos de todos los usuarios <span class="hint">(en Registros, Reportes y Layout; si no, solo ve los suyos)</span></label>
         <label class="us-extra" style="margin:0;"><input type="checkbox" id="us-saldos-todos"> Ver los traslados de saldos de todos los usuarios <span class="hint">(si no, solo ve los suyos)</span></label>
+        <div class="us-rf-part" id="us-rf-tiendas-box"><span class="hint">Solo puede registrar en estos participantes (en «¿Dónde haces el inventario?» verá solo estos; si no marcas ninguno, ve todos):</span><div class="us-chips" id="us-rf-tiendas"></div></div>
         <div class="us-rf-part" id="us-rf-part-box"><span class="hint">Además de los suyos, ver los registros de estos participantes (de cualquier usuario):</span><div class="us-chips" id="us-rf-part"></div></div>
       </div>
       <div class="us-resumen" id="us-resumen"></div>
@@ -4150,8 +4151,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v266';
-const APP_UPDATED = '12/11/2026 10:00';
+const APP_VERSION = 'v267';
+const APP_UPDATED = '12/11/2026 12:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -19026,10 +19027,18 @@ function rfTiendas(){
   const L = [...new Set(Object.values(participantesMaestroCache || {}).map(p=> String(p.nombre || '').trim().toUpperCase()).filter(n=> n && n !== RF_CD))].sort((a, b)=> a.localeCompare(b, 'es'));
   return [RF_CD, ...L];
 }
+// Participantes donde el usuario puede registrar (permisos.rf_tiendas). Vacío = todos; el admin, siempre todos.
+const rfTiendasLimitadas = ()=> !currentPermisos.admin && Array.isArray(currentPermisos.rf_tiendas) && currentPermisos.rf_tiendas.length ? currentPermisos.rf_tiendas : null;
+function rfTiendasPermitidas(){
+  const lim = rfTiendasLimitadas(); if(!lim) return rfTiendas();
+  const L = rfTiendas().filter(t=> lim.includes(t));
+  return L.length ? L : [...lim];   // aunque el maestro aún no haya llegado
+}
+// Lista de "¿Dónde haces el inventario?" (y la del registro): solo los participantes permitidos.
 function rfLlenarTiendas(sel, valor){
-  const L = rfTiendas(); if(valor && !L.includes(valor)) L.push(valor);   // registros viejos con otro texto
+  const L = rfTiendasPermitidas(); if(valor && !L.includes(valor) && sel.id !== 'rf-tienda') L.push(valor);   // registros viejos con otro texto
   sel.innerHTML = L.map(t=> `<option value="${esc(t)}">${esc(t === RF_CD ? RF_CD + ' (CD principal)' : t)}</option>`).join('');
-  sel.value = valor && L.includes(valor) ? valor : RF_CD;
+  sel.value = valor && L.includes(valor) ? valor : L[0];
 }
 // Los participantes llegan después del inicio de sesión (y pueden cambiar): se actualizan las listas
 // de tiendas sin perder lo elegido. Quien entra directo a Registro fotográfico las ve completas.
@@ -19431,7 +19440,8 @@ function rfCargarEnForm(r){
 async function rfIniciar(){
   $('btn-rf-iniciar').disabled = true;
   try{
-    const tienda = $('rf-tienda').value || RF_CD;
+    const tienda = $('rf-tienda').value || rfTiendasPermitidas()[0];
+    const lim = rfTiendasLimitadas(); if(lim && !lim.includes(tienda)) throw new Error(`No tienes permiso para registrar en ${tienda}.`);
     try{ localStorage.setItem('rf:tienda', tienda); }catch(e){}
     const corr = await generarCorrelativoRegFoto(), ahora = new Date().toISOString();
     const r = { correlativo: corr, estado:'BORRADOR', participante: tienda, posicion:'', foto_posicion:null, items:[], cant_items:0, unidades:0, skus:[],
@@ -21215,16 +21225,20 @@ function usRefrescar(){
     partes.length ? `👁 Verá: ${partes.join(' · ')}${$('us-eliminar').checked ? ' — y puede editar/eliminar (y subir vouchers).' : ' — sin editar ni eliminar (en Venta Online solo consulta, no sube vouchers).'}` : '⚠ Sin acceso a ninguna opción: no podrá entrar.';
 }
 // Participantes del registro fotográfico que el usuario puede ver (chips con el CD y las tiendas del maestro).
-function usRfParticipantes(marcados){
-  const L = rfTiendas(); marcados.forEach(m=> { if(!L.includes(m)) L.push(m); });
-  $('us-rf-part').innerHTML = L.map(t=> `<label class="us-chip"><input type="checkbox" data-us-rf-part="${esc(t)}"${marcados.includes(t) ? ' checked' : ''}> ${esc(t)}</label>`).join('');
+function usRfParticipantes(marcados, tiendas){
+  const chips = (sel, attr)=>{ const L = rfTiendas(); sel.forEach(m=> { if(!L.includes(m)) L.push(m); });
+    return L.map(t=> `<label class="us-chip"><input type="checkbox" ${attr}="${esc(t)}"${sel.includes(t) ? ' checked' : ''}> ${esc(t)}</label>`).join(''); };
+  $('us-rf-part').innerHTML = chips(marcados, 'data-us-rf-part');
+  $('us-rf-tiendas').innerHTML = chips(tiendas || [], 'data-us-rf-tienda');
   $('us-rf-part-box').classList.toggle('bloqueado', $('us-rf-todos').checked || $('us-admin').checked);
+  $('us-rf-tiendas-box').classList.toggle('bloqueado', $('us-admin').checked);
 }
+$('us-admin').addEventListener('change', ()=> $('us-rf-tiendas-box').classList.toggle('bloqueado', $('us-admin').checked));
 $('us-rf-todos').addEventListener('change', ()=> $('us-rf-part-box').classList.toggle('bloqueado', $('us-rf-todos').checked || $('us-admin').checked));
 function usLlenar(p){
   const base = Object.assign({}, p, { admin:false });
   $('us-admin').checked = !!p.admin; $('us-eliminar').checked = !!p.eliminar; $('us-rf-todos').checked = !!p.rf_todos; $('us-saldos-todos').checked = !!p.saldos_todos;
-  usRfParticipantes(p.rf_participantes || []);
+  usRfParticipantes(p.rf_participantes || [], p.rf_tiendas || []);
   usTabs().forEach(cb=>{
     const tab = cb.dataset.usTab; cb.checked = !!p.admin || permTabPermitida(base, tab);
     const lista = p.admin ? null : permSubsPermitidas(base, tab);
@@ -21234,7 +21248,8 @@ function usLlenar(p){
 }
 function usLeer(){
   const permisos = { admin: $('us-admin').checked, eliminar: $('us-eliminar').checked, rf_todos: $('us-rf-todos').checked, saldos_todos: $('us-saldos-todos').checked, vo_vouchers: false, subs: {},
-    rf_participantes: [...document.querySelectorAll('#us-rf-part [data-us-rf-part]:checked')].map(x=> x.dataset.usRfPart) };
+    rf_participantes: [...document.querySelectorAll('#us-rf-part [data-us-rf-part]:checked')].map(x=> x.dataset.usRfPart),
+    rf_tiendas: [...document.querySelectorAll('#us-rf-tiendas [data-us-rf-tienda]:checked')].map(x=> x.dataset.usRfTienda) };
   usTabs().forEach(cb=>{
     const tab = cb.dataset.usTab; permisos[PERM_TAB_CLAVE[tab]] = cb.checked;
     const subs = usSubs(tab), on = subs.filter(x=> x.checked).map(x=> x.dataset.usSub);

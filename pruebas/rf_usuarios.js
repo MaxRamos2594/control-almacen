@@ -70,10 +70,12 @@ const listo = page=> page.waitForFunction(()=> $('status-text').textContent === 
   verificar(/YOL ya lo usa YOLANDA/.test(repetido) && /de 2 a 5 letras/.test(invalido) && johanDoc.rf_prefijo === 'JHN' && johanDoc.permisos.rf_todos === true && johanDoc.permisos.reg_fotos === true,
     `Usuarios: prefijo repetido y prefijo con números rechazados; JOHAN queda con JHN y "ver todos" (${repetido.slice(0, 40)}…)`);
   // Dos alias que empiezan igual (USUARIO INVENTARIO 1 y 2 → USU): el segundo recibe solo un prefijo libre (UI).
-  const nuevoUsuario = async (email, alias)=>{
+  const nuevoUsuario = async (email, alias, tiendas = [])=>{
     await page.waitForTimeout(800);   // tras guardar se recarga la lista y se vuelve a abrir el usuario anterior
     await page.click('#btn-us-nuevo'); await page.fill('#us-email', email); await page.fill('#us-alias', alias);
-    await page.check('[data-us-tab="regfoto"]'); await page.click('#btn-guardar-usuario');
+    await page.check('[data-us-tab="regfoto"]');
+    for(const t of tiendas) await page.check(`#us-rf-tiendas [data-us-rf-tienda="${t}"]`);
+    await page.click('#btn-guardar-usuario');
     await page.waitForFunction(e=> $('us-msg').textContent.includes(e), email, { timeout: 15000 });
     await esperar(page, async e=> !!(await usuariosRef.doc(e).get()).exists, email, 10000);
     await page.waitForFunction(e=> /Permisos guardados/.test($('us-msg').textContent) && $('us-email').value === e, email, { timeout: 10000 });
@@ -81,7 +83,9 @@ const listo = page=> page.waitForFunction(()=> $('status-text').textContent === 
   };
   const ui1 = await nuevoUsuario('user1@ejemplo.com', 'usuario inventario 1');
   const ui2 = await nuevoUsuario('user2@ejemplo.com', 'usuario inventario 2');
-  const ui3 = await nuevoUsuario('user3@ejemplo.com', 'usuario inventario 3');
+  const ui3 = await nuevoUsuario('user3@ejemplo.com', 'usuario inventario 3', ['COMAS']);
+  const ui3Tiendas = await page.evaluate(async ()=> ((await usuariosRef.doc('user3@ejemplo.com').get()).data().permisos.rf_tiendas || []).join());
+  verificar(ui3Tiendas === 'COMAS', `Usuarios: «Solo puede registrar en estos participantes» guarda ${ui3Tiendas} para USUARIO INVENTARIO 3`);
   verificar(ui1.pre === '' && ui2.pre === 'UI' && ui2.campo === 'UI' && /Prefijo de su correlativo: UI/.test(ui2.msg) && /USU ya lo usa USUARIO INVENTARIO 1/.test(ui2.msg) && ui3.pre === 'USUA',
     `Alias que empiezan igual: USUARIO INVENTARIO 1 queda con USU (automático); el 2 recibe ${ui2.pre} y el 3 ${ui3.pre} sin error ("${ui2.msg}")`);
   await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_usuarios_permisos.png'), fullPage: true });
@@ -216,6 +220,19 @@ const listo = page=> page.waitForFunction(()=> $('status-text').textContent === 
     det.length === 2 && /A01 8 RF-/.test(det.join(' ')) && /B05 7 RF-JHN-00097/.test(det.join(' ')) &&
     r1.length === 2 && r1[0]['Código'] === 'P1' && r1[0]['Cantidad total'] === 15 && r1[0]['Posiciones (distintas)'] === 2 && r2.length === 3 && a4.length === 3,
     `Aptos por código: ${a1.join(' / ')} (pie "${pie}"); filtro cantidad >10 → ${a2.join()}; ordena por código; P1 en ${det.length} posiciones; Excel con ${r1.length} códigos y ${r2.length} filas de detalle; con "Todos" ${a4.length} códigos`);
+  erroresTodos.push(...errores); await browser.close();
+
+  // 5) Usuario limitado a COMAS: en «¿Dónde haces el inventario?» solo ve COMAS y su registro queda ahí.
+  ({ browser, page, errores } = await abrirApp({ usuario: { email: 'user3@ejemplo.com', pass: 'prueba123' } }));
+  await listo(page);
+  await page.waitForFunction(()=> $('view-regfoto').classList.contains('active') && $('rf-tienda').options.length >= 1, null, { timeout: 10000 });
+  await page.waitForTimeout(1500);   // que lleguen los participantes: igual debe quedar solo COMAS
+  const lim = await page.evaluate(()=> [...$('rf-tienda').options].map(o=> o.value).join(','));
+  await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_tienda_limitada.png') });
+  await page.click('#btn-rf-iniciar');
+  await page.waitForFunction(()=> !$('rf-form').hidden && /^RF-USUA-/.test($('rf-correlativo').value), null, { timeout: 15000 });
+  const limReg = await page.evaluate(()=> ({ part: $('rf-participante').value, opts: [...$('rf-participante').options].map(o=> o.value).join(',') }));
+  verificar(lim === 'COMAS' && limReg.part === 'COMAS' && limReg.opts === 'COMAS', `Usuario limitado a COMAS: "¿Dónde haces el inventario?" muestra ${lim}; el registro queda en ${limReg.part} (opciones: ${limReg.opts})`);
   erroresTodos.push(...errores); await browser.close();
 
   if(erroresTodos.length) console.log('\nErrores de JavaScript:\n' + [...new Set(erroresTodos)].join('\n'));
