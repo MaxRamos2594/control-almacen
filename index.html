@@ -4150,8 +4150,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v265';
-const APP_UPDATED = '16/11/2026 09:00';
+const APP_VERSION = 'v266';
+const APP_UPDATED = '12/11/2026 10:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -19012,6 +19012,14 @@ function rfPrefijoDe(alias, email){
   return (l || 'USR').slice(0, 3).padEnd(2, 'X');
 }
 const rfPrefijo = ()=> currentRfPrefijo || rfPrefijoDe(currentUserAlias, currentUserEmail);
+// Prefijos automáticos que se prueban, en orden, cuando el de siempre ya lo usa otro usuario:
+// iniciales de las palabras (USUARIO INVENTARIO → UI), luego las 3 primeras letras + A…Z, luego 4 letras + A…Z.
+function rfPrefijoCandidatos(alias, email){
+  const limpio = String(alias || email || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+  const l = limpio.replace(/[^A-Z]/g, '') || 'USR', pal = limpio.split(/[^A-Z]+/).filter(Boolean), AZ = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  const L = [rfPrefijoDe(alias, email), pal.length >= 2 ? pal.map(w=> w[0]).join('').slice(0, 5) : '', ...AZ.map(c=> l.slice(0, 3).padEnd(3, 'X') + c), ...AZ.map(c=> l.slice(0, 4).padEnd(4, 'X') + c)];
+  return [...new Set(L.filter(x=> /^[A-Z]{2,5}$/.test(x)))];
+}
 const rfVeTodos = ()=> !!(currentPermisos.admin || currentPermisos.rf_todos);
 const rfParticipantesVisibles = ()=> Array.isArray(currentPermisos.rf_participantes) ? currentPermisos.rf_participantes : [];
 function rfTiendas(){
@@ -21352,18 +21360,29 @@ $('btn-guardar-usuario').addEventListener('click', async ()=>{
   // Prefijo del registro fotográfico: letras, único entre los usuarios.
   const prefijo = $('us-rf-prefijo').value.trim().toUpperCase();
   if(prefijo && !/^[A-Z]{2,5}$/.test(prefijo)){ showMsg('us-msg','err','El prefijo del registro fotográfico debe tener de 2 a 5 letras (sin números ni espacios).'); return; }
-  const prefijoFinal = prefijo || rfPrefijoDe(alias, email);
-  const otro = usLista.find(x=> x.id !== email && (x.rf_prefijo || rfPrefijoDe(x.alias, x.id)) === prefijoFinal);
-  if(otro){ showMsg('us-msg','err', `El prefijo ${prefijoFinal} ya lo usa ${otro.alias || otro.id}. Escribe otro en "Prefijo de su correlativo".`); return; }
+  const usadoPor = pre=> usLista.find(x=> x.id !== email && (x.rf_prefijo || rfPrefijoDe(x.alias, x.id)) === pre);
+  let prefijoGuardar = prefijo, prefijoAuto = '';
+  if(prefijo){
+    const otro = usadoPor(prefijo);
+    if(otro){ showMsg('us-msg','err', `El prefijo ${prefijo} ya lo usa ${otro.alias || otro.id}. Escribe otro en "Prefijo de su correlativo".`); return; }
+  }else if(usadoPor(rfPrefijoDe(alias, email))){
+    // Vacío y el automático ya es de otro (p. ej. USUARIO INVENTARIO 1 y 2 → USU): se asigna solo uno libre.
+    for(const pre of rfPrefijoCandidatos(alias, email)){
+      if(usadoPor(pre)) continue;
+      try{ const c = await contadoresRef.doc('rf_' + pre).get(); if(c.exists && c.data().email && c.data().email !== email) continue; }catch(e){ /* sin acceso: basta con la lista de usuarios */ }
+      prefijoAuto = prefijoGuardar = pre; break;
+    }
+    if(!prefijoAuto){ showMsg('us-msg','err','No se encontró un prefijo libre. Escribe uno en "Prefijo de su correlativo".'); return; }
+  }
   try{
-    const datos = { email, permisos, rf_prefijo: prefijo || firebase.firestore.FieldValue.delete(), actualizado: firebase.firestore.FieldValue.serverTimestamp() };
+    const datos = { email, permisos, rf_prefijo: prefijoGuardar || firebase.firestore.FieldValue.delete(), actualizado: firebase.firestore.FieldValue.serverTimestamp() };
     if(alias) datos.alias = alias;
     // mergeFields: los permisos se reemplazan completos (no quedan permisos viejos mezclados).
     await usuariosRef.doc(email).set(datos, { mergeFields: Object.keys(datos) });
     await logAccion('permisos_actualizados', {detalle:`Permisos actualizados para ${email}${alias?' ('+alias+')':''}`});
-    showMsg('us-msg','ok', `Permisos guardados para ${email}.`);
+    showMsg('us-msg','ok', `Permisos guardados para ${email}.` + (prefijoAuto ? ` Prefijo de su correlativo: ${prefijoAuto} (el automático ${rfPrefijoDe(alias, email)} ya lo usa ${usadoPor(rfPrefijoDe(alias, email)).alias || usadoPor(rfPrefijoDe(alias, email)).id}); sus registros serán RF-${prefijoAuto}-00001…` : ''));
     showToast(`Permisos actualizados para ${email}.`,'ok');
-    if(email === currentUserEmail){ currentPermisos = permisos; currentRfPrefijo = prefijo; applyPermisosUI(); rfLeidos = false; }
+    if(email === currentUserEmail){ currentPermisos = permisos; currentRfPrefijo = prefijoGuardar; applyPermisosUI(); rfLeidos = false; }
     await cargarUsuarios(); usAbrir(email);
   }catch(err){ showMsg('us-msg','err', err.message); }
 });
