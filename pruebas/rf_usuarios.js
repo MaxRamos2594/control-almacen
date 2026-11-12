@@ -69,6 +69,21 @@ const listo = page=> page.waitForFunction(()=> $('status-text').textContent === 
   const johanDoc = await page.evaluate(async ()=> (await usuariosRef.doc('johan@ejemplo.com').get()).data());
   verificar(/YOL ya lo usa YOLANDA/.test(repetido) && /de 2 a 5 letras/.test(invalido) && johanDoc.rf_prefijo === 'JHN' && johanDoc.permisos.rf_todos === true && johanDoc.permisos.reg_fotos === true,
     `Usuarios: prefijo repetido y prefijo con números rechazados; JOHAN queda con JHN y "ver todos" (${repetido.slice(0, 40)}…)`);
+  // Dos alias que empiezan igual (USUARIO INVENTARIO 1 y 2 → USU): el segundo recibe solo un prefijo libre (UI).
+  const nuevoUsuario = async (email, alias)=>{
+    await page.waitForTimeout(800);   // tras guardar se recarga la lista y se vuelve a abrir el usuario anterior
+    await page.click('#btn-us-nuevo'); await page.fill('#us-email', email); await page.fill('#us-alias', alias);
+    await page.check('[data-us-tab="regfoto"]'); await page.click('#btn-guardar-usuario');
+    await page.waitForFunction(e=> $('us-msg').textContent.includes(e), email, { timeout: 15000 });
+    await esperar(page, async e=> !!(await usuariosRef.doc(e).get()).exists, email, 10000);
+    await page.waitForFunction(e=> /Permisos guardados/.test($('us-msg').textContent) && $('us-email').value === e, email, { timeout: 10000 });
+    return page.evaluate(async e=> ({ pre: ((await usuariosRef.doc(e).get()).data() || {}).rf_prefijo || '', campo: $('us-rf-prefijo').value, msg: $('us-msg').textContent }), email);
+  };
+  const ui1 = await nuevoUsuario('user1@ejemplo.com', 'usuario inventario 1');
+  const ui2 = await nuevoUsuario('user2@ejemplo.com', 'usuario inventario 2');
+  const ui3 = await nuevoUsuario('user3@ejemplo.com', 'usuario inventario 3');
+  verificar(ui1.pre === '' && ui2.pre === 'UI' && ui2.campo === 'UI' && /Prefijo de su correlativo: UI/.test(ui2.msg) && /USU ya lo usa USUARIO INVENTARIO 1/.test(ui2.msg) && ui3.pre === 'USUA',
+    `Alias que empiezan igual: USUARIO INVENTARIO 1 queda con USU (automático); el 2 recibe ${ui2.pre} y el 3 ${ui3.pre} sin error ("${ui2.msg}")`);
   await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_usuarios_permisos.png'), fullPage: true });
   erroresTodos.push(...errores); await browser.close();
 
