@@ -232,21 +232,18 @@ const png = path.join(__dirname, 'salida', 'sd_foto.png');
   verificar(medida.n === 2 && medida.w === 384 && medida.h === 288 && medida.desborde === 0 && /ORIGEN: CD VENEZUELA DESTINO: COMAS/.test(medida.txt) && /TS-00001/.test(medida.txt) && /TOTAL BULTOS: NRO BULTO 1\/2 CJ-00001/.test(medida.txt) &&
     paginasEtq.n === 2 && paginasEtq.w === 288 && paginasEtq.h === 216 && botonImp,
     `Imprimir directo: ${medida.n} etiquetas de 4 × 3 in (${medida.w}×${medida.h} px), ${paginasEtq.n} páginas de impresión de ${paginasEtq.w}×${paginasEtq.h} pt, todo el texto dentro de la etiqueta`);
-  // Ajustes de la etiqueta (esta PC): alto y corrimiento; «Imprimir 1 de prueba» saca una sola.
+  // Detalle sin «Ajustes de la etiqueta»; sin guía: aviso rojo animado (y en la lista, «⚠ Sin guía» en los cerrados).
   await page.evaluate(()=>{ switchTab('saldos'); setSdSubtab('lista'); });
   await page.waitForSelector('#sd-lista [data-sd-abrir="TS-00001"]', { timeout: 10000 });
   await page.click('#sd-lista [data-sd-abrir="TS-00001"]');
-  await page.click('.sd-etq-aj summary');
-  await page.fill('[data-sd-etq="alto"]', '3.5'); await page.fill('[data-sd-etq="dy"]', '3');
-  await page.click('[data-sd-etq-prueba]');
-  const aj = await page.evaluate(()=>{ const h = $('sd-etq-frame').contentDocument.documentElement.outerHTML;
-    return { guardado: localStorage.getItem('sd:etq'), n: (h.match(/class="et"/g) || []).length, page: /@page\{ size:4in 3\.5in; margin:0; \}/.test(h), mueve: /translate\(0mm, 3mm\)/.test(h), resumen: document.querySelector('.sd-etq-aj summary').textContent }; });
-  await (await page.$('#sd-detalle')).screenshot({ path: path.join(__dirname, 'salida', 'saldos_etq_ajustes.png') });
-  await page.click('[data-sd-etq-reset]');
-  const reset = await page.evaluate(()=> JSON.stringify(sdEtqConfig()));
+  await page.waitForSelector('#sd-detalle .sd-sin-guia', { timeout: 10000 });
+  const sinGuia = await page.evaluate(()=>{ const a = document.querySelector('#sd-detalle .sd-sin-guia'), cs = getComputedStyle(a);
+    return { txt: a.innerText.replace(/\s+/g, ' '), anim: cs.animationName, caja: document.querySelector('#sd-detalle .sd-guia').classList.contains('falta'), ajustes: !!document.querySelector('.sd-etq-aj') || /Ajustes de la etiqueta/.test($('sd-detalle').innerText),
+      chip: !!document.querySelector('#sd-lista [data-sd-abrir="TS-00001"] .sd-sin-guia-chip') }; });
+  await (await page.$('#sd-detalle')).screenshot({ path: path.join(__dirname, 'salida', 'saldos_sin_guia.png') });
   await page.evaluate(()=> sdCerrarDetalle());
-  verificar(aj.n === 1 && aj.page && aj.mueve && /"alto":3\.5/.test(aj.guardado) && /3 × 3\.5 in|4 × 3\.5 in · ↔ 0 mm ↕ 3 mm/.test(aj.resumen) && reset === '{"ancho":4,"alto":3,"dx":0,"dy":0,"borde":0.04}',
-    `Ajustes de la etiqueta: ${aj.resumen}; la prueba imprime 1 etiqueta de 4 × 3,5 in bajada 3 mm; «Valores de fábrica» vuelve a 4 × 3`);
+  verificar(/SIN GUÍA DE REMISIÓN/.test(sinGuia.txt) && sinGuia.anim === 'sdGuiaLate' && sinGuia.caja && !sinGuia.ajustes && sinGuia.chip,
+    `Sin guía: aviso "${sinGuia.txt}" animado (${sinGuia.anim}) y «⚠ Sin guía» en la lista; ya no aparece «Ajustes de la etiqueta»`);
   // Guía de remisión: un PDF pesado (más de 700 KB) se reduce antes de subir y queda en el traslado.
   const guiaPdf = path.join(__dirname, 'salida', 'guia_prueba.pdf');
   const b64g = await page.evaluate(()=>{ const cv = document.createElement('canvas'); cv.width = cv.height = 1400; const ctx = cv.getContext('2d'), im = ctx.createImageData(1400, 1400);
@@ -274,7 +271,7 @@ const png = path.join(__dirname, 'salida', 'sd_foto.png');
     `Varias guías: la antigua (${/antigua\.pdf/.test(antigua) ? 'se ve' : 'no se ve'}) + 2 a la vez → ${docG.guias_pdf.map(x=> x.nombre).join(', ')}`);
   const enStorage = await page.evaluate(p=> storage.ref().child(p).getMetadata().then(m=> m.size, ()=> 0), g.path);
   const detGuia = await page.evaluate(()=> document.querySelector('#sd-detalle .sd-guia').innerText.replace(/\s+/g, ' '));
-  const conIcono = await page.evaluate(()=> /📄×3/.test(document.querySelector('#sd-lista [data-sd-abrir="TS-00001"]').innerText));
+  const conIcono = await page.evaluate(()=> /📄×3/.test(document.querySelector('#sd-lista [data-sd-abrir="TS-00001"]').innerText) && !document.querySelector('#sd-detalle .sd-sin-guia') && !document.querySelector('#sd-lista [data-sd-abrir="TS-00001"] .sd-sin-guia-chip'));
   await page.screenshot({ path: path.join(__dirname, 'salida', 'saldos_guia.png'), fullPage: true });
   verificar(pesoGuia > 700 * 1024 && g.tam < g.tam_original && g.tam_original === pesoGuia && /^saldos_guias\/TS-00001\//.test(g.path) && enStorage === g.tam && /guia_prueba\.pdf/.test(detGuia) && /reducido de/.test(detGuia) && conIcono,
     `Guía de remisión: ${Math.round(pesoGuia / 1024)} KB → ${Math.round(g.tam / 1024)} KB, guardada en ${g.path}; el detalle la muestra ("${detGuia.slice(0, 90)}…") y la lista con 📄`);
