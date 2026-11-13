@@ -14,13 +14,18 @@ function verificar(condicion, texto){
   if(!condicion) fallas++;
 }
 // Comprobante con la misma disposición que los de Bizlinks (coordenadas desde abajo, como el PDF real).
-function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
+function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total, partido }){
   const pdf = new jsPDF({ unit:'pt', format:'a4' }), H = 842, Y = y=> H - y;
   pdf.setFontSize(8);
   pdf.text('EMPRESA DE PRUEBA SAC', 20, Y(691)); pdf.text('R.U.C.', 396, Y(799)); pdf.text('20000000001', 448, Y(799));
   pdf.text(tipo === 'FACTURA' ? 'FACTURA' : 'BOLETA DE VENTA', 392, Y(776)); pdf.text('ELECTRÓNICA', 409, Y(753)); pdf.text(nro, 408, Y(730));
-  pdf.text(tipo === 'FACTURA' ? 'Razón Social:' : 'Nombre/Razón Social:', 20, Y(653)); pdf.text(nombre, 99, Y(653)); pdf.text(docLabel, 306, Y(653)); pdf.text(doc, 418, Y(653));
-  pdf.text('Dirección:', 20, Y(638)); pdf.text('Fecha Emisión:', 306, Y(638)); pdf.text(fecha, 418, Y(638));
+  // partido: como algunos PDF de Bizlinks, cada palabra de la etiqueta es un texto aparte ("Nombre/" · "Razón" · "Social:").
+  if(partido){ pdf.text('Nombre/', 20, Y(653)); pdf.text('Razón', 50, Y(653)); pdf.text('Social:', 75, Y(653)); }
+  else pdf.text(tipo === 'FACTURA' ? 'Razón Social:' : 'Nombre/Razón Social:', 20, Y(653));
+  pdf.text(nombre, 118, Y(653)); pdf.text(docLabel, 306, Y(653)); pdf.text(doc, 418, Y(653));
+  pdf.text('Dirección:', 20, Y(638));
+  if(partido){ pdf.text('Fecha', 306, Y(638)); pdf.text('Emisión:', 330, Y(638)); } else pdf.text('Fecha Emisión:', 306, Y(638));
+  pdf.text(fecha, 418, Y(638));
   pdf.text('Moneda:', 20, Y(623)); pdf.text('Sol', 99, Y(623));
   [['Ítem',24],['Código',56],['Descripción',162],['Und.',276],['Cantidad',305],['V. Unitario',358],['P. Unitario',418],['Descuento',472],['Valor Venta',526]].forEach(([t, x])=> pdf.text(t, x, Y(592)));
   let y = 573;
@@ -56,6 +61,12 @@ function comprobante({ tipo, nro, nombre, docLabel, doc, fecha, items, total }){
   const lote = await page.evaluate(()=> [...document.querySelectorAll('#vo-batch-body tr')].map(r=> [...r.cells].slice(1).map(c=> c.innerText.trim()).join('|')));
   verificar(lote[0] === 'BOLETA|BV01-00000721|13/10/2026 03:56:27|DNI 12345678|ANA PRUEBA TORRES|3|S/ 17.40|AGENCIA|✓ Listo para guardar', `Boleta leída: ${lote[0]}`);
   verificar(lote[1] === 'FACTURA|F001-00000045|15/10/2026 10:00:00|RUC 20999888777|COMERCIAL EJEMPLO EIRL|1|S/ 1,250.00|AGENCIA|✓ Listo para guardar', `Factura leída: ${lote[1]}`);
+  // Etiquetas partidas en varios textos («Fecha» · «Emisión:», «Nombre/» · «Razón» · «Social:»): igual se leen.
+  const bp = comprobante({ tipo:'BOLETA', nro:'BA01-00000628', nombre:'CARMEN PRUEBA LEYVA', docLabel:'DNI:', doc:'10397636', fecha:'08/11/2026 13:50:08', total:'185.60', partido: true,
+    items: [['JIN-5510','VENTILADOR',1,55.08]] });
+  const leidoP = await page.evaluate(async b64=>{ const c = parseComprobantePDF(await extractGuiaLineGroups(Uint8Array.from(atob(b64), x=> x.charCodeAt(0)).buffer));
+    return `${c.nombre}|${c.fecha_emision}|${c.doc_tipo} ${c.doc_numero}`; }, fs.readFileSync(bp).toString('base64'));
+  verificar(leidoP === 'CARMEN PRUEBA LEYVA|2026-11-08|DNI 10397636', `Comprobante con etiquetas partidas: ${leidoP}`);
   await page.click('#btn-vo-guardar');
   await page.waitForFunction(()=> /Guardado! 2 comprobante/.test($('vo-msg').textContent), null, { timeout: 30000 });
   const bd = await page.evaluate(async ()=> (await voComprobantesRef.doc('BV01-00000721').get()).data());

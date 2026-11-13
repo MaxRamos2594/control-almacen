@@ -4161,8 +4161,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v269';
-const APP_UPDATED = '13/11/2026 10:00';
+const APP_VERSION = 'v270';
+const APP_UPDATED = '13/11/2026 12:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -13643,14 +13643,20 @@ function parseComprobantePDF(paginas){
   const mNro = todo.match(/\b([BF][A-Z0-9]{3})\s*-\s*(\d{1,8})\b/i);
   const nro = mNro ? `${mNro[1].toUpperCase()}-${mNro[2].padStart(8, '0')}` : '';
   // Valor que sigue a una etiqueta en la misma línea (hasta la siguiente etiqueta "Algo:").
-  // La etiqueta puede venir sola ("DNI:") o pegada a su valor ("DNI: 41458420").
+  // La etiqueta puede venir sola ("DNI:"), pegada a su valor ("DNI: 41458420") o partida en varios textos
+  // ("Fecha" · "Emisión:", "Nombre/" · "Razón" · "Social:"): se prueban hasta 4 textos seguidos.
   const tras = (etiqueta, conDosPuntos)=>{
     const re = new RegExp('^(' + etiqueta + ')\\s*' + (conDosPuntos ? ':' : ':?') + '\\s*(.*)$', 'i');
     for(const g of lineas){
-      let m = null; const i = g.items.findIndex(it=> (m = txtItem(it).match(re)));
+      let m = null, i = -1, k = 0;
+      for(let a = 0; a < g.items.length && i < 0; a++)
+        for(let n = 1; n <= 4 && a + n <= g.items.length; n++){
+          const t = g.items.slice(a, a + n).map(txtItem).join(' ').replace(/\s+/g, ' ').trim();
+          if((m = t.match(re))){ i = a; k = n; break; }
+        }
       if(i < 0) continue;
       const v = m[2] ? [m[2].trim()] : [];
-      for(const it of g.items.slice(i + 1)){ const t = txtItem(it); if(/:\s*$/.test(t) || /^[A-Za-zÁÉÍÓÚáéíóúñÑ.\/ ]{2,30}:\s/.test(t)) break; if(t) v.push(t); }
+      for(const it of g.items.slice(i + k)){ const t = txtItem(it); if(/:\s*$/.test(t) || /^[A-Za-zÁÉÍÓÚáéíóúñÑ.\/ ]{2,30}:\s/.test(t)) break; if(t) v.push(t); }
       if(v.length) return { valor: v.join(' ').trim(), etiqueta: m[1] };
     }
     return { valor:'', etiqueta:'' };
