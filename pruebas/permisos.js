@@ -28,7 +28,7 @@ const visibles = (page, sel)=> page.evaluate(sel=> [...document.querySelectorAll
   verificar(arbol.join(' | ') === 'ALMACÉN: diseno,mov,pallets | PRODUCTOS E INVENTARIO: productos,inventario,toma_inventario,regfoto,kardex,merma | CAMPAÑAS: retiros,campanas,rotulos,ventaonline | ADMINISTRACIÓN: reportes,bitacora' ||
     /CAMPAÑAS: retiros,campanas,rotulos,ventaonline/i.test(arbol.join(' | ')), `Permisos ordenados como el menú: ${arbol.join(' | ')}`);
   const nSubs = await page.evaluate(()=> ['campanas','ventaonline','rotulos','merma'].map(t=> t + ':' + document.querySelectorAll(`[data-us-sub-de="${t}"]`).length).join(' '));
-  verificar(nSubs === 'campanas:11 ventaonline:2 rotulos:2 merma:5', `Secciones por opción: ${nSubs}`);
+  verificar(nSubs === 'campanas:11 ventaonline:2 rotulos:2 merma:0', `Secciones por opción: ${nSubs}`);
 
   // Yolanda (permiso antiguo): al abrirla se ve solo Subir voucher y sin Rótulos.
   await page.click('#us-lista [data-us-email="yolanda@ejemplo.com"]');

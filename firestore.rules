@@ -46,6 +46,11 @@ service cloud.firestore {
       return registered()
         && (perms().get('admin', false) == true || perms().get('saldos_todos', false) == true);
     }
+    // Merma (mismo módulo que Saldos): ve los traslados de todos (admin o permiso "merma_todos").
+    function mermaTodos() {
+      return registered()
+        && (perms().get('admin', false) == true || perms().get('merma_todos', false) == true);
+    }
     // Participantes cuyos registros fotográficos puede ver (aunque los haya hecho otro usuario).
     function rfDeSuParticipante() {
       return resource.data.get('participante', '') in perms().get('rf_participantes', []);
@@ -108,6 +113,21 @@ service cloud.firestore {
       allow update: if registered() && (esDuenoRF() || saldosTodos() || canDelete());
       allow delete: if registered() && (esDuenoRF() || canDelete());
     }
+    // Merma: igual que Saldos.
+    match /merma_traslados/{id} {
+      allow read: if registered() && (resource == null || esDuenoRF() || mermaTodos());
+      allow create: if registered()
+        && (request.resource.data.get('usuario_email', '') == request.auth.token.email || mermaTodos());
+      allow update: if registered() && (esDuenoRF() || mermaTodos() || canDelete());
+      allow delete: if registered() && (esDuenoRF() || canDelete());
+    }
+    match /merma_cajas/{id} {
+      allow read: if registered() && (resource == null || esDuenoRF() || mermaTodos());
+      allow create: if registered()
+        && (request.resource.data.get('usuario_email', '') == request.auth.token.email || mermaTodos());
+      allow update: if registered() && (esDuenoRF() || mermaTodos() || canDelete());
+      allow delete: if registered() && (esDuenoRF() || canDelete());
+    }
 
     // Link público de Venta Online para el cliente: cualquiera que tenga el link puede leer
     // ESE documento (su id es un código aleatorio de 32 caracteres, imposible de adivinar);
@@ -120,7 +140,7 @@ service cloud.firestore {
     // Resto de colecciones de la app: cualquier usuario registrado.
     match /{coleccion}/{id} {
       allow read, write: if registered()
-        && !(coleccion in ['usuarios', 'movimientos', 'kardex', 'participantes_maestro', 'registros_foto', 'saldos_traslados', 'saldos_cajas']);
+        && !(coleccion in ['usuarios', 'movimientos', 'kardex', 'participantes_maestro', 'registros_foto', 'saldos_traslados', 'saldos_cajas', 'merma_traslados', 'merma_cajas']);
     }
   }
 }

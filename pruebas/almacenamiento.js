@@ -44,7 +44,7 @@ function verificar(condicion, texto){
   verificar(/Archivos \(Storage\) 112\.3 KB 5 archivo\(s\)/i.test(cards) && /PDFs 48\.8 KB 1 archivo/i.test(cards) && /Imágenes 63\.5 KB 4 archivo/i.test(cards), `Resumen: ${cards}`);
   const mods = await page.evaluate(()=> [...document.querySelectorAll('#alm-modulos tr[data-alm-mod]')].map(t=> t.innerText.replace(/\s+/g, ' ').trim()));
   const vacios = await page.evaluate(()=> [...document.querySelectorAll('#alm-modulos tr.alm-vacio')].map(t=> t.cells[0].innerText.replace(/\s+/g, ' ').trim()));
-  verificar(mods.length === 3 && vacios.length === 7 && vacios.some(t=> /Saldos · fotos de cajas/.test(t)) && vacios.some(t=> /vouchers de agencia vouchers_agencia\//.test(t)) && vacios.some(t=> /Venta Online · vouchers/.test(t)) && /^▸ Registro fotográfico registros_foto\/ 3 58\.6 KB 52 %$/.test(mods[0]) && /^▸ Venta Online · comprobantes vo_comprobantes\/ 1 48\.8 KB 43 %$/.test(mods[1]) && /Productos · imágenes/.test(mods[2]),
+  verificar(mods.length === 3 && vacios.length === 9 && vacios.some(t=> /Saldos · fotos de cajas/.test(t)) && vacios.some(t=> /Merma · fotos de cajas merma\//.test(t)) && vacios.some(t=> /vouchers de agencia vouchers_agencia\//.test(t)) && vacios.some(t=> /Venta Online · vouchers/.test(t)) && /^▸ Registro fotográfico registros_foto\/ 3 58\.6 KB 52 %$/.test(mods[0]) && /^▸ Venta Online · comprobantes vo_comprobantes\/ 1 48\.8 KB 43 %$/.test(mods[1]) && /Productos · imágenes/.test(mods[2]),
     `Por módulo, del más pesado al más liviano: ${mods.join(' | ')}; sin archivos: ${vacios.join(' | ')}`);
   const comprimido = await page.evaluate(()=> !document.querySelector('#alm-modulos .rf-rep-exp'));
   await page.click('#alm-modulos tr[data-alm-mod="registros_foto"]');
@@ -72,7 +72,7 @@ function verificar(condicion, texto){
   const base = await page.evaluate(()=>{ const f = c=> { const t = document.querySelector(`#alm-base [data-alm-col="${c}"]`); return t ? t.cells[1].innerText : '?'; };
     return { rf: f('registros_foto'), vo: f('vo_comprobantes'), prod: f('productos'), usuarios: f('usuarios'), errores: document.querySelectorAll('#alm-base .alm-error').length, filas: document.querySelectorAll('#alm-base tbody tr').length, vacias: ($('alm-vacias') || {}).textContent || '',
       total: document.querySelector('#alm-base tfoot').innerText.replace(/\s+/g, ' ') }; });
-  verificar(base.rf === '1' && base.vo === '2' && base.prod === '1' && base.usuarios === '1' && base.errores === 0 && base.filas === 6 && /^Sin documentos \(34\): .*Kardex.*Pallets/.test(base.vacias) && /≈ [\d.]+ KB/.test(base.total),
+  verificar(base.rf === '1' && base.vo === '2' && base.prod === '1' && base.usuarios === '1' && base.errores === 0 && base.filas === 6 && /^Sin documentos \(36\): .*Kardex.*Pallets/.test(base.vacias) && /≈ [\d.]+ KB/.test(base.total),
     `Base de datos por colección: ${base.filas} con datos (sin errores; ${base.total}); vacías en una línea: ${base.vacias.slice(0, 60)}…`);
   const huerf = await page.evaluate(()=> ({ txt: $('alm-huerfanos').innerText.replace(/\s+/g, ' '), rutas: [...document.querySelectorAll('#alm-huerfanos [data-alm-ver]')].map(b=> b.dataset.almVer), boton: !!$('btn-alm-borrar-huerfanos') }));
   verificar(huerf.rutas.join() === 'registros_foto/RF-00002/pos_1.jpg' && !huerf.boton && /menos de 24 horas/.test(huerf.txt), `Huérfanos: ${huerf.rutas.join()} (recién subido: todavía no se ofrece borrarlo)`);
