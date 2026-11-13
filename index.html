@@ -168,6 +168,35 @@
   @keyframes sdGuiaBorde{0%,100%{box-shadow:0 0 0 0 rgba(217,48,37,.35);} 50%{box-shadow:0 0 0 5px rgba(217,48,37,.12);}}
   @keyframes sdGuiaIcono{0%,100%{transform:rotate(0);} 25%{transform:rotate(-14deg);} 75%{transform:rotate(14deg);}}
   @media (prefers-reduced-motion: reduce){ .sd-guia.falta, .sd-sin-guia, .sd-sin-guia-i, .sd-sin-guia-chip{animation:none;} }
+  /* Merma: mismo diseño que Saldos */
+  #view-merma #mm-inicio input, #view-merma #mm-inicio select, #view-merma #mm-items input{font-size:16px; min-height:44px; box-sizing:border-box;}
+  .mm-cajas{display:flex; flex-wrap:wrap; gap:8px;} .mm-caja-chip{border:2px solid var(--line-strong); background:#fff; border-radius:10px; padding:8px 12px; text-align:left; cursor:pointer; min-width:150px;}
+  .mm-caja-chip b{display:block; font-size:15px;} .mm-caja-chip span{font-size:12px; color:var(--muted);} .mm-caja-chip.activa{border-color:var(--blue); background:var(--blue-bg);} .mm-caja-chip.vacia{border-style:dashed;}
+  .mm-caja-cab{display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;} .mm-caja-cab h3{margin:0;} .mm-caja-acc{display:flex; gap:6px; flex-wrap:wrap;}
+  .mm-contador{display:inline-flex; align-items:center; gap:4px; background:#1b2430; color:#fff; border-radius:999px; padding:4px 12px; font-weight:800; font-size:14px; white-space:nowrap;} .mm-contador b{font-size:18px;}
+  .mm-contador.grande{font-size:18px; padding:6px 16px; background:#2E7D4F;}
+  .mm-caja-chip{display:flex; flex-direction:column; gap:2px;} .mm-caja-chip .mm-tg{margin-top:6px; border:none; border-radius:8px; padding:7px 10px; font:inherit; font-weight:800; font-size:13px; cursor:pointer; color:#fff; background:#2b4c6f;}
+  .mm-caja-chip.cerrada .mm-tg{background:#2E7D4F;} .mm-caja-chip .mm-tg:disabled{opacity:.6; cursor:wait;}
+  #view-merma #mm-items [data-mm-campo="sku"], #view-merma #mm-items [data-mm-campo="descripcion"]{text-align:center;}
+  #view-merma .mm-solo-lect .sl-txt{text-align:center;} #view-merma .mm-det-caja td:nth-child(1), #view-merma .mm-det-caja td:nth-child(2), #view-merma .mm-det-caja th:nth-child(1), #view-merma .mm-det-caja th:nth-child(2){text-align:center;}
+  .mm-caja-chip.cerrada{background:#f1f3f5; border-color:#9aa4ae;} .mm-caja-chip.cerrada.activa{border-color:var(--blue); background:#e9eef5;} .mm-caja-chip i{font-style:normal; font-size:11px; font-weight:800; display:block; margin-top:2px;} .mm-caja-chip.abierta i{color:#1b7a3d;} .mm-caja-chip.cerrada i{color:#55606b;}
+  .mm-solo-lect{display:flex; gap:10px; align-items:center; padding:8px 0; border-bottom:1px solid var(--line);} .mm-solo-lect .rf-fotos{margin:0;} .mm-solo-lect .rf-thumb{width:52px; height:52px;} .mm-solo-lect .sl-txt{flex:1;} .mm-solo-lect .sl-cant{font-weight:900; font-size:16px; white-space:nowrap;}
+  .mm-cerrada-aviso{background:#f1f3f5; border-radius:8px; padding:8px 10px; margin:8px 0; font-size:13px;}
+  .mm-fila{display:flex; flex-wrap:wrap; justify-content:space-between; gap:6px 14px; width:100%; text-align:left; background:#fff; border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin-bottom:6px; cursor:pointer;}
+  .mm-fila:hover{background:#f6f9fd;} .mm-fila .t{font-weight:800;} .mm-est{font-size:11px; font-weight:800; padding:2px 7px; border-radius:10px; background:#e8f5e9; color:#1b5e20;} .mm-est.ABIERTO{background:#fff3e0; color:#a14a00;}
+  .mm-fila-c{border:1px solid var(--line); border-radius:8px; margin-bottom:8px; background:#fff; overflow:hidden;} .mm-fila-c .mm-fila{border:none; border-radius:0; margin:0;}
+  .mm-det-caja{border:1px solid var(--line); border-radius:8px; padding:10px; margin:10px 0;} .mm-det-caja table{width:100%; border-collapse:collapse; font-size:13px;} .mm-det-caja td, .mm-det-caja th{padding:5px 6px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top;}
+  .mm-det-caja .num{text-align:right;} .mm-guia{background:#f6f8fb; border:1px solid var(--line); border-radius:8px; padding:8px 10px; margin:10px 0; display:flex; flex-wrap:wrap; gap:6px; align-items:center;} .mm-guia .hint#mm-guia-msg{width:100%;} .mm-guias{width:100%; display:flex; flex-direction:column; gap:4px;} .mm-guia-it{display:flex; flex-wrap:wrap; gap:6px; align-items:center; background:#fff; border:1px solid var(--line); border-radius:6px; padding:4px 8px;} .mm-bultos{font-size:22px; font-weight:900;}
+  /* Traslado sin guía de remisión: aviso rojo que late para que no pase desapercibido. */
+  .mm-guia.falta{background:#fff1f0; border:2px solid #d93025; animation:mmGuiaBorde 1.4s ease-in-out infinite;}
+  .mm-sin-guia{display:inline-flex; align-items:center; gap:6px; background:#d93025; color:#fff; font-weight:900; font-size:14px; letter-spacing:.5px; padding:5px 12px; border-radius:999px; animation:mmGuiaLate 1.4s ease-in-out infinite;}
+  .mm-sin-guia-i{display:inline-block; font-size:16px; animation:mmGuiaIcono 1.4s ease-in-out infinite;} .mm-sin-guia-s{font-weight:600; opacity:.9;}
+  .mm-sin-guia-chip{display:inline-block; background:#d93025; color:#fff; font-size:11px; font-weight:800; padding:1px 8px; border-radius:999px; animation:mmGuiaLate 1.4s ease-in-out infinite;}
+  .mm-guia.falta [data-mm-guia-adjuntar]{background:#d93025; color:#fff; border-color:#d93025; font-weight:800;}
+  @keyframes mmGuiaLate{0%,100%{transform:scale(1); box-shadow:0 0 0 0 rgba(217,48,37,.55);} 50%{transform:scale(1.06); box-shadow:0 0 0 8px rgba(217,48,37,0);}}
+  @keyframes mmGuiaBorde{0%,100%{box-shadow:0 0 0 0 rgba(217,48,37,.35);} 50%{box-shadow:0 0 0 5px rgba(217,48,37,.12);}}
+  @keyframes mmGuiaIcono{0%,100%{transform:rotate(0);} 25%{transform:rotate(-14deg);} 75%{transform:rotate(14deg);}}
+  @media (prefers-reduced-motion: reduce){ .mm-guia.falta, .mm-sin-guia, .mm-sin-guia-i, .mm-sin-guia-chip{animation:none;} }
   #view-regfoto .rf-pos-campo input{font-size:20px; font-weight:800; letter-spacing:.06em; border:2px solid #2b4c6f;}
   .rf-pasos{display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;}
   .rf-paso{flex:1 1 0; min-width:0; display:flex; gap:8px; align-items:center; background:#fff; border:1px solid var(--line); border-radius:12px; padding:8px 12px; font-weight:700; font-size:13px; color:var(--ink-soft);}
@@ -308,7 +337,7 @@
   .rf-apto-btns [data-rf-apto="SI"].activo{background:#2E9E5B; color:#fff; border-color:#2E9E5B;} .rf-apto-btns [data-rf-apto="NO"].activo{background:#C4483A; color:#fff; border-color:#C4483A;}
   .rf-apto-chip{display:inline-block; padding:1px 7px; border-radius:999px; font-size:10.5px; font-weight:700;} .rf-apto-chip.si{background:#e7f6ec; color:#1d7a46; border:1px solid #2E9E5B;} .rf-apto-chip.no{background:#fdecea; color:#a3352a; border:1px solid #C4483A;}
   .rfa-acciones{display:flex; flex-wrap:wrap; gap:8px; margin:8px 0;}
-  .sd-pdf-fotos{display:inline-flex; align-items:center; gap:5px; font-size:13px; cursor:pointer;}
+  .sd-pdf-fotos, .mm-pdf-fotos{display:inline-flex; align-items:center; gap:5px; font-size:13px; cursor:pointer;}
   .rfa-tabla{width:100%; border-collapse:collapse; font-size:13px;} .rfa-tabla th, .rfa-tabla td{padding:7px 8px; border-bottom:1px solid var(--line); text-align:left; vertical-align:middle;}
   .rfa-tabla .num{text-align:right; white-space:nowrap;} .rfa-tabla thead th[data-rfa-orden]{cursor:pointer; user-select:none; white-space:nowrap; background:#f1f4f8;} .rfa-tabla thead th[data-rfa-orden]:hover{background:#e6edf6;}
   .rfa-filtros-col th{padding:4px 6px; background:#f8fafc;} #rfa-tabla .rfa-filtros-col input{width:100%; min-width:70px; height:auto; padding:5px 7px; font-size:12px; line-height:1.3; border:1px solid var(--line-strong); border-radius:6px; margin:0;}
@@ -323,7 +352,7 @@
   .rf-det-caja{width:min(1100px, 100%); border-radius:14px; box-shadow:0 18px 50px rgba(0,0,0,.35); background:#fff;}
   .rf-det-barra{position:sticky; top:0; z-index:2; display:flex; justify-content:space-between; align-items:center; gap:8px; background:#1b2430; border-radius:14px 14px 0 0; padding:8px 10px;}
   .rf-det-barra button{border:none; background:none; color:#fff; font:inherit; font-weight:800; font-size:15px; padding:8px 10px; cursor:pointer; border-radius:8px;} .rf-det-barra button:hover{background:rgba(255,255,255,.12);}
-  .rf-det-caja #rf-detalle, .rf-det-caja #sd-detalle{margin:0; border:none; border-radius:0 0 14px 14px; box-shadow:none;}
+  .rf-det-caja #rf-detalle, .rf-det-caja #sd-detalle, .rf-det-caja #mm-detalle{margin:0; border:none; border-radius:0 0 14px 14px; box-shadow:none;}
   body.rf-modal-abierto{overflow:hidden;}
   @media (max-width:640px){ .rf-det-modal{padding:0;} .rf-det-caja{border-radius:0; min-height:100%;} .rf-det-barra{border-radius:0;} .rf-det-caja #rf-detalle{border-radius:0;} }
   .rf-det-grupo{display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px; padding:10px 14px; background:#fff3cd; border-bottom:1px solid #f0d58a; font-size:14px; position:sticky; top:48px; z-index:2;}
@@ -3621,223 +3650,60 @@
   </div>
 </div>
 
-<div class="aviso-version" id="aviso-version" hidden>🔄 Hay una versión nueva de la app (<b id="aviso-version-n"></b>). <button type="button" id="btn-aviso-version">Actualizar ahora</button><button type="button" id="btn-aviso-version-x" aria-label="Cerrar">✕</button></div>
-<!-- MERMA -->
+<!-- MERMA (mismo módulo que Saldos: traslados TM-… con cajas CM-…) -->
 <div class="view" id="view-merma">
   <div class="subtabs">
-    <button class="active" id="mermasub-cargar">🚚 Cargar Guía</button>
-    <button id="mermasub-registros">🗂 Registros y Detalle</button>
-    <button id="mermasub-formato">🖨 Generar Formato</button>
-    <button id="mermasub-formatos">📁 Formatos Generados</button>
-    <button id="mermasub-auditoria">🎯 Auditoría Rápida</button>
+    <button class="active" id="mmsub-nuevo">📦 Nuevo traslado</button>
+    <button id="mmsub-lista">🗂 Registros</button>
   </div>
-
-  <div id="mermasub-panel-cargar">
-  <div class="panel" style="margin-bottom:14px;">
-    <h3>Cargar Guía de Remisión (merma)</h3>
-    <p class="hint" style="margin-bottom:10px;">Puedes seleccionar <b>varios PDFs a la vez</b>. Se extrae de cada uno N° de guía, punto de partida, punto de llegada e ítems — los archivos no se guardan, solo esta información. La <b>sede</b> se sugiere a partir del punto de llegada; corrígela si hace falta antes de guardar.</p>
-    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
-      <div class="field" style="margin:0; max-width:420px;"><label>Archivos PDF (guías de remisión) — puedes elegir varios</label><input type="file" id="merma-pdf-input" accept="application/pdf" multiple></div>
-      <button class="btn btn-primary" id="btn-procesar-guia-merma">Procesar PDF(s)</button>
+  <div id="mmsub-panel-nuevo">
+    <div class="rf-ok" id="mm-ok" hidden></div>
+    <div class="panel rf-inicio" id="mm-inicio">
+      <label class="rf-tienda-inicio">🏬 Tienda <select id="mm-tienda"></select></label>
+      <label class="rf-tienda-inicio">📅 Fecha <input type="date" id="mm-fecha"></label>
+      <button type="button" class="rf-iniciar" id="btn-mm-iniciar">▶ Iniciar traslado de merma</button>
+      <p class="hint">Se crea el traslado (<b>TM-…</b>) de esa tienda y fecha. Después creas cada caja (<b>CM-…</b>, un número por caja) y le agregas sus productos. Al terminar, cierras el traslado: el conteo de bultos es el número de cajas.</p>
+      <div id="mm-abiertos"></div>
     </div>
-    <div class="msg" id="merma-msg"></div>
-    <div id="merma-batch-wrap" style="display:none; margin-top:14px;">
-      <p class="hint" id="merma-batch-resumen" style="margin-bottom:10px;"></p>
-      <div class="hist-wrap" style="max-height:600px;">
-        <table><thead><tr><th>Archivo</th><th>N° guía</th><th>Fecha traslado</th><th>Bultos</th><th>Ítems</th><th>Sede (editable)</th><th>Estado</th></tr></thead><tbody id="merma-batch-body"></tbody></table>
+    <div id="mm-form" hidden>
+      <div class="rf-borrador-bar"><span class="rf-chip-borrador">📦 ABIERTO</span><b id="mm-bar-corr"></b><span id="mm-bar-info"></span><span class="mm-contador" id="mm-contador" title="Bultos = cajas registradas">📦 Bultos: <b>0</b></span><span class="mm-contador" id="mm-contador-it">🧾 Ítems: <b>0</b></span><span class="rf-nube" id="mm-nube"></span></div>
+      <div class="panel" style="margin-bottom:12px;">
+        <div class="mm-caja-cab"><h3>Cajas del traslado</h3><span class="mm-contador grande" id="mm-contador2">📦 0 bultos</span></div>
+        <div class="mm-cajas" id="mm-cajas"></div>
+        <button type="button" class="rf-iniciar" id="btn-mm-caja" style="margin-top:8px;">📦 Crear caja</button>
       </div>
-      <button class="btn btn-primary" id="btn-guardar-guias-lote-merma" style="margin-top:12px;">Guardar todas las guías válidas</button>
-    </div>
-  </div>
-  </div>
-
-  <div id="mermasub-panel-registros" style="display:none;">
-  <div class="panel" style="margin-bottom:14px;">
-    <h3>Guías de merma cargadas</h3>
-    <p class="hint" style="margin-bottom:10px;">Cada carga guardada genera un correlativo. El detalle (ítems) solo se consulta al presionar "Ver detalle". Al eliminar un registro se borra su detalle y la cabecera queda marcada como INVALIDADA (no se borra el correlativo).</p>
-    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
-      <div class="field" style="margin:0; max-width:190px;">
-        <label>Mostrar</label>
-        <select id="merma-reg-filtro-estado"><option value="ACTIVO">Activos</option><option value="INVALIDADO">Invalidados</option></select>
+      <div class="panel" id="mm-caja-panel" style="margin-bottom:12px;" hidden>
+        <div class="mm-caja-cab"><h3 id="mm-caja-tit">Caja</h3><div class="mm-caja-acc"><button type="button" class="btn btn-primary btn-sm" id="btn-mm-caja-cerrar">🔒 Cerrar caja</button><button type="button" class="btn btn-primary btn-sm" id="btn-mm-caja-abrir" hidden>🔓 Abrir caja</button><button type="button" class="btn btn-ghost btn-sm" id="btn-mm-caja-quitar" style="color:#8A332A;">🗑 Quitar caja</button></div></div>
+        <div id="mm-items"></div>
+        <button type="button" class="btn btn-ghost" id="btn-mm-add" style="width:100%; margin-top:8px;">+ Agregar producto</button>
       </div>
-      <div class="field" style="margin:0; max-width:170px;"><label>Fecha de traslado</label><input type="date" id="merma-reg-filtro-fecha"></div>
-      <div class="field" style="margin:0; max-width:200px;"><label>Sede (contiene)</label><input type="text" id="merma-reg-filtro-sede" class="upper" placeholder="EJ. MALL COMAS"></div>
-      <div class="field" style="margin:0; max-width:180px;"><label>N° guía (contiene)</label><input type="text" id="merma-reg-filtro-nroguia" class="upper" placeholder="EJ. TG02"></div>
-      <button class="btn btn-ghost btn-sm" id="btn-merma-reg-limpiar-filtros">Limpiar filtros</button>
+      <div class="rf-acciones"><span class="mm-contador" id="mm-contador3">📦 Bultos: <b>0</b></span><span class="mm-contador" id="mm-contador-it3">🧾 Ítems: <b>0</b></span><span class="hint" id="mm-resumen"></span><button type="button" class="btn btn-primary" id="btn-mm-cerrar">🔒 Cerrar traslado</button></div>
     </div>
-    <div class="hist-wrap" style="max-height:500px;">
-      <table><thead><tr><th>Correlativo</th><th>N° guía</th><th>Sede</th><th>Fecha traslado</th><th>Partida → Llegada</th><th>Bultos</th><th>Ítems</th><th>Cargado por</th><th>Formato</th><th>Auditoría</th><th>Detalle</th><th>Acción</th></tr></thead><tbody id="merma-reg-body"></tbody></table>
-      <div class="empty-state" id="merma-reg-empty">Aún no hay guías de merma cargadas.</div>
-    </div>
+    <div class="msg" id="mm-msg"></div>
   </div>
-
-  <div class="panel" id="merma-detalle-panel" style="display:none; margin-bottom:14px;">
-    <h3 id="merma-detalle-titulo" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-      <span id="merma-detalle-titulo-text">Detalle de guía</span>
-      <button class="btn btn-sm btn-ghost" id="btn-ocultar-detalle-merma">Ocultar detalle ✕</button>
-    </h3>
-    <p class="hint" style="margin-bottom:8px;">Ajusta "Total de unidades" (conteo físico real), "No apta para la venta" y "Observación" de cada ítem, y guarda los cambios. Estos valores son los que se usan al generar el Formato de Merma.</p>
-    <div class="hist-wrap" style="max-height:600px;">
-      <table><thead><tr><th>Item</th><th>Código</th><th>Descripción</th><th>Unidad</th><th>Cant. guía</th><th>Total unidades</th><th>Diferencia</th><th>No apta venta</th><th>Observación</th></tr></thead><tbody id="merma-detalle-body"></tbody></table>
-    </div>
-    <div class="msg" id="merma-detalle-msg"></div>
-    <button class="btn btn-primary" id="btn-guardar-detalle-merma" style="margin-top:12px;">💾 Guardar cambios de esta guía</button>
-  </div>
-  </div>
-
-  <div id="mermasub-panel-formato" style="display:none;">
-  <div class="panel" style="margin-bottom:14px;">
-    <h3>Generar Formato de Merma</h3>
-    <p class="hint" style="margin-bottom:10px;">Elige la sede y las guías activas de esa sede que quieres incluir en un mismo formato impreso (uno o varios N° de guía). Se parte de los valores ya guardados en "Registros y Detalle" — puedes ajustarlos aquí una última vez antes de generar el PDF.</p>
-    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
-      <div class="field" style="margin:0; max-width:280px;">
-        <label>Sede</label>
-        <select id="merma-fmt-sede"><option value="">— Elige una sede —</option></select>
+  <div id="mmsub-panel-lista" style="display:none;">
+    <div class="panel" style="margin-bottom:12px;">
+      <div class="rf-filtros">
+        <select id="mm-estado-f" title="Estado"><option value="">Todos</option><option value="CERRADO">🔒 Cerrados</option><option value="ABIERTO">📦 Abiertos</option></select>
+        <select id="mm-tienda-f" title="Tienda"></select><select id="mm-usuario-f" title="Usuario"></select>
+        <label>Desde <input type="date" id="mm-desde"></label><label>Hasta <input type="date" id="mm-hasta"></label><button type="button" class="btn btn-ghost btn-sm" id="btn-mm-todas-fechas" title="Quitar el filtro de fechas">📅 Todas las fechas</button>
+        <input type="search" id="mm-q" placeholder="Buscar traslado, caja, código o descripción…" autocomplete="off">
       </div>
-    </div>
-    <div id="merma-fmt-guias-wrap" style="display:none;">
-      <p class="hint" style="margin-bottom:6px;">Guías ACTIVAS disponibles para "<b><span id="merma-fmt-sede-label"></span></b>":</p>
-      <div class="hist-wrap" style="max-height:220px; margin-bottom:14px;">
-        <table><thead><tr><th style="width:34px;"><input type="checkbox" id="merma-fmt-check-all"></th><th>Correlativo</th><th>N° guía</th><th>Fecha traslado</th><th>Ítems</th><th>Formato previo</th></tr></thead><tbody id="merma-fmt-guias-body"></tbody></table>
-      </div>
-      <div class="empty-state" id="merma-fmt-guias-empty" style="display:none;">Esta sede no tiene guías activas.</div>
-      <button class="btn btn-primary" id="btn-merma-fmt-cargar-filas" style="margin-bottom:14px;">Cargar ítems de las guías seleccionadas</button>
-
-      <div id="merma-fmt-filas-wrap" style="display:none;">
-        <div class="hist-wrap" style="max-height:520px;">
-          <table><thead><tr><th>N°</th><th>Sede</th><th>N° guía</th><th>Código</th><th>Descripción</th><th>Cant. guía</th><th>Total unidades</th><th>Diferencia</th><th>No apta venta</th><th>Observación</th></tr></thead><tbody id="merma-fmt-filas-body"></tbody></table>
-        </div>
-        <div class="msg" id="merma-fmt-msg"></div>
-        <button class="btn btn-primary" id="btn-merma-fmt-generar" style="margin-top:12px;">🖨 Generar PDF de Formato de Merma</button>
-      </div>
+      <div class="rfa-acciones"><button type="button" class="btn btn-primary btn-sm" id="btn-mm-excel">⬇ Exportar a Excel</button><button type="button" class="btn btn-primary btn-sm" id="btn-mm-pdf">⬇ PDF para gerencia</button><label class="mm-pdf-fotos" title="Descarga 1 foto por código: el PDF demora más y consume más datos"><input type="checkbox" id="mm-pdf-fotos"> Incluir fotos</label><button type="button" class="btn btn-ghost btn-sm" id="btn-mm-recargar">↻ Actualizar</button></div>
+      <div id="mm-lista-res" class="hint" style="margin:6px 0;"></div>
+      <div id="mm-lista"></div>
     </div>
   </div>
-  </div>
-
-  <div id="mermasub-panel-formatos" style="display:none;">
-  <div class="panel" style="margin-bottom:14px;">
-    <h3>Formatos de merma generados</h3>
-    <p class="hint" style="margin-bottom:10px;">Aquí puedes revisar qué formatos ya se generaron, volver a descargar el PDF, y subir o reemplazar su versión firmada escaneada — tu previsualizador de guías con formato firmado.</p>
-    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
-      <div class="field" style="margin:0; max-width:190px;">
-        <label>Mostrar</label>
-        <select id="merma-fmt-list-filtro-estado"><option value="ACTIVO">Activos</option><option value="INVALIDADO">Invalidados</option></select>
-      </div>
-      <div class="field" style="margin:0; max-width:220px;"><label>Sede (contiene)</label><input type="text" id="merma-fmt-list-filtro-sede" class="upper" placeholder="EJ. MALL COMAS"></div>
-      <div class="field" style="margin:0; max-width:190px;">
-        <label>PDF firmado</label>
-        <select id="merma-fmt-list-filtro-firmado"><option value="">Todos</option><option value="si">Con PDF firmado</option><option value="no">Sin PDF firmado</option></select>
-      </div>
-      <button class="btn btn-ghost btn-sm" id="btn-merma-fmt-list-limpiar-filtros">Limpiar filtros</button>
-    </div>
-    <div class="hist-wrap" style="max-height:460px;">
-      <table><thead><tr><th>Correlativo</th><th>Sede</th><th>Fecha generado</th><th>Guías</th><th>Filas</th><th>Generado por</th><th>¿PDF firmado?</th><th>Acción</th></tr></thead><tbody id="merma-formatos-body"></tbody></table>
-      <div class="empty-state" id="merma-formatos-empty">Aún no se han generado formatos de merma.</div>
+  <input type="file" id="mm-guia-file" accept="application/pdf,.pdf" multiple hidden>
+  <div class="rf-det-modal" id="mm-det-modal" hidden>
+    <div class="rf-det-caja" role="dialog" aria-modal="true" aria-label="Detalle del traslado de merma">
+      <div class="rf-det-barra"><button type="button" id="btn-mm-det-volver">← Volver a la lista</button><button type="button" id="btn-mm-det-cerrar" aria-label="Cerrar">✕</button></div>
+      <div class="panel" id="mm-detalle"></div>
     </div>
   </div>
-
-  <div class="panel" id="merma-fmt-pdf-panel" style="display:none;">
-    <h3 id="merma-fmt-pdf-titulo" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-      <span id="merma-fmt-pdf-titulo-text">PDF firmado</span>
-      <button class="btn btn-sm btn-ghost" id="btn-ocultar-merma-fmt-pdf">Ocultar ✕</button>
-    </h3>
-    <div id="merma-fmt-pdf-sin-archivo" style="display:none;">
-      <p class="hint" style="margin-bottom:10px;">Aún no se ha subido un PDF firmado para este formato.</p>
-      <button class="btn btn-primary" id="btn-merma-subir-pdf-panel">📤 Subir PDF firmado</button>
-    </div>
-    <div id="merma-fmt-pdf-con-archivo" style="display:none;">
-      <p class="hint" id="merma-fmt-pdf-info" style="margin-bottom:10px;"></p>
-      <iframe id="merma-fmt-pdf-iframe" style="width:100%; height:760px; border:1px solid var(--line-strong); border-radius:6px;" src=""></iframe>
-      <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
-        <a id="merma-fmt-pdf-abrir-nueva" href="#" target="_blank" rel="noopener" class="btn btn-ghost">⬇ Abrir en pestaña nueva</a>
-        <button class="btn btn-ghost" id="btn-merma-reemplazar-pdf">↺ Reemplazar PDF</button>
-        <button class="btn" id="btn-merma-eliminar-pdf" style="background:#8A332A; color:#fff;">🗑 Eliminar PDF</button>
-      </div>
-    </div>
-  </div>
-  </div>
-
-  <div id="mermasub-panel-auditoria" style="display:none;">
-  <div class="panel" style="margin-bottom:14px;">
-    <h3>Auditoría Rápida de Recepción por Muestreo</h3>
-    <p class="hint" style="margin-bottom:10px;">Calcula cuántos bultos abrir y cuántos ítems inspeccionar por guía, sin superar un presupuesto de <b>60 minutos</b>. El resultado no rechaza la guía: solo la clasifica como <b>CONFIABLE</b> o <b>NO CONFIABLE</b> para que sigas el flujo normal y, si hace falta, se concilie después.</p>
-    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
-      <div class="field" style="margin:0; max-width:320px;">
-        <label>Guía de merma cargada (opcional)</label>
-        <select id="aud-guia-select"><option value="">— Ingresar datos manualmente —</option></select>
-      </div>
-    </div>
-    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:6px;">
-      <div class="field" style="margin:0; max-width:170px;"><label>Total de bultos recibidos</label><input type="number" id="aud-total-bultos" min="1" placeholder="EJ. 12"></div>
-      <div class="field" style="margin:0; max-width:200px;"><label>Total de ítems según guía</label><input type="number" id="aud-total-items" min="1" placeholder="EJ. 8"></div>
-      <div class="field" style="margin:0; max-width:220px;">
-        <label>Tipo de embalaje</label>
-        <select id="aud-tipo-embalaje">
-          <option value="HOMOGENEO">Homogéneo (1 ítem por bulto)</option>
-          <option value="MIXTO">Mixto (varios ítems por bulto)</option>
-        </select>
-      </div>
-      <div class="field" style="margin:0; max-width:260px;">
-        <label>Tiempo por ítem revisado</label>
-        <select id="aud-tiempo-item">
-          <option value="3">3 min — revisión rápida / código de barras</option>
-          <option value="5" selected>5 min — revisión estándar / conteo</option>
-          <option value="10">10 min — revisión exhaustiva / técnica</option>
-        </select>
-      </div>
-      <button class="btn btn-primary" id="btn-aud-calcular">📐 Calcular muestra</button>
-    </div>
-    <div class="msg" id="aud-calc-msg"></div>
-
-    <div id="aud-resultado-wrap" style="display:none; margin-top:14px;">
-      <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:14px;" id="aud-resultado-kpis"></div>
-
-      <div class="panel" style="background:var(--bg-soft, #F7F7F5); margin-bottom:14px;">
-        <h4 style="margin-bottom:8px;">Resultado de la inspección</h4>
-        <p class="hint" style="margin-bottom:10px;">Registra cada discrepancia encontrada al abrir los bultos y revisar los ítems de la muestra. Si no encuentras ninguna, deja la lista vacía.</p>
-        <div class="hist-wrap" style="max-height:280px; margin-bottom:10px;">
-          <table><thead><tr><th>Código / ítem</th><th>Motivo</th><th>Detalle (opcional)</th><th></th></tr></thead><tbody id="aud-discrepancias-body"></tbody></table>
-          <div class="empty-state" id="aud-discrepancias-empty">Sin discrepancias registradas — de guardar así, la guía queda CONFIABLE.</div>
-        </div>
-        <button class="btn btn-ghost btn-sm" id="btn-aud-agregar-discrepancia">➕ Agregar discrepancia</button>
-      </div>
-
-      <button class="btn btn-primary" id="btn-aud-guardar" style="margin-bottom:6px;">💾 Guardar auditoría</button>
-      <div class="msg" id="aud-guardar-msg"></div>
-    </div>
-  </div>
-
-  <div class="panel">
-    <h3>Auditorías registradas</h3>
-    <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px;">
-      <div class="field" style="margin:0; max-width:200px;">
-        <label>Dictamen</label>
-        <select id="aud-list-filtro-dictamen"><option value="">Todos</option><option value="CONFIABLE">Confiable</option><option value="NO_CONFIABLE">No confiable</option></select>
-      </div>
-      <div class="field" style="margin:0; max-width:220px;"><label>Sede (contiene)</label><input type="text" id="aud-list-filtro-sede" class="upper" placeholder="EJ. MALL COMAS"></div>
-      <button class="btn btn-ghost btn-sm" id="btn-aud-list-limpiar-filtros">Limpiar filtros</button>
-    </div>
-    <div class="hist-wrap" style="max-height:480px;">
-      <table><thead><tr><th>Correlativo</th><th>Guía</th><th>Sede</th><th>Bultos abiertos</th><th>Ítems revisados</th><th>Tiempo est.</th><th>Discrepancias</th><th>Dictamen</th><th>Fecha</th><th>Usuario</th><th></th></tr></thead><tbody id="aud-list-body"></tbody></table>
-      <div class="empty-state" id="aud-list-empty">Aún no se han registrado auditorías rápidas.</div>
-    </div>
-  </div>
-
-  <div class="panel" id="aud-detalle-panel" style="display:none;">
-    <h3 style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-      <span id="aud-detalle-titulo-text">Detalle de auditoría</span>
-      <button class="btn btn-sm btn-ghost" id="btn-ocultar-aud-detalle">Ocultar ✕</button>
-    </h3>
-    <div class="hist-wrap" style="max-height:320px;">
-      <table><thead><tr><th>Código / ítem</th><th>Motivo</th><th>Detalle</th></tr></thead><tbody id="aud-detalle-body"></tbody></table>
-      <div class="empty-state" id="aud-detalle-empty">Esta auditoría no registró discrepancias.</div>
-    </div>
-  </div>
-  </div>
-
-  <input type="file" id="merma-pdf-input-global" accept="application/pdf" style="display:none;">
 </div>
 
+<div class="aviso-version" id="aviso-version" hidden>🔄 Hay una versión nueva de la app (<b id="aviso-version-n"></b>). <button type="button" id="btn-aviso-version">Actualizar ahora</button><button type="button" id="btn-aviso-version-x" aria-label="Cerrar">✕</button></div>
 <!-- KARDEX -->
 <div class="view" id="view-kardex">
   <div class="panel">
@@ -3921,6 +3787,7 @@
         <div class="field" style="margin:6px 0;"><label>Prefijo de su correlativo <span class="hint">(2 a 5 letras; sus registros serán RF-PREFIJO-00001…)</span></label><input type="text" id="us-rf-prefijo" class="upper" maxlength="5" placeholder="Automático: primeras letras del alias"></div>
         <label class="us-extra" style="margin:0;"><input type="checkbox" id="us-rf-todos"> Ver los registros fotográficos de todos los usuarios <span class="hint">(en Registros, Reportes y Layout; si no, solo ve los suyos)</span></label>
         <label class="us-extra" style="margin:0;"><input type="checkbox" id="us-saldos-todos"> Ver los traslados de saldos de todos los usuarios <span class="hint">(si no, solo ve los suyos)</span></label>
+        <label class="us-extra" style="margin:0;"><input type="checkbox" id="us-merma-todos"> Ver los traslados de merma de todos los usuarios <span class="hint">(si no, solo ve los suyos)</span></label>
         <div class="us-rf-part" id="us-rf-tiendas-box"><span class="hint">Solo puede registrar en estos participantes (en «¿Dónde haces el inventario?» verá solo estos; si no marcas ninguno, ve todos):</span><div class="us-chips" id="us-rf-tiendas"></div></div>
         <div class="us-rf-part" id="us-rf-part-box"><span class="hint">Además de los suyos, ver los registros de estos participantes (de cualquier usuario):</span><div class="us-chips" id="us-rf-part"></div></div>
       </div>
@@ -3966,6 +3833,12 @@
     </div>
     <div class="msg" id="alm-msg"></div>
     <div class="alm-cards" id="alm-cards"></div>
+  </div>
+  <div class="panel" id="alm-merma-vieja" hidden style="margin-bottom:12px; border:2px solid #e3b4ae; background:#fff6f5;">
+    <h3>🗑 Datos del módulo de Merma anterior</h3>
+    <p class="hint">El módulo de Merma anterior (Cargar Guía, Formatos, Auditoría Rápida) ya no existe en la app. Sus datos siguen guardados en Firebase: <b id="alm-merma-vieja-res"></b></p>
+    <button type="button" class="btn btn-ghost" id="btn-alm-merma-vieja" style="color:#8A332A; border-color:#e3b4ae;">🗑 Borrar todos esos datos</button>
+    <div class="msg" id="alm-merma-vieja-msg"></div>
   </div>
   <div class="panel alm-sec" id="alm-sec-modulos" style="display:none;">
     <h3>📁 Archivos por módulo</h3>
@@ -4053,7 +3926,7 @@ async function revisarVersion(){
 // que no se escape ninguna) y todo borrado deja una marca en "borrados_<colección>". Así cada equipo guarda su copia y
 // después solo pide al servidor lo que cambió o se borró desde la última vez. Cada 7 días (o si la copia del equipo
 // está incompleta) se vuelve a leer todo, por seguridad.
-const SYNC_COLS = new Set(['productos', 'registros_foto', 'saldos_traslados', 'saldos_cajas']);
+const SYNC_COLS = new Set(['productos', 'registros_foto', 'saldos_traslados', 'saldos_cajas', 'merma_traslados', 'merma_cajas']);
 // Margen: se vuelve a pedir lo que cambió en los últimos 5 minutos (las horas son del servidor; cubre escrituras simultáneas).
 // Sin ninguna marca todavía (datos de antes de este cambio) se usa la hora del equipo con 1 hora de margen.
 const SYNC_MARGEN = window.__syncMargen != null ? window.__syncMargen : 5 * 60e3, SYNC_SIN_MARCA = 3600e3, SYNC_COMPLETO_CADA = 86400e3;   // lectura completa: 1 vez al día por equipo (por si algún equipo con una versión antigua escribió sin marca)
@@ -4161,8 +4034,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v270';
-const APP_UPDATED = '13/11/2026 12:00';
+const APP_VERSION = 'v271';
+const APP_UPDATED = '13/11/2026 16:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4208,6 +4081,47 @@ const mermaGuiasRef = db.collection('merma_guias');
 const mermaGuiaItemsRef = db.collection('merma_guia_items');
 const mermaFormatosRef = db.collection('merma_formatos');
 const mermaAuditoriasRef = db.collection('merma_auditorias');
+// Datos del módulo de Merma anterior (ya quitado de la app): en Almacenamiento, el administrador puede borrarlos.
+// Solo se mira si queda algo (1 documento por colección); al borrar se leen y eliminan por tandas, con sus PDFs firmados.
+const MERMA_VIEJA = [['merma_guias', 'guía(s)'], ['merma_guia_items', 'ítem(s) de guías'], ['merma_formatos', 'formato(s)'], ['merma_auditorias', 'auditoría(s)']];
+async function mermaViejaRevisar(){
+  const caja = $('alm-merma-vieja'); if(!caja) return;
+  if(!currentPermisos.admin){ caja.hidden = true; return; }
+  try{
+    const hay = await Promise.all(MERMA_VIEJA.map(([c])=> db.collection(c).limit(1).get().then(q=> !q.empty)));
+    caja.hidden = !hay.some(Boolean);
+    $('alm-merma-vieja-res').textContent = MERMA_VIEJA.filter((x, i)=> hay[i]).map(([, t])=> t.replace(/\(s\)/, 's')).join(', ') + '.';
+  }catch(err){ console.warn('Merma anterior', err); caja.hidden = true; }
+}
+async function mermaViejaBorrar(){
+  if(!currentPermisos.admin) return;
+  if(!confirm('¿Borrar TODOS los datos del módulo de Merma anterior (guías, ítems, formatos con sus PDFs firmados y auditorías)?\n\nNo se puede deshacer.')) return;
+  const btn = $('btn-alm-merma-vieja'), msg = t=> showMsg('alm-merma-vieja-msg', 'ok', t); btn.disabled = true;
+  const cuenta = {}; let pdfs = 0;
+  try{
+    for(const [c] of MERMA_VIEJA){
+      cuenta[c] = 0;
+      for(;;){
+        const q = await db.collection(c).limit(400).get(); if(q.empty) break;
+        if(c === 'merma_formatos'){   // PDFs firmados en Storage
+          const paths = q.docs.flatMap(d=>{ const x = d.data(); return [x.pdf_path, x.pdf_firmado_path, ...(Array.isArray(x.pdfs) ? x.pdfs.map(p=> p && p.path) : [])]; }).filter(Boolean);
+          await Promise.allSettled(paths.map(pa=> storage.ref().child(pa).delete())); pdfs += paths.length;
+        }
+        const b = db.batch(); q.docs.forEach(d=> b.delete(d.ref)); await b.commit();
+        cuenta[c] += q.size; msg(`Borrando… ${MERMA_VIEJA.map(([k, t])=> `${cuenta[k] || 0} ${t}`).join(' · ')}`);
+      }
+    }
+    // Lo que quede en la carpeta merma_formatos/ de Storage (PDFs sin documento).
+    try{ const l = await storage.ref().child('merma_formatos').listAll(); const todos = [...l.items];
+      for(const pre of l.prefixes){ const sub = await pre.listAll(); todos.push(...sub.items); }
+      await Promise.allSettled(todos.map(it=> it.delete())); pdfs += todos.length; }catch(e){ console.warn('merma_formatos', e); }
+    const det = MERMA_VIEJA.map(([k, t])=> `${cuenta[k]} ${t}`).join(' · ') + ` · ${pdfs} PDF(s)`;
+    await logAccion('merma_datos_anteriores_borrados', { detalle: `Datos del módulo de Merma anterior borrados: ${det}` });
+    msg(`Listo: se borraron ${det}.`); showToast('Datos de la Merma anterior borrados.', 'ok');
+    $('alm-merma-vieja').hidden = true;
+  }catch(err){ console.error(err); showMsg('alm-merma-vieja-msg', 'err', 'No se pudo terminar de borrar: ' + (err.message || err)); }
+  finally{ btn.disabled = false; }
+}
 const contadorRef = db.collection('contadores').doc('global');
 const rejasRef = db.collection('rejas'); // divisores físicos (rejas) del layout, posición dinámica en px
 
@@ -4380,6 +4294,7 @@ async function loadPermisos(user){
   // Quien entra directo a Registro fotográfico (su única opción) también tiene su pantalla de inicio lista.
   if($('view-regfoto').classList.contains('active') && $('rfsub-panel-nuevo').style.display !== 'none') rfPrepararForm();
   if($('view-saldos').classList.contains('active')) sdAlEntrar();
+  if($('view-merma').classList.contains('active')) mmAlEntrar();
   $('login-screen').style.display='none';
   $('app-shell').style.display='block';
   if(!listenersStarted){ listenersStarted = true; startListeners(); }
@@ -4392,7 +4307,7 @@ const PERM_TAB_CLAVE = { diseno:'diseno', mov:'movimientos', pallets:'pallets', 
   kardex:'kardex', merma:'merma', retiros:'retiros', campanas:'campanas', rotulos:'rotulos', ventaonline:'venta_online', reportes:'reportes', bitacora:'bitacora', asistente:'asistente' };
 // Opciones con secciones que se permiten una por una: permisos.subs[opción] = ids de las
 // secciones permitidas (sin lista = todas, como antes).
-const PERM_SUB_TABS = ['campanas', 'ventaonline', 'rotulos', 'merma', 'regfoto'];
+const PERM_SUB_TABS = ['campanas', 'ventaonline', 'rotulos', 'regfoto'];
 const permSubBotones = tab=> [...document.querySelectorAll(`#view-${tab} .subtabs button[id]`)];
 function permTabPermitida(p, tab){
   if(p.admin) return true;
@@ -4461,6 +4376,7 @@ function switchTab(name){
   }
   if(name==='ventaonline' && $('vosub-panel-vouchers').style.display !== 'none') voCargar();
   if(name==='almacenamiento' && typeof renderAlmConsumo === 'function') renderAlmConsumo();
+  if(name==='almacenamiento' && typeof mermaViejaRevisar === 'function') mermaViejaRevisar();
   // Usuarios se carga al abrir la pestaña de cualquier forma (menú o al recargar la página estando en ella).
   if(name==='usuarios' && typeof cargarUsuarios === 'function') cargarUsuarios();
   try{ history.replaceState(null, '', '#tab-'+name); }catch(e){}
@@ -4665,7 +4581,7 @@ function moduloOf(tipo){
   if(['producto_registrado','producto_fusionado'].includes(tipo)) return 'productos';
   if(['permisos_actualizados','sesion_cerrada','sesion_cerrada_inactividad','sesion_iniciada'].includes(tipo)) return 'usuarios';
   if(['toma_inventario_generada','toma_inventario_finalizada','toma_inventario_eliminada','toma_inventario_pdf_subido','toma_inventario_pdf_eliminado','toma_inventario_observacion_resuelta','toma_inventario_observacion_reabierta','toma_inventario_conteo_corregido','toma_inventario_sobrante_registrado','toma_inventario_eri_eru_recalculado'].includes(tipo)) return 'toma_inventario';
-  if(['merma_guia_cargada','merma_guia_eliminada','merma_sede_corregida','merma_formato_generado','merma_formato_eliminado','merma_formato_pdf_subido','merma_formato_pdf_eliminado','merma_auditoria_registrada','merma_auditoria_alerta','merma_auditoria_eliminada'].includes(tipo)) return 'merma';
+  if(['merma_guia_cargada','merma_guia_eliminada','merma_sede_corregida','merma_formato_generado','merma_formato_eliminado','merma_formato_pdf_subido','merma_formato_pdf_eliminado','merma_auditoria_registrada','merma_auditoria_alerta','merma_auditoria_eliminada','merma_datos_anteriores_borrados'].includes(tipo)) return 'merma';
   return '';
 }
 function tipoLabel(tipo){
@@ -4674,6 +4590,7 @@ function tipoLabel(tipo){
     reg_foto_creado:'Registro fotográfico creado', reg_foto_eliminado:'Registro fotográfico eliminado', reg_foto_iniciado:'Registro fotográfico iniciado (borrador)',
     reg_foto_confirmado:'Registro fotográfico confirmado', reg_foto_descartado:'Borrador de registro fotográfico descartado', reg_foto_exportado:'Registro fotográfico exportado',
     reg_foto_reabierto:'Registro fotográfico abierto para modificar', reg_foto_modificado:'Registro fotográfico modificado', reg_foto_modificacion_cancelada:'Modificación de registro fotográfico cancelada', reg_foto_apto_ajuste:'Registro fotográfico: apto para ajuste', reg_foto_posicion_cambiada:'Registro fotográfico: posición cambiada', reg_foto_layout_marca:'Registro fotográfico: posición bloqueada / merma / por inventariar', reg_foto_fusionado:'Registros fotográficos fusionados', reg_foto_sku_editado:'Registro fotográfico: código / descripción editados', reg_foto_costos:'Registro fotográfico: costos asignados', saldos_iniciado:'Saldos: traslado iniciado', saldos_caja_creada:'Saldos: caja creada', saldos_caja_quitada:'Saldos: caja quitada', saldos_caja_cerrada:'Saldos: caja cerrada', saldos_caja_abierta:'Saldos: caja abierta de nuevo', saldos_cerrado:'Saldos: traslado cerrado', saldos_reabierto:'Saldos: traslado reabierto', saldos_eliminado:'Saldos: traslado eliminado', saldos_exportado:'Saldos: exportado a Excel', saldos_rotulos:'Saldos: rótulos impresos', saldos_guia_adjuntada:'Saldos: guía de remisión adjuntada', saldos_guia_quitada:'Saldos: guía de remisión quitada',
+    merma_iniciado:'Merma: traslado iniciado', merma_caja_creada:'Merma: caja creada', merma_caja_quitada:'Merma: caja quitada', merma_caja_cerrada:'Merma: caja cerrada', merma_caja_abierta:'Merma: caja abierta de nuevo', merma_cerrado:'Merma: traslado cerrado', merma_reabierto:'Merma: traslado reabierto', merma_eliminado:'Merma: traslado eliminado', merma_exportado:'Merma: exportado a Excel', merma_rotulos:'Merma: rótulos impresos', merma_guia_adjuntada:'Merma: guía de remisión adjuntada', merma_guia_quitada:'Merma: guía de remisión quitada', merma_datos_anteriores_borrados:'Merma: datos del módulo anterior borrados',
     ingreso:'Entrada de pallet', movimiento:'Movimiento', retiro:'Salida (pallet completo)',
     retiro_campana:'Salida (campaña)', retiro_campana_revertido:'↺ Retiro de campaña revertido', producto_agregado:'Adición de producto', transferencia:'Transferencia entre pallets',
     bloqueo:'Bloqueo de posición', desbloqueo:'Desbloqueo de posición',
@@ -4737,7 +4654,7 @@ function onErr(err){ $('status-text').textContent='Error de conexión'; $('dot')
 // fotográfico y/o Saldos (los operarios en el celular) no descarga pallets, validadores ni retiros de campaña.
 // Cualquier otra opción del menú (o admin) escucha todo, como siempre.
 // Rótulos PDF no usa datos en vivo (a los usuarios antiguos se les permite por defecto).
-const ESCUCHAS_POR_OPCION = { regfoto: ['layout', 'productos', 'participantes'], saldos: ['productos', 'participantes'], rotulos: [] };
+const ESCUCHAS_POR_OPCION = { regfoto: ['layout', 'productos', 'participantes'], saldos: ['productos', 'participantes'], merma: ['productos', 'participantes'], rotulos: [] };
 function escuchasNecesarias(){
   const tabs = Object.keys(PERM_TAB_CLAVE).filter(t=> permTabPermitida(currentPermisos || {}, t));
   if(currentPermisos.admin || !tabs.length || tabs.some(t=> !ESCUCHAS_POR_OPCION[t])) return null;   // null = todas
@@ -4783,6 +4700,7 @@ function startListeners(){
     renderParticipantesNuevos();
     rfRefrescarTiendas();
     if(typeof sdLlenarTiendas === 'function') sdLlenarTiendas();
+    if(typeof mmLlenarTiendas === 'function') mmLlenarTiendas();
   }, onErr));
   if(!nec) listenerUnsubs.push(validadoresMaestroRef.onSnapshot(snap=>{
     contarLecturas(snap);
@@ -4812,9 +4730,6 @@ function startListeners(){
   cargarRegistrosCampana(true);
   cargarRegistrosGuias(true);
   cargarTomasInventario(true);
-  cargarRegistrosMerma(true);
-  cargarFormatosMerma(true);
-  cargarAuditoriasMerma(true);
   prepararTiendasEnSegundoPlano();
 }
 
@@ -12284,1230 +12199,6 @@ $('guia-reg-body').addEventListener('click', async (ev)=>{
   }
 });
 
-/* ==================== MÓDULO DE MERMA ====================
-   Reutiliza extractGuiaLineGroups()/parseGuiaPDF()/txtItem() (definidas arriba,
-   en la sección de Campañas) para leer las mismas guías de remisión en PDF, pero
-   sin vincularlas a ninguna campaña. En su lugar cada guía se asocia a una SEDE
-   (sugerida desde el punto de llegada del PDF, editable). El detalle de cada
-   ítem guarda además "total_unidades" (conteo físico real), "no_apta_venta" y
-   "observacion" — estos tres son los que se ajustan antes de imprimir el
-   Formato de Merma. */
-
-function setMermaSubtab(name){
-  ['cargar','registros','formato','formatos','auditoria'].forEach(n=>{
-    $('mermasub-'+n).classList.toggle('active', n===name);
-    $('mermasub-panel-'+n).style.display = (n===name) ? 'block' : 'none';
-  });
-}
-$('mermasub-cargar').addEventListener('click', ()=> setMermaSubtab('cargar'));
-$('mermasub-registros').addEventListener('click', ()=> setMermaSubtab('registros'));
-$('mermasub-formato').addEventListener('click', ()=>{ setMermaSubtab('formato'); poblarSelectSedesMerma(); });
-$('mermasub-formatos').addEventListener('click', ()=>{ setMermaSubtab('formatos'); renderFormatosMerma(); });
-$('mermasub-auditoria').addEventListener('click', ()=>{ setMermaSubtab('auditoria'); poblarSelectGuiasAuditoria(); renderAuditoriasMerma(); });
-
-async function generarCorrelativoMerma(){
-  const counterRef = contadoresRef.doc('merma_guias');
-  const siguiente = await db.runTransaction(async (tx)=>{
-    const snap = await tx.get(counterRef);
-    const actual = snap.exists ? (snap.data().ultimo || 0) : 0;
-    const nuevo = actual + 1;
-    tx.set(counterRef, {ultimo: nuevo}, {merge:true});
-    return nuevo;
-  });
-  return 'MRM-' + String(siguiente).padStart(5,'0');
-}
-async function generarCorrelativoFormatoMerma(){
-  const counterRef = contadoresRef.doc('merma_formatos');
-  const siguiente = await db.runTransaction(async (tx)=>{
-    const snap = await tx.get(counterRef);
-    const actual = snap.exists ? (snap.data().ultimo || 0) : 0;
-    const nuevo = actual + 1;
-    tx.set(counterRef, {ultimo: nuevo}, {merge:true});
-    return nuevo;
-  });
-  return 'FRM-' + String(siguiente).padStart(5,'0');
-}
-
-function calcularDiferenciaMerma(cantidadGuia, totalUnidades){
-  const c = Number(cantidadGuia) || 0;
-  if(totalUnidades === '' || totalUnidades === null || totalUnidades === undefined || isNaN(Number(totalUnidades))) return '';
-  const t = Number(totalUnidades);
-  const diff = t - c;
-  if(diff === 0) return '-';
-  return diff > 0 ? `SOBRA ${diff}` : `FALTA ${Math.abs(diff)}`;
-}
-
-async function buscarMermaGuiaDuplicada(nroGuia){
-  if(!nroGuia) return null;
-  const snap = await mermaGuiasRef.where('nro_guia','==',nroGuia).limit(5).get();
-  return snap.docs.map(d=>d.data()).find(r=>(r.estado||'ACTIVO')==='ACTIVO') || null;
-}
-
-/* -------- Cargar Guía -------- */
-let mermaBatch = []; // [{ fileName, resultado, error, duplicado, duplicadoEnLote }]
-
-$('btn-procesar-guia-merma').addEventListener('click', async ()=>{
-  const files = [...$('merma-pdf-input').files];
-  if(files.length === 0){ showMsg('merma-msg','err','Selecciona al menos un archivo PDF.'); return; }
-  const noPdf = files.find(f=> !/\.pdf$/i.test(f.name) && f.type !== 'application/pdf');
-  if(noPdf){ showMsg('merma-msg','err',`"${noPdf.name}" no es un PDF.`); return; }
-
-  $('btn-procesar-guia-merma').disabled = true;
-  mermaBatch = [];
-  $('merma-batch-wrap').style.display = 'none';
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
-  const proc = relojProceso('merma-msg'), avance = proc.paso, seg = proc.seg;
-  try{
-  for(let i=0;i<files.length;i++){
-    const file = files[i];
-    const archivo = files.length > 1 ? `archivo ${i+1} de ${files.length} (${file.name})` : file.name;
-    avance(`Procesando… leyendo ${archivo}`);
-    try{
-      const arrayBuffer = await file.arrayBuffer();
-      const paginas = await extractGuiaLineGroups(arrayBuffer, (p, n)=> avance(`Procesando… leyendo ${archivo}: página ${p} de ${n}`));
-      const resultado = parseGuiaPDF(paginas);
-      if(resultado.items.length === 0){
-        mermaBatch.push({ fileName: file.name, resultado: null, error: 'No se reconocieron ítems en este PDF.' });
-      }else{
-        mermaBatch.push({ fileName: file.name, resultado, sedeSugerida: resultado.punto_llegada, duplicado:null });
-      }
-    }catch(err){
-      console.error(err);
-      mermaBatch.push({ fileName: file.name, resultado: null, error: err.message });
-    }
-  }
-
-  avance('Procesando… verificando duplicados');
-  for(const item of mermaBatch){
-    if(!item.resultado) continue;
-    try{ item.duplicado = await buscarMermaGuiaDuplicada(item.resultado.nro_guia); }
-    catch(err){ console.error(err); }
-  }
-  const vistosEnLote = new Map();
-  mermaBatch.forEach(item=>{
-    if(!item.resultado || item.duplicado) return;
-    const nro = item.resultado.nro_guia;
-    if(!nro) return;
-    if(vistosEnLote.has(nro)) item.duplicadoEnLote = vistosEnLote.get(nro);
-    else vistosEnLote.set(nro, item.fileName);
-  });
-
-  renderMermaBatch();
-  const validas = mermaBatch.filter(it=>it.resultado && !it.duplicado && !it.duplicadoEnLote).length;
-  const dups = mermaBatch.filter(it=>it.duplicado).length;
-  const dupsLote = mermaBatch.filter(it=>it.duplicadoEnLote).length;
-  const errores = mermaBatch.filter(it=>!it.resultado).length;
-  $('merma-batch-resumen').textContent = `${mermaBatch.length} archivo(s) procesado(s): ${validas} listo(s) para guardar${dups?`, ${dups} ya existían (duplicados)`:''}${dupsLote?`, ${dupsLote} repetidos dentro de este mismo lote`:''}${errores?`, ${errores} con error`:''}. Revisa/edita fecha y sede de cada uno antes de guardar.`;
-  $('merma-batch-wrap').style.display = 'block';
-  showMsg('merma-msg','ok', `Se procesaron ${mermaBatch.length} archivo(s)${seg()}.`);
-  }finally{
-    proc.fin();
-    $('btn-procesar-guia-merma').disabled = false;
-  }
-});
-
-function renderMermaBatch(){
-  $('merma-batch-body').innerHTML = mermaBatch.map((item, idx)=>{
-    if(!item.resultado){
-      return `<tr><td>${esc(item.fileName)}</td><td colspan="6" style="color:#8A332A;">⚠ ${esc(item.error||'No se pudo procesar.')}</td></tr>`;
-    }
-    const r = item.resultado;
-    let dupHtml;
-    if(item.duplicado) dupHtml = `<span style="color:#8A332A; font-weight:700;">Ya existe (${esc(item.duplicado.correlativo)}) — no se guardará</span>`;
-    else if(item.duplicadoEnLote) dupHtml = `<span style="color:#8A332A; font-weight:700;">Repetida en este lote (igual que "${esc(item.duplicadoEnLote)}") — no se guardará</span>`;
-    else dupHtml = `<span style="color:#245C46;">Nueva ✓</span>`;
-    const fechaISO = fechaDDMMYYYYaISO(r.fecha_traslado);
-    return `<tr data-idx="${esc(idx)}">
-      <td>${esc(item.fileName)}</td>
-      <td>${esc(r.nro_guia||'—')}</td>
-      <td><input type="date" class="merma-batch-fecha" data-idx="${esc(idx)}" value="${esc(fechaISO)}" style="width:150px;"></td>
-      <td>${esc(r.bultos ?? '—')}</td>
-      <td>${esc(r.items.length)} <button type="button" class="btn btn-ghost btn-sm merma-batch-ver-items" data-idx="${esc(idx)}">Ver</button></td>
-      <td><input type="text" class="upper merma-batch-sede" data-idx="${esc(idx)}" value="${esc((item.sedeSugerida||'').toUpperCase())}" style="min-width:200px;" placeholder="EJ. MALL COMAS"></td>
-      <td>${dupHtml}</td>
-    </tr>
-    <tr class="merma-batch-items-row" data-items-for="${esc(idx)}" style="display:none;"><td colspan="7">
-      <table style="margin:6px 0;"><thead><tr><th>Item</th><th>Código</th><th>Descripción</th><th>Unidad</th><th>Cantidad</th></tr></thead><tbody>
-      ${r.items.map(it=>`<tr><td>${esc(it.item)}</td><td>${esc(it.codigo)}</td><td>${esc(it.descripcion)}</td><td>${esc(it.unidad)}</td><td>${esc(it.cantidad)}</td></tr>`).join('')}
-      </tbody></table>
-    </td></tr>`;
-  }).join('');
-
-  document.querySelectorAll('.merma-batch-ver-items').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const idx = btn.dataset.idx;
-      const row = document.querySelector(`.merma-batch-items-row[data-items-for="${idx}"]`);
-      const showing = row.style.display !== 'none';
-      row.style.display = showing ? 'none' : 'table-row';
-      btn.textContent = showing ? 'Ver' : 'Ocultar';
-    });
-  });
-}
-
-async function guardarUnaGuiaMerma(resultado, sede, fechaTraslado){
-  const correlativoGuia = await generarCorrelativoMerma();
-  const skuDistintos = new Set(resultado.items.map(it=>it.codigo)).size;
-  await mermaGuiasRef.doc(correlativoGuia).set({
-    correlativo: correlativoGuia,
-    nro_guia: resultado.nro_guia,
-    punto_partida: resultado.punto_partida,
-    punto_llegada: resultado.punto_llegada,
-    fecha_traslado: fechaTraslado,
-    sede,
-    bultos: resultado.bultos,
-    total_items: resultado.items.length,
-    sku_distintos: skuDistintos,
-    estado: 'ACTIVO',
-    usuario: currentUserAlias,
-    fecha_carga: firebase.firestore.FieldValue.serverTimestamp()
-  });
-  const CHUNK = 400;
-  for(let i=0;i<resultado.items.length;i+=CHUNK){
-    const batch = db.batch();
-    resultado.items.slice(i,i+CHUNK).forEach(it=>{
-      const docRef = mermaGuiaItemsRef.doc();
-      batch.set(docRef, {
-        correlativo_guia: correlativoGuia,
-        nro_guia: resultado.nro_guia,
-        sede,
-        fecha_traslado: fechaTraslado,
-        item: it.item, codigo: it.codigo, descripcion: it.descripcion, unidad: it.unidad,
-        cantidad: it.cantidad,
-        total_unidades: it.cantidad,
-        no_apta_venta: null,
-        observacion: 'MERMA',
-        usuario: currentUserAlias, timestamp: firebase.firestore.FieldValue.serverTimestamp()
-      });
-    });
-    await batch.commit();
-  }
-  await logAccion('merma_guia_cargada', {detalle:`Correlativo ${correlativoGuia} (N° ${resultado.nro_guia}) — sede ${sede}: ${resultado.items.length} ítems`});
-  return correlativoGuia;
-}
-
-$('btn-guardar-guias-lote-merma').addEventListener('click', async ()=>{
-  const filas = [...document.querySelectorAll('#merma-batch-body tr[data-idx]')];
-  if(filas.length === 0){ showMsg('merma-msg','err','No hay guías para guardar.'); return; }
-  $('btn-guardar-guias-lote-merma').disabled = true;
-  let guardadas = 0, omitidas = 0;
-  const detalleOmitidas = [];
-  const nroGuiaGuardadosEnEstaEjecucion = new Set();
-  for(const tr of filas){
-    const idx = Number(tr.dataset.idx);
-    const item = mermaBatch[idx];
-    if(!item || !item.resultado) continue;
-    const inpFecha = document.querySelector(`.merma-batch-fecha[data-idx="${idx}"]`);
-    const inpSede = document.querySelector(`.merma-batch-sede[data-idx="${idx}"]`);
-    const fechaTraslado = inpFecha ? inpFecha.value : '';
-    const sede = inpSede ? inpSede.value.trim().toUpperCase() : '';
-    const nroGuia = item.resultado.nro_guia;
-
-    if(!sede){ omitidas++; detalleOmitidas.push(`${item.fileName}: falta la sede`); continue; }
-    if(!fechaTraslado){ omitidas++; detalleOmitidas.push(`${item.fileName}: falta la fecha de traslado`); continue; }
-    if(item.duplicado || item.duplicadoEnLote){ omitidas++; detalleOmitidas.push(`${item.fileName}: N° de guía ${nroGuia||''} ${item.duplicado ? 'ya existe' : 'repetida en este lote'}, no se guardó`); continue; }
-    if(nroGuia && nroGuiaGuardadosEnEstaEjecucion.has(nroGuia)){ omitidas++; detalleOmitidas.push(`${item.fileName}: N° de guía ${nroGuia} ya se guardó en esta misma tanda`); continue; }
-
-    try{
-      await guardarUnaGuiaMerma(item.resultado, sede, fechaTraslado);
-      if(nroGuia) nroGuiaGuardadosEnEstaEjecucion.add(nroGuia);
-      guardadas++;
-    }catch(err){
-      console.error(err);
-      omitidas++;
-      detalleOmitidas.push(`${item.fileName}: error (${err.message})`);
-    }
-  }
-  showMsg('merma-msg', guardadas>0 ? 'ok' : 'err', `Listo: ${guardadas} guía(s) guardada(s)${omitidas?`, ${omitidas} omitida(s)`:''}.`);
-  if(detalleOmitidas.length){ showToast('Omitidas: '+detalleOmitidas.join(' | '),'err'); }
-  mermaBatch = [];
-  $('merma-batch-wrap').style.display = 'none';
-  $('merma-pdf-input').value = '';
-  cargarRegistrosMerma(true);
-  $('btn-guardar-guias-lote-merma').disabled = false;
-});
-
-/* -------- Registros y Detalle -------- */
-let mermaRegRawLastDoc = null;
-let mermaRegAllCache = [];
-let mermaRegNoMore = false;
-let mermaDetalleCache = {}; // correlativo -> filas de detalle
-let mermaDetalleCorrelativoActual = null;
-
-async function cargarRegistrosMerma(reset){
-  if(reset){ mermaRegRawLastDoc = null; mermaRegAllCache = []; mermaRegNoMore = false; }
-  if(!mermaRegNoMore){
-    try{
-      let q = mermaGuiasRef.orderBy('fecha_carga','desc').limit(500);
-      if(mermaRegRawLastDoc) q = q.startAfter(mermaRegRawLastDoc);
-      const snap = await q.get();
-      mermaRegAllCache = mermaRegAllCache.concat(snap.docs.map(d=>d.data()));
-      mermaRegRawLastDoc = snap.docs.length ? snap.docs[snap.docs.length-1] : mermaRegRawLastDoc;
-      if(snap.docs.length < 500) mermaRegNoMore = true;
-    }catch(err){
-      console.error(err);
-      showToast('Error al cargar guías de merma: '+err.message,'err');
-      return;
-    }
-  }
-  renderRegistrosMerma();
-}
-
-function renderRegistrosMerma(){
-  const estadoFiltro = $('merma-reg-filtro-estado').value;
-  const fechaFiltro = $('merma-reg-filtro-fecha').value;
-  const sedeFiltro = $('merma-reg-filtro-sede').value.trim().toUpperCase();
-  const nroFiltro = $('merma-reg-filtro-nroguia').value.trim().toUpperCase();
-  const hayFiltrosExtra = !!(fechaFiltro || sedeFiltro || nroFiltro);
-  const filtrados = mermaRegAllCache.filter(r=>{
-    if((r.estado||'ACTIVO') !== estadoFiltro) return false;
-    if(fechaFiltro && r.fecha_traslado !== fechaFiltro) return false;
-    if(sedeFiltro && !(r.sede||'').toUpperCase().includes(sedeFiltro)) return false;
-    if(nroFiltro && !(r.nro_guia||'').toUpperCase().includes(nroFiltro)) return false;
-    return true;
-  });
-  if(filtrados.length === 0){
-    $('merma-reg-body').innerHTML = '';
-    $('merma-reg-empty').style.display = 'block';
-    $('merma-reg-empty').textContent = hayFiltrosExtra
-      ? 'No hay guías que coincidan con los filtros.'
-      : (estadoFiltro==='ACTIVO' ? 'Aún no hay guías de merma cargadas.' : 'No hay guías invalidadas.');
-    return;
-  }
-  $('merma-reg-empty').style.display = 'none';
-  const puedeEliminar = currentPermisos.admin || currentPermisos.eliminar;
-  $('merma-reg-body').innerHTML = filtrados.map(r=>{
-    const estado = r.estado || 'ACTIVO';
-    const accionHtml = estado === 'ACTIVO'
-      ? (puedeEliminar ? `<button class="btn btn-sm btn-ghost btn-invalidar-merma" data-correlativo="${esc(r.correlativo)}">Eliminar</button> <button class="btn btn-sm btn-ghost btn-editar-sede-merma" data-correlativo="${esc(r.correlativo)}" title="Corregir la sede de esta guía">✏️ Sede</button>` : '')
-      : `<span class="hint">Invalidado${esc(r.invalidado_por ? ' por '+r.invalidado_por : '')}</span>`;
-    let formatoHtml = '—';
-    if(r.formato_correlativo){
-      const fmt = mermaFormatosAllCache.find(f=>f.correlativo===r.formato_correlativo);
-      const firmado = fmt && fmt.pdf_firmado_url;
-      formatoHtml = `<button class="btn btn-sm btn-ghost btn-ver-formato-merma" data-correlativo="${esc(r.formato_correlativo)}">${esc(r.formato_correlativo)} ${esc(firmado?'✓ firmado':'⏳ sin firmar')}</button>`;
-    }
-    let auditoriaHtml = '—';
-    if(r.auditoria_correlativo){
-      const esConfiable = r.auditoria_dictamen === 'CONFIABLE';
-      const color = esConfiable ? '#245C46' : '#8A332A';
-      auditoriaHtml = `<button class="btn btn-sm btn-ghost btn-ver-auditoria-merma" data-correlativo="${esc(r.auditoria_correlativo)}" style="color:${esc(color)}; font-weight:700;">${esc(esConfiable?'✓ CONFIABLE':'⚠ NO CONFIABLE')}</button>`;
-    }
-    return `<tr><td>${esc(r.correlativo)}</td><td>${esc(r.nro_guia||'')}</td><td>${esc(r.sede||'')}</td><td>${esc(r.fecha_traslado||'')}</td><td>${esc(r.punto_partida||'')} → ${esc(r.punto_llegada||'')}</td><td>${esc(r.bultos??'')}</td><td>${esc(r.total_items??'')}</td><td>${esc(r.usuario||'')}</td><td>${formatoHtml}</td><td>${auditoriaHtml}</td><td><button class="btn btn-sm btn-ver-detalle-merma" data-correlativo="${esc(r.correlativo)}" data-nro="${(r.nro_guia||'').replace(/"/g,'&quot;')}">Ver detalle</button></td><td>${accionHtml}</td></tr>`;
-  }).join('');
-}
-$('merma-reg-filtro-estado').addEventListener('change', ()=> renderRegistrosMerma());
-$('merma-reg-filtro-fecha').addEventListener('change', ()=> renderRegistrosMerma());
-$('merma-reg-filtro-sede').addEventListener('input', ()=> renderRegistrosMerma());
-$('merma-reg-filtro-nroguia').addEventListener('input', ()=> renderRegistrosMerma());
-$('btn-merma-reg-limpiar-filtros').addEventListener('click', ()=>{
-  $('merma-reg-filtro-fecha').value = '';
-  $('merma-reg-filtro-sede').value = '';
-  $('merma-reg-filtro-nroguia').value = '';
-  renderRegistrosMerma();
-});
-$('btn-ocultar-detalle-merma').addEventListener('click', ()=>{ $('merma-detalle-panel').style.display = 'none'; });
-
-$('merma-reg-body').addEventListener('click', async (ev)=>{
-  const btnVer = ev.target.closest('.btn-ver-detalle-merma');
-  const btnInv = ev.target.closest('.btn-invalidar-merma');
-  const btnEditSede = ev.target.closest('.btn-editar-sede-merma');
-  const btnVerFmt = ev.target.closest('.btn-ver-formato-merma');
-  const btnVerAud = ev.target.closest('.btn-ver-auditoria-merma');
-
-  if(btnVerFmt){
-    setMermaSubtab('formatos');
-    renderFormatosMerma();
-    abrirPanelPdfMerma(btnVerFmt.dataset.correlativo);
-    return;
-  }
-
-  if(btnVerAud){
-    setMermaSubtab('auditoria');
-    poblarSelectGuiasAuditoria();
-    renderAuditoriasMerma();
-    abrirDetalleAuditoriaMerma(btnVerAud.dataset.correlativo);
-    return;
-  }
-
-  if(btnEditSede){
-    const correlativo = btnEditSede.dataset.correlativo;
-    const g = mermaRegAllCache.find(r=>r.correlativo===correlativo);
-    if(!g) return;
-    const nueva = prompt('Sede correcta para esta guía:', g.sede || '');
-    if(nueva === null) return;
-    const nuevaSede = nueva.trim().toUpperCase();
-    if(!nuevaSede || nuevaSede === (g.sede||'')) return;
-    try{
-      await mermaGuiasRef.doc(correlativo).update({ sede: nuevaSede });
-      const snap = await mermaGuiaItemsRef.where('correlativo_guia','==',correlativo).limit(3000).get();
-      for(let i=0;i<snap.docs.length;i+=400){
-        const batch = db.batch();
-        snap.docs.slice(i,i+400).forEach(d=> batch.update(d.ref, { sede: nuevaSede }));
-        await batch.commit();
-      }
-      g.sede = nuevaSede;
-      delete mermaDetalleCache[correlativo];
-      await logAccion('merma_sede_corregida', {detalle:`Guía ${correlativo}: sede corregida a "${nuevaSede}"`});
-      renderRegistrosMerma();
-      showToast(`Sede corregida a ${nuevaSede}.`,'ok');
-    }catch(err){
-      console.error(err);
-      showToast('Error al corregir la sede: '+err.message,'err');
-    }
-    return;
-  }
-
-  if(btnVer){
-    const correlativo = btnVer.dataset.correlativo;
-    const nro = btnVer.dataset.nro;
-    btnVer.disabled = true;
-    btnVer.textContent = 'Cargando…';
-    try{
-      await abrirDetalleMerma(correlativo, nro);
-    }catch(err){
-      console.error(err);
-      showToast('Error al cargar el detalle: '+err.message,'err');
-    }finally{
-      btnVer.disabled = false;
-      btnVer.textContent = 'Ver detalle';
-    }
-    return;
-  }
-
-  if(btnInv){
-    const correlativo = btnInv.dataset.correlativo;
-    if(!(currentPermisos.admin || currentPermisos.eliminar)){ showToast('No tienes permiso para eliminar registros.','err'); return; }
-    const ok = confirm(`¿Eliminar el detalle de la guía de merma ${correlativo}? Se borrarán todas sus filas y la cabecera quedará marcada como INVALIDADA. Esta acción no se puede deshacer.`);
-    if(!ok) return;
-    btnInv.disabled = true;
-    btnInv.textContent = 'Eliminando…';
-    try{
-      const snap = await mermaGuiaItemsRef.where('correlativo_guia','==',correlativo).limit(3000).get();
-      const docs = snap.docs;
-      for(let i=0;i<docs.length;i+=400){
-        const batch = db.batch();
-        docs.slice(i,i+400).forEach(d=> batch.delete(d.ref));
-        await batch.commit();
-      }
-      await mermaGuiasRef.doc(correlativo).set({
-        estado: 'INVALIDADO',
-        invalidado_por: currentUserAlias,
-        invalidado_en: firebase.firestore.FieldValue.serverTimestamp()
-      }, {merge:true});
-      delete mermaDetalleCache[correlativo];
-      if(mermaDetalleCorrelativoActual === correlativo){ $('merma-detalle-panel').style.display = 'none'; mermaDetalleCorrelativoActual = null; }
-      await logAccion('merma_guia_eliminada', {detalle:`Se invalidó la guía de merma ${correlativo} (${docs.length} filas eliminadas)`});
-      showToast(`${correlativo} invalidado (${docs.length} filas eliminadas).`,'ok');
-      cargarRegistrosMerma(true);
-    }catch(err){
-      console.error(err);
-      showToast('Error al eliminar: '+err.message,'err');
-      btnInv.disabled = false;
-      btnInv.textContent = 'Eliminar';
-    }
-    return;
-  }
-});
-
-async function abrirDetalleMerma(correlativo, nro){
-  let filas = mermaDetalleCache[correlativo];
-  if(!filas){
-    const snap = await mermaGuiaItemsRef.where('correlativo_guia','==',correlativo).limit(3000).get();
-    filas = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
-    mermaDetalleCache[correlativo] = filas;
-  }
-  mermaDetalleCorrelativoActual = correlativo;
-  $('merma-detalle-titulo-text').textContent = `Detalle de ${correlativo}${nro?' — Guía N° '+nro:''}`;
-  renderDetalleMerma();
-  $('merma-detalle-panel').style.display = 'block';
-  $('merma-detalle-panel').scrollIntoView({behavior:'smooth', block:'start'});
-}
-
-function renderDetalleMerma(){
-  const filas = mermaDetalleCache[mermaDetalleCorrelativoActual] || [];
-  $('merma-detalle-body').innerHTML = filas.slice().sort((a,b)=>(a.item||0)-(b.item||0)).map((r,idx)=>{
-    const diferencia = calcularDiferenciaMerma(r.cantidad, r.total_unidades);
-    return `<tr data-id="${esc(r.id)}">
-      <td>${esc(r.item)}</td><td>${esc(r.codigo)}</td><td>${esc(r.descripcion)}</td><td>${esc(r.unidad)}</td><td>${esc(r.cantidad)}</td>
-      <td><input type="number" class="merma-det-total" data-id="${esc(r.id)}" value="${esc(r.total_unidades??'')}" style="width:90px;" min="0"></td>
-      <td class="merma-det-dif" data-id="${esc(r.id)}" style="font-weight:700;">${esc(diferencia)}</td>
-      <td><input type="number" class="merma-det-noapta" data-id="${esc(r.id)}" value="${esc(r.no_apta_venta??'')}" style="width:90px;" min="0"></td>
-      <td><input type="text" class="upper merma-det-obs" data-id="${esc(r.id)}" value="${esc(r.observacion||'')}" style="min-width:140px;"></td>
-    </tr>`;
-  }).join('');
-  document.querySelectorAll('.merma-det-total').forEach(inp=>{
-    inp.addEventListener('input', ()=>{
-      const fila = filas.find(f=>f.id===inp.dataset.id);
-      const celda = document.querySelector(`.merma-det-dif[data-id="${inp.dataset.id}"]`);
-      if(fila && celda) celda.textContent = calcularDiferenciaMerma(fila.cantidad, inp.value);
-    });
-  });
-}
-
-$('btn-guardar-detalle-merma').addEventListener('click', async ()=>{
-  const correlativo = mermaDetalleCorrelativoActual;
-  if(!correlativo) return;
-  const filas = mermaDetalleCache[correlativo] || [];
-  const btn = $('btn-guardar-detalle-merma');
-  btn.disabled = true; btn.textContent = 'Guardando…';
-  try{
-    const actualizaciones = filas.map(r=>{
-      const inpTotal = document.querySelector(`.merma-det-total[data-id="${r.id}"]`);
-      const inpNoApta = document.querySelector(`.merma-det-noapta[data-id="${r.id}"]`);
-      const inpObs = document.querySelector(`.merma-det-obs[data-id="${r.id}"]`);
-      const total_unidades = inpTotal && inpTotal.value !== '' ? Number(inpTotal.value) : null;
-      const no_apta_venta = inpNoApta && inpNoApta.value !== '' ? Number(inpNoApta.value) : null;
-      const observacion = inpObs ? inpObs.value.trim().toUpperCase() : (r.observacion||'');
-      r.total_unidades = total_unidades; r.no_apta_venta = no_apta_venta; r.observacion = observacion;
-      return { id: r.id, total_unidades, no_apta_venta, observacion };
-    });
-    for(let i=0;i<actualizaciones.length;i+=400){
-      const batch = db.batch();
-      actualizaciones.slice(i,i+400).forEach(u=>{
-        batch.update(mermaGuiaItemsRef.doc(u.id), { total_unidades: u.total_unidades, no_apta_venta: u.no_apta_venta, observacion: u.observacion });
-      });
-      await batch.commit();
-    }
-    showMsg('merma-detalle-msg','ok','Cambios guardados.');
-    showToast(`Detalle de ${correlativo} actualizado.`,'ok');
-    renderDetalleMerma();
-  }catch(err){
-    console.error(err);
-    showMsg('merma-detalle-msg','err','Error al guardar: '+err.message);
-  }finally{
-    btn.disabled = false; btn.textContent = '💾 Guardar cambios de esta guía';
-  }
-});
-
-/* -------- Generar Formato de Merma -------- */
-let mermaFmtFilas = []; // filas en memoria listas para imprimir/guardar
-
-function poblarSelectSedesMerma(){
-  const activos = mermaRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
-  const sedes = [...new Set(activos.map(r=>r.sede).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-  const valorActual = $('merma-fmt-sede').value;
-  $('merma-fmt-sede').innerHTML = '<option value="">— Elige una sede —</option>' + sedes.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
-  if(valorActual && sedes.includes(valorActual)) $('merma-fmt-sede').value = valorActual;
-}
-$('merma-fmt-sede').addEventListener('change', ()=>{
-  $('merma-fmt-filas-wrap').style.display = 'none';
-  mermaFmtFilas = [];
-  const sede = $('merma-fmt-sede').value;
-  if(!sede){ $('merma-fmt-guias-wrap').style.display = 'none'; return; }
-  $('merma-fmt-guias-wrap').style.display = 'block';
-  $('merma-fmt-sede-label').textContent = sede;
-  const guias = mermaRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO' && r.sede===sede);
-  $('merma-fmt-guias-empty').style.display = guias.length ? 'none' : 'block';
-  $('merma-fmt-guias-body').innerHTML = guias.map(g=>`<tr>
-    <td><input type="checkbox" class="merma-fmt-guia-check" data-correlativo="${esc(g.correlativo)}"></td>
-    <td>${esc(g.correlativo)}</td><td>${esc(g.nro_guia||'')}</td><td>${esc(g.fecha_traslado||'')}</td><td>${esc(g.total_items??'')}</td>
-    <td>${esc(g.formato_correlativo ? g.formato_correlativo : '—')}</td>
-  </tr>`).join('');
-});
-$('merma-fmt-check-all').addEventListener('change', ()=>{
-  document.querySelectorAll('.merma-fmt-guia-check').forEach(cb=> cb.checked = $('merma-fmt-check-all').checked);
-});
-
-$('btn-merma-fmt-cargar-filas').addEventListener('click', async ()=>{
-  const seleccionadas = [...document.querySelectorAll('.merma-fmt-guia-check:checked')].map(cb=>cb.dataset.correlativo);
-  if(seleccionadas.length === 0){ showMsg('merma-fmt-msg','err','Selecciona al menos una guía.'); return; }
-  const btn = $('btn-merma-fmt-cargar-filas');
-  btn.disabled = true; btn.textContent = 'Cargando…';
-  try{
-    mermaFmtFilas = [];
-    for(const correlativo of seleccionadas){
-      let filas = mermaDetalleCache[correlativo];
-      if(!filas){
-        const snap = await mermaGuiaItemsRef.where('correlativo_guia','==',correlativo).limit(3000).get();
-        filas = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
-        mermaDetalleCache[correlativo] = filas;
-      }
-      filas.slice().sort((a,b)=>(a.item||0)-(b.item||0)).forEach(r=> mermaFmtFilas.push(Object.assign({}, r)));
-    }
-    renderFilasFormatoMerma();
-    $('merma-fmt-filas-wrap').style.display = mermaFmtFilas.length ? 'block' : 'none';
-    if(mermaFmtFilas.length === 0) showMsg('merma-fmt-msg','err','Las guías seleccionadas no tienen ítems.');
-    else showMsg('merma-fmt-msg','ok', `${mermaFmtFilas.length} fila(s) cargada(s) de ${seleccionadas.length} guía(s). Ajusta lo necesario y genera el PDF.`);
-  }catch(err){
-    console.error(err);
-    showMsg('merma-fmt-msg','err','Error al cargar ítems: '+err.message);
-  }finally{
-    btn.disabled = false; btn.textContent = 'Cargar ítems de las guías seleccionadas';
-  }
-});
-
-function renderFilasFormatoMerma(){
-  $('merma-fmt-filas-body').innerHTML = mermaFmtFilas.map((r,idx)=>{
-    const diferencia = calcularDiferenciaMerma(r.cantidad, r.total_unidades);
-    return `<tr data-idx="${esc(idx)}">
-      <td>${esc(idx+1)}</td><td>${esc(r.sede||'')}</td><td>${esc(r.nro_guia||'')}</td><td>${esc(r.codigo)}</td><td>${esc(r.descripcion)}</td><td>${esc(r.cantidad)}</td>
-      <td><input type="number" class="merma-fmt-fila-total" data-idx="${esc(idx)}" value="${esc(r.total_unidades??'')}" style="width:90px;" min="0"></td>
-      <td class="merma-fmt-fila-dif" data-idx="${esc(idx)}" style="font-weight:700;">${esc(diferencia)}</td>
-      <td><input type="number" class="merma-fmt-fila-noapta" data-idx="${esc(idx)}" value="${esc(r.no_apta_venta??'')}" style="width:90px;" min="0"></td>
-      <td><input type="text" class="upper merma-fmt-fila-obs" data-idx="${esc(idx)}" value="${esc(r.observacion||'')}" style="min-width:140px;"></td>
-    </tr>`;
-  }).join('');
-  document.querySelectorAll('.merma-fmt-fila-total').forEach(inp=>{
-    inp.addEventListener('input', ()=>{
-      const idx = inp.dataset.idx;
-      const celda = document.querySelector(`.merma-fmt-fila-dif[data-idx="${idx}"]`);
-      if(celda) celda.textContent = calcularDiferenciaMerma(mermaFmtFilas[idx].cantidad, inp.value);
-    });
-  });
-}
-
-function fechaLargaEs(d){
-  const dias = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
-  const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  return `${dias[d.getDay()]}, ${d.getDate()} de ${meses[d.getMonth()]} de ${d.getFullYear()}`;
-}
-
-$('btn-merma-fmt-generar').addEventListener('click', async ()=>{
-  if(mermaFmtFilas.length === 0) return;
-  const sede = $('merma-fmt-sede').value;
-  const seleccionadas = [...document.querySelectorAll('.merma-fmt-guia-check:checked')].map(cb=>cb.dataset.correlativo);
-  const btn = $('btn-merma-fmt-generar');
-  btn.disabled = true; btn.textContent = 'Generando…';
-  try{
-    const filasFinales = mermaFmtFilas.map((r,idx)=>{
-      const inpTotal = document.querySelector(`.merma-fmt-fila-total[data-idx="${idx}"]`);
-      const inpNoApta = document.querySelector(`.merma-fmt-fila-noapta[data-idx="${idx}"]`);
-      const inpObs = document.querySelector(`.merma-fmt-fila-obs[data-idx="${idx}"]`);
-      const total_unidades = inpTotal && inpTotal.value !== '' ? Number(inpTotal.value) : null;
-      const no_apta_venta = inpNoApta && inpNoApta.value !== '' ? Number(inpNoApta.value) : null;
-      const observacion = inpObs ? inpObs.value.trim().toUpperCase() : (r.observacion||'');
-      return {
-        nro: idx+1, sede: r.sede||sede, nro_guia: r.nro_guia||'', codigo: r.codigo, descripcion: r.descripcion,
-        cantidad: r.cantidad, total_unidades, diferencia: calcularDiferenciaMerma(r.cantidad, total_unidades),
-        no_apta_venta, observacion
-      };
-    });
-    const correlativo = await generarCorrelativoFormatoMerma();
-    const hoy = new Date();
-    const fechaTexto = fechaLargaEs(hoy);
-    const formatoDoc = {
-      correlativo, sede, guias_incluidas: seleccionadas, total_guias: seleccionadas.length,
-      total_filas: filasFinales.length, filas: filasFinales, fecha_texto: fechaTexto,
-      estado: 'ACTIVO', generado_por: currentUserAlias, generado_en: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    await mermaFormatosRef.doc(correlativo).set(formatoDoc);
-    for(let i=0;i<seleccionadas.length;i+=400){
-      const batch = db.batch();
-      seleccionadas.slice(i,i+400).forEach(c=> batch.update(mermaGuiasRef.doc(c), { formato_correlativo: correlativo }));
-      await batch.commit();
-    }
-    seleccionadas.forEach(c=>{
-      const g = mermaRegAllCache.find(r=>r.correlativo===c);
-      if(g) g.formato_correlativo = correlativo;
-    });
-    await logAccion('merma_formato_generado', {detalle:`Formato ${correlativo} generado para sede ${sede}: ${filasFinales.length} fila(s) de ${seleccionadas.length} guía(s)`});
-    generarPDFMerma(Object.assign({}, formatoDoc, {fecha_texto: fechaTexto}));
-    mermaFormatosAllCache.unshift(Object.assign({}, formatoDoc, {fecha_texto: fechaTexto}));
-    showToast(`Formato ${correlativo} generado.`,'ok');
-    mermaFmtFilas = [];
-    $('merma-fmt-filas-wrap').style.display = 'none';
-    $('merma-fmt-sede').value = '';
-    $('merma-fmt-guias-wrap').style.display = 'none';
-    renderRegistrosMerma();
-    setMermaSubtab('formatos');
-    renderFormatosMerma();
-  }catch(err){
-    console.error(err);
-    showMsg('merma-fmt-msg','err','Error al generar el formato: '+err.message);
-  }finally{
-    btn.disabled = false; btn.textContent = '🖨 Generar PDF de Formato de Merma';
-  }
-});
-
-/* Genera el PDF "RECEPCION DE TIENDAS" con el mismo diseño del formato de referencia. */
-function generarPDFMerma(formato){
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit:'mm', format:'a4', orientation:'portrait' });
-  const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
-  const margin = 10;
-  const contentW = pageW - margin*2;
-
-  const logoRatio = 742/2084;
-  const logoColW = 34;
-  const headerH = 20;
-  const headerTop = margin;
-  const rowTitleH = 11, rowSubH = headerH - rowTitleH;
-
-  doc.setDrawColor(90,90,90); doc.setLineWidth(0.3);
-  doc.rect(margin, headerTop, contentW, headerH);
-  doc.line(margin+logoColW, headerTop, margin+logoColW, headerTop+headerH);
-  doc.line(margin+logoColW, headerTop+rowTitleH, pageW-margin, headerTop+rowTitleH);
-
-  const logoH = logoColW*logoRatio;
-  try{ doc.addImage(LOGO_JOANIS_ALTA_B64, 'PNG', margin+2, headerTop+(headerH-logoH)/2, logoColW-4, logoH); }catch(e){ console.error(e); }
-
-  const dateColW = 58;
-  doc.line(pageW-margin-dateColW, headerTop, pageW-margin-dateColW, headerTop+rowTitleH);
-  doc.setFillColor(235,235,235);
-  doc.rect(margin+logoColW, headerTop, contentW-logoColW-dateColW, rowTitleH, 'F');
-  doc.rect(pageW-margin-dateColW, headerTop, dateColW, rowTitleH, 'F');
-  doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(0);
-  doc.text('RECEPCION DE TIENDAS', margin+logoColW+(contentW-logoColW-dateColW)/2, headerTop+rowTitleH/2+3, {align:'center'});
-  doc.setFontSize(9);
-  doc.text(formato.fecha_texto || '', pageW-margin-dateColW/2, headerTop+rowTitleH/2+3, {align:'center'});
-
-  doc.setFillColor(30,58,95);
-  doc.rect(margin+logoColW, headerTop+rowTitleH, contentW-logoColW, rowSubH, 'F');
-  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(255);
-  doc.text('DATOS DE LAS GUIAS', margin+logoColW+(contentW-logoColW)/2, headerTop+rowTitleH+rowSubH/2+2.5, {align:'center'});
-  doc.setTextColor(0);
-
-  // La sede va una sola vez, en la cabecera (no en cada fila).
-  const sedes = [...new Set((formato.filas||[]).map(f=> String(f.sede||'').trim()).filter(Boolean))];
-  const sedeTexto = formato.sede || sedes.join(' / ');
-  const sedeLabelW = 16;
-  doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
-  const sedeLineas = doc.splitTextToSize(sedeTexto || '—', contentW - sedeLabelW - 4);
-  const sedeTop = headerTop + headerH + 2, sedeH = Math.max(7, sedeLineas.length * 3.8 + 3);
-  doc.setDrawColor(90,90,90); doc.setLineWidth(0.3);
-  doc.setFillColor(30,58,95); doc.rect(margin, sedeTop, sedeLabelW, sedeH, 'FD');
-  doc.setFillColor(245,247,250); doc.rect(margin+sedeLabelW, sedeTop, contentW-sedeLabelW, sedeH, 'FD');
-  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(255);
-  doc.text('SEDE', margin+sedeLabelW/2, sedeTop+sedeH/2+1.2, {align:'center'});
-  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(0);
-  doc.text(sedeLineas, margin+sedeLabelW+2.5, sedeTop + (sedeH - sedeLineas.length*3.8)/2 + 2.9);
-
-  const filas = (formato.filas||[]).map(f=>[
-    f.nro, f.nro_guia||'', f.codigo||'', f.descripcion||'',
-    f.cantidad ?? '', f.total_unidades ?? '', f.diferencia || '', f.no_apta_venta ?? '', f.observacion || ''
-  ]);
-
-  doc.autoTable({
-      rowPageBreak: 'avoid', // una fila nunca se parte entre dos páginas
-    startY: sedeTop+sedeH+3,
-    head: [['Nº','N° GUIA','CODIGO','DESCRIPCION','CNTD.\nGUIA','TOTAL DE\nUNIDADES','DIFEREN-\nCIAS','NO APTA PARA\nLA VENTA','OBSERVA-\nCION']],
-    body: filas,
-    styles: { fontSize: 7.5, cellPadding: 1.6, valign:'middle', halign:'center', lineColor:[120,120,120], lineWidth:0.15 },
-    headStyles: { fillColor: [30,58,95], textColor: 255, fontStyle:'bold', halign:'center', valign:'middle', fontSize: 6.5 },
-    // Sin la columna SEDE, la descripción gana el espacio (≈ 54 mm en vez de ≈ 28 mm).
-    columnStyles: {
-      0: {cellWidth:8}, 1: {cellWidth:24}, 2: {cellWidth:22},
-      3: {cellWidth:'auto', halign:'left'}, 4: {cellWidth:15}, 5: {cellWidth:15},
-      6: {cellWidth:17}, 7: {cellWidth:17}, 8: {cellWidth:18}
-    },
-    margin: { left: margin, right: margin },
-    didDrawPage: (data)=>{
-      doc.setFontSize(8); doc.setTextColor(120);
-      doc.text(`Página ${data.pageNumber}`, pageW-margin, pageH-6, {align:'right'});
-      doc.setTextColor(0);
-    }
-  });
-
-  let firmaY = doc.lastAutoTable.finalY + 26;
-  if(firmaY > pageH - margin){ doc.addPage(); firmaY = margin + 26; }
-  doc.setDrawColor(0); doc.setLineWidth(0.2);
-  const lineaW = 70;
-  doc.line(margin+10, firmaY, margin+10+lineaW, firmaY);
-  doc.line(pageW-margin-10-lineaW, firmaY, pageW-margin-10, firmaY);
-  doc.setFont('helvetica','bold'); doc.setFontSize(8.5);
-  doc.text('FIRMA Y NOMBRE', margin+10+lineaW/2, firmaY+5, {align:'center'});
-  doc.text('CONTABILIDAD', pageW-margin-10-lineaW/2, firmaY+5, {align:'center'});
-
-  doc.save(`formato_merma_${formato.correlativo}.pdf`);
-}
-
-/* -------- Formatos generados (listado + previsualizador) -------- */
-let mermaFormatosRawLastDoc = null;
-let mermaFormatosAllCache = [];
-let mermaFormatosNoMore = false;
-let mermaFmtPdfCorrelativoActual = null;
-let mermaSubidaCorrelativoActual = null;
-
-async function cargarFormatosMerma(reset){
-  if(reset){ mermaFormatosRawLastDoc = null; mermaFormatosAllCache = []; mermaFormatosNoMore = false; }
-  if(!mermaFormatosNoMore){
-    try{
-      let q = mermaFormatosRef.orderBy('generado_en','desc').limit(500);
-      if(mermaFormatosRawLastDoc) q = q.startAfter(mermaFormatosRawLastDoc);
-      const snap = await q.get();
-      mermaFormatosAllCache = mermaFormatosAllCache.concat(snap.docs.map(d=>d.data()));
-      mermaFormatosRawLastDoc = snap.docs.length ? snap.docs[snap.docs.length-1] : mermaFormatosRawLastDoc;
-      if(snap.docs.length < 500) mermaFormatosNoMore = true;
-    }catch(err){
-      console.error(err);
-      showToast('Error al cargar formatos de merma: '+err.message,'err');
-      return;
-    }
-  }
-  renderFormatosMerma();
-  renderRegistrosMerma(); // refresca la columna "Formato" (¿firmado?) de Registros y Detalle
-}
-
-function renderFormatosMerma(){
-  const estadoFiltro = $('merma-fmt-list-filtro-estado').value;
-  const sedeFiltro = $('merma-fmt-list-filtro-sede').value.trim().toUpperCase();
-  const firmadoFiltro = $('merma-fmt-list-filtro-firmado').value;
-  const filtrados = mermaFormatosAllCache.filter(f=>{
-    if((f.estado||'ACTIVO') !== estadoFiltro) return false;
-    if(sedeFiltro && !(f.sede||'').toUpperCase().includes(sedeFiltro)) return false;
-    if(firmadoFiltro === 'si' && !f.pdf_firmado_url) return false;
-    if(firmadoFiltro === 'no' && f.pdf_firmado_url) return false;
-    return true;
-  });
-  if(filtrados.length === 0){
-    $('merma-formatos-body').innerHTML = '';
-    $('merma-formatos-empty').style.display = 'block';
-    $('merma-formatos-empty').textContent = (sedeFiltro||firmadoFiltro) ? 'No hay formatos que coincidan con los filtros.' : 'Aún no se han generado formatos de merma.';
-    return;
-  }
-  $('merma-formatos-empty').style.display = 'none';
-  const puedeEliminar = currentPermisos.admin || currentPermisos.eliminar;
-  $('merma-formatos-body').innerHTML = filtrados.map(f=>{
-    const firmado = !!f.pdf_firmado_url;
-    const fecha = f.generado_en && f.generado_en.toDate ? f.generado_en.toDate().toLocaleString('es-PE') : (f.fecha_texto||'');
-    const accion = `<button class="btn btn-sm btn-ghost btn-merma-reimprimir" data-correlativo="${esc(f.correlativo)}">🖨 PDF</button>
-      <button class="btn btn-sm btn-ghost btn-merma-ver-panel" data-correlativo="${esc(f.correlativo)}">${esc(firmado?'👁 Ver firmado':'📤 Subir firmado')}</button>
-      ${puedeEliminar ? `<button class="btn btn-sm btn-ghost btn-merma-eliminar-formato" data-correlativo="${esc(f.correlativo)}">Eliminar</button>` : ''}`;
-    return `<tr><td>${esc(f.correlativo)}</td><td>${esc(f.sede||'')}</td><td>${esc(fecha)}</td><td>${esc(f.total_guias??(f.guias_incluidas||[]).length)}</td><td>${esc(f.total_filas??(f.filas||[]).length)}</td><td>${esc(f.generado_por||'')}</td><td>${esc(firmado?'✓ Sí':'— No')}</td><td style="white-space:nowrap;">${accion}</td></tr>`;
-  }).join('');
-}
-$('merma-fmt-list-filtro-estado').addEventListener('change', ()=> renderFormatosMerma());
-$('merma-fmt-list-filtro-sede').addEventListener('input', ()=> renderFormatosMerma());
-$('merma-fmt-list-filtro-firmado').addEventListener('change', ()=> renderFormatosMerma());
-$('btn-merma-fmt-list-limpiar-filtros').addEventListener('click', ()=>{
-  $('merma-fmt-list-filtro-sede').value = '';
-  $('merma-fmt-list-filtro-firmado').value = '';
-  renderFormatosMerma();
-});
-$('btn-ocultar-merma-fmt-pdf').addEventListener('click', ()=>{ $('merma-fmt-pdf-panel').style.display = 'none'; });
-
-$('merma-formatos-body').addEventListener('click', (ev)=>{
-  const btnReimp = ev.target.closest('.btn-merma-reimprimir');
-  const btnPanel = ev.target.closest('.btn-merma-ver-panel');
-  const btnDel = ev.target.closest('.btn-merma-eliminar-formato');
-  if(btnReimp){
-    const f = mermaFormatosAllCache.find(x=>x.correlativo===btnReimp.dataset.correlativo);
-    if(f) generarPDFMerma(f);
-    return;
-  }
-  if(btnPanel){ abrirPanelPdfMerma(btnPanel.dataset.correlativo); return; }
-  if(btnDel){ eliminarFormatoMerma(btnDel.dataset.correlativo); return; }
-});
-
-function abrirPanelPdfMerma(correlativo){
-  const f = mermaFormatosAllCache.find(x=>x.correlativo===correlativo);
-  if(!f){ showToast('No se encontró el formato.','err'); return; }
-  mermaFmtPdfCorrelativoActual = correlativo;
-  $('merma-fmt-pdf-titulo-text').textContent = `PDF firmado — ${correlativo} (${f.sede||''})`;
-  if(f.pdf_firmado_url){
-    $('merma-fmt-pdf-sin-archivo').style.display = 'none';
-    $('merma-fmt-pdf-con-archivo').style.display = 'block';
-    $('merma-fmt-pdf-info').textContent = `Archivo: ${f.pdf_firmado_nombre||''} · Subido por ${f.pdf_firmado_subido_por||''}`;
-    $('merma-fmt-pdf-iframe').src = f.pdf_firmado_url;
-    $('merma-fmt-pdf-abrir-nueva').href = f.pdf_firmado_url;
-  }else{
-    $('merma-fmt-pdf-sin-archivo').style.display = 'block';
-    $('merma-fmt-pdf-con-archivo').style.display = 'none';
-    $('merma-fmt-pdf-iframe').src = '';
-  }
-  $('merma-fmt-pdf-panel').style.display = 'block';
-  $('merma-fmt-pdf-panel').scrollIntoView({behavior:'smooth', block:'start'});
-}
-
-async function subirPdfFirmadoMerma(correlativo, file){
-  const path = `merma_formatos/${correlativo}/${Date.now()}_${file.name}`;
-  const ref = storage.ref().child(path);
-  await ref.put(file);
-  const url = await ref.getDownloadURL();
-  await mermaFormatosRef.doc(correlativo).update({
-    pdf_firmado_url: url,
-    pdf_firmado_nombre: file.name,
-    pdf_firmado_subido_por: currentUserAlias,
-    pdf_firmado_subido_en: firebase.firestore.FieldValue.serverTimestamp()
-  });
-  await logAccion('merma_formato_pdf_subido', {detalle:`Se subió el PDF firmado "${file.name}" al formato ${correlativo}`});
-  return url;
-}
-$('btn-merma-subir-pdf-panel').addEventListener('click', ()=>{
-  if(!mermaFmtPdfCorrelativoActual) return;
-  mermaSubidaCorrelativoActual = mermaFmtPdfCorrelativoActual;
-  $('merma-pdf-input-global').click();
-});
-$('btn-merma-reemplazar-pdf').addEventListener('click', ()=>{
-  if(!mermaFmtPdfCorrelativoActual) return;
-  mermaSubidaCorrelativoActual = mermaFmtPdfCorrelativoActual;
-  $('merma-pdf-input-global').click();
-});
-$('merma-pdf-input-global').addEventListener('change', async ()=>{
-  const file = $('merma-pdf-input-global').files[0];
-  if(!file || !mermaSubidaCorrelativoActual) return;
-  if(!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf'){
-    showToast('El archivo debe ser un PDF.','err');
-    $('merma-pdf-input-global').value = ''; mermaSubidaCorrelativoActual = null;
-    return;
-  }
-  const correlativo = mermaSubidaCorrelativoActual;
-  showToast('Subiendo PDF firmado…','ok');
-  try{
-    const url = await subirPdfFirmadoMerma(correlativo, file);
-    const f = mermaFormatosAllCache.find(x=>x.correlativo===correlativo);
-    if(f){ f.pdf_firmado_url = url; f.pdf_firmado_nombre = file.name; f.pdf_firmado_subido_por = currentUserAlias; }
-    renderFormatosMerma();
-    renderRegistrosMerma();
-    if(mermaFmtPdfCorrelativoActual===correlativo) abrirPanelPdfMerma(correlativo);
-    showToast('PDF firmado subido correctamente.','ok');
-  }catch(err){
-    console.error(err);
-    showToast('Error al subir el PDF: '+err.message,'err');
-  }finally{
-    $('merma-pdf-input-global').value = '';
-    mermaSubidaCorrelativoActual = null;
-  }
-});
-$('btn-merma-eliminar-pdf').addEventListener('click', async ()=>{
-  const correlativo = mermaFmtPdfCorrelativoActual;
-  if(!correlativo) return;
-  if(!(currentPermisos.admin || currentPermisos.eliminar)){ showToast('No tienes permiso para eliminar.','err'); return; }
-  const ok = confirm(`¿Eliminar el PDF firmado del formato ${correlativo}? El formato no se borra, solo el archivo.`);
-  if(!ok) return;
-  try{
-    const f = mermaFormatosAllCache.find(x=>x.correlativo===correlativo);
-    if(f && f.pdf_firmado_url){
-      try{ await storage.refFromURL(f.pdf_firmado_url).delete(); }catch(e){ console.error(e); }
-    }
-    await mermaFormatosRef.doc(correlativo).update({
-      pdf_firmado_url: firebase.firestore.FieldValue.delete(),
-      pdf_firmado_nombre: firebase.firestore.FieldValue.delete(),
-      pdf_firmado_subido_por: firebase.firestore.FieldValue.delete(),
-      pdf_firmado_subido_en: firebase.firestore.FieldValue.delete()
-    });
-    await logAccion('merma_formato_pdf_eliminado', {detalle:`Se eliminó el PDF firmado del formato ${correlativo}`});
-    if(f){ delete f.pdf_firmado_url; delete f.pdf_firmado_nombre; delete f.pdf_firmado_subido_por; }
-    renderFormatosMerma();
-    renderRegistrosMerma();
-    abrirPanelPdfMerma(correlativo);
-    showToast(`PDF de ${correlativo} eliminado.`,'ok');
-  }catch(err){
-    console.error(err);
-    showToast('Error al eliminar el PDF: '+err.message,'err');
-  }
-});
-
-async function eliminarFormatoMerma(correlativo){
-  if(!(currentPermisos.admin || currentPermisos.eliminar)){ showToast('No tienes permiso para eliminar.','err'); return; }
-  const ok = confirm(`¿Eliminar definitivamente el formato ${correlativo}? Esto no elimina las guías ni su detalle, solo el formato impreso y su PDF firmado (si tiene).`);
-  if(!ok) return;
-  try{
-    const f = mermaFormatosAllCache.find(x=>x.correlativo===correlativo);
-    if(f && f.pdf_firmado_url){
-      try{ await storage.refFromURL(f.pdf_firmado_url).delete(); }catch(e){ console.error('No se pudo borrar el PDF de Storage', e); }
-    }
-    await mermaFormatosRef.doc(correlativo).delete();
-    mermaFormatosAllCache = mermaFormatosAllCache.filter(x=>x.correlativo!==correlativo);
-    mermaRegAllCache.forEach(g=>{ if(g.formato_correlativo === correlativo) delete g.formato_correlativo; });
-    await logAccion('merma_formato_eliminado', {detalle:`Se eliminó el formato ${correlativo}`});
-    if(mermaFmtPdfCorrelativoActual === correlativo){ $('merma-fmt-pdf-panel').style.display = 'none'; mermaFmtPdfCorrelativoActual = null; }
-    renderFormatosMerma();
-    renderRegistrosMerma();
-    showToast(`Formato ${correlativo} eliminado.`,'ok');
-  }catch(err){
-    console.error(err);
-    showToast('Error al eliminar: '+err.message,'err');
-  }
-}
-/* -------- Auditoría Rápida de Recepción por Muestreo --------
-   Calcula cuántos bultos abrir y cuántos ítems inspeccionar por guía sin superar
-   un presupuesto fijo de minutos. No rechaza la guía: solo la clasifica como
-   CONFIABLE o NO CONFIABLE (si hay discrepancias, queda como alerta para que
-   supervisión concilie después, sin frenar el flujo de recepción). */
-const MERMA_AUD_TIEMPO_MAXIMO_GUIA = 60;       // minutos, presupuesto máximo por guía
-const MERMA_AUD_TIEMPO_APERTURA_BULTO = 2;     // minutos por bulto abierto
-const MERMA_AUD_MOTIVOS = { FALTANTE:'Faltante', SOBRANTE:'Sobrante', CODIGO_ERRONEO:'Código Erróneo', DANO_FISICO:'Daño Físico' };
-
-/* Función de cálculo pura (sin efectos secundarios) — recibe los 4 datos de entrada
-   y devuelve el plan de muestreo. Reutilizable desde cualquier pantalla o, si en el
-   futuro se separa a un backend, desde un endpoint que reciba el mismo payload. */
-function calcularMuestraAuditoria({ total_bultos, total_items_guia, tipo_embalaje, tiempo_por_item }){
-  const N = Math.max(0, Math.trunc(Number(total_bultos) || 0));
-  const totalItemsGuia = Math.max(0, Math.trunc(Number(total_items_guia) || 0));
-  const tPorItem = Number(tiempo_por_item) || 5;
-
-  // 1. Bultos base a abrir (b)
-  let b = N <= 3 ? N : Math.min(Math.ceil(Math.sqrt(N)) + 1, N);
-
-  // 2. Restricción de tiempo (presupuesto de 60 min)
-  const itemsMaximosPara = (bultos)=> Math.floor((MERMA_AUD_TIEMPO_MAXIMO_GUIA - bultos*MERMA_AUD_TIEMPO_APERTURA_BULTO) / tPorItem);
-  let itemsMaximos = itemsMaximosPara(b);
-  let seRedujoPorTiempo = false;
-  if(itemsMaximos < 4 && b > 2){
-    b = Math.ceil(b / 2);
-    itemsMaximos = itemsMaximosPara(b);
-    seRedujoPorTiempo = true;
-  }
-  itemsMaximos = Math.max(0, itemsMaximos);
-
-  // 3. Distribución de la muestra
-  let bultos_abrir, items_revisar, items_por_bulto;
-  if(tipo_embalaje === 'MIXTO'){
-    bultos_abrir = b;
-    items_revisar = itemsMaximos;
-    items_por_bulto = bultos_abrir > 0 ? Math.ceil(items_revisar / bultos_abrir) : 0;
-  }else{ // HOMOGENEO (1 ítem por bulto)
-    bultos_abrir = Math.min(b, itemsMaximos);
-    items_revisar = bultos_abrir;
-    items_por_bulto = bultos_abrir > 0 ? 1 : 0;
-  }
-  // No tiene sentido pedir revisar más ítems distintos de los que declara la guía.
-  items_revisar = Math.min(items_revisar, totalItemsGuia);
-
-  const tiempo_apertura = bultos_abrir * MERMA_AUD_TIEMPO_APERTURA_BULTO;
-  const tiempo_items = items_revisar * tPorItem;
-  const tiempo_estimado = tiempo_apertura + tiempo_items;
-  // Con volúmenes de bultos extremos, ni reduciendo a la mitad una vez (regla del
-  // paso 2) alcanza el presupuesto — se avisa en vez de fingir que sí se cumplió.
-  const excedeTiempo = tiempo_estimado > MERMA_AUD_TIEMPO_MAXIMO_GUIA || items_revisar <= 0;
-
-  return {
-    total_bultos: N, total_items_guia: totalItemsGuia, tipo_embalaje, tiempo_por_item: tPorItem,
-    bultos_abrir, items_revisar, items_por_bulto, tiempo_apertura, tiempo_items, tiempo_estimado,
-    seRedujoPorTiempo, excedeTiempo
-  };
-}
-
-let mermaAudGuiaSeleccionada = null;
-let mermaAudResultadoActual = null;
-let mermaAudDiscrepancias = [];
-
-function poblarSelectGuiasAuditoria(){
-  const activos = mermaRegAllCache.filter(r=>(r.estado||'ACTIVO')==='ACTIVO');
-  const valorActual = $('aud-guia-select').value;
-  $('aud-guia-select').innerHTML = '<option value="">— Ingresar datos manualmente —</option>' +
-    activos.map(r=>`<option value="${esc(r.correlativo)}">${esc(r.correlativo)} — N° ${esc(r.nro_guia||'s/n')} — ${esc(r.sede||'')}</option>`).join('');
-  if(valorActual && activos.some(r=>r.correlativo===valorActual)) $('aud-guia-select').value = valorActual;
-}
-$('aud-guia-select').addEventListener('change', ()=>{
-  const correlativo = $('aud-guia-select').value;
-  mermaAudGuiaSeleccionada = correlativo || null;
-  if(!correlativo) return;
-  const g = mermaRegAllCache.find(r=>r.correlativo===correlativo);
-  if(!g) return;
-  if(g.bultos != null) $('aud-total-bultos').value = g.bultos;
-  if(g.total_items != null) $('aud-total-items').value = g.total_items;
-});
-
-function renderDiscrepanciasAuditoria(){
-  $('aud-discrepancias-empty').style.display = mermaAudDiscrepancias.length ? 'none' : 'block';
-  $('aud-discrepancias-body').innerHTML = mermaAudDiscrepancias.map((d,idx)=>`<tr data-idx="${esc(idx)}">
-    <td><input type="text" class="upper aud-disc-codigo" data-idx="${esc(idx)}" value="${esc(d.codigo||'')}" placeholder="EJ. 1454-COL175" style="min-width:140px;"></td>
-    <td><select class="aud-disc-motivo" data-idx="${esc(idx)}">${Object.entries(MERMA_AUD_MOTIVOS).map(([k,v])=>`<option value="${esc(k)}" ${esc(k===d.motivo?'selected':'')}>${esc(v)}</option>`).join('')}</select></td>
-    <td><input type="text" class="aud-disc-detalle" data-idx="${esc(idx)}" value="${(d.detalle||'').replace(/"/g,'&quot;')}" placeholder="Opcional" style="min-width:180px;"></td>
-    <td><button type="button" class="btn btn-sm btn-ghost btn-aud-quitar-discrepancia" data-idx="${esc(idx)}">🗑</button></td>
-  </tr>`).join('');
-}
-function leerDiscrepanciasDesdeFormulario(){
-  document.querySelectorAll('#aud-discrepancias-body tr[data-idx]').forEach(tr=>{
-    const idx = Number(tr.dataset.idx);
-    const d = mermaAudDiscrepancias[idx];
-    if(!d) return;
-    const inpCodigo = tr.querySelector('.aud-disc-codigo');
-    const selMotivo = tr.querySelector('.aud-disc-motivo');
-    const inpDetalle = tr.querySelector('.aud-disc-detalle');
-    d.codigo = inpCodigo ? inpCodigo.value.trim().toUpperCase() : d.codigo;
-    d.motivo = selMotivo ? selMotivo.value : d.motivo;
-    d.detalle = inpDetalle ? inpDetalle.value.trim() : d.detalle;
-  });
-}
-$('btn-aud-agregar-discrepancia').addEventListener('click', ()=>{
-  leerDiscrepanciasDesdeFormulario();
-  mermaAudDiscrepancias.push({ codigo:'', motivo:'FALTANTE', detalle:'' });
-  renderDiscrepanciasAuditoria();
-});
-$('aud-discrepancias-body').addEventListener('click', (ev)=>{
-  const btn = ev.target.closest('.btn-aud-quitar-discrepancia');
-  if(!btn) return;
-  leerDiscrepanciasDesdeFormulario();
-  mermaAudDiscrepancias.splice(Number(btn.dataset.idx), 1);
-  renderDiscrepanciasAuditoria();
-});
-
-function renderResultadoAuditoria(calc){
-  const cards = [];
-  cards.push(kpiCardHtml('Bultos a abrir', calc.bultos_abrir, {icono:'pallet'}));
-  cards.push(kpiCardHtml('Ítems a auditar', calc.items_revisar, {icono:'lupa'}));
-  if(calc.tipo_embalaje === 'MIXTO'){
-    cards.push(kpiCardHtml('Ítems por bulto (aprox.)', calc.items_por_bulto, {icono:'meta'}));
-  }
-  cards.push(kpiCardHtml('Tiempo estimado', calc.tiempo_estimado, {
-    icono:'reloj', sufijo:' min',
-    accent: calc.excedeTiempo ? '#8A332A' : '#245C46',
-    badgeBg: calc.excedeTiempo ? '#F7E1DE' : '#DCEEE6',
-    alerta: calc.excedeTiempo
-  }));
-  $('aud-resultado-kpis').innerHTML = cards.join('');
-  animarKpis('aud-resultado-kpis');
-}
-
-$('btn-aud-calcular').addEventListener('click', ()=>{
-  const total_bultos = Number($('aud-total-bultos').value);
-  const total_items_guia = Number($('aud-total-items').value);
-  const tipo_embalaje = $('aud-tipo-embalaje').value;
-  const tiempo_por_item = Number($('aud-tiempo-item').value);
-  if(!total_bultos || total_bultos <= 0){ showMsg('aud-calc-msg','err','Ingresa el total de bultos recibidos (mayor a 0).'); return; }
-  if(!total_items_guia || total_items_guia <= 0){ showMsg('aud-calc-msg','err','Ingresa el total de ítems según la guía (mayor a 0).'); return; }
-
-  const calc = calcularMuestraAuditoria({ total_bultos, total_items_guia, tipo_embalaje, tiempo_por_item });
-  mermaAudResultadoActual = calc;
-  mermaAudDiscrepancias = [];
-  renderResultadoAuditoria(calc);
-  renderDiscrepanciasAuditoria();
-  $('aud-resultado-wrap').style.display = 'block';
-  $('aud-guardar-msg').style.display = 'none';
-  if(calc.excedeTiempo){
-    showMsg('aud-calc-msg','err','⚠ Con este volumen de bultos, el plan de muestra igual podría superar el presupuesto de 60 min (o no deja ítems por revisar). Revisa los datos o continúa sabiendo que excede el tiempo objetivo.');
-  }else{
-    showMsg('aud-calc-msg','ok', calc.seRedujoPorTiempo ? 'Muestra calculada (se redujo la cantidad de bultos para respetar el presupuesto de 60 min).' : 'Muestra calculada.');
-  }
-  $('aud-resultado-wrap').scrollIntoView({behavior:'smooth', block:'nearest'});
-});
-
-async function generarCorrelativoAuditoriaMerma(){
-  const counterRef = contadoresRef.doc('merma_auditorias');
-  const siguiente = await db.runTransaction(async (tx)=>{
-    const snap = await tx.get(counterRef);
-    const actual = snap.exists ? (snap.data().ultimo || 0) : 0;
-    const nuevo = actual + 1;
-    tx.set(counterRef, {ultimo: nuevo}, {merge:true});
-    return nuevo;
-  });
-  return 'AUD-' + String(siguiente).padStart(5,'0');
-}
-
-$('btn-aud-guardar').addEventListener('click', async ()=>{
-  if(!mermaAudResultadoActual){ return; }
-  leerDiscrepanciasDesdeFormulario();
-  const btn = $('btn-aud-guardar');
-  btn.disabled = true; btn.textContent = 'Guardando…';
-  try{
-    const calc = mermaAudResultadoActual;
-    const discrepancias = mermaAudDiscrepancias.map(d=>({ codigo: d.codigo||'', motivo: d.motivo||'FALTANTE', detalle: d.detalle||'' }));
-    const dictamen = discrepancias.length === 0 ? 'CONFIABLE' : 'NO_CONFIABLE';
-    const estado_guia_texto = dictamen === 'CONFIABLE' ? 'Aprobada por Auditoría Rápida' : 'Marcada con Alerta de Discrepancia';
-    const correlativo = await generarCorrelativoAuditoriaMerma();
-    const g = mermaAudGuiaSeleccionada ? mermaRegAllCache.find(r=>r.correlativo===mermaAudGuiaSeleccionada) : null;
-
-    const doc = {
-      correlativo,
-      correlativo_guia: mermaAudGuiaSeleccionada || null,
-      nro_guia: g ? (g.nro_guia||'') : '',
-      sede: g ? (g.sede||'') : '',
-      total_bultos: calc.total_bultos, total_items_guia: calc.total_items_guia,
-      tipo_embalaje: calc.tipo_embalaje, tiempo_por_item: calc.tiempo_por_item,
-      bultos_abrir: calc.bultos_abrir, items_revisar: calc.items_revisar, items_por_bulto: calc.items_por_bulto,
-      tiempo_apertura: calc.tiempo_apertura, tiempo_items: calc.tiempo_items, tiempo_estimado: calc.tiempo_estimado,
-      discrepancias, discrepancias_encontradas: discrepancias.length,
-      dictamen, estado_guia_texto,
-      usuario: currentUserAlias, fecha: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    await mermaAuditoriasRef.doc(correlativo).set(doc);
-
-    if(mermaAudGuiaSeleccionada){
-      await mermaGuiasRef.doc(mermaAudGuiaSeleccionada).update({ auditoria_correlativo: correlativo, auditoria_dictamen: dictamen });
-      if(g){ g.auditoria_correlativo = correlativo; g.auditoria_dictamen = dictamen; }
-    }
-
-    if(dictamen === 'CONFIABLE'){
-      await logAccion('merma_auditoria_registrada', {detalle:`Auditoría ${correlativo}${g?` (guía ${g.correlativo} — ${g.sede||''})`:''}: ${calc.bultos_abrir} bulto(s) abiertos, ${calc.items_revisar} ítem(s) revisados, sin discrepancias — CONFIABLE.`});
-      showToast(`Auditoría ${correlativo} guardada: CONFIABLE.`,'ok');
-    }else{
-      const detalleItems = discrepancias.map(d=>`${d.codigo||'(sin código)'} — ${MERMA_AUD_MOTIVOS[d.motivo]||d.motivo}${d.detalle?': '+d.detalle:''}`).join(' | ');
-      await logAccion('merma_auditoria_alerta', {detalle:`Auditoría ${correlativo}${g?` (guía ${g.correlativo} — ${g.sede||''})`:''}: ${discrepancias.length} discrepancia(s) — NO CONFIABLE. Ítems observados: ${detalleItems}`});
-      showToast(`⚠ Auditoría ${correlativo} guardada: NO CONFIABLE (${discrepancias.length} discrepancia(s)). Se registró la alerta en Bitácora para supervisión.`,'err');
-    }
-
-    renderRegistrosMerma();
-    cargarAuditoriasMerma(true); // relee desde el servidor para traer la fecha real (serverTimestamp)
-
-    mermaAudResultadoActual = null;
-    mermaAudDiscrepancias = [];
-    $('aud-resultado-wrap').style.display = 'none';
-    $('aud-total-bultos').value = ''; $('aud-total-items').value = '';
-    $('aud-guia-select').value = ''; mermaAudGuiaSeleccionada = null;
-    $('aud-calc-msg').style.display = 'none';
-  }catch(err){
-    console.error(err);
-    showMsg('aud-guardar-msg','err','Error al guardar la auditoría: '+err.message);
-  }finally{
-    btn.disabled = false; btn.textContent = '💾 Guardar auditoría';
-  }
-});
-
-/* -------- Listado de auditorías -------- */
-let mermaAuditoriasRawLastDoc = null;
-let mermaAuditoriasAllCache = [];
-let mermaAuditoriasNoMore = false;
-
-async function cargarAuditoriasMerma(reset){
-  if(reset){ mermaAuditoriasRawLastDoc = null; mermaAuditoriasAllCache = []; mermaAuditoriasNoMore = false; }
-  if(!mermaAuditoriasNoMore){
-    try{
-      let q = mermaAuditoriasRef.orderBy('fecha','desc').limit(500);
-      if(mermaAuditoriasRawLastDoc) q = q.startAfter(mermaAuditoriasRawLastDoc);
-      const snap = await q.get();
-      mermaAuditoriasAllCache = mermaAuditoriasAllCache.concat(snap.docs.map(d=>d.data()));
-      mermaAuditoriasRawLastDoc = snap.docs.length ? snap.docs[snap.docs.length-1] : mermaAuditoriasRawLastDoc;
-      if(snap.docs.length < 500) mermaAuditoriasNoMore = true;
-    }catch(err){
-      console.error(err);
-      showToast('Error al cargar auditorías de merma: '+err.message,'err');
-      return;
-    }
-  }
-  renderAuditoriasMerma();
-}
-
-function renderAuditoriasMerma(){
-  const dictamenFiltro = $('aud-list-filtro-dictamen').value;
-  const sedeFiltro = $('aud-list-filtro-sede').value.trim().toUpperCase();
-  const filtrados = mermaAuditoriasAllCache.filter(a=>{
-    if(dictamenFiltro && a.dictamen !== dictamenFiltro) return false;
-    if(sedeFiltro && !(a.sede||'').toUpperCase().includes(sedeFiltro)) return false;
-    return true;
-  });
-  if(filtrados.length === 0){
-    $('aud-list-body').innerHTML = '';
-    $('aud-list-empty').style.display = 'block';
-    $('aud-list-empty').textContent = (dictamenFiltro||sedeFiltro) ? 'No hay auditorías que coincidan con los filtros.' : 'Aún no se han registrado auditorías rápidas.';
-    return;
-  }
-  $('aud-list-empty').style.display = 'none';
-  $('aud-list-body').innerHTML = filtrados.map(a=>{
-    const fecha = a.fecha && a.fecha.toDate ? a.fecha.toDate().toLocaleString('es-PE') : '';
-    const esConfiable = a.dictamen === 'CONFIABLE';
-    const color = esConfiable ? '#245C46' : '#8A332A';
-    return `<tr><td>${esc(a.correlativo)}</td><td>${esc(a.correlativo_guia || '—')}${esc(a.nro_guia?' (N° '+a.nro_guia+')':'')}</td><td>${esc(a.sede||'')}</td><td>${esc(a.bultos_abrir)}</td><td>${esc(a.items_revisar)}</td><td>${esc(a.tiempo_estimado)} min</td><td>${esc(a.discrepancias_encontradas)}</td><td style="color:${esc(color)}; font-weight:700;">${esc(esConfiable?'✓ CONFIABLE':'⚠ NO CONFIABLE')}</td><td>${esc(fecha)}</td><td>${esc(a.usuario||'')}</td><td><button class="btn btn-sm btn-ghost btn-ver-detalle-auditoria" data-correlativo="${esc(a.correlativo)}">Ver</button></td></tr>`;
-  }).join('');
-}
-$('aud-list-filtro-dictamen').addEventListener('change', ()=> renderAuditoriasMerma());
-$('aud-list-filtro-sede').addEventListener('input', ()=> renderAuditoriasMerma());
-$('btn-aud-list-limpiar-filtros').addEventListener('click', ()=>{
-  $('aud-list-filtro-dictamen').value = '';
-  $('aud-list-filtro-sede').value = '';
-  renderAuditoriasMerma();
-});
-$('aud-list-body').addEventListener('click', (ev)=>{
-  const btn = ev.target.closest('.btn-ver-detalle-auditoria');
-  if(btn) abrirDetalleAuditoriaMerma(btn.dataset.correlativo);
-});
-$('btn-ocultar-aud-detalle').addEventListener('click', ()=>{ $('aud-detalle-panel').style.display = 'none'; });
-
-function abrirDetalleAuditoriaMerma(correlativo){
-  const a = mermaAuditoriasAllCache.find(x=>x.correlativo===correlativo);
-  if(!a){ showToast('No se encontró la auditoría.','err'); return; }
-  $('aud-detalle-titulo-text').textContent = `Detalle de ${a.correlativo}${a.correlativo_guia?' — guía '+a.correlativo_guia:''} — ${a.dictamen==='CONFIABLE'?'CONFIABLE':'NO CONFIABLE'}`;
-  const discrepancias = a.discrepancias || [];
-  $('aud-detalle-empty').style.display = discrepancias.length ? 'none' : 'block';
-  $('aud-detalle-body').innerHTML = discrepancias.map(d=>`<tr><td>${esc(d.codigo||'—')}</td><td>${MERMA_AUD_MOTIVOS[d.motivo]||esc(d.motivo)}</td><td>${esc(d.detalle||'')}</td></tr>`).join('');
-  $('aud-detalle-panel').style.display = 'block';
-  $('aud-detalle-panel').scrollIntoView({behavior:'smooth', block:'start'});
-}
-/* ==================== FIN MÓDULO DE MERMA ==================== */
 
 /* -------------------- Análisis: Repartido vs. Guías -------------------- */
 let anGuiaPorCampanaCache = {};
@@ -18789,9 +17480,6 @@ const TABLAS_MOVIL = [
   {id:'ti-preview-body', tarjetas:true},
   {id:'ti-conteo-body', tarjetas:true},
   {id:'ti-reg-body', tarjetas:true},
-  {id:'merma-reg-body', tarjetas:true},
-  {id:'merma-formatos-body', tarjetas:true},
-  {id:'aud-list-body', tarjetas:true},
   {id:'rep-dup-body', tarjetas:true}
 ];
 function etiquetarCeldas(tbody){
@@ -21191,6 +19879,744 @@ $('sd-det-modal').addEventListener('click', e=>{
 });
 window.addEventListener('keydown', e=>{ if(e.key === 'Escape' && !$('sd-det-modal').hidden && $('rf-lightbox').hidden && $('rf-aviso').hidden && $('cam-modal').hidden) sdCerrarDetalle(); }, true);
 
+// -------- Merma: traslado de merma por cajas (copia del módulo de Saldos) --------
+// Igual que Saldos, con su propia numeración (TM-00001 / CM-00001), sus colecciones (merma_traslados,
+// merma_cajas) y sus carpetas de archivos (merma/, merma_guias/). El ajuste de etiqueta de la Godex es el mismo.
+// Un traslado (TM-00001) es de una tienda (participante) y un día. Dentro se crean cajas (CM-00001, número
+// global, uno por caja) y a cada caja se le agregan productos con la misma dinámica del registro fotográfico
+// (SKU con buscador / escáner, cantidad, descripción y al menos una foto). Al cerrar: bultos = cajas.
+// Cada usuario ve sus traslados; admin o "merma_todos" ven todos (las reglas de Firestore hacen lo mismo).
+const mermaTrasladosRef = db.collection('merma_traslados'), mermaCajasRef = db.collection('merma_cajas');
+let mmTraslado = null, mmCajas = [], mmActiva = -1, mmFotoN = 0, mmGuardarTimer = null, mmGuardando = Promise.resolve();
+let mmLista = [], mmLeidos = false, mmSel = null;
+const mmVeTodos = ()=> !!(currentPermisos.admin || currentPermisos.merma_todos);
+const mmPuedeEliminar = ()=> !!(currentPermisos.admin || currentPermisos.eliminar);
+const mmHoy = ()=>{ const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const mmFechaTxt = f=> f ? String(f).split('-').reverse().join('/') : '';
+const mmNuevoItem = ()=> ({ sku:'', descripcion:'', cantidad:'', fotos:[] });
+const mmCaja = ()=> mmCajas[mmActiva] || null;
+function setMmSubtab(name){
+  mmCerrarDetalle();
+  ['nuevo', 'lista'].forEach(n=>{ $('mmsub-' + n).classList.toggle('active', n === name); $('mmsub-panel-' + n).style.display = n === name ? 'block' : 'none'; });
+  if(name === 'lista'){ mmFechasHoy(); mmCargarLista(); } else mmPreparar();
+}
+// Registros se abre siempre con la fecha del día (Desde y Hasta = hoy); «📅 Todas las fechas» quita el filtro.
+function mmFechasHoy(){ $('mm-desde').value = $('mm-hasta').value = mmHoy(); }
+$('btn-mm-todas-fechas').addEventListener('click', ()=>{ $('mm-desde').value = $('mm-hasta').value = ''; renderMmLista(); });
+$('mmsub-nuevo').addEventListener('click', ()=> setMmSubtab('nuevo'));
+$('mmsub-lista').addEventListener('click', ()=> setMmSubtab('lista'));
+$('tab-merma').addEventListener('click', mmAlEntrar);
+async function mmCorrelativo(clave, pref){
+  const ref = contadoresRef.doc(clave);
+  const n = await db.runTransaction(async tx=>{ const snap = await tx.get(ref), nuevo = ((snap.exists ? snap.data().ultimo : 0) || 0) + 1; tx.set(ref, { ultimo: nuevo }, { merge: true }); return nuevo; });
+  return `${pref}-${String(n).padStart(5, '0')}`;
+}
+// ---- Inicio: tienda + fecha ----
+// Tiendas (participantes) y fecha de hoy: se llenan al entrar y cada vez que llegan o cambian los participantes
+// (así no quedan vacías si se entra directo a Merma o se recarga la página en esta opción).
+function mmLlenarTiendas(){
+  const sel = $('mm-tienda'), v = sel.value || (()=>{ try{ return localStorage.getItem('mm:tienda') || ''; }catch(e){ return ''; } })();
+  const L = rfTiendas(); sel.innerHTML = L.map(t=> `<option value="${esc(t)}">${esc(t)}</option>`).join(''); sel.value = L.includes(v) ? v : L[0];
+  if(!$('mm-fecha').value) $('mm-fecha').value = mmHoy();
+}
+// Al abrir Merma (desde el menú, al recargar en esta opción o al entrar directo).
+function mmAlEntrar(){ if($('mmsub-panel-nuevo').style.display !== 'none') mmPreparar(); else { mmFechasHoy(); mmCargarLista(); } }
+function mmPreparar(){
+  mmLlenarTiendas();
+  $('mm-inicio').hidden = !!mmTraslado; $('mm-form').hidden = !mmTraslado;
+  if(mmTraslado) renderMmForm(); else mmListarAbiertos();
+}
+async function mmListarAbiertos(){
+  const caja = $('mm-abiertos'); caja.innerHTML = '';
+  try{
+    const L = (await mermaTrasladosRef.where('usuario_email', '==', currentUserEmail).get()).docs.map(d=> Object.assign({ id: d.id }, d.data()))
+      .filter(t=> t.estado === 'ABIERTO').sort((a, b)=> String(b.fecha_creacion).localeCompare(String(a.fecha_creacion)));
+    if(L.length) caja.innerHTML = `<div class="rf-borradores"><b>Tienes ${esc(L.length)} traslado(s) sin cerrar:</b>` + L.map(t=> `<button type="button" data-mm-continuar="${esc(t.id)}">` +
+      `<b style="display:inline; font-size:14px; color:inherit;">✏ Continuar ${esc(t.id)}</b><span>🏬 ${esc(t.tienda)} · 📅 ${esc(mmFechaTxt(t.fecha))} · 📦 ${esc(t.cajas || 0)} caja(s)</span></button>`).join('') + '</div>';
+  }catch(err){ console.warn('Traslados abiertos:', err); }
+}
+async function mmIniciar(){
+  const tienda = $('mm-tienda').value, fecha = $('mm-fecha').value;
+  if(!tienda || !fecha){ showMsg('mm-msg', 'err', 'Elige la tienda y la fecha.'); return; }
+  $('btn-mm-iniciar').disabled = true;
+  try{
+    try{ localStorage.setItem('mm:tienda', tienda); }catch(e){}
+    const id = await mmCorrelativo('merma_traslado', 'TM'), ahora = new Date().toISOString();
+    const t = { correlativo: id, estado:'ABIERTO', tienda, fecha, usuario: currentUserAlias, usuario_email: currentUserEmail, fecha_creacion: ahora, actualizado_en: ahora, cajas: 0, bultos: 0, unidades: 0 };
+    await mermaTrasladosRef.doc(id).set(Object.assign({ creado_en: firebase.firestore.FieldValue.serverTimestamp() }, t));
+    await logAccion('merma_iniciado', { detalle: `${id} · ${tienda} · ${mmFechaTxt(fecha)}` });
+    mmLeidos = false; mmCargarEnForm(Object.assign({ id }, t), []);
+    showMsg('mm-msg', 'ok', `Traslado ${id} iniciado. Crea la primera caja.`);
+  }catch(err){ console.error(err); showMsg('mm-msg', 'err', 'No se pudo iniciar el traslado: ' + err.message); }
+  finally{ $('btn-mm-iniciar').disabled = false; }
+}
+function mmCargarEnForm(t, cajas){
+  mmTraslado = t;
+  const foto = (f, nombre)=> ({ id: 'sf' + (++mmFotoN), url: f.url, remoto: f.url, path: f.path, tam: f.tam, nombre });
+  // Las cajas de antes (sin estado) quedan cerradas, menos la última.
+  mmCajas = cajas.map((c, k)=> ({ id: c.id, cerrada: c.estado ? c.estado === 'CERRADA' : k < cajas.length - 1, items: [...(c.items || []).map((it, i)=> ({ sku: it.sku || '', descripcion: it.descripcion || '', cantidad: String(it.cantidad || ''), fotos: (it.fotos || []).map(f=> foto(f, 'item' + (i + 1))) })), mmNuevoItem()] }));
+  const abierta = mmCajas.findIndex(c=> !c.cerrada); mmActiva = abierta >= 0 ? abierta : mmCajas.length - 1;
+  $('mm-ok').hidden = true; $('mm-inicio').hidden = true; $('mm-form').hidden = false; renderMmForm(); mmNube('ok');
+}
+async function mmContinuar(id){
+  try{
+    await mmGuardarAhora();
+    const snap = await mermaTrasladosRef.doc(id).get();
+    if(!snap.exists || snap.data().estado !== 'ABIERTO'){ showToast(`${id} ya está cerrado.`, 'err'); return; }
+    const t = Object.assign({ id }, snap.data());
+    let q = mermaCajasRef.where('traslado_id', '==', id); if(!mmVeTodos()) q = q.where('usuario_email', '==', currentUserEmail);
+    const cajas = (await q.get()).docs.map(d=> Object.assign({ id: d.id }, d.data())).sort((a, b)=> a.id.localeCompare(b.id));
+    setMmSubtab('nuevo'); mmLimpiarForm(); mmCargarEnForm(t, cajas);
+  }catch(err){ console.error(err); showToast('No se pudo abrir el traslado: ' + err.message, 'err'); }
+}
+function mmLimpiarForm(){ mmCajas.forEach(c=> c.items.forEach(it=> it.fotos.forEach(f=>{ if(f.blob) URL.revokeObjectURL(f.url); }))); mmTraslado = null; mmCajas = []; mmActiva = -1; clearTimeout(mmGuardarTimer); }
+// ---- Formulario: cajas y productos ----
+const mmVacio = it=> !it.sku.trim() && !String(it.cantidad).trim() && !String(it.descripcion || '').trim() && !it.fotos.length;
+const mmCompleto = it=> it.sku.trim() && String(it.descripcion || '').trim() && Number(it.cantidad) > 0 && it.fotos.length;
+const mmFaltan = it=> [!it.sku.trim() && 'sku', !(Number(it.cantidad) > 0) && 'cantidad', !String(it.descripcion || '').trim() && 'descripcion', !it.fotos.length && 'fotos'].filter(Boolean);
+const mmProds = c=> c.items.filter(it=> !mmVacio(it));
+const mmUnd = c=> mmProds(c).reduce((s, it)=> s + (Number(it.cantidad) || 0), 0);
+function mmThumbs(fotos, i){
+  return fotos.map((f, j)=> `<div class="rf-thumb${f.subiendo ? ' subiendo' : ''}${f.error ? ' error' : ''}" data-mm-fid="${esc(f.id)}" data-mm-ver="${esc(f.url)}"><img src="${esc(f.url)}" alt=""><button type="button" class="rf-quitar" data-mm-quitar="${esc(i)}" data-mm-j="${esc(j)}" title="Quitar foto">✕</button></div>`).join('') +
+    (fotos.length < 20 ? `<button type="button" class="rf-add-foto" data-mm-camara="${esc(i)}"><span>📷</span>${fotos.length ? 'Otra foto' : 'Tomar foto'}</button>` : '');
+}
+function renderMmForm(){
+  if(!mmTraslado) return;
+  $('mm-bar-corr').textContent = mmTraslado.id;
+  $('mm-bar-info').textContent = `🏬 ${mmTraslado.tienda} · 📅 ${mmFechaTxt(mmTraslado.fecha)}`;
+  $('btn-mm-cerrar').textContent = `🔒 Cerrar traslado de merma del ${mmFechaTxt(mmTraslado.fecha)} · ${mmTraslado.tienda}`;
+  $('mm-cajas').innerHTML = mmCajas.length ? mmCajas.map((c, i)=> `<div role="button" tabindex="0" class="mm-caja-chip ${c.cerrada ? 'cerrada' : 'abierta'}${i === mmActiva ? ' activa' : ''}${mmProds(c).length ? '' : ' vacia'}" data-mm-caja="${esc(i)}"><b>📦 ${esc(c.id)}</b><span>${esc(mmProds(c).length)} producto(s) · ${esc(anFmt(mmUnd(c)))} und</span><i>${c.cerrada ? '🔒 CERRADA' : '✏ ABIERTA'}</i>` +
+      `<button type="button" class="mm-tg" data-mm-tg="${esc(i)}">${c.cerrada ? '🔓 Abrir caja' : '🔒 Cerrar caja'}</button></div>`).join('')
+    : '<p class="hint">Todavía no hay cajas. Toca <b>📦 Crear caja</b>.</p>';
+  const c = mmCaja(); $('mm-caja-panel').hidden = !c;
+  if(c){
+    $('mm-caja-tit').textContent = `📦 Caja ${c.id} · ${c.cerrada ? '🔒 CERRADA' : '✏ ABIERTA'}`;
+    $('btn-mm-caja-cerrar').hidden = c.cerrada; $('btn-mm-caja-abrir').hidden = !c.cerrada; $('btn-mm-add').hidden = c.cerrada;
+  }
+  // Caja cerrada: solo lectura (para cambiarla, «🔓 Abrir caja»).
+  if(c && c.cerrada){
+    $('mm-items').innerHTML = `<div class="mm-cerrada-aviso">🔒 Caja cerrada con ${esc(mmProds(c).length)} producto(s) · ${esc(anFmt(mmUnd(c)))} und. Para agregar o corregir, toca <b>🔓 Abrir caja</b>.</div>` +
+      mmProds(c).map(it=> `<div class="mm-solo-lect"><div class="rf-fotos">${it.fotos.slice(0, 3).map(f=> `<div class="rf-thumb" data-mm-fid="${esc(f.id)}" data-mm-ver="${esc(f.url)}"><img src="${esc(f.url)}" alt=""></div>`).join('')}</div>` +
+        `<div class="sl-txt"><b>${esc(it.sku)}</b><br><span class="hint">${esc(it.descripcion)}</span></div><div class="sl-cant">${esc(anFmt(Number(it.cantidad) || 0))} und</div></div>`).join('');
+  }else if(c){
+    $('mm-items').innerHTML = c.items.map((it, i)=> `<div class="rf-item${mmCompleto(it) ? ' completo' : ''}" data-mm-item="${esc(i)}"><div class="rf-item-cab"><b>${mmCompleto(it) ? '✓ ' : ''}Producto ${esc(i + 1)}</b>${c.items.length > 1 && !mmVacio(it) ? `<button type="button" class="rf-del" data-mm-del="${esc(i)}">✕ Quitar</button>` : ''}</div>` +
+      `<div class="rf-item-grid"><div class="rf-sku-box"><label>SKU *</label><div class="rf-sku-fila"><input type="text" class="upper${(it._faltan || []).includes('sku') ? ' rf-falta' : ''}" data-mm-campo="sku" value="${esc(it.sku)}" autocomplete="off" autocapitalize="characters" enterkeyhint="next" placeholder="Código o descripción">` +
+        `<button type="button" class="rf-scan" data-mm-scan="${esc(i)}" title="Escanear código de barras con la cámara" aria-label="Escanear código de barras">▦</button></div><div class="rf-sug" hidden></div></div>` +
+      `<div class="rf-cant"><label>Cantidad * <span class="hint">(mayor a 0)</span></label><div class="rf-stepper"><button type="button" data-mm-paso="-1" aria-label="Menos">−</button><input type="number" min="1" step="1" inputmode="numeric" enterkeyhint="go" data-mm-campo="cantidad" value="${esc(it.cantidad)}" placeholder="0" class="${(it._faltan || []).includes('cantidad') ? 'rf-falta' : ''}"><button type="button" data-mm-paso="1" aria-label="Más">+</button></div></div>` +
+      `<div class="rf-desc"><label>Descripción *</label><input type="text" data-mm-campo="descripcion" value="${esc(it.descripcion)}" placeholder="Se completa con el SKU si existe" class="${(it._faltan || []).includes('descripcion') ? 'rf-falta' : ''}"></div></div>` +
+      `<span class="rf-lbl">📷 Fotos del producto * <span class="hint">(una o varias)</span></span><div class="rf-fotos${(it._faltan || []).includes('fotos') ? ' rf-falta' : ''}">${mmThumbs(it.fotos, i)}</div></div>`).join('');
+  }
+  mmResumen();
+}
+function mmResumen(){
+  const n = mmCajas.length, prods = mmCajas.reduce((s, c)=> s + mmProds(c).length, 0), und = mmCajas.reduce((s, c)=> s + mmUnd(c), 0);
+  const cerradas = mmCajas.filter(c=> c.cerrada).length;
+  $('mm-contador').innerHTML = `📦 Bultos: <b>${esc(n)}</b>`; $('mm-contador3').innerHTML = `📦 Bultos: <b>${esc(n)}</b>`; $('mm-contador2').textContent = `📦 ${n} bulto${n === 1 ? '' : 's'}`;
+  $('mm-resumen').textContent = `${n} caja(s) = ${n} bulto(s) (${cerradas} cerrada(s)) · ${prods} producto(s) · ${anFmt(und)} und`;
+  // Ítems = códigos distintos en todo el traslado (como los bultos y las unidades, un conteo).
+  const nItems = mmAgruparItems(mmCajas.map(c=> ({ id: c.id, items: mmProds(c).filter(it=> it.sku.trim()) }))).length;
+  $('mm-contador-it').innerHTML = `🧾 Ítems: <b>${esc(nItems)}</b>`; $('mm-contador-it3').innerHTML = `🧾 Ítems: <b>${esc(nItems)}</b>`;
+  // El aviso de "falta…" se borra apenas no queda nada a medias.
+  if(/\berr\b/.test($('mm-msg').className) && !mmCajas.some(c=> c.items.some(it=> !mmVacio(it) && !mmCompleto(it)))){ $('mm-msg').className = 'msg'; $('mm-msg').textContent = ''; }
+}
+function mmFoco(i, campo){ const el = document.querySelector(`#mm-items [data-mm-item="${i}"] [data-mm-campo="${campo}"]`); if(el){ el.focus(); if(el.select) el.select(); el.scrollIntoView({ behavior:'smooth', block:'center' }); } }
+function mmActualizarMarcas(i){
+  const it = (mmCaja() || {}).items[i], caja = document.querySelector(`#mm-items [data-mm-item="${i}"]`); if(!it || !it._faltan || !caja) return;
+  it._faltan = mmFaltan(it).filter(f=> it._faltan.includes(f));
+  ['sku', 'cantidad', 'descripcion'].forEach(k=> caja.querySelector(`[data-mm-campo="${k}"]`).classList.toggle('rf-falta', it._faltan.includes(k)));
+  caja.querySelector('.rf-fotos').classList.toggle('rf-falta', it._faltan.includes('fotos'));
+}
+function mmAvisarIncompleto(ci, i){
+  if(ci !== mmActiva){ mmActiva = ci; }
+  const it = mmCajas[ci].items[i]; it._faltan = mmFaltan(it); renderMmForm();
+  const txt = `Caja ${mmCajas[ci].id}, producto ${i + 1}${it.sku ? ' (' + it.sku + ')' : ''}: falta ${it._faltan.map(f=> RF_FALTA_TXT[f]).join(', ')}.`;
+  showMsg('mm-msg', 'err', txt);
+  rfAviso(`Completa el producto ${i + 1}`, txt, ()=>{ const f = it._faltan[0]; if(f === 'fotos') mmCamaraItem(i); else mmFoco(i, f); });
+}
+function mmSugerencias(inp){
+  const caja = inp.closest('.rf-sku-box').querySelector('.rf-sug'), q = normalizarTexto(inp.value);
+  if(q.length < 2){ caja.hidden = true; return; }
+  const L = [];
+  for(const [cod, p] of Object.entries(productos || {})){
+    const c = normalizarTexto(cod), d = normalizarTexto(p.descripcion || '');
+    const puntos = c === q ? 0 : c.startsWith(q) ? 1 : c.includes(q) ? 2 : d.includes(q) ? 3 : -1;
+    if(puntos >= 0) L.push([puntos, cod, p.descripcion || '']);
+    if(L.length > 400) break;
+  }
+  L.sort((a, b)=> a[0] - b[0] || a[1].localeCompare(b[1]));
+  caja.innerHTML = L.slice(0, 8).map(([, cod, d])=> `<button type="button" data-mm-sug="${esc(cod)}"><b>${esc(cod)}</b><span>${esc(d)}</span></button>`).join('');
+  caja.hidden = !L.length;
+}
+function mmElegirSku(i, cod){ const it = mmCaja().items[i], p = productos[cod]; it.sku = cod; if(p && p.descripcion) it.descripcion = p.descripcion; renderMmForm(); mmFoco(i, 'cantidad'); mmAutoguardar(); }
+function mmEscanearSku(i){
+  abrirEscaner(cod=>{
+    const it = (mmCaja() || {}).items[i]; if(!it) return;
+    it.sku = cod; const p = productos[cod];
+    if(p && p.descripcion) it.descripcion = p.descripcion; else showToast(`Código ${cod} leído. No está en Productos: escribe la descripción.`, 'ok');
+    if(it._faltan) it._faltan = mmFaltan(it);
+    renderMmForm(); mmFoco(i, p ? 'cantidad' : 'descripcion'); mmAutoguardar();
+  });
+}
+function mmCamaraItem(i){
+  const c = mmCaja(), it = c.items[i];
+  abrirCamara(`Caja ${c.id} · fotos de ${it.sku || 'producto ' + (i + 1)}`, 20 - it.fotos.length, f=>{
+    const nf = Object.assign(f, { id: 'sf' + (++mmFotoN), nombre: 'item' + (i + 1), subiendo: false, error: false }); it.fotos.push(nf);
+    if(it._faltan) it._faltan = it._faltan.filter(x=> x !== 'fotos'); renderMmForm(); mmSubirFoto(nf, c.id);
+  }, ()=>{
+    if(mmCompleto(it) && i === c.items.length - 1){ c.items.push(mmNuevoItem()); renderMmForm(); mmFoco(c.items.length - 1, 'sku'); }
+    else if(!mmCompleto(it) && !mmVacio(it)) mmAvisarIncompleto(mmActiva, i);
+  });
+}
+async function mmSubirFoto(f, cajaId){
+  f.subiendo = true; f.error = false; mmMarcarFoto(f);
+  try{
+    const ref = storage.ref().child(`merma/${cajaId}/${f.nombre}_${Date.now()}.jpg`);
+    await ref.put(f.blob, { contentType:'image/jpeg', cacheControl:'private, max-age=31536000' });
+    f.remoto = await ref.getDownloadURL(); f.path = ref.fullPath; f.tam = f.blob.size;
+  }catch(err){ console.error(err); f.error = true; showToast('No se pudo subir una foto. Tócala para reintentar.', 'err'); }
+  f.subiendo = false; mmMarcarFoto(f); mmResumen(); mmAutoguardar(cajaId);
+}
+function mmMarcarFoto(f){ const el = document.querySelector(`#view-merma [data-mm-fid="${f.id}"]`); if(el){ el.classList.toggle('subiendo', !!f.subiendo); el.classList.toggle('error', !!f.error); } }
+function mmBorrarArchivo(f){ if(f && f.path) storage.ref().child(f.path).delete().catch(err=> console.warn('No se pudo borrar la foto', err)); if(f && f.blob) URL.revokeObjectURL(f.url); }
+// ---- Autoguardado de la caja (como el borrador del registro fotográfico) ----
+function mmNube(estado){
+  const t = { pendiente:'✎ Cambios por guardar…', guardando:'☁ Guardando…', ok:'☁ Guardado automáticamente ✓', error:'⚠ No se pudo guardar (sin conexión): se reintenta solo' }[estado] || '';
+  $('mm-nube').textContent = t; $('mm-nube').classList.toggle('error', estado === 'error');
+}
+const mmPendientes = new Set();
+function mmAutoguardar(cajaId){ const c = cajaId ? mmCajas.find(x=> x.id === cajaId) : mmCaja(); if(!c) return; mmPendientes.add(c.id); mmNube('pendiente'); clearTimeout(mmGuardarTimer); mmGuardarTimer = setTimeout(mmGuardarAhora, 700); }
+function mmDatosCaja(c){
+  const items = mmProds(c).map(it=> ({ sku: it.sku.trim().toUpperCase(), descripcion: it.descripcion.trim(), cantidad: Number(it.cantidad) || 0, fotos: it.fotos.filter(f=> f.path).map(f=> ({ url: f.remoto, path: f.path, tam: f.tam || 0 })) }));
+  return { items, cant_items: items.length, unidades: items.reduce((s, it)=> s + it.cantidad, 0), skus: items.map(it=> it.sku), actualizado_en: new Date().toISOString() };
+}
+function mmGuardarAhora(){
+  clearTimeout(mmGuardarTimer);
+  const ids = [...mmPendientes]; mmPendientes.clear();
+  if(!ids.length || !mmTraslado) return mmGuardando;
+  const tid = mmTraslado.id, datos = ids.map(id=> [id, mmDatosCaja(mmCajas.find(c=> c.id === id) || { items: [] })]);
+  mmNube('guardando');
+  mmGuardando = mmGuardando.then(()=> Promise.all(datos.map(([id, d])=> mermaCajasRef.doc(id).update(d)))).then(()=>{ if(mmTraslado && mmTraslado.id === tid) mmNube('ok'); },
+    err=>{ console.error(err); ids.forEach(id=> mmPendientes.add(id)); if(mmTraslado && mmTraslado.id === tid){ mmNube('error'); clearTimeout(mmGuardarTimer); mmGuardarTimer = setTimeout(mmGuardarAhora, 5000); } });
+  return mmGuardando;
+}
+window.addEventListener('beforeunload', ()=>{ if(mmPendientes.size) mmGuardarAhora(); });
+// La caja está lista si tiene al menos un producto y ninguno a medias.
+function mmRevisarCaja(ci){
+  const c = mmCajas[ci], i = c.items.findIndex(it=> !mmVacio(it) && !mmCompleto(it));
+  if(i >= 0){ mmAvisarIncompleto(ci, i); return false; }
+  if(!mmProds(c).length){ mmActiva = ci; renderMmForm(); rfAviso(`La caja ${c.id} está vacía`, `Agrégale al menos un producto (SKU, cantidad, descripción y foto) o quítala con «🗑 Quitar caja».`, ()=> mmFoco(0, 'sku')); return false; }
+  return true;
+}
+// ---- Cerrar / abrir caja: solo una caja abierta a la vez ----
+const mmAbierta = ()=> mmCajas.findIndex(c=> !c.cerrada);
+async function mmCerrarCaja(ci){
+  const c = mmCajas[ci]; if(!c || c.cerrada) return true;
+  if(!mmRevisarCaja(ci)) return false;
+  if(c.items.some(it=> it.fotos.some(f=> f.subiendo || !f.path))){ rfAviso('Fotos subiendo', `Espera a que terminen de subir las fotos de la caja ${c.id} (o toca las que tienen error para reintentar).`); return false; }
+  const ahora = new Date().toISOString();
+  mmPendientes.delete(c.id); await mmGuardando;
+  await mermaCajasRef.doc(c.id).update(Object.assign(mmDatosCaja(c), { estado:'CERRADA', cerrada_por: currentUserAlias, cerrada_por_email: currentUserEmail, cerrada_en: ahora }));
+  c.cerrada = true; c.items = [...mmProds(c)]; if(!mmPendientes.size) mmNube('ok');
+  await logAccion('merma_caja_cerrada', { detalle: `${c.id} cerrada (${mmProds(c).length} producto(s), ${mmUnd(c)} und) · ${mmTraslado.id}` });
+  mmLeidos = false;
+  return true;
+}
+async function mmBotonCerrarCaja(){
+  const ci = mmActiva; $('btn-mm-caja-cerrar').disabled = true;
+  try{ if(await mmCerrarCaja(ci)){ renderMmForm(); showToast(`Caja ${mmCajas[ci].id} cerrada. Crea otra caja o cierra el traslado.`, 'ok'); $('btn-mm-caja').scrollIntoView({ behavior:'smooth', block:'center' }); } }
+  catch(err){ console.error(err); showToast('No se pudo cerrar la caja: ' + err.message, 'err'); }
+  finally{ $('btn-mm-caja-cerrar').disabled = false; }
+}
+async function mmAbrirCaja(ci){
+  const c = mmCajas[ci]; if(!c || !c.cerrada) return;
+  $('btn-mm-caja-abrir').disabled = true;
+  try{
+    const otra = mmAbierta();
+    if(otra >= 0 && !(await mmCerrarCaja(otra))) return;   // antes se cierra la que estaba abierta
+    const ahora = new Date().toISOString();
+    await mermaCajasRef.doc(c.id).update({ estado:'ABIERTA', reabierta_por: currentUserAlias, reabierta_en: ahora, actualizado_en: ahora });
+    c.cerrada = false; c.items.push(mmNuevoItem()); mmActiva = ci;
+    await logAccion('merma_caja_abierta', { detalle: `${c.id} abierta de nuevo · ${mmTraslado.id}` });
+    mmLeidos = false; renderMmForm(); showToast(`Caja ${c.id} abierta.`, 'ok');
+  }catch(err){ console.error(err); showToast('No se pudo abrir la caja: ' + err.message, 'err'); }
+  finally{ $('btn-mm-caja-abrir').disabled = false; }
+}
+async function mmCrearCaja(){
+  if(!mmTraslado) return;
+  // La caja abierta se cierra sola (si está completa) antes de crear la siguiente.
+  const ab = mmAbierta();
+  if(ab >= 0){ try{ if(!(await mmCerrarCaja(ab))) return; }catch(err){ console.error(err); showToast('No se pudo cerrar la caja: ' + err.message, 'err'); return; } }
+  $('btn-mm-caja').disabled = true;
+  try{
+    await mmGuardarAhora();
+    const id = await mmCorrelativo('merma_caja', 'CM'), ahora = new Date().toISOString();
+    // La caja es del dueño del traslado (así la ve aunque la haya creado un admin); se guarda quién la creó.
+    await mermaCajasRef.doc(id).set({ correlativo: id, traslado_id: mmTraslado.id, tienda: mmTraslado.tienda, fecha: mmTraslado.fecha, usuario: mmTraslado.usuario || currentUserAlias, usuario_email: mmTraslado.usuario_email || currentUserEmail, creado_por: currentUserAlias, creado_por_email: currentUserEmail,
+      estado:'ABIERTA', items: [], cant_items: 0, unidades: 0, skus: [], fecha_creacion: ahora, actualizado_en: ahora, creado_en: firebase.firestore.FieldValue.serverTimestamp() });
+    mmCajas.push({ id, cerrada: false, items: [mmNuevoItem()] }); mmActiva = mmCajas.length - 1;
+    await mermaTrasladosRef.doc(mmTraslado.id).update({ cajas: mmCajas.length, actualizado_en: ahora });
+    await logAccion('merma_caja_creada', { detalle: `${id} en ${mmTraslado.id} · ${mmTraslado.tienda}` });
+    mmLeidos = false; renderMmForm(); showMsg('mm-msg', 'ok', ''); showToast(`Caja ${id} creada.`, 'ok'); mmFoco(0, 'sku');
+  }catch(err){ console.error(err); showToast('No se pudo crear la caja: ' + err.message, 'err'); }
+  finally{ $('btn-mm-caja').disabled = false; }
+}
+async function mmQuitarCaja(){
+  const c = mmCaja(); if(!c) return;
+  if(!confirm(`¿Quitar la caja ${c.id}${mmProds(c).length ? ` y sus ${mmProds(c).length} producto(s)` : ''}? Se borran sus fotos. El número ${c.id} no se vuelve a usar.`)) return;
+  try{
+    mmPendientes.delete(c.id); await mmGuardando;
+    c.items.forEach(it=> it.fotos.forEach(mmBorrarArchivo));
+    await mermaCajasRef.doc(c.id).delete();
+    mmCajas.splice(mmActiva, 1); const ab2 = mmAbierta(); mmActiva = ab2 >= 0 ? ab2 : mmCajas.length - 1;
+    await mermaTrasladosRef.doc(mmTraslado.id).update({ cajas: mmCajas.length, actualizado_en: new Date().toISOString() });
+    await logAccion('merma_caja_quitada', { detalle: `${c.id} quitada de ${mmTraslado.id}` });
+    mmLeidos = false; renderMmForm(); showToast(`Caja ${c.id} quitada.`, 'ok');
+  }catch(err){ console.error(err); showToast('No se pudo quitar la caja: ' + err.message, 'err'); }
+}
+async function mmCerrar(){
+  if(!mmTraslado) return;
+  if(!mmCajas.length){ rfAviso('No hay cajas', 'Crea al menos una caja con sus productos antes de cerrar el traslado.'); return; }
+  for(let ci = 0; ci < mmCajas.length; ci++) if(!mmRevisarCaja(ci)) return;
+  if(mmCajas.some(c=> c.items.some(it=> it.fotos.some(f=> f.subiendo || !f.path)))){ rfAviso('Fotos subiendo', 'Espera a que terminen de subir las fotos (o toca las que tienen error para reintentar).'); return; }
+  const t = mmTraslado, n = mmCajas.length, und = mmCajas.reduce((s, c)=> s + mmUnd(c), 0);
+  if(!confirm(`¿Cerrar el traslado de merma ${t.id} del ${mmFechaTxt(t.fecha)}, tienda ${t.tienda}?\n\nBultos: ${n} (cajas: ${mmCajas.map(c=> c.id).join(', ')}) · ${und} und.`)) return;
+  $('btn-mm-cerrar').disabled = true;
+  try{
+    mmCajas.forEach(c=> mmPendientes.add(c.id)); await mmGuardarAhora();
+    const ahora = new Date().toISOString();
+    // Las cajas que quedaban abiertas se cierran con el traslado.
+    const abiertas = mmCajas.filter(c=> !c.cerrada);
+    if(abiertas.length){ const b = db.batch(); abiertas.forEach(c=> b.update(mermaCajasRef.doc(c.id), { estado:'CERRADA', cerrada_por: currentUserAlias, cerrada_por_email: currentUserEmail, cerrada_en: ahora })); await b.commit(); }
+    await mermaTrasladosRef.doc(t.id).update({ estado:'CERRADO', cajas: n, bultos: n, cajas_ids: mmCajas.map(c=> c.id), unidades: und, cant_items: mmCajas.reduce((s, c)=> s + mmProds(c).length, 0),
+      cerrado_por: currentUserAlias, cerrado_por_email: currentUserEmail, cerrado_en: ahora, actualizado_en: ahora });
+    await logAccion('merma_cerrado', { detalle: `${t.id} · ${t.tienda} · ${mmFechaTxt(t.fecha)} · ${n} bulto(s), ${und} und` });
+    const cajasCerradas = mmCajas.map(c=> ({ id: c.id }));
+    mmLimpiarForm(); mmLeidos = false;
+    $('mm-ok').innerHTML = `<div class="mm-bultos">✔ ${esc(t.id)} cerrado · Bultos: ${esc(n)}</div><span>🏬 ${esc(t.tienda)} · 📅 ${esc(mmFechaTxt(t.fecha))} · ${esc(n)} caja(s) · ${esc(anFmt(und))} und</span>` +
+      `<div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;"><button type="button" class="btn btn-primary btn-sm" data-mm-rotulos="${esc(t.id)}">🏷 Rótulos A4 (${esc(n)})</button><button type="button" class="btn btn-primary btn-sm" data-mm-imprimir="${esc(t.id)}">🖨 Imprimir etiquetas (Godex)</button><button type="button" class="btn btn-ghost btn-sm" data-mm-ver-reg="${esc(t.id)}">🗂 Ver en Registros</button></div>`;
+    mmUltimoCerrado = Object.assign({}, t, { estado:'CERRADO', cajasLista: cajasCerradas });
+    $('mm-ok').hidden = false; showMsg('mm-msg', 'ok', ''); mmPreparar();
+  }catch(err){ console.error(err); showToast('No se pudo cerrar el traslado: ' + err.message, 'err'); }
+  finally{ $('btn-mm-cerrar').disabled = false; }
+}
+$('btn-mm-iniciar').addEventListener('click', mmIniciar);
+$('btn-mm-caja').addEventListener('click', mmCrearCaja);
+$('btn-mm-caja-quitar').addEventListener('click', mmQuitarCaja);
+$('btn-mm-caja-cerrar').addEventListener('click', mmBotonCerrarCaja);
+$('btn-mm-caja-abrir').addEventListener('click', ()=> mmAbrirCaja(mmActiva));
+$('btn-mm-cerrar').addEventListener('click', mmCerrar);
+$('mm-abiertos').addEventListener('click', e=>{ const b = e.target.closest('[data-mm-continuar]'); if(b) mmContinuar(b.dataset.mmContinuar); });
+$('btn-mm-add').addEventListener('click', ()=>{
+  const c = mmCaja(); if(!c) return;
+  const i = c.items.findIndex(it=> !mmVacio(it) && !mmCompleto(it)); if(i >= 0){ mmAvisarIncompleto(mmActiva, i); return; }
+  const u = c.items.length - 1;
+  if(u >= 0 && mmVacio(c.items[u])){ rfAviso(`Registra el producto ${u + 1}`, `Antes de agregar uno nuevo, registra el producto ${u + 1}: SKU, cantidad, descripción y al menos una foto.`, ()=> mmFoco(u, 'sku')); return; }
+  c.items.push(mmNuevoItem()); renderMmForm(); mmFoco(c.items.length - 1, 'sku');
+});
+$('mm-items').addEventListener('input', e=>{
+  const campo = e.target.dataset.mmCampo; if(!campo) return;
+  const i = Number(e.target.closest('[data-mm-item]').dataset.mmItem), it = mmCaja().items[i];
+  it[campo] = campo === 'sku' ? e.target.value.toUpperCase() : e.target.value;
+  if(campo === 'sku'){
+    const p = productos[it.sku.trim()];
+    if(p && p.descripcion){ it.descripcion = p.descripcion; e.target.closest('.rf-item').querySelector('[data-mm-campo="descripcion"]').value = p.descripcion; }
+    mmSugerencias(e.target);
+  }
+  mmActualizarMarcas(i); mmResumen(); mmAutoguardar();
+});
+$('mm-items').addEventListener('keydown', e=>{
+  const campo = e.target.dataset.mmCampo; if(!campo || e.key !== 'Enter') return;
+  e.preventDefault();
+  const i = Number(e.target.closest('[data-mm-item]').dataset.mmItem), it = mmCaja().items[i];
+  if(campo === 'sku'){ const primera = e.target.closest('.rf-sku-box').querySelector('[data-mm-sug]'); if(primera && !productos[it.sku.trim()]) mmElegirSku(i, primera.dataset.mmSug); else if(it.sku.trim()){ e.target.closest('.rf-sku-box').querySelector('.rf-sug').hidden = true; mmFoco(i, 'cantidad'); } }
+  else if(campo === 'cantidad'){ if(!(Number(it.cantidad) > 0)){ it._faltan = ['cantidad']; mmActualizarMarcas(i); showMsg('mm-msg', 'err', `Producto ${i + 1}: la cantidad debe ser mayor a 0.`); return; } e.target.blur(); if(!it.fotos.length) mmCamaraItem(i); }
+  else if(campo === 'descripcion') mmFoco(i, 'cantidad');
+});
+$('mm-items').addEventListener('focusout', e=>{ if(e.target.dataset.mmCampo === 'sku') setTimeout(()=>{ const c = e.target.closest('.rf-sku-box') && e.target.closest('.rf-sku-box').querySelector('.rf-sug'); if(c) c.hidden = true; }, 200); });
+$('mmsub-panel-nuevo').addEventListener('click', e=>{
+  const chip = e.target.closest('[data-mm-caja]'), cam = e.target.closest('[data-mm-camara]'), qui = e.target.closest('[data-mm-quitar]'), del = e.target.closest('[data-mm-del]'), ver = e.target.closest('[data-mm-ver]');
+  const sug = e.target.closest('[data-mm-sug]'), paso = e.target.closest('[data-mm-paso]'), scan = e.target.closest('[data-mm-scan]'), reg = e.target.closest('[data-mm-ver-reg]');
+  if(reg){ const id = reg.dataset.mmVerReg; setMmSubtab('lista'); mmAbrirPendiente = id; return; }
+  const rot = e.target.closest('[data-mm-rotulos]'); if(rot && mmUltimoCerrado && mmUltimoCerrado.id === rot.dataset.mmRotulos){ mmRotulosPdf(mmUltimoCerrado); return; }
+  const imp = e.target.closest('[data-mm-imprimir]'); if(imp && mmUltimoCerrado && mmUltimoCerrado.id === imp.dataset.mmImprimir){ mmEtiquetasImprimir(mmUltimoCerrado); return; }
+  const tg = e.target.closest('[data-mm-tg]');
+  if(tg){ const ci = Number(tg.dataset.mmTg); tg.disabled = true;
+    (async ()=>{ if(mmCajas[ci].cerrada) await mmAbrirCaja(ci); else { mmActiva = ci; await mmBotonCerrarCaja(); } renderMmForm(); })();   // repinta también si no se pudo (vuelve el botón)
+    return; }
+  if(chip){ const ci = Number(chip.dataset.mmCaja); if(ci !== mmActiva){ mmGuardarAhora(); mmActiva = ci; renderMmForm(); } return; }
+  const c = mmCaja(); if(!c) return;
+  if(scan) mmEscanearSku(Number(scan.dataset.mmScan));
+  else if(sug) mmElegirSku(Number(sug.closest('[data-mm-item]').dataset.mmItem), sug.dataset.mmSug);
+  else if(paso){
+    const i = Number(paso.closest('[data-mm-item]').dataset.mmItem), it = c.items[i];
+    it.cantidad = String(Math.max(1, (Number(it.cantidad) || 0) + Number(paso.dataset.mmPaso)));
+    paso.parentElement.querySelector('input').value = it.cantidad; mmActualizarMarcas(i); mmResumen(); mmAutoguardar();
+  }else if(cam) mmCamaraItem(Number(cam.dataset.mmCamara));
+  else if(qui){ e.stopPropagation(); const [f] = c.items[Number(qui.dataset.mmQuitar)].fotos.splice(Number(qui.dataset.mmJ), 1); mmBorrarArchivo(f); renderMmForm(); mmAutoguardar(); }
+  else if(del){ const i = Number(del.dataset.mmDel); c.items[i].fotos.forEach(mmBorrarArchivo); c.items.splice(i, 1); if(!c.items.length) c.items.push(mmNuevoItem()); renderMmForm(); mmAutoguardar(); }
+  else if(ver && ver.classList.contains('error')){ const f = c.items.flatMap(it=> it.fotos).find(x=> x.id === ver.dataset.mmFid); if(f) mmSubirFoto(f, c.id); }
+  else if(ver){ const L = c.items.flatMap(it=> it.fotos.map((f, j)=> ({ url: f.url, pie: `${c.id} · ${it.sku} (foto ${j + 1})` }))); rfVerFoto(ver.dataset.mmVer, '', L); }
+});
+// ---- Registros: traslados con sus cajas ----
+let mmAbrirPendiente = null, mmUltimoCerrado = null;
+async function mmCargarLista(forzar){
+  if(mmLeidos && !forzar){ renderMmLista(); mmAbrirSiPendiente(); return; }
+  $('mm-lista').innerHTML = '<div class="hint">⏳ Cargando traslados…</div>';
+  try{
+    const todos = mmVeTodos();
+    const comoLista = snap=> snap.docs.map(d=> Object.assign({ id: d.id }, d.data())), deMapa = r=> [...r.docs].map(([id, d])=> Object.assign({ id }, d));
+    // Quien ve todos: incremental; cada usuario: solo los suyos (pocos).
+    const [ts, cs] = await Promise.all(todos ? [syncLeer('merma_traslados', mermaTrasladosRef, 'todos', !!forzar).then(deMapa), syncLeer('merma_cajas', mermaCajasRef, 'todos', !!forzar).then(deMapa)]
+      : [mermaTrasladosRef.where('usuario_email', '==', currentUserEmail).get().then(comoLista), mermaCajasRef.where('usuario_email', '==', currentUserEmail).get().then(comoLista)]);
+    const cajas = cs;
+    mmLista = ts.sort((a, b)=> String(b.fecha || '').localeCompare(String(a.fecha || '')) || b.id.localeCompare(a.id));
+    mmLista.forEach(t=>{
+      t.cajasLista = cajas.filter(c=> c.traslado_id === t.id).sort((a, b)=> a.id.localeCompare(b.id));
+      t._und = t.cajasLista.reduce((s, c)=> s + (Number(c.unidades) || 0), 0);
+      t._txt = normalizarTexto([t.id, t.tienda, t.usuario, t.estado, ...t.cajasLista.flatMap(c=> [c.id, ...(c.items || []).map(it=> `${it.sku} ${it.descripcion}`)])].join(' '));
+    });
+    mmLeidos = true;
+    const tiendas = [...new Set(mmLista.map(t=> t.tienda))].sort(), usuarios = [...new Map(mmLista.map(t=> [t.usuario_email, t.usuario || t.usuario_email])).entries()];
+    const vt = $('mm-tienda-f').value, vu = $('mm-usuario-f').value;
+    $('mm-tienda-f').innerHTML = '<option value="">🏬 Todas las tiendas</option>' + tiendas.map(x=> `<option value="${esc(x)}">${esc(x)}</option>`).join(''); $('mm-tienda-f').value = tiendas.includes(vt) ? vt : '';
+    $('mm-usuario-f').innerHTML = '<option value="">👤 Todos los usuarios</option>' + usuarios.map(([e, a])=> `<option value="${esc(e)}">${esc(a)}</option>`).join(''); $('mm-usuario-f').value = usuarios.some(([e])=> e === vu) ? vu : '';
+  }catch(err){ console.error(err); $('mm-lista').innerHTML = `<div class="hint">⚠ No se pudieron leer los traslados: ${esc(err.message)}</div>`; return; }
+  renderMmLista(); mmAbrirSiPendiente();
+}
+function mmAbrirSiPendiente(){ if(mmAbrirPendiente){ const id = mmAbrirPendiente; mmAbrirPendiente = null; mmAbrir(id); } }
+function mmFiltrados(){
+  const est = $('mm-estado-f').value, ti = $('mm-tienda-f').value, us = $('mm-usuario-f').value, d = $('mm-desde').value, h = $('mm-hasta').value;
+  const q = normalizarTexto($('mm-q').value).split(/\s+/).filter(Boolean);
+  return mmLista.filter(t=> (!est || t.estado === est) && (!ti || t.tienda === ti) && (!us || t.usuario_email === us) && (!d || t.fecha >= d) && (!h || t.fecha <= h) && q.every(p=> t._txt.includes(p)));
+}
+function renderMmLista(){
+  const L = mmFiltrados();
+  $('mm-lista-res').textContent = `${L.length} traslado(s) · ${L.reduce((s, t)=> s + t.cajasLista.length, 0)} caja(s) / bulto(s) · ${mmAgruparItems(L.flatMap(t=> t.cajasLista)).length} ítem(s) · ${anFmt(L.reduce((s, t)=> s + t._und, 0))} und`;
+  $('mm-lista').innerHTML = L.length ? L.slice(0, 300).map(t=> `<div class="mm-fila-c"><button type="button" class="mm-fila" data-mm-abrir="${esc(t.id)}"><span><span class="t">${esc(t.id)}</span> <span class="mm-est ${esc(t.estado)}">${t.estado === 'CERRADO' ? '🔒 CERRADO' : '📦 ABIERTO'}</span>${mmGuias(t).length ? ` <span title="Guías de remisión adjuntas">📄${mmGuias(t).length > 1 ? '×' + mmGuias(t).length : ''}</span>` : (t.estado === 'CERRADO' ? ' <span class="mm-sin-guia-chip" title="Este traslado no tiene guía de remisión">⚠ Sin guía</span>' : '')}<br>` +
+      `<span class="hint">🏬 ${esc(t.tienda)} · 📅 ${esc(mmFechaTxt(t.fecha))} · 👤 ${esc(t.usuario || '')}</span></span><span style="text-align:right;"><b>${esc(t.cajasLista.length)} bulto(s)</b><br><span class="hint">${esc(mmAgruparItems(t.cajasLista).length)} ítem(s) · ${esc(anFmt(t._und))} und</span></span></button></div>`).join('') +
+      (L.length > 300 ? `<p class="hint">Se muestran 300 de ${esc(L.length)}: usa los filtros.</p>` : '')
+    : `<div class="hint">${mmLista.length ? 'Ningún traslado cumple los filtros.' : 'Aún no hay traslados de merma.'}</div>`;
+}
+// Ítems de un traslado sumados por código (de todas sus cajas): SKU, descripción, cantidad y en qué cajas está.
+function mmAgruparItems(cajas){
+  const m = new Map();
+  (cajas || []).forEach(c=> (c.items || []).forEach(it=>{
+    const k = String(it.sku || '').trim().toUpperCase(); if(!k) return;
+    const x = m.get(k) || { sku: k, descripcion: '', cantidad: 0, cajas: new Set(), fotos: [] };
+    x.cantidad += Number(it.cantidad) || 0; x.cajas.add(c.id); if(!x.descripcion) x.descripcion = it.descripcion || '';
+    (it.fotos || []).forEach(f=>{ if(f && f.url) x.fotos.push(f.url); });
+    m.set(k, x);
+  }));
+  return [...m.values()].sort((a, b)=> b.cantidad - a.cantidad || a.sku.localeCompare(b.sku, 'es', { numeric: true }));
+}
+const mmFotosDe = t=> t.cajasLista.flatMap(c=> (c.items || []).flatMap(it=> (it.fotos || []).map((f, j)=> ({ url: f.url, pie: `${c.id} · ${it.sku} · ${it.descripcion || ''} (foto ${j + 1})` }))));
+function mmAbrir(id){
+  const t = mmLista.find(x=> x.id === id); if(!t) return;
+  mmSel = id;
+  const dueno = t.usuario_email === currentUserEmail;
+  $('mm-detalle').innerHTML = `<div class="rf-det-cab"><div><span class="hint">Traslado de merma <span class="mm-est ${esc(t.estado)}">${t.estado === 'CERRADO' ? '🔒 CERRADO' : '📦 ABIERTO'}</span></span><h2>${esc(t.id)}</h2></div><div class="rf-det-acc">` +
+      (t.estado === 'ABIERTO' && (dueno || mmVeTodos()) ? `<button type="button" class="btn btn-primary btn-sm" data-mm-det-continuar="${esc(t.id)}">✏ Continuar</button>` : '') +
+      (t.estado === 'CERRADO' && (dueno || mmPuedeEliminar()) ? `<button type="button" class="btn btn-ghost btn-sm" data-mm-det-reabrir="${esc(t.id)}">↩ Reabrir</button>` : '') +
+      (t.estado === 'CERRADO' ? `<button type="button" class="btn btn-primary btn-sm" data-mm-det-rotulos="${esc(t.id)}">🏷 Rótulos A4</button><button type="button" class="btn btn-primary btn-sm" data-mm-det-imprimir="${esc(t.id)}">🖨 Imprimir etiquetas (Godex)</button>` : '') +
+      `<button type="button" class="btn btn-ghost btn-sm" data-mm-det-excel="${esc(t.id)}">⬇ Excel</button>` +
+      (mmPuedeEliminar() ? `<button type="button" class="btn btn-ghost btn-sm" data-mm-det-eliminar="${esc(t.id)}" style="color:#8A332A;">🗑 Eliminar</button>` : '') + `</div></div>` +
+    `<div class="rf-det-datos"><div><span>Tienda</span><b>🏬 ${esc(t.tienda)}</b></div><div><span>Fecha</span><b>📅 ${esc(mmFechaTxt(t.fecha))}</b></div><div><span>Usuario</span><b>👤 ${esc(t.usuario || '')}</b></div>` +
+      `<div><span>Bultos (cajas)</span><b class="mm-bultos">${esc(t.cajasLista.length)}</b></div><div><span>Unidades</span><b>${esc(anFmt(t._und))}</b></div>` +
+      (t.cerrado_en ? `<div><span>Cerrado</span><b>${esc(t.cerrado_por || '')} · ${esc(rfFechaTxt(t.cerrado_en))}</b></div>` : '') + `</div>` +
+    mmGuiaHtml(t, dueno) +
+    (t.cajasLista.length ? t.cajasLista.map(c=> `<div class="mm-det-caja"><b>📦 ${esc(c.id)}</b> <span class="mm-est ${c.estado === 'ABIERTA' ? 'ABIERTO' : ''}">${c.estado === 'ABIERTA' ? '✏ ABIERTA' : '🔒 CERRADA'}</span> <span class="hint">· ${esc((c.items || []).length)} producto(s) · ${esc(anFmt(c.unidades || 0))} und</span>` +
+      `<table><thead><tr><th>SKU</th><th>Descripción</th><th class="num">Cantidad</th><th>Fotos</th></tr></thead><tbody>` +
+      ((c.items || []).map(it=> `<tr><td><b>${esc(it.sku)}</b></td><td>${esc(it.descripcion || '')}</td><td class="num">${esc(anFmt(it.cantidad))}</td><td><div class="rf-fotos">${(it.fotos || []).map(f=> `<div class="rf-thumb" data-mm-det-ver="${esc(f.url)}"><img src="${esc(f.url)}" alt="" loading="lazy"></div>`).join('')}</div></td></tr>`).join('') || '<tr><td colspan="4" class="hint">Caja sin productos.</td></tr>') +
+      `</tbody></table></div>`).join('') : '<p class="hint">Este traslado no tiene cajas.</p>');
+  $('mm-det-modal').hidden = false; document.body.classList.add('rf-modal-abierto');
+}
+// ---- Guías de remisión (PDF) del traslado: se pueden adjuntar varias; cada una se reduce antes de subir ----
+// Se guardan en guias_pdf (lista). Los traslados antiguos tenían una sola en guia_pdf: se leen igual.
+const mmPuedeGuia = (t, dueno)=> dueno || mmVeTodos() || mmPuedeEliminar();
+const mmGuias = t=> Array.isArray(t.guias_pdf) ? t.guias_pdf : (t.guia_pdf ? [t.guia_pdf] : []);
+function mmGuiaHtml(t, dueno){
+  const G = mmGuias(t), puede = mmPuedeGuia(t, dueno);
+  return `<div class="mm-guia${G.length ? '' : ' falta'}"><b>📄 Guías de remisión${G.length ? ` (${G.length})` : ''}</b> ` +
+    (G.length ? '' : '<span class="mm-sin-guia" role="alert"><span class="mm-sin-guia-i">⚠</span> SIN GUÍA DE REMISIÓN <span class="mm-sin-guia-s">· adjúntala</span></span>') +
+    (puede ? ` <button type="button" class="btn btn-ghost btn-sm" data-mm-guia-adjuntar>📎 ${G.length ? 'Adjuntar otra guía' : 'Adjuntar guía'} (PDF)</button>` : '') +
+    (G.length ? `<div class="mm-guias">${G.map(g=> `<div class="mm-guia-it"><a href="${esc(g.url)}" target="_blank" rel="noopener" class="mm-guia-link">${esc(g.nombre || 'guia.pdf')}</a> <span class="hint">· ${esc(almFmt(g.tam || 0))}${g.tam_original && g.tam_original > g.tam ? ` (reducido de ${esc(almFmt(g.tam_original))})` : ''} · ${esc(g.subido_por || '')} · ${esc(rfFechaTxt(g.subido_en))}</span>` +
+      (puede ? ` <button type="button" class="btn btn-ghost btn-sm" data-mm-guia-quitar="${esc(g.path || '')}" style="color:#8A332A;">✕ Quitar</button>` : '') + `</div>`).join('')}</div>` : '') +
+    `<div class="hint" id="mm-guia-msg"></div></div>`;
+}
+// Sube una o varias guías (una tras otra). arrayUnion: si otro equipo adjunta al mismo tiempo, no se pisan.
+async function mmSubirGuias(t, files){
+  const L = [...files].filter(f=> /pdf/i.test(f.type) || /\.pdf$/i.test(f.name));
+  if(!L.length){ showToast('Elige un archivo PDF.', 'err'); return; }
+  if(L.length < files.length) showToast(`${files.length - L.length} archivo(s) no son PDF y se omitieron.`, 'err');
+  const msg = txt=>{ const el = $('mm-guia-msg'); if(el) el.textContent = txt; };
+  let ok = 0;
+  for(const [i, f] of L.entries()){
+    const pre = L.length > 1 ? `Guía ${i + 1} de ${L.length} (${f.name}): ` : '';
+    try{
+      msg(pre + 'Reduciendo el PDF…');
+      const red = await voReducir(new File([f], f.name, { type: 'application/pdf' }), txt=> msg(pre + txt));
+      msg(pre + 'Subiendo…');
+      const ref = storage.ref().child(`merma_guias/${t.id}/${Date.now()}_${vchNombreArchivo(f.name)}`);
+      await ref.put(red, red.size < f.size ? vchMetaPdf(f.size) : { contentType:'application/pdf', cacheControl:'private, max-age=31536000' });
+      const guia = { url: await ref.getDownloadURL(), path: ref.fullPath, nombre: f.name, tam: red.size, tam_original: f.size, subido_por: currentUserAlias, subido_por_email: currentUserEmail, subido_en: new Date().toISOString() };
+      const FV = firebase.firestore.FieldValue, antigua = !Array.isArray(t.guias_pdf) && t.guia_pdf ? t.guia_pdf : null;
+      await mermaTrasladosRef.doc(t.id).update(antigua ? { guias_pdf: FV.arrayUnion(antigua, guia), guia_pdf: FV.delete() } : { guias_pdf: FV.arrayUnion(guia) });
+      t.guias_pdf = [...mmGuias(t), guia]; delete t.guia_pdf; ok++;
+      await logAccion('merma_guia_adjuntada', { detalle: `${t.id} · guía ${f.name} · ${almFmt(red.size)}${red.size < f.size ? ` (de ${almFmt(f.size)})` : ''}` });
+    }catch(err){ console.error(err); showToast(`No se pudo adjuntar ${f.name}: ` + (err.message || err), 'err'); }
+  }
+  msg('');
+  if(ok) showToast(`${ok} guía(s) adjuntada(s) a ${t.id}.`, 'ok');
+  renderMmLista(); if(mmSel === t.id) mmAbrir(t.id);
+}
+async function mmQuitarGuia(t, path){
+  const g = mmGuias(t).find(x=> (x.path || '') === path); if(!g || !confirm(`¿Quitar la guía ${g.nombre || ''} de ${t.id}? Se borra el PDF.`)) return;
+  try{
+    const FV = firebase.firestore.FieldValue;
+    await mermaTrasladosRef.doc(t.id).update(Array.isArray(t.guias_pdf) ? { guias_pdf: FV.arrayRemove(g) } : { guia_pdf: FV.delete() });
+    if(g.path) await storage.ref().child(g.path).delete().catch(err=> console.warn('Guía', err));
+    if(Array.isArray(t.guias_pdf)) t.guias_pdf = t.guias_pdf.filter(x=> x !== g); else delete t.guia_pdf;
+    await logAccion('merma_guia_quitada', { detalle: `${t.id} · guía ${g.nombre || ''} quitada` });
+    renderMmLista(); mmAbrir(t.id); showToast('Guía quitada.', 'ok');
+  }catch(err){ console.error(err); showToast('No se pudo quitar la guía: ' + (err.message || err), 'err'); }
+}
+function mmCerrarDetalle(){ if($('mm-det-modal') && !$('mm-det-modal').hidden){ $('mm-det-modal').hidden = true; document.body.classList.remove('rf-modal-abierto'); } }
+// ---- Rótulos de envío a tiendas (uno por caja / bulto) ----
+// Mismo formato del Excel "ROTULO ENVIO A TIENDAS": 4 rótulos por hoja A4 horizontal, casi sin márgenes.
+// Encabezados negros con letra blanca; debajo el dato en Arial grande con borde grueso.
+// Origen: CD VENEZUELA · Destino: la tienda del traslado · Total bultos: cajas · Nro bulto: CM-…
+// Observaciones: "MERMA PREPARADA POR: <usuario>" · Abajo a la izquierda: Nro transacción (TM-…) · Fecha.
+// Alto de cada parte del rótulo, en puntos del Excel (se escala para que entren 4 exactos en la hoja).
+const MM_ROT_FILAS = [['cab', 16.2, ['ORIGEN:']], ['val', 28.2, ['origen'], 24], ['cab', 18, ['DESTINO:']], ['val', 28.2, ['destino'], 24],
+  ['cab', 16.2, ['TOTAL BULTOS:', 'NRO BULTO']], ['val', 29.4, ['total', 'bulto'], 24], ['cab', 16.2, ['OBSERVACIONES']], ['val', 60, ['obs'], 12],
+  ['cab', 16.2, ['NRO TRANSACCIÓN', 'FECHA']], ['val', 28.8, ['ts', 'fecha'], 22]];
+function mmRotuloDibujar(doc, x, y, w, h, d){
+  const total = MM_ROT_FILAS.reduce((s, f)=> s + f[1], 0), k = h / total, izq = w * 10 / 21;   // columnas como en el Excel: 10 + 11 de 21
+  doc.setLineWidth(1.6); doc.setDrawColor(0);
+  let yy = y;
+  MM_ROT_FILAS.forEach(([tipo, alto, campos, pt])=>{
+    const hh = alto * k, partes = campos.length === 2 ? [[x, izq], [x + izq, w - izq]] : [[x, w]];
+    partes.forEach(([px, pw], i)=>{
+      if(tipo === 'cab'){
+        doc.setFillColor(0, 0, 0); doc.rect(px, yy, pw, hh, 'FD');
+        doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(Math.min(14, 12 * k * 1.05));
+        doc.text(campos[i], px + pw / 2, yy + hh / 2, { align: 'center', baseline: 'middle' });
+      }else{
+        doc.setFillColor(255, 255, 255); doc.rect(px, yy, pw, hh, 'D');
+        doc.setTextColor(0, 0, 0); doc.setFont('helvetica', 'normal');
+        const txt = String(d[campos[i]] || '');
+        // Tamaño como en el Excel; si el texto no entra a lo ancho, se achica (o pasa a dos líneas en Observaciones).
+        let fs = pt * k; doc.setFontSize(fs);
+        if(campos[i] === 'obs'){
+          let lineas = doc.splitTextToSize(txt, pw - 10);
+          while(lineas.length * fs * 1.2 > hh - 6 && fs > 7){ fs -= 0.5; doc.setFontSize(fs); lineas = doc.splitTextToSize(txt, pw - 10); }
+          doc.text(lineas, px + pw / 2, yy + hh / 2 - (lineas.length - 1) * fs * 0.6, { align: 'center', baseline: 'middle' });
+        }else{
+          while(doc.getTextWidth(txt) > pw - 8 && fs > 8){ fs -= 0.5; doc.setFontSize(fs); }
+          doc.text(txt, px + pw / 2, yy + hh / 2, { align: 'center', baseline: 'middle' });
+        }
+      }
+    });
+    yy += hh;
+  });
+  doc.setLineWidth(2.2); doc.rect(x, y, w, h, 'D');   // marco exterior más grueso: guía para cortar
+}
+// ---- Impresión directa de etiquetas (Godex G500 u otra térmica), sin PDF ----
+// Se arma una página por etiqueta de exactamente 4 × 3 pulgadas sin márgenes (@page) y se abre el cuadro de impresión
+// del navegador: se elige la Godex y listo. Mismo diseño que el rótulo (filas con las mismas proporciones).
+// Tamaño de la etiqueta y corrimiento (mm): si en esta PC se guardaron ajustes antes, se siguen usando (ya no se editan).
+const MM_ETQ_DEF = { ancho: 4, alto: 3, dx: 0, dy: 0 };
+function mmEtqConfig(){ let c = {}; try{ c = JSON.parse(localStorage.getItem('sd:etq') || '{}') || {}; }catch(e){}
+  const n = (v, d, min, max)=> Number.isFinite(+v) && v !== '' && v !== null ? Math.min(max, Math.max(min, +v)) : d;
+  return { ancho: n(c.ancho, 4, 1, 8), alto: n(c.alto, 3, 1, 8), dx: n(c.dx, 0, -20, 20), dy: n(c.dy, 0, -20, 20), borde: 0.04 }; }
+function mmEtiquetasHtml(t, soloPrimera){
+  const MM_ETQ = mmEtqConfig();
+  const cajas = soloPrimera ? (t.cajasLista || []).slice(0, 1) : (t.cajasLista || []);
+  const W = MM_ETQ.ancho - 2 * MM_ETQ.borde, H = MM_ETQ.alto - 2 * MM_ETQ.borde;
+  const total = MM_ROT_FILAS.reduce((s, f)=> s + f[1], 0), k = H * 72 / total;   // escala: puntos del Excel → puntos de la etiqueta
+  const n = (t.cajasLista || []).length, base = { origen: RF_CD, destino: t.tienda, obs: `MERMA PREPARADA POR: ${t.usuario || ''}`, ts: t.id, fecha: mmFechaTxt(t.fecha) };
+  const renglon = ([tipo, alto, campos, pt], d)=> `<div class="f ${campos.length === 2 ? 'dos' : ''}" style="height:${(alto / total * H).toFixed(4)}in">` +
+    campos.map(c=> tipo === 'cab' ? `<div class="cab" style="font-size:${Math.min(14, 12 * k * 1.05).toFixed(1)}pt">${esc(c)}</div>`
+      : `<div class="val${c === 'obs' ? ' obs' : ''}"><span style="font-size:${(pt * k).toFixed(1)}pt">${esc(d[c] || '')}</span></div>`).join('') + `</div>`;
+  const etiquetas = cajas.map((c, i)=>{ const d = Object.assign({ bulto: c.id, total: `${i + 1}/${n}` }, base); return `<div class="et"><div class="r">${MM_ROT_FILAS.map(f=> renglon(f, d)).join('')}</div></div>`; }).join('');
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Etiquetas ${esc(t.id)}</title><style>
+@page{ size:${MM_ETQ.ancho}in ${MM_ETQ.alto}in; margin:0; }
+*{ box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+html,body{ margin:0; padding:0; background:#fff; }
+.et{ width:${MM_ETQ.ancho}in; height:${MM_ETQ.alto}in; padding:${MM_ETQ.borde}in; overflow:hidden; break-after:page; page-break-after:always; font-family:Arial,Helvetica,sans-serif; }
+.et:last-child{ break-after:auto; page-break-after:auto; }
+.r{ width:${W}in; height:${H}in; border:2.2pt solid #000; display:flex; flex-direction:column; transform:translate(${MM_ETQ.dx}mm, ${MM_ETQ.dy}mm); }
+.f{ display:flex; width:100%; } .f > div{ flex:1 1 100%; } .f.dos > div:first-child{ flex:0 0 ${(10 / 21 * 100).toFixed(3)}%; border-right:1.6pt solid #000; } .f.dos > div:last-child{ flex:1 1 auto; }
+.cab{ background:#000; color:#fff; font-weight:bold; display:flex; align-items:center; justify-content:center; text-align:center; }
+.val{ display:flex; align-items:center; justify-content:center; text-align:center; border-top:1.6pt solid #000; border-bottom:1.6pt solid #000; overflow:hidden; padding:0 3pt; white-space:nowrap; color:#000; }
+.val.obs{ white-space:normal; line-height:1.2; }
+</style></head><body>${etiquetas}<script>
+// Si un texto no entra a lo ancho (o a lo alto en Observaciones), se achica la letra.
+document.querySelectorAll('.val span').forEach(s=>{ const c = s.parentNode; let fs = parseFloat(s.style.fontSize);
+  while((s.offsetWidth > c.clientWidth - 4 || s.offsetHeight > c.clientHeight) && fs > 6){ fs -= 0.5; s.style.fontSize = fs + 'pt'; } });
+<\/script></body></html>`;
+}
+function mmEtiquetasImprimir(t, soloPrimera){
+  const cajas = soloPrimera ? (t.cajasLista || []).slice(0, 1) : (t.cajasLista || []);
+  if(!cajas.length){ showToast('Este traslado no tiene cajas.', 'err'); return; }
+  const previo = $('mm-etq-frame'); if(previo) previo.remove();
+  const fr = document.createElement('iframe'); fr.id = 'mm-etq-frame';
+  fr.style.cssText = 'position:fixed; right:0; bottom:0; width:0; height:0; border:0; visibility:hidden;';
+  document.body.appendChild(fr);
+  const doc = fr.contentWindow.document; doc.open(); doc.write(mmEtiquetasHtml(t, soloPrimera)); doc.close();
+  const c = mmEtqConfig();
+  logAccion('merma_rotulos', { detalle: `${t.id} · ${t.tienda} · ${cajas.length} etiqueta(s) ${c.ancho}×${c.alto} impresas directo${soloPrimera ? ' (prueba)' : ''}` });
+  if(window.__sdNoImprimir) return;   // pruebas: solo se arma la página
+  setTimeout(()=>{ try{ fr.contentWindow.focus(); fr.contentWindow.print(); }catch(err){ console.error(err); showToast('No se pudo abrir la impresión: ' + err.message, 'err'); } }, 250);
+  showToast(soloPrimera ? 'Etiqueta de prueba: revisa que quede centrada y ajusta ↕ ↔ si hace falta.' : `Imprimiendo ${cajas.length} etiqueta(s) de ${t.id}: Godex, papel ${mmEtqConfig().ancho}×${mmEtqConfig().alto}, márgenes "Ninguno", sin encabezados.`, 'ok');
+}
+function mmRotulosPdf(t){
+  const cajas = t.cajasLista || [];
+  if(!cajas.length){ showToast('Este traslado no tiene cajas.', 'err'); return; }
+  const doc = new jspdf.jsPDF({ unit:'pt', format:'a4', orientation:'landscape' });
+  const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), m = 6, g = 8;   // márgenes casi nulos
+  const w = (W - 2 * m - g) / 2, h = (H - 2 * m - g) / 2;
+  const base = { origen: RF_CD, destino: t.tienda, obs: `MERMA PREPARADA POR: ${t.usuario || ''}`, ts: t.id, fecha: mmFechaTxt(t.fecha) };
+  cajas.forEach((c, i)=>{
+    if(i && i % 4 === 0) doc.addPage('a4', 'landscape');
+    const p = i % 4;
+    mmRotuloDibujar(doc, m + (p % 2) * (w + g), m + Math.floor(p / 2) * (h + g), w, h, Object.assign({ bulto: c.id, total: `${i + 1}/${cajas.length}` }, base));
+  });
+  doc.setProperties({ title: `Rótulos ${t.id}` });
+  try{ doc.viewerPreferences({ PrintScaling: 'None' }); }catch(e){}
+  doc.save(`rotulos_${t.id}.pdf`);
+  logAccion('merma_rotulos', { detalle: `${t.id} · ${t.tienda} · ${cajas.length} rótulo(s)` });
+  showToast(`Rótulos de ${t.id}: ${cajas.length} (${Math.ceil(cajas.length / 4)} hoja(s) A4).`, 'ok');
+}
+// Miniatura liviana para el PDF (la foto se achica antes de ponerla).
+const mmImgMiniCache = new Map();
+function mmImagenMini(url){
+  if(!mmImgMiniCache.has(url)) mmImgMiniCache.set(url, (async ()=>{
+    const r = await fetch(url); if(!r.ok) throw new Error('HTTP ' + r.status);
+    const bmp = await createImageBitmap(await r.blob()), k = Math.min(1, 260 / Math.max(bmp.width, bmp.height));
+    const cv = document.createElement('canvas'); cv.width = Math.max(1, Math.round(bmp.width * k)); cv.height = Math.max(1, Math.round(bmp.height * k));
+    const ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height); ctx.drawImage(bmp, 0, 0, cv.width, cv.height);
+    return { data: cv.toDataURL('image/jpeg', 0.7), w: cv.width, h: cv.height };
+  })().catch(err=>{ mmImgMiniCache.delete(url); throw err; }));
+  return mmImgMiniCache.get(url);
+}
+// PDF para gerencia (A4 vertical): lo que está filtrado en Registros — resumen por traslado e ítems de cada uno.
+// Fotos solo si se marca «Incluir fotos» (1 por código): descargarlas demora y consume datos.
+async function mmPdfGerencia(L, conFotos){
+  if(!L.length){ showToast('No hay traslados para exportar con estos filtros.', 'err'); return; }
+  const btn = $('btn-mm-pdf'), txtBtn = btn ? btn.textContent : '';
+  if(btn){ btn.disabled = true; }
+  try{
+    // Primero las fotos (miniaturas), con avance.
+    const porTs = new Map(L.map(t=> [t.id, mmAgruparItems(t.cajasLista)]));
+    const urls = conFotos ? [...new Set([...porTs.values()].flatMap(items=> items.flatMap(x=> x.fotos.slice(0, 1))))] : [], imgs = new Map(); let n = 0;
+    for(const u of urls){ n++; if(btn) btn.textContent = `⏳ Fotos ${n} de ${urls.length}…`; try{ imgs.set(u, await mmImagenMini(u)); }catch(e){ console.warn('Foto no disponible para el PDF:', u, e); } }
+    if(btn) btn.textContent = '⏳ Armando PDF…';
+    const doc = new jspdf.jsPDF({ unit:'pt', format:'a4', orientation:'portrait' }), W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), m = 30;
+    const opt = id=> { const el = $(id); return el && el.value ? (el.options ? el.options[el.selectedIndex].text : el.value) : ''; };
+    const filtros = [opt('mm-estado-f') && `Estado: ${opt('mm-estado-f')}`, opt('mm-tienda-f') && `Tienda: ${opt('mm-tienda-f').replace(/^🏬\s*/, '')}`, opt('mm-usuario-f') && `Usuario: ${opt('mm-usuario-f').replace(/^👤\s*/, '')}`,
+      $('mm-desde').value && `Desde: ${mmFechaTxt($('mm-desde').value)}`, $('mm-hasta').value && `Hasta: ${mmFechaTxt($('mm-hasta').value)}`, $('mm-q').value.trim() && `Búsqueda: "${$('mm-q').value.trim()}"`].filter(Boolean);
+    const bultos = L.reduce((s, t)=> s + t.cajasLista.length, 0), und = L.reduce((s, t)=> s + t._und, 0);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.text('Traslados de merma', m, 40);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(90);
+    doc.text(`Origen: ${RF_CD} · ${filtros.length ? filtros.join(' · ') : 'Sin filtros (todos los traslados)'}`, m, 56, { maxWidth: W - 2 * m });
+    doc.text(`Generado por ${currentUserAlias} el ${new Date().toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' })}`, m, 68);
+    doc.setTextColor(0); doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
+    const items = L.reduce((s, t)=> s + porTs.get(t.id).length, 0);   // suma de los ítems de cada traslado
+    doc.text(`${L.length} traslado(s)   ·   ${bultos} bulto(s)   ·   ${anFmt(items)} ítem(s)   ·   ${anFmt(und)} unidades`, m, 88);
+    const estilo = { styles: { fontSize: 8, cellPadding: 3, halign: 'center', valign: 'middle' }, headStyles: { fillColor: [27, 36, 48], textColor: 255, halign: 'center' }, margin: { left: m, right: m, bottom: 30 } };
+    doc.autoTable(Object.assign({ startY: 98, head: [['Traslado', 'Fecha', 'Tienda (destino)', 'Estado', 'Bultos', 'Und.', 'Ítems', 'Preparado por', 'Guía']],
+      body: L.map(t=> [t.id, mmFechaTxt(t.fecha), t.tienda, t.estado, t.cajasLista.length, anFmt(t._und), porTs.get(t.id).length, t.usuario || '', mmGuias(t).length ? (mmGuias(t).length > 1 ? `SÍ (${mmGuias(t).length})` : 'SÍ') : 'NO']),
+      foot: [['TOTAL', '', '', '', bultos, anFmt(und), anFmt(items), '', '']], footStyles: { fillColor: [234, 241, 251], textColor: 0, fontStyle: 'bold', halign: 'center' } }, estilo));
+    // Detalle: ítems de cada traslado (con su foto si se pidió).
+    const FOTO = 46;
+    L.forEach(t=>{
+      let y = doc.lastAutoTable.finalY + 18; if(y > H - 110){ doc.addPage(); y = 40; }
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.text(`${t.id} · ${t.tienda} · ${mmFechaTxt(t.fecha)} · ${t.cajasLista.length} bulto(s) · ${anFmt(t._und)} und · ${t.estado}`, m, y, { maxWidth: W - 2 * m });
+      const it = porTs.get(t.id);
+      if(!conFotos){
+        doc.autoTable(Object.assign({ startY: y + 6, head: [['SKU', 'Descripción', 'Cantidad', 'Cajas']],
+          body: it.length ? it.map(x=> [x.sku, x.descripcion, anFmt(x.cantidad), [...x.cajas].join(', ')]) : [['', 'Sin productos', '', '']],
+          columnStyles: { 1: { cellWidth: 200 } } }, estilo));
+        return;
+      }
+      doc.autoTable(Object.assign({ startY: y + 6, head: [['Foto', 'SKU', 'Descripción', 'Cantidad', 'Cajas']],
+        body: it.length ? it.map(x=> ['', x.sku, x.descripcion, anFmt(x.cantidad), [...x.cajas].join(', ')]) : [['', '', 'Sin productos', '', '']],
+        columnStyles: { 0: { cellWidth: FOTO + 10, minCellHeight: FOTO + 6 }, 2: { cellWidth: 190 } },
+        didDrawCell: d=>{
+          if(d.section !== 'body' || d.column.index !== 0 || !it[d.row.index]) return;
+          const im = imgs.get(it[d.row.index].fotos[0]); if(!im) return;
+          const e = Math.min(FOTO / im.w, FOTO / im.h), w = im.w * e, h = im.h * e;
+          doc.addImage(im.data, 'JPEG', d.cell.x + (d.cell.width - w) / 2, d.cell.y + (d.cell.height - h) / 2, w, h);
+        } }, estilo));
+    });
+    const np = doc.getNumberOfPages();
+    for(let i = 1; i <= np; i++){ doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(120); doc.text(`Página ${i} de ${np}`, W - m, H - 14, { align: 'right' }); }
+    doc.setProperties({ title: 'Traslados de merma' });
+    doc.save(`merma_gerencia_${new Date().toISOString().slice(0, 10)}.pdf`);
+    logAccion('merma_exportado', { detalle: `PDF para gerencia: ${L.length} traslado(s), ${bultos} bulto(s), ${imgs.size} foto(s)${filtros.length ? ' · ' + filtros.join(' · ') : ''}` });
+    showToast(`PDF con ${L.length} traslado(s)${conFotos ? ` y ${imgs.size} foto(s)` : ''}.`, 'ok');
+  }catch(err){ console.error(err); showToast('No se pudo armar el PDF: ' + (err.message || err), 'err'); }
+  finally{ if(btn){ btn.disabled = false; btn.textContent = txtBtn; } }
+}
+function mmExcel(L, nombre){
+  if(!L.length){ showToast('No hay traslados para exportar con estos filtros.', 'err'); return; }
+  const fecha = f=> rfExcelFecha(f ? f + 'T12:00:00' : '');
+  const resumen = L.map(t=> ({ 'Traslado': t.id, 'Estado': t.estado, 'Tienda': t.tienda, 'Fecha': fecha(t.fecha), 'Bultos (cajas)': t.cajasLista.length, 'Unidades': t._und, 'Usuario': t.usuario || '', 'Cerrado por': t.cerrado_por || '', 'Guía de remisión': mmGuias(t).length ? 'SÍ' : 'NO', 'N° guías': mmGuias(t).length, 'Fecha de cierre': rfExcelFecha(t.cerrado_en), 'Hora de cierre': rfExcelHora(t.cerrado_en) }));
+  const detalle = L.flatMap(t=> t.cajasLista.flatMap(c=> (c.items || []).map(it=> ({ 'Traslado': t.id, 'Tienda': t.tienda, 'Fecha': fecha(t.fecha), 'Caja': c.id, 'SKU': it.sku, 'Descripción': it.descripcion || '', 'Cantidad': Number(it.cantidad) || 0, 'N° fotos': (it.fotos || []).length, 'Usuario': c.usuario || '' }))));
+  const wb = XLSX.utils.book_new();
+  const ws1 = XLSX.utils.json_to_sheet(resumen); ws1['!cols'] = [12, 10, 26, 12, 14, 10, 18, 18, 10, 14, 10].map(w=> ({ wch: w })); ws1['!autofilter'] = { ref: ws1['!ref'] }; rfExcelFormatoFechas(ws1, ['Fecha', 'Fecha de cierre']);
+  const ws2 = XLSX.utils.json_to_sheet(detalle.length ? detalle : [{ 'Traslado': '' }]); ws2['!cols'] = [12, 26, 12, 12, 16, 44, 10, 9, 18].map(w=> ({ wch: w })); ws2['!autofilter'] = { ref: ws2['!ref'] }; rfExcelFormatoFechas(ws2, ['Fecha']);
+  XLSX.utils.book_append_sheet(wb, ws1, 'Traslados'); XLSX.utils.book_append_sheet(wb, ws2, 'Detalle por caja');
+  XLSX.writeFile(wb, nombre);
+  logAccion('merma_exportado', { detalle: `Excel de merma: ${L.length} traslado(s), ${detalle.length} fila(s)` });
+  showToast(`Excel con ${L.length} traslado(s).`, 'ok');
+}
+async function mmEliminar(id){
+  const t = mmLista.find(x=> x.id === id); if(!t || !mmPuedeEliminar()) return;
+  if(!confirm(`¿Eliminar el traslado ${id} con sus ${t.cajasLista.length} caja(s) y todas sus fotos? No se puede deshacer.`)) return;
+  try{
+    const paths = [...t.cajasLista.flatMap(c=> (c.items || []).flatMap(it=> (it.fotos || []).map(f=> f.path))), ...mmGuias(t).map(g=> g.path)].filter(Boolean);
+    const batch = db.batch(); t.cajasLista.forEach(c=> batch.delete(mermaCajasRef.doc(c.id))); batch.delete(mermaTrasladosRef.doc(id)); await batch.commit();
+    await Promise.allSettled(paths.map(p=> storage.ref().child(p).delete()));
+    await logAccion('merma_eliminado', { detalle: `${id} · ${t.tienda} · ${t.cajasLista.length} caja(s), ${paths.length} foto(s)` });
+    mmLista = mmLista.filter(x=> x.id !== id); mmCerrarDetalle(); renderMmLista(); showToast(`Traslado ${id} eliminado.`, 'ok');
+  }catch(err){ console.error(err); showToast('No se pudo eliminar: ' + err.message, 'err'); }
+}
+async function mmReabrir(id){
+  const t = mmLista.find(x=> x.id === id); if(!t) return;
+  if(!confirm(`¿Reabrir ${id} para agregar o corregir cajas? Al terminar, vuelve a cerrarlo.`)) return;
+  try{
+    const ahora = new Date().toISOString();
+    await mermaTrasladosRef.doc(id).update({ estado:'ABIERTO', reabierto_por: currentUserAlias, reabierto_en: ahora, actualizado_en: ahora });
+    await logAccion('merma_reabierto', { detalle: `${id} reabierto` });
+    t.estado = 'ABIERTO'; mmCerrarDetalle(); mmContinuar(id);
+  }catch(err){ console.error(err); showToast('No se pudo reabrir: ' + err.message, 'err'); }
+}
+$('mmsub-panel-lista').addEventListener('click', e=>{
+  const ab = e.target.closest('[data-mm-abrir]'); if(ab){ mmAbrir(ab.dataset.mmAbrir); return; }
+  if(e.target.closest('#btn-mm-excel')){ mmExcel(mmFiltrados(), `merma_${new Date().toISOString().slice(0, 10)}.xlsx`); return; }
+  if(e.target.closest('#btn-mm-pdf')){ mmPdfGerencia(mmFiltrados(), $('mm-pdf-fotos').checked); return; }
+  if(e.target.closest('#btn-mm-recargar')) mmCargarLista(true);
+});
+['mm-estado-f', 'mm-tienda-f', 'mm-usuario-f', 'mm-desde', 'mm-hasta'].forEach(id=> $(id).addEventListener('change', renderMmLista));
+$('mm-q').addEventListener('input', renderMmLista);
+$('mm-guia-file').addEventListener('change', e=>{ const fs = [...e.target.files], t = mmLista.find(x=> x.id === mmSel); e.target.value = ''; if(fs.length && t) mmSubirGuias(t, fs); });
+$('mm-det-modal').addEventListener('click', e=>{
+  if(e.target.id === 'mm-det-modal' || e.target.closest('#btn-mm-det-volver') || e.target.closest('#btn-mm-det-cerrar')){ mmCerrarDetalle(); return; }
+  const ver = e.target.closest('[data-mm-det-ver]'), t = mmLista.find(x=> x.id === mmSel);
+  if(ver && t){ rfVerFoto(ver.dataset.mmDetVer, '', mmFotosDe(t)); return; }
+  const co = e.target.closest('[data-mm-det-continuar]'); if(co){ mmCerrarDetalle(); mmContinuar(co.dataset.mmDetContinuar); return; }
+  const re = e.target.closest('[data-mm-det-reabrir]'); if(re){ mmReabrir(re.dataset.mmDetReabrir); return; }
+  const xl = e.target.closest('[data-mm-det-excel]'); if(xl && t){ mmExcel([t], `merma_${t.id}.xlsx`); return; }
+  const ro = e.target.closest('[data-mm-det-rotulos]'); if(ro && t){ mmRotulosPdf(t); return; }
+  const im = e.target.closest('[data-mm-det-imprimir]'); if(im && t){ mmEtiquetasImprimir(t); return; }
+  if(e.target.closest('[data-mm-guia-adjuntar]')){ $('mm-guia-file').click(); return; }
+  const gq = e.target.closest('[data-mm-guia-quitar]'); if(gq && t){ mmQuitarGuia(t, gq.dataset.mmGuiaQuitar); return; }
+  const el = e.target.closest('[data-mm-det-eliminar]'); if(el) mmEliminar(el.dataset.mmDetEliminar);
+});
+window.addEventListener('keydown', e=>{ if(e.key === 'Escape' && !$('mm-det-modal').hidden && $('rf-lightbox').hidden && $('rf-aviso').hidden && $('cam-modal').hidden) mmCerrarDetalle(); }, true);
+
 // -------- Usuarios: lista y permisos a detalle (menú → opción → sección) --------
 let usLista = [], usSel = null;
 const usTabs = ()=> [...document.querySelectorAll('#us-arbol [data-us-tab]')];
@@ -21248,7 +20674,7 @@ $('us-admin').addEventListener('change', ()=> $('us-rf-tiendas-box').classList.t
 $('us-rf-todos').addEventListener('change', ()=> $('us-rf-part-box').classList.toggle('bloqueado', $('us-rf-todos').checked || $('us-admin').checked));
 function usLlenar(p){
   const base = Object.assign({}, p, { admin:false });
-  $('us-admin').checked = !!p.admin; $('us-eliminar').checked = !!p.eliminar; $('us-rf-todos').checked = !!p.rf_todos; $('us-saldos-todos').checked = !!p.saldos_todos;
+  $('us-admin').checked = !!p.admin; $('us-eliminar').checked = !!p.eliminar; $('us-rf-todos').checked = !!p.rf_todos; $('us-saldos-todos').checked = !!p.saldos_todos; $('us-merma-todos').checked = !!p.merma_todos;
   usRfParticipantes(p.rf_participantes || [], p.rf_tiendas || []);
   usTabs().forEach(cb=>{
     const tab = cb.dataset.usTab; cb.checked = !!p.admin || permTabPermitida(base, tab);
@@ -21258,7 +20684,7 @@ function usLlenar(p){
   usRefrescar();
 }
 function usLeer(){
-  const permisos = { admin: $('us-admin').checked, eliminar: $('us-eliminar').checked, rf_todos: $('us-rf-todos').checked, saldos_todos: $('us-saldos-todos').checked, vo_vouchers: false, subs: {},
+  const permisos = { admin: $('us-admin').checked, eliminar: $('us-eliminar').checked, rf_todos: $('us-rf-todos').checked, saldos_todos: $('us-saldos-todos').checked, merma_todos: $('us-merma-todos').checked, vo_vouchers: false, subs: {},
     rf_participantes: [...document.querySelectorAll('#us-rf-part [data-us-rf-part]:checked')].map(x=> x.dataset.usRfPart),
     rf_tiendas: [...document.querySelectorAll('#us-rf-tiendas [data-us-rf-tienda]:checked')].map(x=> x.dataset.usRfTienda) };
   usTabs().forEach(cb=>{
@@ -21413,13 +20839,14 @@ $('btn-guardar-usuario').addEventListener('click', async ()=>{
   }catch(err){ showMsg('us-msg','err', err.message); }
 });
 /* -------------------- Almacenamiento (solo administradores) -------------------- */
+$('btn-alm-merma-vieja').addEventListener('click', mermaViejaBorrar);
 // Cuotas sin costo de Firebase, como referencia: 5 GB de archivos y 1 GiB de base de datos.
 const ALM_CUOTA_ARCHIVOS = 5 * 1024 ** 3, ALM_CUOTA_BASE = 1024 ** 3;
 // Un huérfano recién subido puede ser de un registro que se está llenando: no se borra hasta pasado este margen.
 let ALM_MARGEN_HUERFANO_MS = 24 * 3600 * 1000;
 const ALM_CARPETAS = { registros_foto:'Registro fotográfico', vo_comprobantes:'Venta Online · comprobantes', vo_vouchers:'Venta Online · vouchers',
   tomas_inventario:'Toma de inventario', vouchers_agencia:'Campañas · vouchers de agencia', merma_formatos:'Merma · formatos',
-  validadores:'Campañas · fotos de validadores', productos:'Productos · imágenes', saldos:'Saldos · fotos de cajas', saldos_guias:'Saldos · guías de remisión' };
+  validadores:'Campañas · fotos de validadores', productos:'Productos · imágenes', saldos:'Saldos · fotos de cajas', saldos_guias:'Saldos · guías de remisión', merma:'Merma · fotos de cajas', merma_guias:'Merma · guías de remisión' };
 const ALM_COLECCIONES = { movimientos:'Bitácora / historial', kardex:'Kardex', pallets:'Pallets', posiciones:'Layout · posiciones', bloques:'Layout · bloques',
   nichos:'Layout · nichos', rejas:'Layout · rejas', productos:'Productos', usuarios:'Usuarios', contadores:'Correlativos',
   retiros_campana:'Retiros de campaña', campana_items:'Campañas · ítems', campana_registros:'Campañas · registros', guias_registros:'Guías', guia_items:'Guías · ítems',
@@ -21429,7 +20856,7 @@ const ALM_COLECCIONES = { movimientos:'Bitácora / historial', kardex:'Kardex', 
   merma_auditorias:'Merma · auditorías', compras_cargas:'Compras · cargas', compras_items:'Compras · ítems', compras_totales:'Compras · totales',
   compras_campana:'Compras de campaña', compras_campana_items:'Compras de campaña · ítems', vo_comprobantes:'Venta Online · comprobantes',
   regularizaciones:'Regularizaciones', regularizacion_items:'Regularizaciones · ítems', registros_foto:'Registro fotográfico',
-  saldos_traslados:'Saldos · traslados', saldos_cajas:'Saldos · cajas', rf_marcas:'Registro fotográfico · marcas del layout' };
+  saldos_traslados:'Saldos · traslados', saldos_cajas:'Saldos · cajas', merma_traslados:'Merma · traslados', merma_cajas:'Merma · cajas', rf_marcas:'Registro fotográfico · marcas del layout' };
 let almArchivos = null, almArchivosEn = null, almBase = null, almBaseEn = null, almRefs = null, almBaseCompleta = false, almFallasLista = [];
 // Archivos que los registros dicen tener (ruta → colección y bucket), para avisar si alguno no está en el almacenamiento.
 let almEsperados = null, almFaltPag = 0;

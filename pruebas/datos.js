@@ -27,8 +27,12 @@ async function cargarDatosEjemplo(page, texto = T){
     await campanaItemsRef.add({ correlativo:'CAMP-0001', codigo:'1', campana:'CAMPAÑA ' + T, participante:'PARTICIPANTE ' + T, sku:'P100', producto:'PRODUCTO ' + T, area:'AREA ' + T, cantidad:5, desglose:'1+4', timestamp: hoy });
     await set(guiasRegistrosRef, 'GUIA-0001', Object.assign({ correlativo:'GUIA-0001', campana_correlativo:'CAMP-0001', nro_guia:'T001-' + T, participante:'PARTICIPANTE ' + T, punto_partida:'ORIGEN ' + T, punto_llegada:'DESTINO ' + T, fecha_traslado:'28/09/2026', total_items:1, total_unidades:5 }, comun));
     await guiaItemsRef.add({ correlativo_guia:'GUIA-0001', campana_correlativo:'CAMP-0001', item:1, codigo:'P100', descripcion:'PRODUCTO ' + T, unidad:'UND', cantidad:5 });
-    await set(mermaGuiasRef, 'MER-0001', Object.assign({ correlativo:'MER-0001', nro_guia:'M001-' + T, sede:'SEDE ' + T, fecha_guia:'28/09/2026', total_items:1, total_unidades:3 }, comun));
-    await mermaGuiaItemsRef.add({ correlativo_guia:'MER-0001', item:1, codigo:'P100', descripcion:'PRODUCTO ' + T, unidad:'UND', cantidad:3, bultos:1 });
+    // Merma (traslados por cajas, como Saldos): con la fecha de hoy, para que se vea en Registros.
+    const fhoy = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    await set(mermaTrasladosRef, 'TM-00001', { correlativo:'TM-00001', estado:'CERRADO', tienda:'TIENDA ' + T, fecha: fhoy, usuario:'USUARIO ' + T, usuario_email:'mramos@corporaciongrit.com',
+      cajas:1, bultos:1, cajas_ids:['CM-00001'], unidades:3, fecha_creacion: new Date().toISOString() });
+    await set(mermaCajasRef, 'CM-00001', { traslado_id:'TM-00001', estado:'CERRADA', usuario:'USUARIO ' + T, usuario_email:'mramos@corporaciongrit.com', unidades:3,
+      items:[{ sku:'P100', descripcion:'PRODUCTO ' + T, cantidad:3, fotos:[] }] });
     await set(inventarioTomasRef, 'TI-0001', Object.assign({ correlativo:'TI-0001', area:'AREA ' + T, proveedor_filtro:'PROV ' + T, total_items:1, total_lineas:1, estado:'GENERADA', imagenes:[], observaciones_pendientes:0, total_observaciones:0 }, comun));
   }, texto);
 }
