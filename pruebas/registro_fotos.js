@@ -408,7 +408,7 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   const tras2 = await page.evaluate(async p=> ({ bd: (await registrosFotoRef.doc('RF-ADM-00002').get()).data(), vieja: await storage.ref().child(p).getMetadata().then(()=> true, ()=> false) }), fotoVieja);
   verificar(sigue && tras2.bd.estado === 'CONFIRMADO' && tras2.bd.items[0].cantidad === 2 && tras2.bd.items[0].fotos.length === 1 && tras2.bd.modificado_por === 'Administrador' && !('modificando' in tras2.bd) && !('respaldo' in tras2.bd) && !tras2.vieja,
     'Confirmar cambios: queda CONFIRMADO con la cantidad nueva y quién lo modificó; la foto quitada se borra recién al confirmar');
-  verificar(!('apto_ajuste' in tras2.bd) && !('apto_ajuste_por' in tras2.bd), 'Al modificar un registro, su marca "apto para ajuste" vuelve a quedar sin marcar');
+  verificar(tras2.bd.apto_ajuste === 'SI' && tras2.bd.apto_ajuste_por === 'Administrador', 'Si lo modifica el administrador, el registro conserva su marca "apto para ajuste" (SÍ)');
   // Cancelar una modificación deja todo como estaba.
   await cerrarDet(); await page.click('#rfsub-lista'); await page.waitForFunction(()=> rfLista.some(r=> r.id === 'RF-ADM-00002' && r.estado === 'CONFIRMADO'), null, { timeout: 10000 });
   await page.evaluate(()=> rfAbrir('RF-ADM-00002')); await page.click('#btn-rf-modificar');

@@ -97,6 +97,22 @@ async function esperar(page, fn, arg, ms){
   const logC = await page.evaluate(async ()=> (await movimientosRef.where('tipo', '==', 'reg_foto_costos').get()).size);
   verificar(/P2\|S\/ 5\.50\|S\/ 16\.50/.test(tras3) && logC === 3, `Editar costo de P2 a 5.5 → ${tras3}; bitácora con ${logC} cambios de costo`);
 
+  // Administrador: editar cantidades / quitar un producto en el detalle de un registro APTO y CONFIRMADO, sin reabrirlo.
+  await page.evaluate(async ()=>{ setRfSubtab('lista'); await rfCargar(true); rfAbrir('RF-ADM-00001'); });
+  await page.waitForSelector('#btn-rf-editar-cant', { timeout: 10000 });
+  await page.click('#btn-rf-editar-cant');
+  await page.fill('#rf-det-items tbody tr:nth-child(1) .rf-ei-cant', '7');
+  await page.click('#rf-det-items tbody tr:nth-child(2) [data-rf-ei-quitar]');
+  await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_editar_cantidades.png') });
+  await page.click('[data-rf-ei-guardar]');
+  await esperar(page, async ()=> ((await registrosFotoRef.doc('RF-ADM-00001').get()).data().items || []).length === 1, null, 10000);
+  const ec = await page.evaluate(async ()=>{ const d = (await registrosFotoRef.doc('RF-ADM-00001').get()).data();
+    return { estado: d.estado, apto: d.apto_ajuste, items: d.items.map(it=> `${it.sku}:${it.cantidad}`).join(), und: d.unidades, n: d.cant_items, skus: d.skus.join(), aj: (d.ajustes_admin || []).map(a=> a.detalle).join(' | '),
+      det: $('rf-detalle').innerText.replace(/\s+/g, ' '), log: (await movimientosRef.where('tipo', '==', 'reg_foto_cantidades_editadas').get()).size }; });
+  verificar(ec.estado === 'CONFIRMADO' && ec.apto === 'SI' && ec.items === 'P1X:7' && ec.und === 7 && ec.n === 1 && ec.skus === 'P1X' && /P1X: 5 → 7; P2 quitado/.test(ec.aj) && /✔ CONFIRMADO/.test(ec.det) && /Cantidades editadas por el administrador/.test(ec.det) && ec.log === 1,
+    `Admin edita cantidades en el detalle: ${ec.items} (${ec.aj}); sigue ${ec.estado} y apto ${ec.apto}`);
+  await page.evaluate(()=> rfCerrarDetalle());
+
   // Sin permiso (solo registrar) no aparece el botón.
   await page.evaluate(()=>{ currentPermisos = Object.assign({}, currentPermisos, { admin:false, eliminar:false, rf_todos:false }); rfaAbierto = 'P2'; renderRfAptos(); });
   const sinBoton = await page.evaluate(()=> !document.querySelector('[data-rfa-editar]') && $('btn-rfa-costos').hidden);
