@@ -338,6 +338,19 @@
   .rf-apto-btns [data-rf-apto="SI"].activo{background:#2E9E5B; color:#fff; border-color:#2E9E5B;} .rf-apto-btns [data-rf-apto="NO"].activo{background:#C4483A; color:#fff; border-color:#C4483A;}
   .rf-apto-chip{display:inline-block; padding:1px 7px; border-radius:999px; font-size:10.5px; font-weight:700;} .rf-apto-chip.si{background:#e7f6ec; color:#1d7a46; border:1px solid #2E9E5B;} .rf-apto-chip.no{background:#fdecea; color:#a3352a; border:1px solid #C4483A;}
   .rfa-acciones{display:flex; flex-wrap:wrap; gap:8px; margin:8px 0;}
+  /* Recepciones */
+  .rc-res{display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; padding:8px 10px; border:1px solid var(--line); border-radius:8px; margin:6px 0; background:#fff; font-size:13.5px;}
+  .rc-res.ok{border-color:#9fd3b0; background:#f1faf4;} .rc-res.err{border-color:#e3b4ae; background:#fff6f5; color:#8A332A;}
+  .rc-form-cab{display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap; margin-bottom:8px;} .rc-form-cab h2{margin:2px 0 0; font-family:var(--mono);}
+  .rc-item{border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin:8px 0; background:#fff;} .rc-item.falta{border-color:#e0a23a; background:#fffaf0;}
+  .rc-it-cab{display:flex; flex-wrap:wrap; gap:4px 10px; align-items:baseline;} .rc-it-cab b{font-family:var(--mono); font-size:15px;} .rc-it-n{background:#1b2430; color:#fff; border-radius:999px; font-size:11px; padding:1px 7px;}
+  .rc-it-cant{display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; margin:8px 0;} .rc-guia{font-size:14px;}
+  .rc-rec{display:inline-flex; align-items:center; gap:6px; font-weight:700;} .rc-rec button{width:40px; height:40px; border:1px solid var(--line-strong); background:#fff; border-radius:8px; font-size:18px; cursor:pointer;}
+  #view-recepciones .rc-rec input{width:110px; font-size:18px; font-weight:800; text-align:center; min-height:40px; margin:0;}
+  .rc-dif{font-size:12.5px; font-weight:800; padding:3px 9px; border-radius:999px; background:#e8f5ec; color:#1e6b3a;} .rc-dif.falta{background:#fdecea; color:#b3261e;} .rc-dif.sobra{background:#fff3cd; color:#8a5a00;}
+  .rc-falta-foto{color:#a35f00; font-size:12.5px; font-weight:700; margin-top:4px;} .rc-chip-dif{display:inline-block; background:#fdecea; color:#b3261e; font-size:11px; font-weight:800; padding:1px 8px; border-radius:999px;}
+  .rc-acciones{position:sticky; bottom:0; background:var(--bg); padding:10px 0; border-top:1px solid var(--line); margin-top:10px;}
+  .rc-det-items td{vertical-align:middle;}
   .sd-pdf-fotos, .mm-pdf-fotos{display:inline-flex; align-items:center; gap:5px; font-size:13px; cursor:pointer;}
   .rfa-tabla{width:100%; border-collapse:collapse; font-size:13px;} .rfa-tabla th, .rfa-tabla td{padding:7px 8px; border-bottom:1px solid var(--line); text-align:left; vertical-align:middle;}
   .rfa-tabla .num{text-align:right; white-space:nowrap;} .rfa-tabla thead th[data-rfa-orden]{cursor:pointer; user-select:none; white-space:nowrap; background:#f1f4f8;} .rfa-tabla thead th[data-rfa-orden]:hover{background:#e6edf6;}
@@ -2061,6 +2074,7 @@
     <button data-tab="saldos" id="tab-saldos">Saldos</button>
     <button data-tab="kardex" id="tab-kardex">Kardex</button>
     <button data-tab="merma" id="tab-merma">Merma</button>
+    <button data-tab="recepciones" id="tab-recepciones">Recepciones</button>
   </div>
   <div class="drawer-group">
     <div class="drawer-group-title">Campañas</div>
@@ -3740,6 +3754,52 @@
   </div>
 </div>
 
+<!-- RECEPCIONES: se lee la guía de remisión (PDF), se crea una recepción por guía y se valida producto por producto -->
+<div class="view" id="view-recepciones">
+  <div class="subtabs">
+    <button class="active" id="rcsub-nueva">📥 Nueva recepción</button>
+    <button id="rcsub-lista">🗂 Registros</button>
+  </div>
+  <div id="rcsub-panel-nueva">
+    <div class="rf-ok" id="rc-ok" hidden></div>
+    <div class="panel" id="rc-carga">
+      <h3>📄 Guías de remisión</h3>
+      <p class="hint" style="margin-bottom:10px;">Elige una o varias guías en PDF (puedes escanearlas con el celular o descargarlas). Se lee la cabecera y el detalle, se guarda la guía (reducida si pesa mucho) y se crea una recepción <b>RC-…</b> por guía para validar lo que llegó.</p>
+      <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
+        <div class="field" style="margin:0; max-width:420px;"><label>Guías de remisión (PDF) — puedes elegir varias</label><input type="file" id="rc-pdf-input" accept="application/pdf,.pdf" multiple></div>
+        <button type="button" class="btn btn-primary" id="btn-rc-leer">📥 Leer guías y crear recepciones</button>
+      </div>
+      <div class="msg" id="rc-msg"></div>
+      <div id="rc-resultado"></div>
+    </div>
+    <div class="panel" id="rc-pendientes-box">
+      <h3>⏳ Recepciones por validar</h3>
+      <div id="rc-pendientes"></div>
+    </div>
+    <div class="panel" id="rc-form" hidden></div>
+  </div>
+  <div id="rcsub-panel-lista" style="display:none;">
+    <div class="panel" style="margin-bottom:12px;">
+      <div class="rf-filtros">
+        <select id="rc-estado-f" title="Estado"><option value="">Todas</option><option value="CONFIRMADA">✔ Confirmadas</option><option value="PENDIENTE">⏳ Por validar</option></select>
+        <select id="rc-dif-f" title="Diferencias"><option value="">Con y sin diferencias</option><option value="SI">⚠ Con diferencias</option><option value="NO">✓ Sin diferencias</option></select>
+        <select id="rc-usuario-f" title="Usuario"></select>
+        <label>Desde <input type="date" id="rc-desde"></label><label>Hasta <input type="date" id="rc-hasta"></label>
+        <input type="search" id="rc-q" placeholder="Buscar recepción, guía, código, descripción, origen…" autocomplete="off">
+      </div>
+      <div class="rfa-acciones"><button type="button" class="btn btn-primary btn-sm" id="btn-rc-excel">⬇ Exportar a Excel</button><button type="button" class="btn btn-primary btn-sm" id="btn-rc-pdf">⬇ PDF</button><button type="button" class="btn btn-ghost btn-sm" id="btn-rc-recargar">↻ Actualizar</button></div>
+      <div class="hint" id="rc-lista-res"></div>
+      <div id="rc-lista"></div>
+    </div>
+  </div>
+  <div class="rf-det-modal" id="rc-det-modal" hidden>
+    <div class="rf-det-caja" role="dialog" aria-modal="true" aria-label="Detalle de la recepción">
+      <div class="rf-det-barra"><button type="button" id="btn-rc-det-volver">← Volver a la lista</button><button type="button" id="btn-rc-det-cerrar" aria-label="Cerrar">✕</button></div>
+      <div class="panel" id="rc-detalle"></div>
+    </div>
+  </div>
+</div>
+
 <div class="aviso-version" id="aviso-version" hidden>🔄 Hay una versión nueva de la app (<b id="aviso-version-n"></b>). <button type="button" id="btn-aviso-version">Actualizar ahora</button><button type="button" id="btn-aviso-version-x" aria-label="Cerrar">✕</button></div>
 <!-- KARDEX -->
 <div class="view" id="view-kardex">
@@ -3825,6 +3885,7 @@
         <label class="us-extra" style="margin:0;"><input type="checkbox" id="us-rf-todos"> Ver los registros fotográficos de todos los usuarios <span class="hint">(en Registros, Reportes y Layout; si no, solo ve los suyos)</span></label>
         <label class="us-extra" style="margin:0;"><input type="checkbox" id="us-saldos-todos"> Ver los traslados de saldos de todos los usuarios <span class="hint">(si no, solo ve los suyos)</span></label>
         <label class="us-extra" style="margin:0;"><input type="checkbox" id="us-merma-todos"> Ver los traslados de merma de todos los usuarios <span class="hint">(si no, solo ve los suyos)</span></label>
+        <label class="us-extra" style="margin:0;"><input type="checkbox" id="us-recepciones-todas"> Ver las recepciones de todos los usuarios <span class="hint">(si no, solo ve las suyas)</span></label>
         <div class="us-rf-part" id="us-rf-tiendas-box"><span class="hint">Solo puede registrar en estos participantes (en «¿Dónde haces el inventario?» verá solo estos; si no marcas ninguno, ve todos):</span><div class="us-chips" id="us-rf-tiendas"></div></div>
         <div class="us-rf-part" id="us-rf-part-box"><span class="hint">Además de los suyos, ver los registros de estos participantes (de cualquier usuario):</span><div class="us-chips" id="us-rf-part"></div></div>
       </div>
@@ -3963,7 +4024,7 @@ async function revisarVersion(){
 // que no se escape ninguna) y todo borrado deja una marca en "borrados_<colección>". Así cada equipo guarda su copia y
 // después solo pide al servidor lo que cambió o se borró desde la última vez. Cada 7 días (o si la copia del equipo
 // está incompleta) se vuelve a leer todo, por seguridad.
-const SYNC_COLS = new Set(['productos', 'registros_foto', 'saldos_traslados', 'saldos_cajas', 'merma_traslados', 'merma_cajas']);
+const SYNC_COLS = new Set(['productos', 'registros_foto', 'saldos_traslados', 'saldos_cajas', 'merma_traslados', 'merma_cajas', 'recepciones']);
 // Margen: se vuelve a pedir lo que cambió en los últimos 5 minutos (las horas son del servidor; cubre escrituras simultáneas).
 // Sin ninguna marca todavía (datos de antes de este cambio) se usa la hora del equipo con 1 hora de margen.
 const SYNC_MARGEN = window.__syncMargen != null ? window.__syncMargen : 5 * 60e3, SYNC_SIN_MARCA = 3600e3, SYNC_COMPLETO_CADA = 86400e3;   // lectura completa: 1 vez al día por equipo (por si algún equipo con una versión antigua escribió sin marca)
@@ -4071,8 +4132,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v274';
-const APP_UPDATED = '17/11/2026 15:00';
+const APP_VERSION = 'v275';
+const APP_UPDATED = '17/11/2026 18:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4332,6 +4393,7 @@ async function loadPermisos(user){
   if($('view-regfoto').classList.contains('active') && $('rfsub-panel-nuevo').style.display !== 'none') rfPrepararForm();
   if($('view-saldos').classList.contains('active')) sdAlEntrar();
   if($('view-merma').classList.contains('active')) mmAlEntrar();
+  if($('view-recepciones').classList.contains('active')) rcAlEntrar();
   $('login-screen').style.display='none';
   $('app-shell').style.display='block';
   if(!listenersStarted){ listenersStarted = true; startListeners(); }
@@ -4340,7 +4402,7 @@ async function loadPermisos(user){
 }
 
 // Permisos: clave en usuarios/{correo}.permisos de cada opción del menú.
-const PERM_TAB_CLAVE = { diseno:'diseno', mov:'movimientos', pallets:'pallets', productos:'productos', inventario:'inventario', toma_inventario:'toma_inventario', regfoto:'reg_fotos', saldos:'saldos',
+const PERM_TAB_CLAVE = { diseno:'diseno', mov:'movimientos', pallets:'pallets', productos:'productos', inventario:'inventario', toma_inventario:'toma_inventario', regfoto:'reg_fotos', saldos:'saldos', recepciones:'recepciones',
   kardex:'kardex', merma:'merma', retiros:'retiros', campanas:'campanas', rotulos:'rotulos', ventaonline:'venta_online', reportes:'reportes', bitacora:'bitacora', asistente:'asistente' };
 // Opciones con secciones que se permiten una por una: permisos.subs[opción] = ids de las
 // secciones permitidas (sin lista = todas, como antes).
@@ -4628,7 +4690,7 @@ function tipoLabel(tipo){
     reg_foto_creado:'Registro fotográfico creado', reg_foto_eliminado:'Registro fotográfico eliminado', reg_foto_iniciado:'Registro fotográfico iniciado (borrador)',
     reg_foto_confirmado:'Registro fotográfico confirmado', reg_foto_descartado:'Borrador de registro fotográfico descartado', reg_foto_exportado:'Registro fotográfico exportado',
     reg_foto_reabierto:'Registro fotográfico abierto para modificar', reg_foto_modificado:'Registro fotográfico modificado', reg_foto_modificacion_cancelada:'Modificación de registro fotográfico cancelada', reg_foto_apto_ajuste:'Registro fotográfico: apto para ajuste', reg_foto_posicion_cambiada:'Registro fotográfico: posición cambiada', reg_foto_layout_marca:'Registro fotográfico: posición bloqueada / merma / por inventariar', reg_foto_fusionado:'Registros fotográficos fusionados', reg_foto_sku_editado:'Registro fotográfico: código / descripción editados', reg_foto_costos:'Registro fotográfico: costos asignados', reg_foto_cantidades_editadas:'Registro fotográfico: cantidades editadas por el administrador (sigue confirmado)', saldos_iniciado:'Saldos: traslado iniciado', saldos_caja_creada:'Saldos: caja creada', saldos_caja_quitada:'Saldos: caja quitada', saldos_caja_cerrada:'Saldos: caja cerrada', saldos_caja_abierta:'Saldos: caja abierta de nuevo', saldos_cerrado:'Saldos: traslado cerrado', saldos_reabierto:'Saldos: traslado reabierto', saldos_eliminado:'Saldos: traslado eliminado', saldos_exportado:'Saldos: exportado a Excel', saldos_rotulos:'Saldos: rótulos impresos', saldos_guia_adjuntada:'Saldos: guía de remisión adjuntada', saldos_guia_quitada:'Saldos: guía de remisión quitada',
-    merma_iniciado:'Merma: traslado iniciado', merma_caja_creada:'Merma: caja creada', merma_caja_quitada:'Merma: caja quitada', merma_caja_cerrada:'Merma: caja cerrada', merma_caja_abierta:'Merma: caja abierta de nuevo', merma_cerrado:'Merma: traslado cerrado', merma_reabierto:'Merma: traslado reabierto', merma_eliminado:'Merma: traslado eliminado', merma_exportado:'Merma: exportado a Excel', merma_rotulos:'Merma: rótulos impresos', merma_guia_adjuntada:'Merma: guía de remisión adjuntada', merma_guia_quitada:'Merma: guía de remisión quitada', merma_datos_anteriores_borrados:'Merma: datos del módulo anterior borrados',
+    merma_iniciado:'Merma: traslado iniciado', merma_caja_creada:'Merma: caja creada', merma_caja_quitada:'Merma: caja quitada', merma_caja_cerrada:'Merma: caja cerrada', merma_caja_abierta:'Merma: caja abierta de nuevo', merma_cerrado:'Merma: traslado cerrado', merma_reabierto:'Merma: traslado reabierto', merma_eliminado:'Merma: traslado eliminado', merma_exportado:'Merma: exportado a Excel', merma_rotulos:'Merma: rótulos impresos', merma_guia_adjuntada:'Merma: guía de remisión adjuntada', merma_guia_quitada:'Merma: guía de remisión quitada', merma_datos_anteriores_borrados:'Merma: datos del módulo anterior borrados', recepcion_creada:'Recepción creada (guía leída)', recepcion_confirmada:'Recepción confirmada', recepcion_eliminada:'Recepción eliminada', recepcion_exportada:'Recepciones exportadas (PDF / Excel)',
     ingreso:'Entrada de pallet', movimiento:'Movimiento', retiro:'Salida (pallet completo)',
     retiro_campana:'Salida (campaña)', retiro_campana_revertido:'↺ Retiro de campaña revertido', producto_agregado:'Adición de producto', transferencia:'Transferencia entre pallets',
     bloqueo:'Bloqueo de posición', desbloqueo:'Desbloqueo de posición',
@@ -4692,7 +4754,7 @@ function onErr(err){ $('status-text').textContent='Error de conexión'; $('dot')
 // fotográfico y/o Saldos (los operarios en el celular) no descarga pallets, validadores ni retiros de campaña.
 // Cualquier otra opción del menú (o admin) escucha todo, como siempre.
 // Rótulos PDF no usa datos en vivo (a los usuarios antiguos se les permite por defecto).
-const ESCUCHAS_POR_OPCION = { regfoto: ['layout', 'productos', 'participantes'], saldos: ['productos', 'participantes'], merma: ['productos', 'participantes'], rotulos: [] };
+const ESCUCHAS_POR_OPCION = { regfoto: ['layout', 'productos', 'participantes'], saldos: ['productos', 'participantes'], merma: ['productos', 'participantes'], recepciones: [], rotulos: [] };
 function escuchasNecesarias(){
   const tabs = Object.keys(PERM_TAB_CLAVE).filter(t=> permTabPermitida(currentPermisos || {}, t));
   if(currentPermisos.admin || !tabs.length || tabs.some(t=> !ESCUCHAS_POR_OPCION[t])) return null;   // null = todas
@@ -20716,6 +20778,422 @@ $('mm-det-modal').addEventListener('click', e=>{
 });
 window.addEventListener('keydown', e=>{ if(e.key === 'Escape' && !$('mm-det-modal').hidden && $('rf-lightbox').hidden && $('rf-aviso').hidden && $('cam-modal').hidden) mmCerrarDetalle(); }, true);
 
+// -------- Recepciones: guía de remisión (PDF) → recepción RC-00001 → validar cantidades con foto → confirmar --------
+// Se lee la guía con el mismo lector de Cargar Guía (cabecera y detalle) y se guarda el PDF (reducido si pesa).
+// Cada guía crea una recepción POR VALIDAR: por producto se escribe la cantidad recibida (viene llena con la de la
+// guía) y se toma al menos una foto (no hace falta si se recibió 0). Al confirmar queda quién y cuándo.
+// Cada usuario ve sus recepciones; admin o "recepciones_todas" ven todas (las reglas de Firestore hacen lo mismo).
+// La misma guía no se carga dos veces: recepciones_guias/{N° de guía} guarda a qué recepción pertenece.
+const recepcionesRef = db.collection('recepciones'), recepcionesGuiasRef = db.collection('recepciones_guias');
+let rcLista = [], rcLeidos = false, rcSel = null, rcActual = null, rcFotoN = 0, rcGuardarTimer = null, rcGuardando = Promise.resolve();
+const rcVeTodas = ()=> !!(currentPermisos.admin || currentPermisos.recepciones_todas);
+const rcPuedeEliminar = ()=> !!(currentPermisos.admin || currentPermisos.eliminar);
+const rcFechaISO = t=>{ const m = String(t || '').match(/(\d{2})\/(\d{2})\/(\d{4})/); return m ? `${m[3]}-${m[2]}-${m[1]}` : ''; };
+const rcFechaTxt = f=> f ? String(f).split('-').reverse().join('/') : '';
+const rcHoy = ()=>{ const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const rcNum = v=> v === '' || v === null || v === undefined ? NaN : Number(v);
+const rcDif = it=> (Number(it.cantidad_recibida) || 0) - (Number(it.cantidad_guia) || 0);
+const rcDifTxt = d=> d === 0 ? '✓ Completo' : d < 0 ? `⚠ Faltan ${anFmt(-d)}` : `⚠ Sobran ${anFmt(d)}`;
+const rcDifCls = d=> d === 0 ? 'ok' : d < 0 ? 'falta' : 'sobra';
+function rcTotales(items){
+  return { cant_items: items.length, unidades_guia: items.reduce((s, it)=> s + (Number(it.cantidad_guia) || 0), 0),
+    unidades_recibidas: items.reduce((s, it)=> s + (Number(it.cantidad_recibida) || 0), 0), con_diferencia: items.filter(it=> rcDif(it) !== 0).length };
+}
+function setRcSubtab(name){
+  rcCerrarDetalle();
+  ['nueva', 'lista'].forEach(n=>{ $('rcsub-' + n).classList.toggle('active', n === name); $('rcsub-panel-' + n).style.display = n === name ? 'block' : 'none'; });
+  if(name === 'lista') rcCargarLista(); else rcPreparar();
+}
+$('rcsub-nueva').addEventListener('click', ()=> setRcSubtab('nueva'));
+$('rcsub-lista').addEventListener('click', ()=> setRcSubtab('lista'));
+$('tab-recepciones').addEventListener('click', rcAlEntrar);
+function rcAlEntrar(){ if($('rcsub-panel-nueva').style.display !== 'none') rcPreparar(); else rcCargarLista(); }
+function rcPreparar(){ if(rcActual) renderRcForm(); else rcListarPendientes(); }
+
+// ---- Cabecera de la guía: lo que no lee parseGuiaPDF (fecha de emisión, remitente, motivo, destinatario, transporte…) ----
+function rcCabeceraExtra(paginas){
+  const L = paginas.flat(), tx = it=> txtItem(it).replace(/\s+/g, ' ').trim(), etq = t=> /:\s*$/.test(t);
+  // La etiqueta puede venir en un solo texto o partida en varios ("Fecha" · "Emisión:"): se prueban hasta 4 seguidos.
+  const campo = (re, sigueAbajo)=>{
+    for(let li = 0; li < L.length; li++){
+      const g = L[li].items; let a = -1, n = 0;
+      for(let i = 0; i < g.length && a < 0; i++) for(let k = 1; k <= 4 && i + k <= g.length; k++){ if(re.test(g.slice(i, i + k).map(tx).join(' '))){ a = i; n = k; break; } }
+      if(a < 0) continue;
+      const v = []; let x0 = null;
+      for(const it of g.slice(a + n)){ const t = tx(it); if(etq(t)) break; if(t){ if(x0 === null) x0 = it.x; v.push(t); } }
+      // Si el valor vino pegado a la etiqueta de la otra columna ("… de la misma Modalidad de Traslado: …"), se corta ahí.
+      if(v.length){ const unido = v.join(' ').replace(/\s+[A-ZÁÉÍÓÚ][A-Za-zÁÉÍÓÚáéíóúñÑ.\/ ]{2,40}:(\s.*)?$/, ''); v.length = 0; if(unido) v.push(unido); }
+      if(sigueAbajo && x0 !== null) for(const l of L.slice(li + 1, li + 3)){
+        const izq = l.items.filter(it=> it.x < x0 - 6), col = l.items.filter(it=> Math.abs(it.x - x0) < 8);
+        if(izq.length || !col.length) break;
+        v.push(col.map(tx).join(' '));
+      }
+      if(v.length) return v.join(' ').trim();
+    }
+    // Etiqueta pegada dentro de otro texto ("… de la misma Modalidad de Traslado: Transporte privado"): se busca en la línea entera.
+    const dentro = new RegExp('(?:^|\\s)(?:' + re.source.replace(/^\^|\$$/g, '') + ')\\s+(.+?)(?=\\s+[A-ZÁÉÍÓÚ][A-Za-zÁÉÍÓÚáéíóúñÑ.\\/ ]{2,40}:(?:\\s|$)|$)', re.flags);
+    for(const l of L){ const m = l.items.map(tx).join(' ').match(dentro); if(m && m[1]) return m[1].trim(); }
+    return '';
+  };
+  const iObs = L.findIndex(l=> l.items.length === 1 && /^Observaciones:?$/i.test(tx(l.items[0])));
+  return {
+    fecha_emision: rcFechaISO(campo(/^Fecha\s*(?:de\s*)?Emisi[oó]n:?$/i)),
+    remitente: campo(/^Nombre\s*\/\s*Raz[oó]n\s*Social:?$/i), ruc_remitente: (campo(/^R\.?U\.?C\.?:$/i).match(/\d{11}/) || [''])[0],
+    motivo: campo(/^Motivo\s*de\s*Traslado:?$/i, true), modalidad: campo(/^Modalidad\s*de\s*Traslado:?$/i), peso: campo(/^Peso(?:\s*Bruto)?:?$/i),
+    destinatario: campo(/^Raz[oó]n\s*Social$/i), ruc_destinatario: (campo(/^RUC\s*Destinatario:?$/i).match(/\d{11}/) || [''])[0],
+    placa: campo(/^Placa:?$/i), conductor: campo(/^Nombres\s*y\s*Apellidos:?$/i),
+    observaciones: iObs >= 0 && L[iObs + 1] ? L[iObs + 1].items.map(tx).join(' ') : ''
+  };
+}
+
+// ---- Leer guías y crear las recepciones ----
+async function rcLeerGuias(){
+  const files = [...$('rc-pdf-input').files];
+  if(!files.length){ showMsg('rc-msg', 'err', 'Elige al menos una guía de remisión en PDF.'); return; }
+  const noPdf = files.find(f=> !/\.pdf$/i.test(f.name) && f.type !== 'application/pdf');
+  if(noPdf){ showMsg('rc-msg', 'err', `"${noPdf.name}" no es un PDF.`); return; }
+  $('btn-rc-leer').disabled = true; $('rc-resultado').innerHTML = '';
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const proc = relojProceso('rc-msg'), res = [], vistos = new Set();
+  try{
+    for(const [i, file] of files.entries()){
+      const pre = files.length > 1 ? `${i + 1} de ${files.length} (${file.name}): ` : `${file.name}: `;
+      try{
+        proc.paso(pre + 'leyendo la guía…');
+        const g = parseGuiaPDF(await extractGuiaLineGroups(await file.arrayBuffer()));
+        const x = rcCabeceraExtra(await extractGuiaLineGroups(await file.arrayBuffer()));
+        if(!g.nro_guia) throw new Error('no se encontró el N° de guía');
+        if(!(g.items || []).length) throw new Error('no se encontraron productos en la guía');
+        if(vistos.has(g.nro_guia)) throw new Error(`la guía ${g.nro_guia} está repetida en esta carga`);
+        vistos.add(g.nro_guia);
+        const ya = await recepcionesGuiasRef.doc(g.nro_guia).get();
+        if(ya.exists) throw new Error(`la guía ${g.nro_guia} ya se cargó en ${ya.data().recepcion}`);
+        const id = await sdCorrelativo('recepcion', 'RC'), ahora = new Date().toISOString();
+        proc.paso(pre + 'guardando el PDF…');
+        const red = await voReducir(new File([file], file.name, { type: 'application/pdf' }), t=> proc.paso(pre + t));
+        const ref = storage.ref().child(`recepciones/${id}/guia_${Date.now()}_${vchNombreArchivo(file.name)}`);
+        await ref.put(red, red.size < file.size ? vchMetaPdf(file.size) : { contentType:'application/pdf', cacheControl:'private, max-age=31536000' });
+        const guia_pdf = { url: await ref.getDownloadURL(), path: ref.fullPath, nombre: file.name, tam: red.size, tam_original: file.size };
+        const items = g.items.map((it, k)=> ({ item: it.item || k + 1, codigo: String(it.codigo || '').trim().toUpperCase(), descripcion: String(it.descripcion || '').trim(), unidad: it.unidad || '',
+          cantidad_guia: Number(it.cantidad) || 0, cantidad_recibida: Number(it.cantidad) || 0, fotos: [] }));
+        const doc = Object.assign({ correlativo: id, nro_guia: g.nro_guia, estado: 'PENDIENTE', fecha_traslado: rcFechaISO(g.fecha_traslado), punto_partida: g.punto_partida || '', punto_llegada: g.punto_llegada || '',
+          bultos: g.bultos == null ? null : g.bultos }, x, { items }, rcTotales(items),
+          { codigos: items.map(it=> it.codigo), guia_pdf, usuario: currentUserAlias, usuario_email: currentUserEmail, fecha: rcHoy(), fecha_creacion: ahora, actualizado_en: ahora });
+        try{
+          await db.runTransaction(async tx=>{
+            const gref = recepcionesGuiasRef.doc(g.nro_guia), s = await tx.get(gref);
+            if(s.exists) throw new Error(`la guía ${g.nro_guia} ya se cargó en ${s.data().recepcion}`);
+            tx.set(gref, { recepcion: id, usuario: currentUserAlias, usuario_email: currentUserEmail, en: ahora });
+            tx.set(recepcionesRef.doc(id), doc);
+          });
+        }catch(err){ ref.delete().catch(()=>{}); throw err; }
+        await logAccion('recepcion_creada', { detalle: `${id} · guía ${g.nro_guia} · ${items.length} producto(s), ${doc.unidades_guia} und` });
+        res.push({ ok: true, id, nro: g.nro_guia, n: items.length, und: doc.unidades_guia, archivo: file.name });
+      }catch(err){ console.warn('Guía no cargada:', file.name, err); res.push({ ok: false, archivo: file.name, error: err.message || String(err) }); }
+    }
+  }finally{ proc.fin(); $('btn-rc-leer').disabled = false; }
+  const ok = res.filter(r=> r.ok).length;
+  showMsg('rc-msg', ok ? 'ok' : 'err', `${ok} recepción(es) creada(s)${res.length - ok ? ` · ${res.length - ok} guía(s) con problema` : ''}.`);
+  $('rc-resultado').innerHTML = res.map(r=> r.ok ? `<div class="rc-res ok">✓ <b>${esc(r.id)}</b> · guía ${esc(r.nro)} · ${esc(r.n)} producto(s) · ${esc(anFmt(r.und))} und <button type="button" class="btn btn-primary btn-sm" data-rc-validar="${esc(r.id)}">▶ Validar</button></div>`
+    : `<div class="rc-res err">✗ ${esc(r.archivo)}: ${esc(r.error)}</div>`).join('');
+  $('rc-pdf-input').value = ''; rcLeidos = false; rcListarPendientes();
+}
+$('btn-rc-leer').addEventListener('click', rcLeerGuias);
+
+// ---- Pendientes (por validar) del usuario ----
+async function rcListarPendientes(){
+  const caja = $('rc-pendientes'); if(!caja) return;
+  try{
+    const q = rcVeTodas() ? recepcionesRef.where('estado', '==', 'PENDIENTE') : recepcionesRef.where('usuario_email', '==', currentUserEmail);
+    const L = (await q.get()).docs.map(d=> Object.assign({ id: d.id }, d.data())).filter(r=> r.estado === 'PENDIENTE').sort((a, b)=> b.id.localeCompare(a.id));
+    caja.innerHTML = L.length ? L.map(r=> `<div class="rc-res">⏳ <b>${esc(r.id)}</b> · guía ${esc(r.nro_guia)} · ${esc(r.cant_items || 0)} producto(s) · ${esc(anFmt(r.unidades_guia || 0))} und${rcVeTodas() && r.usuario_email !== currentUserEmail ? ` · 👤 ${esc(r.usuario || '')}` : ''} <button type="button" class="btn btn-primary btn-sm" data-rc-validar="${esc(r.id)}">▶ Validar</button></div>`).join('')
+      : '<p class="hint">No hay recepciones por validar. Carga una guía arriba.</p>';
+  }catch(err){ console.error(err); caja.innerHTML = `<p class="hint">⚠ No se pudieron leer las pendientes: ${esc(err.message)}</p>`; }
+}
+
+// ---- Validar una recepción: cantidad recibida y fotos por producto ----
+async function rcValidar(id){
+  try{
+    const s = await recepcionesRef.doc(id).get(); if(!s.exists){ showToast('La recepción ya no existe.', 'err'); return; }
+    const d = s.data(); if(d.estado !== 'PENDIENTE'){ showToast(`${id} ya está confirmada.`, 'err'); return; }
+    rcActual = Object.assign({ id }, d, { items: (d.items || []).map(it=> Object.assign({}, it, { fotos: (it.fotos || []).map(f=> Object.assign({ id: 'rcf' + (++rcFotoN), remoto: f.url, url: f.url }, f)) })) });
+    if($('rcsub-panel-nueva').style.display === 'none') setRcSubtab('nueva');
+    $('rc-ok').hidden = true; renderRcForm(); $('rc-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }catch(err){ console.error(err); showToast('No se pudo abrir la recepción: ' + err.message, 'err'); }
+}
+function rcDatosHtml(r){
+  const dato = (t, v)=> v ? `<div><span>${t}</span><b>${esc(v)}</b></div>` : '';
+  return `<div class="rf-det-datos">${dato('Guía de remisión', r.nro_guia)}${dato('Fecha de emisión', rcFechaTxt(r.fecha_emision))}${dato('Fecha de traslado', rcFechaTxt(r.fecha_traslado))}${dato('Remitente', [r.remitente, r.ruc_remitente && 'RUC ' + r.ruc_remitente].filter(Boolean).join(' · '))}` +
+    `${dato('Punto de partida', r.punto_partida)}${dato('Punto de llegada', r.punto_llegada)}${dato('Destinatario', [r.destinatario, r.ruc_destinatario && 'RUC ' + r.ruc_destinatario].filter(Boolean).join(' · '))}${dato('Motivo', r.motivo)}` +
+    `${dato('Modalidad', r.modalidad)}${dato('Bultos', r.bultos != null ? String(r.bultos) : '')}${dato('Peso', r.peso)}${dato('Vehículo / conductor', [r.placa, r.conductor].filter(Boolean).join(' · '))}${dato('Observaciones', r.observaciones)}</div>`;
+}
+function renderRcForm(){
+  const r = rcActual, box = $('rc-form'); if(!r){ box.hidden = true; return; }
+  box.hidden = false; $('rc-carga').hidden = true; $('rc-pendientes-box').hidden = true;
+  const t = rcTotales(r.items);
+  box.innerHTML = `<div class="rc-form-cab"><div><span class="hint">Recepción <span class="sd-est ABIERTO">⏳ POR VALIDAR</span></span><h2>${esc(r.id)}</h2></div>` +
+    `<div class="rf-det-acc">${r.guia_pdf ? `<a class="btn btn-ghost btn-sm" href="${esc(r.guia_pdf.url)}" target="_blank" rel="noopener">📄 Ver guía</a>` : ''}<button type="button" class="btn btn-ghost btn-sm" data-rc-volver>← Volver</button></div></div>` +
+    rcDatosHtml(r) +
+    `<p class="hint" style="margin:10px 0 6px;">Escribe lo que <b>llegó</b> de cada producto (viene la cantidad de la guía) y toma al menos una foto. Si no llegó nada, pon 0 (no pide foto).</p>` +
+    r.items.map((it, i)=>{
+      const dif = rcDif(it), n = rcNum(it.cantidad_recibida), faltaFoto = n > 0 && !it.fotos.length;
+      return `<div class="rc-item ${faltaFoto ? 'falta' : ''}" data-rc-i="${i}"><div class="rc-it-cab"><span class="rc-it-n">${esc(i + 1)}</span><b>${esc(it.codigo)}</b><span>${esc(it.descripcion)}</span><span class="hint">${esc(it.unidad)}</span></div>` +
+        `<div class="rc-it-cant"><span class="rc-guia">Guía: <b>${esc(anFmt(it.cantidad_guia))}</b></span><span class="rc-rec">Recibido <button type="button" data-rc-paso="-1">−</button><input type="number" min="0" step="any" inputmode="decimal" class="rc-cant" data-rc-cant="${i}" value="${esc(it.cantidad_recibida)}"><button type="button" data-rc-paso="1">+</button></span>` +
+        `<span class="rc-dif ${rcDifCls(dif)}">${Number.isFinite(n) ? rcDifTxt(dif) : 'Escribe la cantidad'}</span></div>` +
+        `<div class="rf-fotos">${it.fotos.map((f, k)=> `<div class="rf-thumb" data-rc-fid="${esc(f.id)}"><img src="${esc(f.url)}" alt="" data-rc-ver="${i}:${k}"><button type="button" class="rf-quitar" data-rc-quitar-foto="${i}:${k}" title="Quitar foto">✕</button></div>`).join('')}` +
+        `<button type="button" class="rf-add-foto" data-rc-foto="${i}"><span>📷</span>${it.fotos.length ? 'Otra foto' : 'Tomar foto'}</button></div>` +
+        (faltaFoto ? '<div class="rc-falta-foto">📷 Falta la foto de este producto</div>' : '') + `</div>`;
+    }).join('') +
+    `<div class="rf-acciones rc-acciones"><span class="hint" id="rc-resumen">${esc(t.cant_items)} producto(s) · guía ${esc(anFmt(t.unidades_guia))} und · recibido <b>${esc(anFmt(t.unidades_recibidas))}</b> und${t.con_diferencia ? ` · <b class="rc-dif falta">⚠ ${esc(t.con_diferencia)} con diferencia</b>` : ' · ✓ sin diferencias'} <span id="rc-nube"></span></span>` +
+    `<div style="display:flex; gap:8px; flex-wrap:wrap;"><button type="button" class="btn btn-ghost btn-sm" data-rc-descartar style="color:#8A332A;">🗑 Descartar recepción</button><button type="button" class="btn btn-primary" data-rc-confirmar>✔ Confirmar recepción</button></div></div>` +
+    `<div class="msg" id="rc-form-msg"></div>`;
+}
+function rcVolverAlInicio(){ rcActual = null; $('rc-form').hidden = true; $('rc-form').innerHTML = ''; $('rc-carga').hidden = false; $('rc-pendientes-box').hidden = false; rcListarPendientes(); }
+// Autoguardado de lo validado (cantidades y fotos) mientras sigue POR VALIDAR.
+const rcItemsGuardar = items=> items.map(it=> ({ item: it.item, codigo: it.codigo, descripcion: it.descripcion, unidad: it.unidad, cantidad_guia: Number(it.cantidad_guia) || 0,
+  cantidad_recibida: Number.isFinite(rcNum(it.cantidad_recibida)) ? Number(it.cantidad_recibida) : null, fotos: it.fotos.filter(f=> f.path).map(f=> ({ url: f.remoto || f.url, path: f.path, tam: f.tam || 0 })) }));
+function rcNube(t){ const el = $('rc-nube'); if(el) el.textContent = t; }
+function rcAutoguardar(){ if(!rcActual) return; rcNube('· ✎ cambios por guardar…'); clearTimeout(rcGuardarTimer); rcGuardarTimer = setTimeout(rcGuardarAhora, 700); }
+function rcGuardarAhora(){
+  clearTimeout(rcGuardarTimer); if(!rcActual) return rcGuardando;
+  const r = rcActual, items = rcItemsGuardar(r.items);
+  rcGuardando = rcGuardando.then(()=> recepcionesRef.doc(r.id).update(Object.assign({ items, actualizado_en: new Date().toISOString() }, rcTotales(items))))
+    .then(()=> rcNube('· ☁ guardado ✓'), err=>{ console.error(err); rcNube('· ⚠ no se pudo guardar (se reintenta al confirmar)'); });
+  return rcGuardando;
+}
+function rcCamara(i){
+  const r = rcActual, it = r && r.items[i]; if(!it) return;
+  abrirCamara(`${r.id} · fotos de ${it.codigo}`, 20 - it.fotos.length, f=>{
+    const nf = Object.assign(f, { id: 'rcf' + (++rcFotoN), subiendo: false, error: false }); it.fotos.push(nf); renderRcForm(); rcSubirFoto(nf, it);
+  });
+}
+async function rcSubirFoto(f, it){
+  f.subiendo = true; f.error = false; rcMarcarFoto(f);
+  try{
+    const ref = storage.ref().child(`recepciones/${rcActual.id}/${vchNombreArchivo(it.codigo || 'item')}_${Date.now()}.jpg`);
+    await ref.put(f.blob, { contentType:'image/jpeg', cacheControl:'private, max-age=31536000' });
+    f.remoto = await ref.getDownloadURL(); f.path = ref.fullPath; f.tam = f.blob.size;
+  }catch(err){ console.error(err); f.error = true; showToast('No se pudo subir una foto. Quítala y vuelve a tomarla.', 'err'); }
+  f.subiendo = false; rcMarcarFoto(f); rcAutoguardar();
+}
+function rcMarcarFoto(f){ const el = document.querySelector(`#rc-form [data-rc-fid="${f.id}"]`); if(el){ el.classList.toggle('subiendo', !!f.subiendo); el.classList.toggle('error', !!f.error); } }
+async function rcConfirmar(){
+  const r = rcActual; if(!r) return;
+  const errores = [];
+  r.items.forEach((it, i)=>{
+    const n = rcNum(it.cantidad_recibida);
+    if(!Number.isFinite(n) || n < 0) errores.push(`${i + 1}. ${it.codigo}: escribe la cantidad recibida (0 si no llegó)`);
+    else if(n > 0 && !it.fotos.length) errores.push(`${i + 1}. ${it.codigo}: falta la foto`);
+  });
+  if(errores.length){ showMsg('rc-form-msg', 'err', 'No se puede confirmar todavía: ' + errores.join(' · ')); rfAviso('Todavía no se puede confirmar', errores.join('\n')); return; }
+  if(r.items.some(it=> it.fotos.some(f=> f.subiendo))){ rfAviso('Espera un momento', 'Todavía se están subiendo fotos. Vuelve a presionar Confirmar en unos segundos.'); return; }
+  if(r.items.some(it=> it.fotos.some(f=> f.error || !f.path))){ rfAviso('Hay fotos sin subir', 'Las fotos marcadas en rojo no se subieron. Quítalas y vuelve a tomarlas.'); return; }
+  const t = rcTotales(r.items);
+  if(!confirm(`¿Confirmar la recepción ${r.id} (guía ${r.nro_guia})?\n\n${t.cant_items} producto(s) · guía ${anFmt(t.unidades_guia)} und · recibido ${anFmt(t.unidades_recibidas)} und${t.con_diferencia ? `\n⚠ ${t.con_diferencia} producto(s) con diferencia` : '\n✓ Sin diferencias'}`)) return;
+  const btn = document.querySelector('[data-rc-confirmar]'); if(btn) btn.disabled = true;
+  try{
+    clearTimeout(rcGuardarTimer); await rcGuardando;
+    const items = rcItemsGuardar(r.items), ahora = new Date().toISOString();
+    await db.runTransaction(async tx=>{
+      const ref = recepcionesRef.doc(r.id), s = await tx.get(ref);
+      if(!s.exists) throw new Error('la recepción ya no existe');
+      if(s.data().estado !== 'PENDIENTE') throw new Error('ya estaba confirmada');
+      tx.update(ref, Object.assign({ items, estado: 'CONFIRMADA', confirmado_por: currentUserAlias, confirmado_por_email: currentUserEmail, confirmado_en: ahora, actualizado_en: ahora }, rcTotales(items)));
+    });
+    await logAccion('recepcion_confirmada', { detalle: `${r.id} · guía ${r.nro_guia} · ${t.cant_items} producto(s) · guía ${t.unidades_guia} und, recibido ${t.unidades_recibidas} und${t.con_diferencia ? ` · ${t.con_diferencia} con diferencia` : ''}` });
+    const id = r.id; rcVolverAlInicio(); rcLeidos = false;
+    $('rc-ok').innerHTML = `✅ <b>${esc(id)}</b> confirmada · guía ${esc(r.nro_guia)} · recibido ${esc(anFmt(t.unidades_recibidas))} de ${esc(anFmt(t.unidades_guia))} und${t.con_diferencia ? ` · ⚠ ${esc(t.con_diferencia)} con diferencia` : ''} <button type="button" data-rc-ver-reg="${esc(id)}">🗂 Ver en Registros</button>`;
+    $('rc-ok').hidden = false; window.scrollTo({ top: 0, behavior: 'smooth' });
+  }catch(err){ console.error(err); showMsg('rc-form-msg', 'err', 'No se pudo confirmar: ' + err.message); if(btn) btn.disabled = false; }
+}
+async function rcBorrar(r){
+  const paths = [r.guia_pdf && r.guia_pdf.path, ...(r.items || []).flatMap(it=> (it.fotos || []).map(f=> f.path))].filter(Boolean);
+  const batch = db.batch(); batch.delete(recepcionesRef.doc(r.id)); if(r.nro_guia) batch.delete(recepcionesGuiasRef.doc(r.nro_guia)); await batch.commit();
+  await Promise.allSettled(paths.map(p=> storage.ref().child(p).delete()));
+  return paths.length;
+}
+async function rcDescartar(){
+  const r = rcActual; if(!r) return;
+  if(!confirm(`¿Descartar la recepción ${r.id} (guía ${r.nro_guia})? Se borran la guía y las fotos; podrás volver a cargar la guía.`)) return;
+  try{ clearTimeout(rcGuardarTimer); await rcGuardando; const n = await rcBorrar(r); await logAccion('recepcion_eliminada', { detalle: `${r.id} · guía ${r.nro_guia} descartada (por validar) · ${n} archivo(s)` });
+    rcVolverAlInicio(); rcLeidos = false; showToast(`${r.id} descartada.`, 'ok'); }
+  catch(err){ console.error(err); showToast('No se pudo descartar: ' + err.message, 'err'); }
+}
+$('rcsub-panel-nueva').addEventListener('click', e=>{
+  const v = e.target.closest('[data-rc-validar]'); if(v){ rcValidar(v.dataset.rcValidar); return; }
+  const vr = e.target.closest('[data-rc-ver-reg]'); if(vr){ rcAbrirPendiente = vr.dataset.rcVerReg; setRcSubtab('lista'); return; }
+  if(e.target.closest('[data-rc-volver]')){ clearTimeout(rcGuardarTimer); rcGuardarAhora(); rcVolverAlInicio(); return; }
+  if(e.target.closest('[data-rc-confirmar]')){ rcConfirmar(); return; }
+  if(e.target.closest('[data-rc-descartar]')){ rcDescartar(); return; }
+  const fo = e.target.closest('[data-rc-foto]'); if(fo){ rcCamara(Number(fo.dataset.rcFoto)); return; }
+  const qf = e.target.closest('[data-rc-quitar-foto]');
+  if(qf && rcActual){ const [i, k] = qf.dataset.rcQuitarFoto.split(':').map(Number), it = rcActual.items[i], f = it.fotos[k];
+    if(f && f.path) storage.ref().child(f.path).delete().catch(()=>{}); it.fotos.splice(k, 1); renderRcForm(); rcAutoguardar(); return; }
+  const ver = e.target.closest('[data-rc-ver]');
+  if(ver && rcActual){ const [i, k] = ver.dataset.rcVer.split(':').map(Number), it = rcActual.items[i]; rfVerFoto(it.fotos[k].url, `${it.codigo} · ${it.descripcion}`, it.fotos.map(f=> ({ url: f.url, pie: `${it.codigo} · ${it.descripcion}` }))); return; }
+  const p = e.target.closest('[data-rc-paso]');
+  if(p && rcActual){ const inp = p.parentElement.querySelector('.rc-cant'), n = Math.max(0, (Number(inp.value) || 0) + Number(p.dataset.rcPaso)); inp.value = n; rcCantidad(inp); }
+});
+function rcCantidad(inp){
+  const i = Number(inp.dataset.rcCant), it = rcActual && rcActual.items[i]; if(!it) return;
+  it.cantidad_recibida = inp.value === '' ? '' : Number(inp.value);
+  const cab = inp.closest('.rc-item'), dif = rcDif(it), n = rcNum(it.cantidad_recibida), dEl = cab.querySelector('.rc-dif');
+  dEl.className = 'rc-dif ' + rcDifCls(dif); dEl.textContent = Number.isFinite(n) ? rcDifTxt(dif) : 'Escribe la cantidad';
+  const falta = n > 0 && !it.fotos.length; cab.classList.toggle('falta', falta);
+  let av = cab.querySelector('.rc-falta-foto'); if(falta && !av) cab.insertAdjacentHTML('beforeend', '<div class="rc-falta-foto">📷 Falta la foto de este producto</div>'); else if(!falta && av) av.remove();
+  const t = rcTotales(rcActual.items), res = $('rc-resumen');
+  if(res) res.innerHTML = `${esc(t.cant_items)} producto(s) · guía ${esc(anFmt(t.unidades_guia))} und · recibido <b>${esc(anFmt(t.unidades_recibidas))}</b> und${t.con_diferencia ? ` · <b class="rc-dif falta">⚠ ${esc(t.con_diferencia)} con diferencia</b>` : ' · ✓ sin diferencias'} <span id="rc-nube"></span>`;
+  rcAutoguardar();
+}
+$('rcsub-panel-nueva').addEventListener('input', e=>{ if(e.target.classList.contains('rc-cant')) rcCantidad(e.target); });
+
+// ---- Registros ----
+let rcAbrirPendiente = null;
+async function rcCargarLista(forzar){
+  if(rcLeidos && !forzar){ renderRcLista(); rcAbrirSiPendiente(); return; }
+  $('rc-lista').innerHTML = '<div class="hint">⏳ Cargando recepciones…</div>';
+  try{
+    const L = rcVeTodas() ? [...(await syncLeer('recepciones', recepcionesRef, 'todas', !!forzar)).docs].map(([id, d])=> Object.assign({ id }, d))
+      : (await recepcionesRef.where('usuario_email', '==', currentUserEmail).get()).docs.map(d=> Object.assign({ id: d.id }, d.data()));
+    rcLista = L.sort((a, b)=> b.id.localeCompare(a.id));
+    rcLista.forEach(r=>{ r._txt = normalizarTexto([r.id, r.nro_guia, r.estado, r.usuario, r.remitente, r.punto_partida, r.punto_llegada, r.observaciones, ...(r.items || []).map(it=> `${it.codigo} ${it.descripcion}`)].join(' ')); });
+    rcLeidos = true;
+    const usuarios = [...new Map(rcLista.map(r=> [r.usuario_email, r.usuario || r.usuario_email])).entries()], vu = $('rc-usuario-f').value;
+    $('rc-usuario-f').innerHTML = '<option value="">👤 Todos los usuarios</option>' + usuarios.map(([e, a])=> `<option value="${esc(e)}">${esc(a)}</option>`).join(''); $('rc-usuario-f').value = usuarios.some(([e])=> e === vu) ? vu : '';
+  }catch(err){ console.error(err); $('rc-lista').innerHTML = `<div class="hint">⚠ No se pudieron leer las recepciones: ${esc(err.message)}</div>`; return; }
+  renderRcLista(); rcAbrirSiPendiente();
+}
+function rcAbrirSiPendiente(){ if(rcAbrirPendiente){ const id = rcAbrirPendiente; rcAbrirPendiente = null; rcAbrir(id); } }
+function rcFiltrados(){
+  const est = $('rc-estado-f').value, dif = $('rc-dif-f').value, us = $('rc-usuario-f').value, d = $('rc-desde').value, h = $('rc-hasta').value;
+  const q = normalizarTexto($('rc-q').value).split(/\s+/).filter(Boolean);
+  return rcLista.filter(r=> (!est || r.estado === est) && (!dif || (dif === 'SI') === ((r.con_diferencia || 0) > 0)) && (!us || r.usuario_email === us) && (!d || (r.fecha || '') >= d) && (!h || (r.fecha || '') <= h) && q.every(p=> r._txt.includes(p)));
+}
+const rcEstadoHtml = r=> r.estado === 'CONFIRMADA' ? '<span class="sd-est CERRADO">✔ CONFIRMADA</span>' : '<span class="sd-est ABIERTO">⏳ POR VALIDAR</span>';
+function renderRcLista(){
+  const L = rcFiltrados(), g = L.reduce((s, r)=> s + (r.unidades_guia || 0), 0), rec = L.reduce((s, r)=> s + (r.unidades_recibidas || 0), 0), cd = L.filter(r=> (r.con_diferencia || 0) > 0).length;
+  $('rc-lista-res').textContent = `${L.length} recepción(es) · guía ${anFmt(g)} und · recibido ${anFmt(rec)} und${cd ? ` · ${cd} con diferencia` : ''}`;
+  $('rc-lista').innerHTML = L.length ? L.slice(0, 300).map(r=> `<div class="sd-fila-c"><button type="button" class="sd-fila" data-rc-abrir="${esc(r.id)}"><span><span class="t">${esc(r.id)}</span> ${rcEstadoHtml(r)}${(r.con_diferencia || 0) > 0 && r.estado === 'CONFIRMADA' ? ` <span class="rc-chip-dif">⚠ ${esc(r.con_diferencia)} con diferencia</span>` : ''}<br>` +
+    `<span class="hint">📄 ${esc(r.nro_guia)} · 📅 ${esc(rcFechaTxt(r.fecha))} · 🚚 ${esc((r.punto_partida || '').slice(0, 60))} · 👤 ${esc(r.usuario || '')}</span></span>` +
+    `<span class="sd-n"><b>${esc(anFmt(r.unidades_recibidas || 0))} / ${esc(anFmt(r.unidades_guia || 0))} und</b><br><span class="hint">${esc(r.cant_items || 0)} producto(s)</span></span></button></div>`).join('')
+    : `<div class="hint">${rcLista.length ? 'Ninguna recepción cumple los filtros.' : 'Aún no hay recepciones.'}</div>`;
+}
+['rc-estado-f', 'rc-dif-f', 'rc-usuario-f', 'rc-desde', 'rc-hasta'].forEach(id=> $(id).addEventListener('change', renderRcLista));
+$('rc-q').addEventListener('input', renderRcLista);
+$('btn-rc-recargar').addEventListener('click', ()=> rcCargarLista(true));
+function rcAbrir(id){
+  const r = rcLista.find(x=> x.id === id); if(!r) return;
+  rcSel = id;
+  const puedeValidar = r.estado === 'PENDIENTE' && (r.usuario_email === currentUserEmail || rcVeTodas());
+  $('rc-detalle').innerHTML = `<div class="rf-det-cab"><div><span class="hint">Recepción ${rcEstadoHtml(r)}</span><h2>${esc(r.id)}</h2></div><div class="rf-det-acc">` +
+    (puedeValidar ? `<button type="button" class="btn btn-primary btn-sm" data-rc-det-validar="${esc(r.id)}">▶ Validar</button>` : '') +
+    `<button type="button" class="btn btn-primary btn-sm" data-rc-det-imprimir>🖨 Imprimir</button><button type="button" class="btn btn-ghost btn-sm" data-rc-det-pdf>⬇ PDF</button><button type="button" class="btn btn-ghost btn-sm" data-rc-det-excel>⬇ Excel</button>` +
+    (r.guia_pdf ? `<a class="btn btn-ghost btn-sm" href="${esc(r.guia_pdf.url)}" target="_blank" rel="noopener">📄 Guía (PDF)</a>` : '') +
+    (rcPuedeEliminar() ? `<button type="button" class="btn btn-ghost btn-sm" data-rc-det-eliminar style="color:#8A332A;">🗑 Eliminar</button>` : '') + `</div></div>` +
+    `<div class="rf-det-datos" style="margin-bottom:8px;"><div><span>Cargada por</span><b>${esc(r.usuario || '')} · ${esc(rfFechaTxt(r.fecha_creacion))}</b></div><div><span>Confirmada por</span><b>${esc(r.confirmado_por ? `${r.confirmado_por} · ${rfFechaTxt(r.confirmado_en)}` : 'Pendiente')}</b></div>` +
+    `<div><span>Unidades</span><b>Guía ${esc(anFmt(r.unidades_guia || 0))} · recibido ${esc(anFmt(r.unidades_recibidas || 0))}</b></div></div>` +
+    rcDatosHtml(r) +
+    `<table class="rf-det-items rc-det-items"><thead><tr><th>Código</th><th>Descripción</th><th>Und.</th><th class="num">Guía</th><th class="num">Recibido</th><th>Diferencia</th><th>Fotos</th></tr></thead><tbody>` +
+    (r.items || []).map((it, i)=>{ const dif = rcDif(it); return `<tr><td><b>${esc(it.codigo)}</b></td><td>${esc(it.descripcion)}</td><td>${esc(it.unidad)}</td><td class="num">${esc(anFmt(it.cantidad_guia))}</td><td class="num"><b>${esc(it.cantidad_recibida == null ? '—' : anFmt(it.cantidad_recibida))}</b></td>` +
+      `<td><span class="rc-dif ${rcDifCls(dif)}">${esc(it.cantidad_recibida == null ? '—' : rcDifTxt(dif))}</span></td><td><div class="rf-fotos">${(it.fotos || []).map((f, k)=> `<div class="rf-thumb" data-rc-det-ver="${i}:${k}"><img src="${esc(f.url)}" alt="" loading="lazy"></div>`).join('')}</div></td></tr>`; }).join('') +
+    `</tbody><tfoot><tr><th colspan="3">Total</th><th class="num">${esc(anFmt(r.unidades_guia || 0))}</th><th class="num">${esc(anFmt(r.unidades_recibidas || 0))}</th><th colspan="2">${(r.con_diferencia || 0) ? `⚠ ${esc(r.con_diferencia)} con diferencia` : '✓ Sin diferencias'}</th></tr></tfoot></table>`;
+  $('rc-det-modal').hidden = false; document.body.classList.add('rf-modal-abierto');
+}
+function rcCerrarDetalle(){ if($('rc-det-modal') && !$('rc-det-modal').hidden){ $('rc-det-modal').hidden = true; document.body.classList.remove('rf-modal-abierto'); } }
+$('rc-lista').addEventListener('click', e=>{ const b = e.target.closest('[data-rc-abrir]'); if(b) rcAbrir(b.dataset.rcAbrir); });
+$('rc-det-modal').addEventListener('click', async e=>{
+  if(e.target.id === 'rc-det-modal' || e.target.closest('#btn-rc-det-volver') || e.target.closest('#btn-rc-det-cerrar')){ rcCerrarDetalle(); return; }
+  const r = rcLista.find(x=> x.id === rcSel); if(!r) return;
+  const ver = e.target.closest('[data-rc-det-ver]');
+  if(ver){ const [i, k] = ver.dataset.rcDetVer.split(':').map(Number), it = r.items[i]; rfVerFoto(it.fotos[k].url, `${it.codigo} · ${it.descripcion}`, (r.items || []).flatMap(x=> (x.fotos || []).map(f=> ({ url: f.url, pie: `${x.codigo} · ${x.descripcion}` })))); return; }
+  const va = e.target.closest('[data-rc-det-validar]'); if(va){ rcCerrarDetalle(); rcValidar(va.dataset.rcDetValidar); return; }
+  if(e.target.closest('[data-rc-det-imprimir]')){ rcPdf([r], true); return; }
+  if(e.target.closest('[data-rc-det-pdf]')){ rcPdf([r], false); return; }
+  if(e.target.closest('[data-rc-det-excel]')){ rcExcel([r], `recepcion_${r.id}.xlsx`); return; }
+  if(e.target.closest('[data-rc-det-eliminar]') && rcPuedeEliminar()){
+    if(!confirm(`¿Eliminar la recepción ${r.id} (guía ${r.nro_guia}) con su guía y sus fotos? No se puede deshacer.`)) return;
+    try{ const n = await rcBorrar(r); await logAccion('recepcion_eliminada', { detalle: `${r.id} · guía ${r.nro_guia} · ${n} archivo(s)` });
+      rcLista = rcLista.filter(x=> x.id !== r.id); rcCerrarDetalle(); renderRcLista(); showToast(`${r.id} eliminada.`, 'ok'); }
+    catch(err){ console.error(err); showToast('No se pudo eliminar: ' + err.message, 'err'); }
+  }
+});
+window.addEventListener('keydown', e=>{ if(e.key === 'Escape' && !$('rc-det-modal').hidden && $('rf-lightbox').hidden) rcCerrarDetalle(); }, true);
+$('btn-rc-excel').addEventListener('click', ()=> rcExcel(rcFiltrados(), `recepciones_${new Date().toISOString().slice(0, 10)}.xlsx`));
+$('btn-rc-pdf').addEventListener('click', ()=> rcPdf(rcFiltrados(), false));
+
+// ---- PDF (una o varias recepciones; con una foto por producto) e impresión ----
+async function rcPdf(L, imprimir){
+  if(!L.length){ showToast('No hay recepciones para exportar con estos filtros.', 'err'); return; }
+  const btn = L.length > 1 ? $('btn-rc-pdf') : null, txtBtn = btn ? btn.textContent : '';
+  if(btn) btn.disabled = true;
+  try{
+    // Una foto por producto (miniatura liviana); con muchas recepciones, sin fotos.
+    const conFotos = L.length <= 20, urls = conFotos ? [...new Set(L.flatMap(r=> (r.items || []).map(it=> it.fotos && it.fotos[0] && it.fotos[0].url).filter(Boolean)))] : [], imgs = new Map();
+    let n = 0; for(const u of urls){ n++; if(btn) btn.textContent = `⏳ Fotos ${n} de ${urls.length}…`; try{ imgs.set(u, await sdImagenMini(u)); }catch(e){ console.warn('Foto no disponible para el PDF:', u, e); } }
+    const doc = new jspdf.jsPDF({ unit:'pt', format:'a4', orientation:'portrait' }), W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), m = 30, FOTO = 42;
+    const estilo = { styles: { fontSize: 8, cellPadding: 3, valign: 'middle' }, headStyles: { fillColor: [27, 36, 48], textColor: 255 }, margin: { left: m, right: m, bottom: 30 } };
+    if(L.length > 1){
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.text('Recepciones', m, 40);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(90); doc.text(`Generado por ${currentUserAlias} el ${new Date().toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' })}`, m, 54); doc.setTextColor(0);
+      doc.autoTable(Object.assign({ startY: 64, head: [['Recepción', 'Guía', 'Fecha', 'Estado', 'Productos', 'Und. guía', 'Und. recibidas', 'Con dif.', 'Usuario']],
+        body: L.map(r=> [r.id, r.nro_guia, rcFechaTxt(r.fecha), r.estado === 'CONFIRMADA' ? 'CONFIRMADA' : 'POR VALIDAR', r.cant_items || 0, anFmt(r.unidades_guia || 0), anFmt(r.unidades_recibidas || 0), r.con_diferencia || 0, r.usuario || '']),
+        foot: [['TOTAL', '', '', '', L.reduce((s, r)=> s + (r.cant_items || 0), 0), anFmt(L.reduce((s, r)=> s + (r.unidades_guia || 0), 0)), anFmt(L.reduce((s, r)=> s + (r.unidades_recibidas || 0), 0)), L.filter(r=> r.con_diferencia).length, '']],
+        footStyles: { fillColor: [234, 241, 251], textColor: 0, fontStyle: 'bold' } }, estilo));
+    }
+    L.forEach((r, ri)=>{
+      if(L.length > 1 || ri > 0) doc.addPage();
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.text(`Recepción ${r.id}`, m, 40);
+      doc.setFontSize(10); doc.text(r.estado === 'CONFIRMADA' ? 'CONFIRMADA' : 'POR VALIDAR', W - m, 40, { align: 'right' });
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+      const kv = [['Guía de remisión', r.nro_guia], ['Fecha de emisión', rcFechaTxt(r.fecha_emision)], ['Fecha de traslado', rcFechaTxt(r.fecha_traslado)], ['Remitente', [r.remitente, r.ruc_remitente && 'RUC ' + r.ruc_remitente].filter(Boolean).join(' · ')],
+        ['Punto de partida', r.punto_partida], ['Punto de llegada', r.punto_llegada], ['Motivo', r.motivo], ['Bultos', r.bultos != null ? String(r.bultos) : ''], ['Vehículo / conductor', [r.placa, r.conductor].filter(Boolean).join(' · ')],
+        ['Observaciones', r.observaciones], ['Cargada por', `${r.usuario || ''} · ${rfFechaTxt(r.fecha_creacion)}`], ['Confirmada por', r.confirmado_por ? `${r.confirmado_por} · ${rfFechaTxt(r.confirmado_en)}` : 'Pendiente']].filter(x=> x[1]);
+      doc.autoTable({ startY: 50, body: kv, theme: 'plain', styles: { fontSize: 8.5, cellPadding: 2 }, columnStyles: { 0: { fontStyle: 'bold', cellWidth: 110 } }, margin: { left: m, right: m } });
+      const it = r.items || [];
+      doc.autoTable(Object.assign({ startY: doc.lastAutoTable.finalY + 10, head: [[conFotos ? 'Foto' : '#', 'Código', 'Descripción', 'Und.', 'Guía', 'Recibido', 'Diferencia']],
+        body: it.map((x, i)=> [conFotos ? '' : i + 1, x.codigo, x.descripcion, x.unidad, anFmt(x.cantidad_guia), x.cantidad_recibida == null ? '—' : anFmt(x.cantidad_recibida), x.cantidad_recibida == null ? '—' : rcDifTxt(rcDif(x)).replace(/^[✓⚠]\s*/, '')]),
+        foot: [['', 'TOTAL', '', '', anFmt(r.unidades_guia || 0), anFmt(r.unidades_recibidas || 0), r.con_diferencia ? `${r.con_diferencia} con diferencia` : 'Sin diferencias']],
+        footStyles: { fillColor: [234, 241, 251], textColor: 0, fontStyle: 'bold' },
+        columnStyles: Object.assign({ 2: { cellWidth: 170 }, 4: { halign: 'center' }, 5: { halign: 'center', fontStyle: 'bold' } }, conFotos ? { 0: { cellWidth: FOTO + 8, minCellHeight: FOTO + 6 } } : {}),
+        didParseCell: d=>{ if(d.section === 'body' && d.column.index === 6 && it[d.row.index] && rcDif(it[d.row.index]) !== 0 && it[d.row.index].cantidad_recibida != null) d.cell.styles.textColor = [179, 38, 30]; },
+        didDrawCell: d=>{
+          if(!conFotos || d.section !== 'body' || d.column.index !== 0 || !it[d.row.index]) return;
+          const f = it[d.row.index].fotos && it[d.row.index].fotos[0], im = f && imgs.get(f.url); if(!im) return;
+          const e = Math.min(FOTO / im.w, FOTO / im.h), w = im.w * e, h = im.h * e;
+          doc.addImage(im.data, 'JPEG', d.cell.x + (d.cell.width - w) / 2, d.cell.y + (d.cell.height - h) / 2, w, h);
+        } }, estilo));
+      let y = doc.lastAutoTable.finalY + 40; if(y > H - 60){ doc.addPage(); y = 80; }
+      doc.setDrawColor(120); doc.line(m, y, m + 200, y); doc.line(W - m - 200, y, W - m, y);
+      doc.setFontSize(8); doc.text('Recibido por (firma)', m, y + 12); doc.text('Transportista (firma)', W - m - 200, y + 12);
+    });
+    const np = doc.getNumberOfPages();
+    for(let i = 1; i <= np; i++){ doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(120); doc.text(`Página ${i} de ${np}`, W - m, H - 14, { align: 'right' }); doc.setTextColor(0); }
+    const titulo = L.length === 1 ? `Recepción ${L[0].id}` : 'Recepciones';
+    doc.setProperties({ title: titulo });
+    if(imprimir){ doc.autoPrint(); const url = doc.output('bloburl'); if(window.__rcNoImprimir) window.__rcImpreso = url; else window.open(url, '_blank'); }
+    else doc.save(L.length === 1 ? `recepcion_${L[0].id}.pdf` : `recepciones_${new Date().toISOString().slice(0, 10)}.pdf`);
+    logAccion('recepcion_exportada', { detalle: `${imprimir ? 'Impresión' : 'PDF'}: ${L.length === 1 ? L[0].id : L.length + ' recepción(es)'}` });
+  }catch(err){ console.error(err); showToast('No se pudo armar el PDF: ' + (err.message || err), 'err'); }
+  finally{ if(btn){ btn.disabled = false; btn.textContent = txtBtn; } }
+}
+function rcExcel(L, nombre){
+  if(!L.length){ showToast('No hay recepciones para exportar con estos filtros.', 'err'); return; }
+  const f = v=> rfExcelFecha(v ? v + 'T12:00:00' : '');
+  const cab = L.map(r=> ({ 'Recepción': r.id, 'Estado': r.estado === 'CONFIRMADA' ? 'CONFIRMADA' : 'POR VALIDAR', 'Guía de remisión': r.nro_guia, 'Fecha de emisión': f(r.fecha_emision), 'Fecha de traslado': f(r.fecha_traslado),
+    'Remitente': r.remitente || '', 'RUC remitente': r.ruc_remitente || '', 'Punto de partida': r.punto_partida || '', 'Punto de llegada': r.punto_llegada || '', 'Motivo': r.motivo || '', 'Bultos': r.bultos == null ? '' : r.bultos,
+    'Placa': r.placa || '', 'Conductor': r.conductor || '', 'Observaciones': r.observaciones || '', 'Productos': r.cant_items || 0, 'Und. guía': r.unidades_guia || 0, 'Und. recibidas': r.unidades_recibidas || 0,
+    'Productos con diferencia': r.con_diferencia || 0, 'Cargada por': r.usuario || '', 'Fecha de carga': rfExcelFecha(r.fecha_creacion), 'Confirmada por': r.confirmado_por || '', 'Fecha de confirmación': rfExcelFecha(r.confirmado_en) }));
+  const det = L.flatMap(r=> (r.items || []).map(it=> ({ 'Recepción': r.id, 'Guía de remisión': r.nro_guia, 'Estado': r.estado === 'CONFIRMADA' ? 'CONFIRMADA' : 'POR VALIDAR', 'Código': it.codigo, 'Descripción': it.descripcion, 'Unidad': it.unidad,
+    'Cantidad guía': Number(it.cantidad_guia) || 0, 'Cantidad recibida': it.cantidad_recibida == null ? '' : Number(it.cantidad_recibida), 'Diferencia': it.cantidad_recibida == null ? '' : rcDif(it), 'N° fotos': (it.fotos || []).length })));
+  const wb = XLSX.utils.book_new();
+  const ws1 = XLSX.utils.json_to_sheet(cab); ws1['!autofilter'] = { ref: ws1['!ref'] }; rfExcelFormatoFechas(ws1, ['Fecha de emisión', 'Fecha de traslado', 'Fecha de carga', 'Fecha de confirmación']);
+  const ws2 = XLSX.utils.json_to_sheet(det.length ? det : [{ 'Recepción': '' }]); ws2['!autofilter'] = { ref: ws2['!ref'] };
+  ws1['!cols'] = Object.keys(cab[0]).map(k=> ({ wch: Math.min(40, Math.max(10, k.length + 2)) })); ws2['!cols'] = [12, 16, 13, 14, 44, 8, 13, 15, 11, 9].map(w=> ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, ws1, 'Recepciones'); XLSX.utils.book_append_sheet(wb, ws2, 'Detalle');
+  XLSX.writeFile(wb, nombre);
+  logAccion('recepcion_exportada', { detalle: `Excel: ${L.length} recepción(es), ${det.length} fila(s)` });
+}
+
 // -------- Usuarios: lista y permisos a detalle (menú → opción → sección) --------
 let usLista = [], usSel = null;
 const usTabs = ()=> [...document.querySelectorAll('#us-arbol [data-us-tab]')];
@@ -20773,7 +21251,7 @@ $('us-admin').addEventListener('change', ()=> $('us-rf-tiendas-box').classList.t
 $('us-rf-todos').addEventListener('change', ()=> $('us-rf-part-box').classList.toggle('bloqueado', $('us-rf-todos').checked || $('us-admin').checked));
 function usLlenar(p){
   const base = Object.assign({}, p, { admin:false });
-  $('us-admin').checked = !!p.admin; $('us-eliminar').checked = !!p.eliminar; $('us-rf-todos').checked = !!p.rf_todos; $('us-saldos-todos').checked = !!p.saldos_todos; $('us-merma-todos').checked = !!p.merma_todos;
+  $('us-admin').checked = !!p.admin; $('us-eliminar').checked = !!p.eliminar; $('us-rf-todos').checked = !!p.rf_todos; $('us-saldos-todos').checked = !!p.saldos_todos; $('us-merma-todos').checked = !!p.merma_todos; $('us-recepciones-todas').checked = !!p.recepciones_todas;
   usRfParticipantes(p.rf_participantes || [], p.rf_tiendas || []);
   usTabs().forEach(cb=>{
     const tab = cb.dataset.usTab; cb.checked = !!p.admin || permTabPermitida(base, tab);
@@ -20783,7 +21261,7 @@ function usLlenar(p){
   usRefrescar();
 }
 function usLeer(){
-  const permisos = { admin: $('us-admin').checked, eliminar: $('us-eliminar').checked, rf_todos: $('us-rf-todos').checked, saldos_todos: $('us-saldos-todos').checked, merma_todos: $('us-merma-todos').checked, vo_vouchers: false, subs: {},
+  const permisos = { admin: $('us-admin').checked, eliminar: $('us-eliminar').checked, rf_todos: $('us-rf-todos').checked, saldos_todos: $('us-saldos-todos').checked, merma_todos: $('us-merma-todos').checked, recepciones_todas: $('us-recepciones-todas').checked, vo_vouchers: false, subs: {},
     rf_participantes: [...document.querySelectorAll('#us-rf-part [data-us-rf-part]:checked')].map(x=> x.dataset.usRfPart),
     rf_tiendas: [...document.querySelectorAll('#us-rf-tiendas [data-us-rf-tienda]:checked')].map(x=> x.dataset.usRfTienda) };
   usTabs().forEach(cb=>{
@@ -20945,7 +21423,7 @@ const ALM_CUOTA_ARCHIVOS = 5 * 1024 ** 3, ALM_CUOTA_BASE = 1024 ** 3;
 let ALM_MARGEN_HUERFANO_MS = 24 * 3600 * 1000;
 const ALM_CARPETAS = { registros_foto:'Registro fotográfico', vo_comprobantes:'Venta Online · comprobantes', vo_vouchers:'Venta Online · vouchers',
   tomas_inventario:'Toma de inventario', vouchers_agencia:'Campañas · vouchers de agencia', merma_formatos:'Merma · formatos',
-  validadores:'Campañas · fotos de validadores', productos:'Productos · imágenes', saldos:'Saldos · fotos de cajas', saldos_guias:'Saldos · guías de remisión', merma:'Merma · fotos de cajas', merma_guias:'Merma · guías de remisión' };
+  validadores:'Campañas · fotos de validadores', productos:'Productos · imágenes', saldos:'Saldos · fotos de cajas', saldos_guias:'Saldos · guías de remisión', merma:'Merma · fotos de cajas', merma_guias:'Merma · guías de remisión', recepciones:'Recepciones · guías y fotos' };
 const ALM_COLECCIONES = { movimientos:'Bitácora / historial', kardex:'Kardex', pallets:'Pallets', posiciones:'Layout · posiciones', bloques:'Layout · bloques',
   nichos:'Layout · nichos', rejas:'Layout · rejas', productos:'Productos', usuarios:'Usuarios', contadores:'Correlativos',
   retiros_campana:'Retiros de campaña', campana_items:'Campañas · ítems', campana_registros:'Campañas · registros', guias_registros:'Guías', guia_items:'Guías · ítems',
@@ -20955,7 +21433,7 @@ const ALM_COLECCIONES = { movimientos:'Bitácora / historial', kardex:'Kardex', 
   merma_auditorias:'Merma · auditorías', compras_cargas:'Compras · cargas', compras_items:'Compras · ítems', compras_totales:'Compras · totales',
   compras_campana:'Compras de campaña', compras_campana_items:'Compras de campaña · ítems', vo_comprobantes:'Venta Online · comprobantes',
   regularizaciones:'Regularizaciones', regularizacion_items:'Regularizaciones · ítems', registros_foto:'Registro fotográfico',
-  saldos_traslados:'Saldos · traslados', saldos_cajas:'Saldos · cajas', merma_traslados:'Merma · traslados', merma_cajas:'Merma · cajas', rf_marcas:'Registro fotográfico · marcas del layout' };
+  saldos_traslados:'Saldos · traslados', saldos_cajas:'Saldos · cajas', merma_traslados:'Merma · traslados', merma_cajas:'Merma · cajas', recepciones:'Recepciones', recepciones_guias:'Recepciones · guías cargadas', rf_marcas:'Registro fotográfico · marcas del layout' };
 let almArchivos = null, almArchivosEn = null, almBase = null, almBaseEn = null, almRefs = null, almBaseCompleta = false, almFallasLista = [];
 // Archivos que los registros dicen tener (ruta → colección y bucket), para avisar si alguno no está en el almacenamiento.
 let almEsperados = null, almFaltPag = 0;
