@@ -26,6 +26,7 @@ function camaraFalsa(){
 }
 const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
 
+const innerHeightOf = f=> Number(f.pan.split(',')[2]);
 (async ()=>{
   await limpiarEmuladores();
   const { browser, page, errores } = await abrirApp({ scriptInicial: `(${detectorXss.toString()})(); (${camaraFalsa.toString()})();` });
@@ -331,6 +332,18 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   const layOculto = await page.evaluate(()=> $('rf-det-modal').hidden && $('rfsub-panel-layout').style.display === 'block');
   verificar(/La posición A02 tiene 2 registros/.test(grupoLay.txt) && /1 de 2/.test(grupoLay.txt) && grupoLay.ant && ultimo.pag === '2 de 2' && ultimo.sig && /Volver al layout/.test(grupoLay.volver) && layOculto,
     `Layout: tocar A02 abre la ventana del registro con el aviso "${grupoLay.txt}"; «Siguiente» pasa al otro (${ultimo.pag}); «← Volver al layout» la cierra`);
+  // Pantalla completa: el layout ocupa toda la hoja; menú, secciones, filtros y zoom flotan comprimidos.
+  const full = await page.evaluate(()=>{ const pan = document.querySelector('.rfl-panel').getBoundingClientRect(), mapa = $('rfl-mapa').getBoundingClientRect(), flot = $('rfl-flot').getBoundingClientRect();
+    return { clase: document.body.classList.contains('rfl-full'), header: getComputedStyle(document.querySelector('header')).display, subtabs: getComputedStyle(document.querySelector('#view-regfoto > .subtabs')).display,
+      pan: [Math.round(pan.top), Math.round(pan.height), innerHeight].join(','), mapaAlto: Math.round(mapa.height), flotAlto: Math.round(flot.height), filtros: getComputedStyle($('rfl-estado')).height,
+      zoom: getComputedStyle(document.querySelector('.rfl-zoom')).position, nav: document.querySelectorAll('.rfl-nav [data-rfl-ir]').length }; });
+  await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_layout_completo.png') });
+  await page.click('.rfl-nav [data-rfl-ir="lista"]');
+  const sale = await page.evaluate(()=> ({ clase: document.body.classList.contains('rfl-full'), lista: $('rfsub-panel-lista').style.display, header: getComputedStyle(document.querySelector('header')).display }));
+  await page.click('#rfsub-layout');
+  verificar(full.clase && full.header === 'none' && full.subtabs === 'none' && full.pan === `0,${full.pan.split(',')[2]},${full.pan.split(',')[2]}` && full.mapaAlto > innerHeightOf(full) - 5 && full.flotAlto < 140 && full.filtros === '32px' && full.zoom === 'absolute' && full.nav === 5 &&
+    !sale.clase && sale.lista === 'block' && sale.header !== 'none',
+    `Layout en toda la hoja (panel ${full.pan}, mapa ${full.mapaAlto}px de alto), barra flotante de ${full.flotAlto}px con menú y filtros compactos (${full.filtros}), zoom flotante; al ir a Registros vuelve la vista normal`);
   await page.evaluate(()=>{ rfLista = rfLista.filter(r=> r.id !== 'RF-09999'); });
   await page.selectOption('#rfl-estado', '');
   const lay3 = await clases();
@@ -382,7 +395,7 @@ const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
   verificar(sinMarcas.lay === 'true,true' && sinMarcas.docs === 0, `Layout: desbloquear y quitar merma devuelven las posiciones a gris y borran la marca (${JSON.stringify(sinMarcas)})`);
 
   // Modificar un registro confirmado: vuelve a la pantalla de registro y se confirma de nuevo.
-  await cerrarDet(); await page.click('#rfsub-lista');
+  await cerrarDet(); await page.click('.rfl-nav [data-rfl-ir="lista"]');   // desde el layout en pantalla completa: menú flotante
   await page.evaluate(()=> rfAbrir('RF-ADM-00002'));
   // Apto para ajuste: se marca desde el detalle (el admin puede).
   await page.click('#rf-detalle [data-rf-apto="SI"]');

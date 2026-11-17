@@ -362,6 +362,27 @@
   .rf-pos-cambiar{margin-top:4px; border:1px solid var(--line-strong); background:#fff; border-radius:6px; padding:2px 8px; font:inherit; font-size:11.5px; cursor:pointer; align-self:flex-start;}
   #rf-det-pos input{width:100%; margin:4px 0; font-size:15px; padding:6px 8px;} .rf-det-datos .rf-pos-acc{display:flex; gap:6px; flex-wrap:wrap; background:none; padding:0;}
   .rfl-barra{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:8px;} #rfl-q{min-width:240px; flex:0 1 300px; margin:0;}
+  .rfl-nav{display:none;} .rfl-info{display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:#e8eef6; color:#2b4c6f; font-weight:800; cursor:help; font-size:13px;}
+  .rfl-fila2{display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; justify-content:space-between;}
+  /* Layout en pantalla completa: el mapa ocupa toda la hoja; menú, filtros y zoom flotan comprimidos encima. */
+  body.rfl-full{overflow:hidden;}
+  body.rfl-full header, body.rfl-full #app-footer, body.rfl-full #view-regfoto > .subtabs{display:none;}
+  body.rfl-full .rfl-panel{position:fixed; inset:0; z-index:40; margin:0 !important; padding:0; border:none; border-radius:0; display:flex; flex-direction:column; background:#eef1f5;}
+  body.rfl-full .rfl-panel > h3{display:none;}
+  body.rfl-full .rfl-flot{position:absolute; top:8px; left:8px; right:8px; z-index:6; background:rgba(255,255,255,.97); border:1px solid var(--line); border-radius:12px; box-shadow:0 6px 18px rgba(16,24,40,.14); padding:6px 8px; display:flex; flex-direction:column; gap:5px;}
+  body.rfl-full .rfl-barra{margin:0; gap:6px;}
+  body.rfl-full .rfl-nav{display:inline-flex; gap:2px; background:#1b2430; border-radius:9px; padding:2px;}
+  body.rfl-full .rfl-nav button{border:none; background:none; color:#fff; font-size:15px; width:32px; height:30px; border-radius:7px; cursor:pointer;}
+  body.rfl-full .rfl-nav button:hover:not(:disabled){background:#2f3d4f;} body.rfl-full .rfl-nav button.activo{background:#2b6cb0; cursor:default;}
+  body.rfl-full #view-regfoto .rfl-flot select, body.rfl-full #view-regfoto .rfl-flot input{font-size:13px; min-height:0; height:32px; padding:3px 8px; margin:0; width:auto; max-width:200px;}
+  body.rfl-full #view-regfoto .rfl-flot #rfl-q{min-width:180px; flex:1 1 220px; max-width:320px;}
+  body.rfl-full #btn-rfl-recargar{height:32px; padding:0 10px;}
+  body.rfl-full .rfl-resumen{gap:5px;} body.rfl-full .rfl-k{padding:2px 8px; font-size:11.5px;}
+  body.rfl-full .rfl-leyenda{gap:8px; font-size:11px;}
+  body.rfl-full .rfl-mapa{flex:1; max-height:none; border:none; border-radius:0; padding:var(--rfl-flot-h, 96px) 8px 70px;}
+  body.rfl-full .rfl-zoom{position:absolute; right:14px; bottom:14px; z-index:6; margin:0; background:rgba(255,255,255,.97); border:1px solid var(--line); border-radius:12px; box-shadow:0 6px 18px rgba(16,24,40,.18); padding:5px;}
+  body.rfl-full #rfl-detalle{position:fixed; left:14px; bottom:14px; z-index:45; width:min(560px, calc(100vw - 28px)); max-height:55vh; overflow:auto; margin:0; box-shadow:0 10px 30px rgba(16,24,40,.25);}
+  @media (max-width:700px){ body.rfl-full .rfl-leyenda{display:none;} body.rfl-full #view-regfoto .rfl-flot select{max-width:140px;} }
   .rfl-leyenda{display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--ink-soft);} .rfl-leyenda span{display:inline-flex; align-items:center; gap:5px;}
   .rfl-leyenda i{display:inline-block; width:14px; height:14px; border-radius:3px; border:1px solid;}
   .rfl-resumen{display:flex; flex-wrap:wrap; gap:8px; align-items:center;} .rfl-k{padding:4px 10px; border-radius:999px; font-size:12.5px; border:1px solid;}
@@ -3541,21 +3562,34 @@
     </div>
   </div>
   <div id="rfsub-panel-layout" style="display:none;">
-    <div class="panel" style="margin-bottom:12px;">
+    <div class="panel rfl-panel" style="margin-bottom:12px;">
       <h3>🗺 Registro fotográfico en el layout del CD VENEZUELA</h3>
-      <div class="rfl-barra">
-        <select id="rfl-estado" title="Qué registros se cuentan"><option value="CONFIRMADO">✔ Solo confirmados</option><option value="">Todos (incluye borradores)</option></select>
-        <select id="rfl-usuario" title="De qué usuario"></select>
-        <select id="rfl-apto" title="Apto para ajuste"><option value="">⚖ Apto ajuste: todos</option><option value="SI">✔ Aptos para ajuste</option><option value="NO">✖ No aptos</option><option value="SIN">… Sin marcar</option></select>
-        <input type="search" id="rfl-q" placeholder="🔍 Código o descripción del producto…" autocomplete="off" title="Solo se pintan las posiciones con ese producto">
-        <div class="rfl-leyenda"><span><i class="rfl-0"></i>Sin RF</span><span><i class="rfl-1"></i>1 RF</span><span><i class="rfl-n"></i>Más de 1 RF</span><span><i class="rfl-bloq"></i>🔒 Bloqueada</span><span><i class="rfl-merma"></i>♻ Merma</span><span><i class="rfl-inv"></i>📋 Por inventariar</span></div>
-        <button type="button" class="btn btn-ghost btn-sm" id="btn-rfl-recargar">↻ Actualizar</button>
+      <!-- Barra flotante y compacta: menú, secciones, filtros, conteos y ayuda (el layout ocupa toda la pantalla). -->
+      <div class="rfl-flot" id="rfl-flot">
+        <div class="rfl-barra">
+          <div class="rfl-nav">
+            <button type="button" data-rfl-ir="menu" title="Menú de la app">☰</button>
+            <button type="button" data-rfl-ir="nuevo" title="Nuevo registro">📸</button>
+            <button type="button" data-rfl-ir="lista" title="Registros">🗂</button>
+            <button type="button" data-rfl-ir="reportes" title="Reportes">📊</button>
+            <button type="button" class="activo" title="Layout (aquí)" disabled>🗺</button>
+            <button type="button" data-rfl-ir="aptos" title="Aptos">📋</button>
+          </div>
+          <select id="rfl-estado" title="Qué registros se cuentan"><option value="CONFIRMADO">✔ Solo confirmados</option><option value="">Todos (incluye borradores)</option></select>
+          <select id="rfl-usuario" title="De qué usuario"></select>
+          <select id="rfl-apto" title="Apto para ajuste"><option value="">⚖ Apto ajuste: todos</option><option value="SI">✔ Aptos para ajuste</option><option value="NO">✖ No aptos</option><option value="SIN">… Sin marcar</option></select>
+          <input type="search" id="rfl-q" placeholder="🔍 Código o descripción del producto…" autocomplete="off" title="Solo se pintan las posiciones con ese producto">
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-rfl-recargar" title="Volver a leer los registros">↻</button>
+          <span class="rfl-info" id="rfl-info" tabindex="0" title="Toca una posición pintada para ver sus registros (si son varios, se recorren uno por uno). Desliza el layout hacia los lados para recorrerlo.">ℹ</span>
+        </div>
+        <div class="rfl-fila2">
+          <div class="rfl-resumen" id="rfl-resumen"></div>
+          <div class="rfl-leyenda"><span><i class="rfl-0"></i>Sin RF</span><span><i class="rfl-1"></i>1 RF</span><span><i class="rfl-n"></i>Más de 1 RF</span><span><i class="rfl-bloq"></i>🔒 Bloqueada</span><span><i class="rfl-merma"></i>♻ Merma</span><span><i class="rfl-inv"></i>📋 Por inventariar</span></div>
+        </div>
+        <div class="hint" id="rfl-ayuda-marcas" hidden></div>
+        <div class="rf-alcance" id="rfl-fusion-aviso" style="display:none; background:#e3f2fd; border-color:#90caf9;"></div>
       </div>
-      <div class="rfl-resumen" id="rfl-resumen"></div>
-      <div class="hint" id="rfl-ayuda-marcas" style="margin-top:4px;"></div>
-      <div class="rf-alcance" id="rfl-fusion-aviso" style="display:none; background:#e3f2fd; border-color:#90caf9;"></div>
-      <p class="hint" style="margin:6px 0 8px;">Toca una posición pintada para ver sus registros (si son varios, se recorren uno por uno).</p>
-      <div class="rfl-zoom"><button type="button" data-rfl-zoom="-1" title="Alejar">🔍−</button><span id="rfl-zoom-txt">100%</span><button type="button" data-rfl-zoom="1" title="Acercar">🔍+</button><button type="button" data-rfl-zoom="ajustar" title="Que entre todo el layout en la pantalla">⤢ Ajustar</button><span class="hint">Desliza el layout hacia los lados para recorrerlo.</span></div>
+      <div class="rfl-zoom"><button type="button" data-rfl-zoom="-1" title="Alejar">🔍−</button><span id="rfl-zoom-txt">100%</span><button type="button" data-rfl-zoom="1" title="Acercar">🔍+</button><button type="button" data-rfl-zoom="ajustar" title="Que entre todo el layout en la pantalla">⤢ Ajustar</button></div>
       <div class="rfl-mapa" id="rfl-mapa"></div>
     </div>
     <div class="panel" id="rfl-detalle" style="display:none;"></div>
@@ -4035,8 +4069,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v272';
-const APP_UPDATED = '14/11/2026 10:00';
+const APP_VERSION = 'v273';
+const APP_UPDATED = '17/11/2026 10:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4361,6 +4395,7 @@ function applyPermisosUI(){
 }
 
 function switchTab(name){
+  document.body.classList.toggle('rfl-full', name === 'regfoto' && $('rfsub-panel-layout').style.display === 'block');
   document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
   $('tab-'+name).classList.add('active');
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
@@ -17578,6 +17613,7 @@ let rfPosFotos = [], rfItems = [], rfLista = [], rfLeidos = false, rfPagina = 0,
 const rfNuevoItem = ()=> ({ sku:'', descripcion:'', cantidad:'', fotos:[] });
 function setRfSubtab(name){
   if(typeof rfCerrarDetalle === 'function') rfCerrarDetalle();
+  document.body.classList.toggle('rfl-full', name === 'layout');
   ['nuevo','lista','reportes','layout','aptos'].forEach(n=>{ $('rfsub-'+n).classList.toggle('active', n===name); $('rfsub-panel-'+n).style.display = n===name ? 'block' : 'none'; });
   if(name === 'lista' || name === 'reportes' || name === 'layout' || name === 'aptos') rfCargar();
   else rfPrepararForm();
@@ -18746,7 +18782,7 @@ function rflAplicarZoom(){
 function rflZoomA(accion){
   const mapa = $('rfl-mapa'), l = $('rfl-lienzo'); if(!l) return;
   // Ajustar: se mide el ancho real del layout sin zoom y se elige el zoom para que entre en la pantalla.
-  if(accion === 'ajustar'){ l.style.zoom = 1; const natural = l.scrollWidth || 1; rflZoom = Math.min(1, Math.max(0.3, Math.floor((mapa.clientWidth - 4) / natural * 100) / 100)); }
+  if(accion === 'ajustar'){ l.style.zoom = 1; const natural = l.scrollWidth || 1; const cs = getComputedStyle(mapa), ancho = mapa.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0); rflZoom = Math.min(1, Math.max(0.3, Math.floor((ancho - 4) / natural * 100) / 100)); }
   else rflZoom = Math.min(2, Math.max(0.3, Math.round((rflZoom + Number(accion) * 0.15) * 100) / 100));
   rflAplicarZoom();
 }
@@ -18781,6 +18817,8 @@ function renderRfLayout(){
     ($('rfl-q').value.trim() ? `<span class="hint">· 🔍 Solo posiciones con «${esc($('rfl-q').value.trim())}» (${esc(c1 + cn)} con RF)</span>` : '') + rfAvisoAlcance();
   $('rfl-detalle').style.display = 'none';
   $('rfl-ayuda-marcas').textContent = rflPuedeMarcar() ? '🖱 Clic derecho (o mantener presionado en celular/tablet) sobre una posición para bloquearla, marcarla como merma o por inventariar, o fusionar sus registros.' : '';
+  $('rfl-info').title = 'Toca una posición pintada para ver sus registros (si son varios, se recorren uno por uno). Desliza el layout hacia los lados para recorrerlo.' + ($('rfl-ayuda-marcas').textContent ? '\n' + $('rfl-ayuda-marcas').textContent : '');
+  rflFlotAlto();
 }
 // ---- Marcas del layout del registro fotográfico: posiciones bloqueadas y de merma ----
 // Son solo del registro fotográfico (colección rf_marcas, un documento por posición):
@@ -18922,6 +18960,15 @@ function rflDetalle(id, desplazar){
     rfRepListaRf(L, false) + `<button type="button" class="btn btn-ghost btn-sm rf-rep-ocultar" data-rfl-ocultar="1">▴ Ocultar</button>`;
   if(desplazar) box.scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
+// Layout en pantalla completa: la barra flotante tapa el borde de arriba del mapa; el mapa deja ese espacio libre.
+function rflFlotAlto(){ const f = $('rfl-flot'); if(f) document.documentElement.style.setProperty('--rfl-flot-h', (f.offsetHeight + 16) + 'px'); }
+window.addEventListener('resize', ()=>{ if(document.body.classList.contains('rfl-full')) rflFlotAlto(); });
+if(window.ResizeObserver && $('rfl-flot')) new ResizeObserver(rflFlotAlto).observe($('rfl-flot'));
+$('rfl-flot').addEventListener('click', e=>{
+  const b = e.target.closest('[data-rfl-ir]'); if(!b) return;
+  if(b.dataset.rflIr === 'menu'){ $('btn-menu').click(); return; }
+  setRfSubtab(b.dataset.rflIr);
+});
 $('rfsub-panel-layout').addEventListener('click', e=>{
   const ver = e.target.closest('[data-rfr-ver]'), slot = e.target.closest('#rfl-mapa .slot[data-id]'), chip = e.target.closest('[data-mostrar-anexados]');
   if(ver){ setRfSubtab('lista'); rfSel = ver.dataset.rfrVer; setTimeout(()=> rfAbrir(ver.dataset.rfrVer), 50); return; }
