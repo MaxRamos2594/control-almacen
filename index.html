@@ -397,6 +397,16 @@
   body.rfl-full #rfl-detalle{position:fixed; left:14px; bottom:14px; z-index:45; width:min(560px, calc(100vw - 28px)); max-height:55vh; overflow:auto; margin:0; box-shadow:0 10px 30px rgba(16,24,40,.25);}
   /* Aptos en pantalla completa: misma idea que el Layout. */
   .rfa-info{display:none;}
+  .rfa-kpis{display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:8px; margin:8px 0 4px;}
+  .rfa-kpi{background:#f6f8fb; border:1px solid var(--line); border-radius:12px; padding:8px 12px; display:flex; flex-direction:column; gap:2px; min-width:0;}
+  .rfa-kpi .k-t{font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft);}
+  .rfa-kpi .k-v{font-size:22px; font-weight:900; font-family:var(--mono); line-height:1.15; white-space:nowrap;} .rfa-kpi .k-s{font-size:11.5px; color:var(--ink-soft);}
+  .rfa-kpi.val{background:linear-gradient(135deg, #1e6b3a, #2E7D4F); border-color:#1e6b3a; color:#fff;} .rfa-kpi.val .k-t, .rfa-kpi.val .k-s{color:#d9f2e2;} .rfa-kpi.val .k-v{font-size:26px;}
+  .k-barra{height:8px; background:#e3e8ef; border-radius:999px; overflow:hidden; margin:3px 0;} .k-barra i{display:block; height:100%; background:#2E7D4F; border-radius:999px; transition:width .6s ease;} .k-barra.baja i{background:#e0a23a;}
+  .rfa-kpi.top{grid-column:span 2;} .k-top{display:grid; grid-template-columns:minmax(70px, 110px) 1fr auto; gap:6px; align-items:center; font-size:11.5px; margin-top:2px;}
+  .k-top-c{font-family:var(--mono); font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;} .k-top-b{height:8px; background:#e3e8ef; border-radius:999px; overflow:hidden;} .k-top-b i{display:block; height:100%; background:linear-gradient(90deg, #2b6cb0, #2E7D4F); transition:width .6s ease;}
+  .k-top-v{font-family:var(--mono); font-weight:700; white-space:nowrap;}
+  @media (max-width:700px){ .rfa-kpi.top{grid-column:auto;} .rfa-kpi .k-v{font-size:19px;} .rfa-kpi.val .k-v{font-size:22px;} }
   body.rfa-full{overflow:hidden;}
   body.rfa-full header, body.rfa-full #app-footer, body.rfa-full #view-regfoto > .subtabs{display:none;}
   body.rfa-full .rfa-panel{position:fixed; inset:0; z-index:40; margin:0; padding:8px; border:none; border-radius:0; display:flex; flex-direction:column; gap:8px; background:#eef1f5;}
@@ -3584,6 +3594,7 @@
         <input type="search" id="rfa-q" placeholder="Buscar código, descripción o posición…" autocomplete="off">
         <span class="rfl-info rfa-info" tabindex="0" title="Suma de cantidades y posiciones distintas por código, con los filtros que elijas. Toca un código para ver sus posiciones; toca un título de columna para ordenar.">ℹ</span>
       </div>
+      <div class="rfa-kpis" id="rfa-kpis"></div>
       <div class="rfa-acciones"><button type="button" class="btn btn-primary btn-sm" id="btn-rfa-excel">⬇ Exportar a Excel</button><button type="button" class="btn btn-primary btn-sm" id="btn-rfa-excel-ubic" title="Una fila por código con todas sus ubicaciones (posición: cantidad) en una columna">⬇ Excel con ubicaciones</button><button type="button" class="btn btn-ghost btn-sm" id="btn-rfa-limpiar">✕ Limpiar filtros</button><button type="button" class="btn btn-ghost btn-sm" id="btn-rfa-recargar">↻ Actualizar</button><button type="button" class="btn btn-ghost btn-sm" id="btn-rfa-costos" hidden>💲 Pegar costos</button></div>
       <div id="rfa-costos-res" class="hint" style="margin:4px 0 8px;"></div>
       <div id="rfa-costos" class="rfa-costos" hidden>
@@ -4162,8 +4173,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v277';
-const APP_UPDATED = '17/11/2026 22:00';
+const APP_VERSION = 'v278';
+const APP_UPDATED = '17/11/2026 23:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -18637,6 +18648,39 @@ function rfaLlenarFiltros(){
   $('rfa-usuario').innerHTML = '<option value="">👤 Todos los usuarios</option>' + usuarios.map(([e, a])=> `<option value="${esc(e)}">${esc(a)}</option>`).join('');
   $('rfa-tienda').value = tiendas.includes(vt) ? vt : ''; $('rfa-usuario').value = usuarios.some(([e])=> e === vu) ? vu : '';
 }
+// ---- Valorizado del inventario (con los filtros elegidos): tarjetas que se actualizan al filtrar ----
+// Valorizado = cantidad × costo de cada código; los que no tienen costo no suman y se cuentan aparte.
+function rfaAnimar(el, hasta, fmt){
+  if(!el) return;
+  const desde = Number(el.dataset.v) || 0; el.dataset.v = hasta;
+  if(desde === hasta || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)){ el.textContent = fmt(hasta); return; }
+  const t0 = performance.now(), dur = 600;
+  const paso = t=>{ const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3); el.textContent = fmt(desde + (hasta - desde) * e); if(k < 1 && el.dataset.v == hasta) requestAnimationFrame(paso); };
+  requestAnimationFrame(paso);
+}
+function rfaPintarKpis(G){
+  const box = $('rfa-kpis'); if(!box) return;
+  const und = G.reduce((s, g)=> s + g.cantidad, 0), con = G.filter(g=> g.costo != null), sin = G.length - con.length;
+  const val = Math.round(con.reduce((s, g)=> s + (g.costoTotal || 0), 0) * 100) / 100, undCon = con.reduce((s, g)=> s + g.cantidad, 0), undSin = und - undCon;
+  const pct = und ? Math.round(undCon / und * 1000) / 10 : 0, posTot = new Set(G.flatMap(g=> [...g.pos.keys()])).size;
+  const top = con.slice().sort((a, b)=> (b.costoTotal || 0) - (a.costoTotal || 0)).slice(0, 5), max = top.length ? top[0].costoTotal || 1 : 1;
+  if(!box.dataset.listo){
+    box.innerHTML = `<div class="rfa-kpi val"><span class="k-t">💰 Valorizado total</span><b class="k-v" id="rfa-k-val">S/ 0.00</b><span class="k-s" id="rfa-k-val-s"></span></div>` +
+      `<div class="rfa-kpi"><span class="k-t">📦 Unidades</span><b class="k-v" id="rfa-k-und">0</b><span class="k-s" id="rfa-k-und-s"></span></div>` +
+      `<div class="rfa-kpi"><span class="k-t">🧾 Con costo</span><b class="k-v" id="rfa-k-pct">0%</b><div class="k-barra"><i id="rfa-k-barra"></i></div><span class="k-s" id="rfa-k-pct-s"></span></div>` +
+      `<div class="rfa-kpi top"><span class="k-t">🏆 Top 5 por valorizado</span><div id="rfa-k-top"></div></div>`;
+    box.dataset.listo = '1';
+  }
+  rfaAnimar($('rfa-k-val'), val, v=> rfaSoles(Math.round(v * 100) / 100));
+  rfaAnimar($('rfa-k-und'), und, v=> anFmt(Math.round(v)));
+  rfaAnimar($('rfa-k-pct'), pct, v=> (Math.round(v * 10) / 10).toLocaleString('es-PE') + '%');
+  $('rfa-k-val-s').textContent = `${anFmt(con.length)} código(s) con costo` + (sin ? ` · ${anFmt(sin)} sin costo (no suman)` : '');
+  $('rfa-k-und-s').textContent = `${anFmt(G.length)} código(s) · ${anFmt(posTot)} posición(es)`;
+  $('rfa-k-barra').style.width = pct + '%'; $('rfa-k-barra').parentElement.classList.toggle('baja', pct < 80);
+  $('rfa-k-pct-s').textContent = undSin ? `${anFmt(undSin)} und sin costo (${anFmt(sin)} código(s))` : 'Todas las unidades tienen costo';
+  $('rfa-k-top').innerHTML = top.length ? top.map(g=> `<div class="k-top" title="${esc(g.sku)} · ${esc(g.descripcion)}"><span class="k-top-c">${esc(g.sku)}</span><span class="k-top-b"><i style="width:${Math.max(3, Math.round((g.costoTotal || 0) / max * 100))}%"></i></span><span class="k-top-v">${esc(rfaSoles(g.costoTotal))}</span></div>`).join('')
+    : '<span class="k-s">Sin códigos con costo</span>';
+}
 function renderRfAptos(){
   rfaLlenarFiltros();
   const G = rfaFilas(), pags = Math.max(1, Math.ceil(G.length / RFA_POR_PAGINA)); rfaPag = Math.min(rfaPag, pags - 1);
@@ -18659,6 +18703,7 @@ function renderRfAptos(){
   $('rfa-costos-res').innerHTML = todos.length ? (sin ? `⚠ <b>${esc(anFmt(sin))}</b> de ${esc(anFmt(todos.length))} código(s) <b>sin costo</b> (con los filtros de arriba). ` +
       `<button type="button" class="btn ${soloSin ? 'btn-ghost' : 'btn-primary'} btn-sm" data-rfa-solo-sin>${soloSin ? '↩ Ver todos' : '👁 Ver solo los sin costo'}</button>`
     : `✔ Los ${esc(anFmt(todos.length))} código(s) tienen costo.` + (soloSin ? ` <button type="button" class="btn btn-ghost btn-sm" data-rfa-solo-sin>↩ Ver todos</button>` : '')) : '';
+  rfaPintarKpis(G);
   $('btn-rfa-costos').hidden = !rfaPuedeCosto();
   $('rfa-pag').innerHTML = G.length > RFA_POR_PAGINA ? `<div class="vo-pag"><button type="button" data-rfa-pag="-1" ${rfaPag ? '' : 'disabled'}>‹ Anterior</button><span>${esc(rfaPag * RFA_POR_PAGINA + 1)}–${esc(Math.min(G.length, (rfaPag + 1) * RFA_POR_PAGINA))} de ${esc(G.length)} · página ${esc(rfaPag + 1)} de ${esc(pags)}</span><button type="button" data-rfa-pag="1" ${rfaPag < pags - 1 ? '' : 'disabled'}>Siguiente ›</button></div>` : '';
 }

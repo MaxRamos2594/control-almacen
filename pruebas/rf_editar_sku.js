@@ -80,6 +80,16 @@ async function esperar(page, fn, arg, ms){
     /3 código\(s\) en el listado: 1 igual\(es\) · 0 con costo distinto \(se reemplaza\) · 1 sin costo \(se asigna\) · 1 no están en la tabla/.test(prev1) && /todos los códigos de la tabla tendrán costo/.test(prev1) &&
     p1x.descripcion === 'PELOTA ROJA' && p1x.creado_desde === 'registro_fotografico' && /P1X\|S\/ 2\.50\|S\/ 27\.50/.test(tras1) && /P2\|S\/ 3\.00\|S\/ 9\.00/.test(tras1) && /Todos los códigos de la tabla tienen costo/.test(fin1),
     `Costos: antes "${res0}" (filtro sin costo → ${soloSin}); al pegar: "${prev1.slice(0, 160)}…"; queda ${tras1}`);
+  // Valorizado total (con los filtros): tarjetas que se actualizan solas y con número animado.
+  await page.waitForFunction(()=> $('rfa-k-val').textContent === 'S/ 36.50', null, { timeout: 10000 }).catch(()=>{});
+  const kpi = await page.evaluate(()=> ({ val: $('rfa-k-val').textContent, und: $('rfa-k-und').textContent, pct: $('rfa-k-pct').textContent, top: [...document.querySelectorAll('#rfa-k-top .k-top')].map(x=> x.innerText.replace(/\s+/g, ' ').trim()).join(' | ') }));
+  await page.fill('#rfa-f-sku', 'P2');
+  await page.waitForFunction(()=> $('rfa-k-val').textContent === 'S/ 9.00', null, { timeout: 5000 }).catch(()=>{});
+  const kpiP2 = await page.evaluate(()=> $('rfa-k-val').textContent); await page.fill('#rfa-f-sku', '');
+  await page.click('#btn-rfa-costos-cerrar').catch(()=>{}); await page.waitForTimeout(900);
+  await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_aptos_valorizado.png') });
+  verificar(kpi.val === 'S/ 36.50' && kpi.und === '14' && kpi.pct === '100%' && /^P1X S\/ 27\.50 \| P2 S\/ 9\.00$/.test(kpi.top) && kpiP2 === 'S/ 9.00',
+    `Valorizado total ${kpi.val} · ${kpi.und} und · ${kpi.pct} con costo · top: ${kpi.top}; al filtrar P2 → ${kpiP2}`);
   // Costo distinto → se reemplaza.
   await page.fill('#rfa-costos-txt', 'P2\t4');
   await page.click('#btn-rfa-costos-revisar');
