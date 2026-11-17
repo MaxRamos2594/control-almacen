@@ -397,8 +397,8 @@
   body.rfl-full #rfl-detalle{position:fixed; left:14px; bottom:14px; z-index:45; width:min(560px, calc(100vw - 28px)); max-height:55vh; overflow:auto; margin:0; box-shadow:0 10px 30px rgba(16,24,40,.25);}
   /* Aptos en pantalla completa: misma idea que el Layout. */
   .rfa-info{display:none;}
-  /* Valorizado: panel flotante abajo a la derecha (se minimiza a una pastilla con el total). */
-  .rfa-kpis{position:fixed; right:16px; bottom:56px; z-index:45; width:min(400px, calc(100vw - 32px)); background:rgba(255,255,255,.98); border:1px solid var(--line); border-radius:14px; box-shadow:0 12px 32px rgba(16,24,40,.25); overflow:hidden;}
+  /* Valorizado: panel flotante abajo a la izquierda (los avisos salen a la derecha) (se minimiza a una pastilla con el total). */
+  .rfa-kpis{position:fixed; left:16px; bottom:56px; z-index:45; width:min(400px, calc(100vw - 32px)); background:rgba(255,255,255,.98); border:1px solid var(--line); border-radius:14px; box-shadow:0 12px 32px rgba(16,24,40,.25); overflow:hidden;}
   .rfa-kpis:empty{display:none;} body:not(.rfa-full) .rfa-kpis{display:none;}
   .rfa-k-cab{display:flex; align-items:center; gap:8px; width:100%; border:none; background:#1e6b3a; color:#fff; padding:8px 12px; font:inherit; font-size:13px; font-weight:800; cursor:pointer; text-align:left;}
   .rfa-k-cab b{margin-left:auto; font-family:var(--mono); font-size:16px;} .rfa-k-fl{transition:transform .2s;} .rfa-kpis.min .rfa-k-fl{transform:rotate(180deg);}

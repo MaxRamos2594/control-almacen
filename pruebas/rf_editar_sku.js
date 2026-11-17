@@ -90,14 +90,14 @@ async function esperar(page, fn, arg, ms){
   await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_aptos_valorizado.png') });
   verificar(kpi.val === 'S/ 36.50' && kpi.und === '14' && kpi.pct === '100%' && /^P1X S\/ 27\.50 \| P2 S\/ 9\.00$/.test(kpi.top) && kpiP2 === 'S/ 9.00',
     `Valorizado total ${kpi.val} · ${kpi.und} und · ${kpi.pct} con costo · top: ${kpi.top}; al filtrar P2 → ${kpiP2}`);
-  // El valorizado es un panel flotante (abajo a la derecha) que se minimiza a una pastilla con el total.
-  const flot = await page.evaluate(()=>{ const b = $('rfa-kpis'), r = b.getBoundingClientRect(); return { pos: getComputedStyle(b).position, der: Math.round(innerWidth - r.right), abajo: Math.round(innerHeight - r.bottom), mini: $('rfa-k-mini').textContent }; });
+  // El valorizado es un panel flotante (abajo a la izquierda) que se minimiza a una pastilla con el total.
+  const flot = await page.evaluate(()=>{ const b = $('rfa-kpis'), r = b.getBoundingClientRect(); return { pos: getComputedStyle(b).position, der: Math.round(r.left), abajo: Math.round(innerHeight - r.bottom), mini: $('rfa-k-mini').textContent }; });
   await page.click('[data-rfa-k-toggle]');
   const minimizado = await page.evaluate(()=> ({ min: $('rfa-kpis').classList.contains('min'), cuerpo: getComputedStyle(document.querySelector('.rfa-k-cuerpo')).display, alto: Math.round($('rfa-kpis').getBoundingClientRect().height), guardado: localStorage.getItem('rf:kpis-min') }));
   await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_aptos_valorizado_min.png') });
   await page.click('[data-rfa-k-toggle]');
   verificar(flot.pos === 'fixed' && flot.der < 40 && flot.abajo < 80 && flot.mini === 'S/ 36.50' && minimizado.min && minimizado.cuerpo === 'none' && minimizado.alto < 60 && minimizado.guardado === '1' && !(await page.evaluate(()=> $('rfa-kpis').classList.contains('min'))),
-    `Valorizado flotante abajo a la derecha (${flot.der}px / ${flot.abajo}px del borde); se minimiza a «💰 Valorizado ${flot.mini}» (${minimizado.alto}px) y se vuelve a abrir`);
+    `Valorizado flotante abajo a la izquierda (${flot.der}px / ${flot.abajo}px del borde); se minimiza a «💰 Valorizado ${flot.mini}» (${minimizado.alto}px) y se vuelve a abrir`);
   // Costo distinto → se reemplaza.
   if(await page.evaluate(()=> $('rfa-costos').hidden)) await page.click('#btn-rfa-costos');
   await page.fill('#rfa-costos-txt', 'P2\t4');
