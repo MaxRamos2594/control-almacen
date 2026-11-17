@@ -39,7 +39,7 @@ const png = path.join(__dirname, 'salida', 'sd_foto.png');
   await page.click('#btn-menu'); await page.click('#tab-merma');
   await page.waitForFunction(()=> [...$('mm-tienda').options].some(o=> o.value === 'COMAS'), null, { timeout: 10000 });
   const hoy = await page.evaluate(()=> mmHoy() === $('mm-fecha').value && $('mm-fecha').value);
-  verificar(/PRODUCTOS E INVENTARIO: .*Saldos, Kardex, Merma$/i.test(grupo) && !!hoy, `Opción "Merma" en ${grupo}; la fecha por defecto es hoy (${hoy})`);
+  verificar(/PRODUCTOS E INVENTARIO: .*Saldos, Kardex, Merma(, Recepciones)?$/i.test(grupo) && !!hoy, `Opción "Merma" en ${grupo}; la fecha por defecto es hoy (${hoy})`);
 
   // Recargar la página estando en Merma: tiendas y fecha se llenan solas (antes quedaban vacías).
   await page.reload();
