@@ -244,6 +244,7 @@
   .rf-det-datos div{background:#f6f8fb; border-radius:8px; padding:8px 10px;} .rf-det-datos span{display:block; font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft);} .rf-det-datos b{font-size:13px;}
   .rf-det-items{width:100%; border-collapse:collapse;} .rf-det-items td, .rf-det-items th{padding:8px 6px; border-bottom:1px solid var(--line); vertical-align:top; text-align:left;}
   .rf-det-items .rf-fotos .rf-thumb{width:96px; height:96px;}
+  .rf-ei-hist{display:flex; flex-direction:column; align-items:flex-start; gap:1px; margin-top:3px; font-size:10.5px; line-height:1.25; color:var(--ink-soft); font-weight:400; white-space:nowrap;}
   .rf-det-items tr.rf-ei-quitado td{opacity:.45; text-decoration:line-through;} .rf-det-items tr.rf-ei-quitado td:nth-child(3){opacity:1; text-decoration:none;}
   .cam-modal{position:fixed; inset:0; background:rgba(10,14,20,.88); z-index:9000; display:flex; align-items:center; justify-content:center; padding:10px;}
   .cam-modal[hidden], .rf-lightbox[hidden]{display:none;}
@@ -4195,8 +4196,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v280';
-const APP_UPDATED = '18/11/2026 08:00';
+const APP_VERSION = 'v281';
+const APP_UPDATED = '17/11/2026 23:55';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -19431,7 +19432,7 @@ function rfAbrir(id, desdeGrupo){
     ((r.fusionado_de || []).length ? `<div class="hint" style="margin:6px 0;">🔗 Fusionado con ${esc(r.fusionado_de.join(', '))} · ${esc(r.fusionado_por || '')} · ${esc(rfFechaTxt(r.fusionado_en))}</div>` : '') +
     ((r.ajustes_admin || []).length ? `<div class="hint" style="margin:6px 0;">🔢 Cantidades editadas por el administrador: ${r.ajustes_admin.slice(-3).map(a=> `${esc(a.por || '')} · ${esc(rfFechaTxt(a.en))} (${esc(a.detalle || '')})`).join(' · ')}</div>` : '') +
     `<table class="rf-det-items" id="rf-det-items"><thead><tr><th>SKU</th><th>Descripción</th><th class="num">Cantidad</th><th>Fotos</th></tr></thead><tbody>` +
-    (r.items || []).map(it=> `<tr><td><b>${esc(it.sku)}</b></td><td>${esc(it.descripcion || '')}</td><td class="num">${esc(anFmt(it.cantidad))}</td><td><div class="rf-fotos">${(it.fotos || []).map(f=> foto(f, `${it.sku} · ${it.descripcion || ''}`)).join('')}</div></td></tr>`).join('') +
+    (r.items || []).map(it=> `<tr><td><b>${esc(it.sku)}</b></td><td>${esc(it.descripcion || '')}</td><td class="num">${esc(anFmt(it.cantidad))}${rfEiHistorial(r, it.sku)}</td><td><div class="rf-fotos">${(it.fotos || []).map(f=> foto(f, `${it.sku} · ${it.descripcion || ''}`)).join('')}</div></td></tr>`).join('') +
     `</tbody><tfoot><tr><th colspan="2">Total</th><th class="num">${esc(anFmt(r.unidades || 0))}</th><th></th></tr></tfoot></table>`;
   // El detalle se abre en una ventana encima de la lista (la lista queda donde estaba).
   const modal = $('rf-det-modal'), yaAbierto = !modal.hidden;
@@ -19442,11 +19443,24 @@ function rfAbrir(id, desdeGrupo){
 }
 // Administrador: cambiar cantidades o quitar productos de un registro confirmado ahí mismo, sin reabrirlo.
 // El registro sigue CONFIRMADO y conserva su marca de apto para ajuste; queda constancia en ajustes_admin.
+// Historial de cambios de cantidad de un producto (ajustes del administrador): «✏ 321 → 300 · MAX RAMOS · 18/11/26 10:30».
+// Los ajustes antiguos solo tienen el texto («P1: 5 → 7; P2 quitado»): se leen de ahí.
+function rfEiHistorial(r, sku){
+  const k = String(sku || '').trim().toUpperCase(), filas = [];
+  (r.ajustes_admin || []).forEach(a=>{
+    let L = Array.isArray(a.items) ? a.items.filter(x=> String(x.sku).trim().toUpperCase() === k) : null;
+    if(!L){ L = []; String(a.detalle || '').split(';').map(t=> t.trim()).forEach(t=>{
+      const m = t.match(/^(.+?):\s*([\d.,]+)\s*→\s*([\d.,]+)$/); if(m && m[1].trim().toUpperCase() === k) L.push({ de: m[2], a: m[3] });
+      else if(t.toUpperCase() === k + ' QUITADO') L.push({ de: '', a: 0 }); }); }
+    L.forEach(x=> filas.push(`✏ ${typeof x.de === 'number' ? anFmt(x.de) : x.de} → ${typeof x.a === 'number' ? anFmt(x.a) : x.a} · ${a.por || ''} · ${rfFechaTxt(a.en)}`));
+  });
+  return filas.length ? `<div class="rf-ei-hist">${filas.slice(-3).map(t=> `<span>${esc(t)}</span>`).join('')}</div>` : '';
+}
 function rfEditarCantidades(){
   const r = rfLista.find(x=> x.id === rfSel), tb = $('rf-det-items'); if(!r || !tb || !currentPermisos.admin) return;
   tb.querySelectorAll('tbody tr').forEach((tr, i)=>{
     const it = (r.items || [])[i]; if(!it) return; tr.dataset.rfEi = i;
-    tr.cells[2].innerHTML = `<input type="number" min="0" step="any" class="rf-ei-cant" value="${esc(it.cantidad)}" style="width:110px; text-align:right; margin:0;"> <button type="button" class="btn btn-ghost btn-sm" data-rf-ei-quitar title="Quitar este producto del registro" style="color:#8A332A;">🗑</button>`;
+    tr.cells[2].innerHTML = `<input type="number" min="0" step="any" class="rf-ei-cant" value="${esc(it.cantidad)}" style="width:110px; text-align:right; margin:0;"> <button type="button" class="btn btn-ghost btn-sm" data-rf-ei-quitar title="Quitar este producto del registro" style="color:#8A332A;">🗑</button>` + rfEiHistorial(r, it.sku);
   });
   tb.tFoot.innerHTML = `<tr><th colspan="4"><div style="display:flex; gap:8px; justify-content:flex-end; align-items:center; flex-wrap:wrap;"><span class="hint">El registro sigue confirmado y ${rfApto(r) ? `con «${esc(rfAptoTxt(r))}»` : 'sin cambiar su marca'}.</span><button type="button" class="btn btn-ghost btn-sm" data-rf-ei-cancelar>Cancelar</button><button type="button" class="btn btn-primary btn-sm" data-rf-ei-guardar>💾 Guardar cambios</button></div></th></tr>`;
   const b = $('btn-rf-editar-cant'); if(b) b.disabled = true;
@@ -19454,13 +19468,13 @@ function rfEditarCantidades(){
 }
 async function rfGuardarCantidades(){
   const r = rfLista.find(x=> x.id === rfSel), tb = $('rf-det-items'); if(!r || !tb || !currentPermisos.admin) return;
-  const filas = [...tb.querySelectorAll('tbody tr[data-rf-ei]')], nuevos = [], cambios = [], quitadas = [];
+  const filas = [...tb.querySelectorAll('tbody tr[data-rf-ei]')], nuevos = [], cambios = [], quitadas = [], porItem = [];
   for(const tr of filas){
     const it = r.items[Number(tr.dataset.rfEi)];
-    if(tr.classList.contains('rf-ei-quitado')){ cambios.push(`${it.sku} quitado`); quitadas.push(...(it.fotos || []).map(f=> f.path).filter(Boolean)); continue; }
+    if(tr.classList.contains('rf-ei-quitado')){ cambios.push(`${it.sku} quitado`); porItem.push({ sku: it.sku, de: Number(it.cantidad) || 0, a: 0 }); quitadas.push(...(it.fotos || []).map(f=> f.path).filter(Boolean)); continue; }
     const v = tr.querySelector('.rf-ei-cant').value.trim(), n = Number(v);
     if(v === '' || !Number.isFinite(n) || n <= 0){ showToast(`${it.sku}: la cantidad debe ser mayor a 0 (o quita el producto con 🗑).`, 'err'); tr.querySelector('.rf-ei-cant').focus(); return; }
-    if(n !== Number(it.cantidad)) cambios.push(`${it.sku}: ${anFmt(it.cantidad)} → ${anFmt(n)}`);
+    if(n !== Number(it.cantidad)){ cambios.push(`${it.sku}: ${anFmt(it.cantidad)} → ${anFmt(n)}`); porItem.push({ sku: it.sku, de: Number(it.cantidad) || 0, a: n }); }
     nuevos.push(Object.assign({}, it, { cantidad: n }));
   }
   if(!cambios.length){ rfAbrir(r.id, !!rfDetGrupo); return; }
@@ -19473,11 +19487,11 @@ async function rfGuardarCantidades(){
       if(!snap.exists) throw new Error('el registro ya no existe');
       if(snap.data().estado !== 'CONFIRMADO') throw new Error('el registro ya no está confirmado');
       tx.update(ref, { items: nuevos, cant_items: nuevos.length, unidades: nuevos.reduce((s, it)=> s + it.cantidad, 0), skus: nuevos.map(it=> it.sku), actualizado_en: ahora,
-        ajustes_admin: firebase.firestore.FieldValue.arrayUnion({ por: currentUserAlias, email: currentUserEmail || '', en: ahora, detalle }) });
+        ajustes_admin: firebase.firestore.FieldValue.arrayUnion({ por: currentUserAlias, email: currentUserEmail || '', en: ahora, detalle, items: porItem }) });
     });
     quitadas.forEach(pa=> storage.ref().child(pa).delete().catch(()=>{}));
     Object.assign(r, { items: nuevos, cant_items: nuevos.length, unidades: nuevos.reduce((s, it)=> s + it.cantidad, 0), skus: nuevos.map(it=> it.sku), actualizado_en: ahora,
-      ajustes_admin: [...(r.ajustes_admin || []), { por: currentUserAlias, email: currentUserEmail || '', en: ahora, detalle }] });
+      ajustes_admin: [...(r.ajustes_admin || []), { por: currentUserAlias, email: currentUserEmail || '', en: ahora, detalle, items: porItem }] });
     await logAccion('reg_foto_cantidades_editadas', { detalle: `${r.id} (sigue confirmado${rfApto(r) ? ', ' + rfAptoTxt(r) : ''}): ${detalle}` });
     renderRfLista(); rfAbrir(r.id, !!rfDetGrupo); rfSiReportes(); if(typeof renderRfAptos === 'function' && $('rfsub-panel-aptos') && $('rfsub-panel-aptos').style.display !== 'none') renderRfAptos();
     showToast(`${r.id}: cambios guardados; sigue confirmado.`, 'ok');
