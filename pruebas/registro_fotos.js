@@ -336,14 +336,15 @@ const innerHeightOf = f=> Number(f.pan.split(',')[2]);
   const full = await page.evaluate(()=>{ const pan = document.querySelector('.rfl-panel').getBoundingClientRect(), mapa = $('rfl-mapa').getBoundingClientRect(), flot = $('rfl-flot').getBoundingClientRect();
     return { clase: document.body.classList.contains('rfl-full'), header: getComputedStyle(document.querySelector('header')).display, subtabs: getComputedStyle(document.querySelector('#view-regfoto > .subtabs')).display,
       pan: [Math.round(pan.top), Math.round(pan.height), innerHeight].join(','), mapaAlto: Math.round(mapa.height), flotAlto: Math.round(flot.height), filtros: getComputedStyle($('rfl-estado')).height,
-      zoom: getComputedStyle(document.querySelector('.rfl-zoom')).position, nav: document.querySelectorAll('.rfl-nav [data-rfl-ir]').length }; });
+      zoom: getComputedStyle(document.querySelector('.rfl-zoom')).position, nav: document.querySelectorAll('.rfl-nav [data-rfl-ir]').length,
+      hueco: Math.round(document.querySelector('#rfl-mapa .slot[data-id]').getBoundingClientRect().left - mapa.left) }; });
   await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_layout_completo.png') });
   await page.click('.rfl-nav [data-rfl-ir="lista"]');
   const sale = await page.evaluate(()=> ({ clase: document.body.classList.contains('rfl-full'), lista: $('rfsub-panel-lista').style.display, header: getComputedStyle(document.querySelector('header')).display }));
   await page.click('#rfsub-layout');
-  verificar(full.clase && full.header === 'none' && full.subtabs === 'none' && full.pan === `0,${full.pan.split(',')[2]},${full.pan.split(',')[2]}` && full.mapaAlto > innerHeightOf(full) - 5 && full.flotAlto < 140 && full.filtros === '32px' && full.zoom === 'absolute' && full.nav === 5 &&
+  verificar(full.clase && full.header === 'none' && full.subtabs === 'none' && full.pan === `0,${full.pan.split(',')[2]},${full.pan.split(',')[2]}` && full.mapaAlto > innerHeightOf(full) - 5 && full.flotAlto < 140 && full.filtros === '32px' && full.zoom === 'absolute' && full.nav === 5 && full.hueco < 200 &&
     !sale.clase && sale.lista === 'block' && sale.header !== 'none',
-    `Layout en toda la hoja (panel ${full.pan}, mapa ${full.mapaAlto}px de alto), barra flotante de ${full.flotAlto}px con menú y filtros compactos (${full.filtros}), zoom flotante; al ir a Registros vuelve la vista normal`);
+    `Layout en toda la hoja (panel ${full.pan}, mapa ${full.mapaAlto}px de alto), barra flotante de ${full.flotAlto}px con menú y filtros compactos (${full.filtros}), zoom flotante; el layout empieza a la izquierda, sin hueco (${full.hueco}px); al ir a Registros vuelve la vista normal`);
   await page.evaluate(()=>{ rfLista = rfLista.filter(r=> r.id !== 'RF-09999'); });
   await page.selectOption('#rfl-estado', '');
   const lay3 = await clases();

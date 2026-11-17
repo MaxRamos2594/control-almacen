@@ -395,7 +395,9 @@
   .rfl-mapa .slot.rfl-bloq, .rfl-mapa .slot.rfl-merma, .rfl-mapa .slot.rfl-inv{font-size:9px;}
   .rfl-mapa.rfl-eligiendo .slot{cursor:crosshair !important;}
   .rfl-mapa{overflow:auto; padding:4px 0 8px; max-height:75vh; -webkit-overflow-scrolling:touch; border:1px solid var(--line); border-radius:10px;}
-  .rfl-lienzo{display:inline-block; min-width:100%; vertical-align:top;}
+  /* El lienzo mide lo que mide el layout: si es más angosto que la pantalla no queda un hueco a la izquierda
+     (las filas de nichos se empaquetan hacia la derecha con row-reverse). */
+  .rfl-lienzo{display:inline-block; width:max-content; min-width:0; vertical-align:top;}
   .rfl-zoom{display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:4px 0 8px;} .rfl-zoom button{border:1px solid var(--line-strong); background:#fff; border-radius:8px; padding:6px 10px; font:inherit; font-size:13px; cursor:pointer;}
   #rfl-zoom-txt{min-width:44px; text-align:center; font-family:var(--mono); font-size:12px;}
   @media (max-width:600px){ #view-regfoto > .subtabs{flex-wrap:wrap; overflow:visible;} #view-regfoto > .subtabs button{flex:1 1 45%; min-width:0;} }
@@ -4069,8 +4071,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v273';
-const APP_UPDATED = '17/11/2026 10:00';
+const APP_VERSION = 'v274';
+const APP_UPDATED = '17/11/2026 15:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
