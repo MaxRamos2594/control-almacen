@@ -73,6 +73,8 @@ async function esperar(page, fn, arg, ms){
   const p1x = await page.evaluate(async ()=> (await productosRef.doc('P1X').get()).data());
   const fila = ()=> page.evaluate(()=> [...document.querySelectorAll('#rfa-body .rfa-fila')].map(tr=> [tr.cells[0], tr.cells[5], tr.cells[6]].map(c=> c ? c.innerText.replace(/[▸▾]/g, '').trim() : '').join('|')).join(' / '));
   await page.waitForFunction(()=> /2\.50/.test(($('rfa-body').querySelector('[data-rfa-sku="P1X"]') || {}).innerText || ''), null, { timeout: 10000 }).catch(()=>{});
+  // Se espera a que la tabla y el aviso terminen de repintarse con los costos nuevos (llegan en vivo).
+  await page.waitForFunction(()=> /S\/ 3\.00/.test(($('rfa-body').querySelector('[data-rfa-sku="P2"]') || {}).innerText || '') && /tienen costo/.test($('rfa-costos-prev').innerText), null, { timeout: 10000 }).catch(()=>{});
   const tras1 = await fila(), fin1 = await page.evaluate(()=> $('rfa-costos-prev').innerText.replace(/\s+/g, ' '));
   verificar(/1 de 2 código\(s\) sin costo/.test(res0) &&
     /3 código\(s\) en el listado: 1 igual\(es\) · 0 con costo distinto \(se reemplaza\) · 1 sin costo \(se asigna\) · 1 no están en la tabla/.test(prev1) && /todos los códigos de la tabla tendrán costo/.test(prev1) &&

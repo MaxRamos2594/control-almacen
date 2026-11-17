@@ -336,10 +336,10 @@ const innerHeightOf = f=> Number(f.pan.split(',')[2]);
   const full = await page.evaluate(()=>{ const pan = document.querySelector('.rfl-panel').getBoundingClientRect(), mapa = $('rfl-mapa').getBoundingClientRect(), flot = $('rfl-flot').getBoundingClientRect();
     return { clase: document.body.classList.contains('rfl-full'), header: getComputedStyle(document.querySelector('header')).display, subtabs: getComputedStyle(document.querySelector('#view-regfoto > .subtabs')).display,
       pan: [Math.round(pan.top), Math.round(pan.height), innerHeight].join(','), mapaAlto: Math.round(mapa.height), flotAlto: Math.round(flot.height), filtros: getComputedStyle($('rfl-estado')).height,
-      zoom: getComputedStyle(document.querySelector('.rfl-zoom')).position, nav: document.querySelectorAll('.rfl-nav [data-rfl-ir]').length,
+      zoom: getComputedStyle(document.querySelector('.rfl-zoom')).position, nav: document.querySelectorAll('#rfl-flot .rfl-nav [data-rfl-ir]').length,
       hueco: Math.round(document.querySelector('#rfl-mapa .slot[data-id]').getBoundingClientRect().left - mapa.left) }; });
   await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_layout_completo.png') });
-  await page.click('.rfl-nav [data-rfl-ir="lista"]');
+  await page.click('#rfl-flot .rfl-nav [data-rfl-ir="lista"]');
   const sale = await page.evaluate(()=> ({ clase: document.body.classList.contains('rfl-full'), lista: $('rfsub-panel-lista').style.display, header: getComputedStyle(document.querySelector('header')).display }));
   await page.click('#rfsub-layout');
   verificar(full.clase && full.header === 'none' && full.subtabs === 'none' && full.pan === `0,${full.pan.split(',')[2]},${full.pan.split(',')[2]}` && full.mapaAlto > innerHeightOf(full) - 5 && full.flotAlto < 140 && full.filtros === '32px' && full.zoom === 'absolute' && full.nav === 5 && full.hueco < 200 &&
@@ -396,7 +396,7 @@ const innerHeightOf = f=> Number(f.pan.split(',')[2]);
   verificar(sinMarcas.lay === 'true,true' && sinMarcas.docs === 0, `Layout: desbloquear y quitar merma devuelven las posiciones a gris y borran la marca (${JSON.stringify(sinMarcas)})`);
 
   // Modificar un registro confirmado: vuelve a la pantalla de registro y se confirma de nuevo.
-  await cerrarDet(); await page.click('.rfl-nav [data-rfl-ir="lista"]');   // desde el layout en pantalla completa: menú flotante
+  await cerrarDet(); await page.click('#rfl-flot .rfl-nav [data-rfl-ir="lista"]');   // desde el layout en pantalla completa: menú flotante
   await page.evaluate(()=> rfAbrir('RF-ADM-00002'));
   // Apto para ajuste: se marca desde el detalle (el admin puede).
   await page.click('#rf-detalle [data-rf-apto="SI"]');
