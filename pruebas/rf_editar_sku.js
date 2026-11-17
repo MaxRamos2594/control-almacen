@@ -163,8 +163,9 @@ async function esperar(page, fn, arg, ms){
   const ec = await page.evaluate(async ()=>{ const d = (await registrosFotoRef.doc('RF-ADM-00001').get()).data();
     return { estado: d.estado, apto: d.apto_ajuste, items: d.items.map(it=> `${it.sku}:${it.cantidad}`).join(), und: d.unidades, n: d.cant_items, skus: d.skus.join(), aj: (d.ajustes_admin || []).map(a=> a.detalle).join(' | '),
       det: $('rf-detalle').innerText.replace(/\s+/g, ' '), log: (await movimientosRef.where('tipo', '==', 'reg_foto_cantidades_editadas').get()).size }; });
-  verificar(ec.estado === 'CONFIRMADO' && ec.apto === 'SI' && ec.items === 'P1X:7' && ec.und === 7 && ec.n === 1 && ec.skus === 'P1X' && /P1X: 5 → 7; P2 quitado/.test(ec.aj) && /✔ CONFIRMADO/.test(ec.det) && /Cantidades editadas por el administrador/.test(ec.det) && ec.log === 1,
+  verificar(ec.estado === 'CONFIRMADO' && ec.apto === 'SI' && ec.items === 'P1X:7' && ec.und === 7 && ec.n === 1 && ec.skus === 'P1X' && /P1X: 5 → 7; P2 quitado/.test(ec.aj) && /✔ CONFIRMADO/.test(ec.det) && /Cantidades editadas por el administrador/.test(ec.det) && /✏ 5 → 7 · Administrador · \d/.test(ec.det) && ec.log === 1,
     `Admin edita cantidades en el detalle: ${ec.items} (${ec.aj}); sigue ${ec.estado} y apto ${ec.apto}`);
+  await (await page.$('#rf-det-items')).screenshot({ path: path.join(__dirname, 'salida', 'rf_editar_cantidades_hist.png') });
   await page.evaluate(()=> rfCerrarDetalle());
 
   // Sin permiso (solo registrar) no aparece el botón.
