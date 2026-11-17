@@ -3555,7 +3555,7 @@
         <label>Desde <input type="date" id="rfa-desde"></label><label>Hasta <input type="date" id="rfa-hasta"></label>
         <input type="search" id="rfa-q" placeholder="Buscar código, descripción o posición…" autocomplete="off">
       </div>
-      <div class="rfa-acciones"><button type="button" class="btn btn-primary btn-sm" id="btn-rfa-excel">⬇ Exportar a Excel</button><button type="button" class="btn btn-ghost btn-sm" id="btn-rfa-limpiar">✕ Limpiar filtros</button><button type="button" class="btn btn-ghost btn-sm" id="btn-rfa-recargar">↻ Actualizar</button><button type="button" class="btn btn-ghost btn-sm" id="btn-rfa-costos" hidden>💲 Pegar costos</button></div>
+      <div class="rfa-acciones"><button type="button" class="btn btn-primary btn-sm" id="btn-rfa-excel">⬇ Exportar a Excel</button><button type="button" class="btn btn-primary btn-sm" id="btn-rfa-excel-ubic" title="Una fila por código con todas sus ubicaciones (posición: cantidad) en una columna">⬇ Excel con ubicaciones</button><button type="button" class="btn btn-ghost btn-sm" id="btn-rfa-limpiar">✕ Limpiar filtros</button><button type="button" class="btn btn-ghost btn-sm" id="btn-rfa-recargar">↻ Actualizar</button><button type="button" class="btn btn-ghost btn-sm" id="btn-rfa-costos" hidden>💲 Pegar costos</button></div>
       <div id="rfa-costos-res" class="hint" style="margin:4px 0 8px;"></div>
       <div id="rfa-costos" class="rfa-costos" hidden>
         <b>💲 Pegar listado de costos</b>
@@ -4132,8 +4132,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v275';
-const APP_UPDATED = '17/11/2026 18:00';
+const APP_VERSION = 'v276';
+const APP_UPDATED = '17/11/2026 20:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -18787,10 +18787,29 @@ function rfaExcel(){
   logAccion('reg_foto_exportado', { detalle: `Excel de ${etiqueta} por código: ${G.length} código(s), ${detalle.length} fila(s) de detalle` });
   showToast(`Excel con ${G.length} código(s).`, 'ok');
 }
+// Excel con ubicaciones: una fila por código (con los filtros de arriba) y sus ubicaciones en una sola columna,
+// de la que tiene más cantidad a la que tiene menos: "A01: 10 · B05: 7".
+function rfaExcelUbicaciones(){
+  const G = rfaFilas();
+  if(!G.length){ showToast('No hay códigos para exportar con estos filtros.', 'err'); return; }
+  const filas = G.map(g=>{
+    const P = [...g.pos.values()].sort((a, b)=> b.cantidad - a.cantidad || String(a.posicion).localeCompare(String(b.posicion)));
+    return { 'Código': g.sku, 'Descripción': g.descripcion, 'Cantidad total': g.cantidad, 'Costo unitario': g.costo == null ? '' : g.costo, 'Costo total': g.costoTotal == null ? '' : g.costoTotal,
+      'N° ubicaciones': P.length, 'Ubicaciones (posición: cantidad)': P.map(p=> `${p.posicion}: ${anFmt(p.cantidad)}`).join(' · '), 'Tiendas': [...g.tiendas].join(', ') };
+  });
+  const wb = XLSX.utils.book_new(), ws = XLSX.utils.json_to_sheet(filas);
+  ws['!cols'] = [14, 44, 14, 14, 14, 14, 70, 26].map(w=> ({ wch: w })); ws['!autofilter'] = { ref: ws['!ref'] };
+  XLSX.utils.book_append_sheet(wb, ws, 'Con ubicaciones');
+  const etiqueta = ({ SI:'aptos', NO:'no_aptos', SIN:'sin_marcar' })[$('rfa-apto').value] || 'todos';
+  XLSX.writeFile(wb, `registro_fotografico_${etiqueta}_ubicaciones_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  logAccion('reg_foto_exportado', { detalle: `Excel de ${etiqueta} con ubicaciones: ${G.length} código(s)` });
+  showToast(`Excel con ubicaciones: ${G.length} código(s).`, 'ok');
+}
 $('rfsub-panel-aptos').addEventListener('click', e=>{
   const ver = e.target.closest('[data-rfa-ver]'), th = e.target.closest('[data-rfa-orden]'), fila = e.target.closest('[data-rfa-sku]'), pag = e.target.closest('[data-rfa-pag]');
   if(ver){ setRfSubtab('lista'); rfSel = ver.dataset.rfaVer; setTimeout(()=> rfAbrir(ver.dataset.rfaVer), 50); return; }
   if(e.target.closest('#btn-rfa-excel')){ rfaExcel(); return; }
+  if(e.target.closest('#btn-rfa-excel-ubic')){ rfaExcelUbicaciones(); return; }
   if(e.target.closest('[data-rfa-solo-sin]')){ $('rfa-f-costo').value = $('rfa-f-costo').value === 'SIN' ? '' : 'SIN'; rfaPag = 0; rfaAbierto = null; renderRfAptos(); return; }
   if(e.target.closest('#btn-rfa-costos')){ $('rfa-costos').hidden = !$('rfa-costos').hidden; if(!$('rfa-costos').hidden) $('rfa-costos-txt').focus(); return; }
   if(e.target.closest('#btn-rfa-costos-cerrar')){ $('rfa-costos').hidden = true; return; }

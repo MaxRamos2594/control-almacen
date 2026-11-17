@@ -215,6 +215,12 @@ const listo = page=> page.waitForFunction(()=> $('status-text').textContent === 
   const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#btn-rfa-excel')]);
   const xl = path.join(__dirname, 'salida', 'rf_aptos.xlsx'); await dl.saveAs(xl);
   const wb = XLSX.readFile(xl), r1 = XLSX.utils.sheet_to_json(wb.Sheets['Por código']), r2 = XLSX.utils.sheet_to_json(wb.Sheets['Detalle por posición']);
+  // Excel con ubicaciones: una fila por código con sus posiciones (de más a menos cantidad) en una columna.
+  const [dlU] = await Promise.all([page.waitForEvent('download'), page.click('#btn-rfa-excel-ubic')]);
+  const xlU = path.join(__dirname, 'salida', 'rf_aptos_ubicaciones.xlsx'); await dlU.saveAs(xlU);
+  const ru = XLSX.utils.sheet_to_json(XLSX.readFile(xlU).Sheets['Con ubicaciones']);
+  verificar(/_ubicaciones_/.test(dlU.suggestedFilename()) && ru.length === 2 && ru[0]['Código'] === 'P1' && ru[0]['N° ubicaciones'] === 2 && ru[0]['Ubicaciones (posición: cantidad)'] === 'A01: 8 · B05: 7' && ru[1]['Ubicaciones (posición: cantidad)'] === 'B05: 2',
+    `«⬇ Excel con ubicaciones» (${dlU.suggestedFilename()}): ${ru.map(x=> `${x['Código']} → ${x['Ubicaciones (posición: cantidad)']}`).join(' | ')}`);
   await page.selectOption('#rfa-apto', ''); const a4 = await filasA(); await page.selectOption('#rfa-apto', 'SI');
   verificar(a1.join(' / ') === 'P1|PELOTA|15|2|3 / P9|CAJA|2|1|1' && /^2 código\(s\) 17 2 3 S\/ 0\.00$/i.test(pie) && a2.join() === 'P1|PELOTA|15|2|3' && a3[0].startsWith('P1|') && a3[1].startsWith('P9|') &&
     det.length === 2 && /A01 8 RF-/.test(det.join(' ')) && /B05 7 RF-JHN-00097/.test(det.join(' ')) &&
