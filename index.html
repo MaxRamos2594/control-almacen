@@ -404,7 +404,14 @@
   .rfa-k-cab b{margin-left:auto; font-family:var(--mono); font-size:16px;} .rfa-k-fl{transition:transform .2s;} .rfa-kpis.min .rfa-k-fl{transform:rotate(180deg);}
   .rfa-k-cuerpo{display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:8px; max-height:60vh; overflow:auto;} .rfa-kpis.min .rfa-k-cuerpo{display:none;}
   .rfa-kpis.min{width:auto;} .rfa-kpis.min .rfa-k-cab{border-radius:14px;}
-  .rfa-kpis .rfa-kpi.val{grid-column:span 2;}
+  .rfa-kpis .rfa-kpi.val, .rfa-kpis .rfa-kpi.cl{grid-column:span 2;}
+  .k-mini-cl{font-size:11px; font-weight:700; opacity:.9; margin-left:6px; white-space:nowrap;}
+  .k-pila{display:flex; height:10px; border-radius:999px; overflow:hidden; background:#e3e8ef; margin:4px 0 6px;} .k-pila i{display:block; height:100%; transition:width .6s ease;}
+  .k-pila .ss, .k-cl-p.ss{background:#2b6cb0;} .k-pila .dt, .k-cl-p.dt{background:#c2410c;} .k-pila .sc, .k-cl-p.sc{background:#9aa4ae;}
+  .k-cl{display:grid; grid-template-columns:12px 1fr auto 48px; gap:6px; align-items:center; font-size:12px; margin-top:2px;} .k-cl b{font-family:var(--mono);} .k-cl-pct{text-align:right; font-weight:800;}
+  .k-cl-p{width:10px; height:10px; border-radius:3px;}
+  .rfa-cl{display:inline-block; font-size:11px; font-weight:800; padding:2px 8px; border-radius:999px; white-space:nowrap;} .rfa-cl.ss{background:#e3eefb; color:#1d4f8a;} .rfa-cl.dt{background:#fdeee6; color:#9a3412;}
+  .rfa-clasif{border-color:#f0c9b3; background:#fff8f4;}
   .rfa-kpi{background:#f6f8fb; border:1px solid var(--line); border-radius:12px; padding:8px 12px; display:flex; flex-direction:column; gap:2px; min-width:0;}
   .rfa-kpi .k-t{font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft);}
   .rfa-kpi .k-v{font-size:22px; font-weight:900; font-family:var(--mono); line-height:1.15; white-space:nowrap;} .rfa-kpi .k-s{font-size:11.5px; color:var(--ink-soft);}
@@ -3601,8 +3608,15 @@
         <input type="search" id="rfa-q" placeholder="Buscar código, descripción o posición…" autocomplete="off">
         <span class="rfl-info rfa-info" tabindex="0" title="Suma de cantidades y posiciones distintas por código, con los filtros que elijas. Toca un código para ver sus posiciones; toca un título de columna para ordenar.">ℹ</span>
       </div>
-      <div class="rfa-acciones"><button type="button" class="btn btn-primary btn-sm" id="btn-rfa-excel">⬇ Exportar a Excel</button><button type="button" class="btn btn-primary btn-sm" id="btn-rfa-excel-ubic" title="Una fila por código con todas sus ubicaciones (posición: cantidad) en una columna">⬇ Excel con ubicaciones</button><button type="button" class="btn btn-ghost btn-sm" id="btn-rfa-limpiar">✕ Limpiar filtros</button><button type="button" class="btn btn-ghost btn-sm" id="btn-rfa-recargar">↻ Actualizar</button><button type="button" class="btn btn-ghost btn-sm" id="btn-rfa-costos" hidden>💲 Pegar costos</button></div>
+      <div class="rfa-acciones"><button type="button" class="btn btn-primary btn-sm" id="btn-rfa-excel">⬇ Exportar a Excel</button><button type="button" class="btn btn-primary btn-sm" id="btn-rfa-excel-ubic" title="Una fila por código con todas sus ubicaciones (posición: cantidad) en una columna">⬇ Excel con ubicaciones</button><button type="button" class="btn btn-ghost btn-sm" id="btn-rfa-limpiar">✕ Limpiar filtros</button><button type="button" class="btn btn-ghost btn-sm" id="btn-rfa-recargar">↻ Actualizar</button><button type="button" class="btn btn-ghost btn-sm" id="btn-rfa-costos" hidden>💲 Pegar costos</button><button type="button" class="btn btn-ghost btn-sm" id="btn-rfa-clasif" hidden>🏷 Pegar clasificación</button></div>
       <div id="rfa-costos-res" class="hint" style="margin:4px 0 8px;"></div>
+      <div id="rfa-clasif" class="rfa-costos rfa-clasif" hidden>
+        <b>🏷 Pegar listado de clasificación</b>
+        <p class="hint">Copia de Excel las columnas <b>Código</b> y <b>Clasificación</b> y pégalas aquí. Solo hay dos valores: <b>SOBRESTOCK</b> o <b>DEVOLUCION TIENDA</b> (también se entiende «sobre stock», «devolución a tienda», «dev. tienda»…). Se comparan con los códigos de la tabla (con los filtros de arriba).</p>
+        <textarea id="rfa-clasif-txt" rows="7" placeholder="CÓDIGO&#9;CLASIFICACIÓN&#10;P1&#9;SOBRESTOCK&#10;P2&#9;DEVOLUCION TIENDA"></textarea>
+        <div class="rfa-acciones"><button type="button" class="btn btn-primary btn-sm" id="btn-rfa-clasif-revisar">🔍 Revisar</button><button type="button" class="btn btn-primary btn-sm" id="btn-rfa-clasif-aplicar" hidden>✔ Aplicar clasificación</button><button type="button" class="btn btn-ghost btn-sm" id="btn-rfa-clasif-cerrar">Cerrar</button></div>
+        <div id="rfa-clasif-prev"></div>
+      </div>
       <div id="rfa-costos" class="rfa-costos" hidden>
         <b>💲 Pegar listado de costos</b>
         <p class="hint">Copia de Excel las columnas <b>Código</b> y <b>Costo</b> (puede tener más columnas: se usa la que diga "Costo" o la última con número) y pégalas aquí. Se comparan con los códigos de la tabla (con los filtros de arriba).</p>
@@ -3614,8 +3628,8 @@
       <div class="rf-rep-scroll">
         <table class="rfa-tabla" id="rfa-tabla">
           <thead>
-            <tr><th data-rfa-orden="sku">Código<span class="rfa-fl"></span></th><th data-rfa-orden="descripcion">Descripción<span class="rfa-fl"></span></th><th class="num" data-rfa-orden="cantidad">Cantidad total<span class="rfa-fl"></span></th><th class="num" data-rfa-orden="posiciones">Posiciones (distintas)<span class="rfa-fl"></span></th><th class="num" data-rfa-orden="registros">Registros (RF)<span class="rfa-fl"></span></th><th class="num" data-rfa-orden="costo">Costo unit.<span class="rfa-fl"></span></th><th class="num" data-rfa-orden="costoTotal">Costo total<span class="rfa-fl"></span></th><th>Tiendas</th></tr>
-            <tr class="rfa-filtros-col"><th><input id="rfa-f-sku" placeholder="Filtrar…"></th><th><input id="rfa-f-desc" placeholder="Filtrar…"></th><th><input id="rfa-f-cant" placeholder="&gt;10, 5-20…"></th><th><input id="rfa-f-pos" placeholder="&gt;1…"></th><th><input id="rfa-f-rf" placeholder="&gt;1…"></th><th colspan="2"><select id="rfa-f-costo" title="Costo"><option value="">Todos</option><option value="CON">Con costo</option><option value="SIN">⚠ Solo sin costo</option></select></th><th></th></tr>
+            <tr><th data-rfa-orden="sku">Código<span class="rfa-fl"></span></th><th data-rfa-orden="descripcion">Descripción<span class="rfa-fl"></span></th><th class="num" data-rfa-orden="cantidad">Cantidad total<span class="rfa-fl"></span></th><th class="num" data-rfa-orden="posiciones">Posiciones (distintas)<span class="rfa-fl"></span></th><th class="num" data-rfa-orden="registros">Registros (RF)<span class="rfa-fl"></span></th><th class="num" data-rfa-orden="costo">Costo unit.<span class="rfa-fl"></span></th><th class="num" data-rfa-orden="costoTotal">Costo total<span class="rfa-fl"></span></th><th data-rfa-orden="clasif">Clasificación<span class="rfa-fl"></span></th><th>Tiendas</th></tr>
+            <tr class="rfa-filtros-col"><th><input id="rfa-f-sku" placeholder="Filtrar…"></th><th><input id="rfa-f-desc" placeholder="Filtrar…"></th><th><input id="rfa-f-cant" placeholder="&gt;10, 5-20…"></th><th><input id="rfa-f-pos" placeholder="&gt;1…"></th><th><input id="rfa-f-rf" placeholder="&gt;1…"></th><th colspan="2"><select id="rfa-f-costo" title="Costo"><option value="">Todos</option><option value="CON">Con costo</option><option value="SIN">⚠ Solo sin costo</option></select></th><th><select id="rfa-f-clasif" title="Clasificación"><option value="">Todas</option><option value="SOBRESTOCK">📦 Sobrestock</option><option value="DEVOLUCION TIENDA">↩ Devolución tienda</option><option value="SIN">… Sin clasificar</option></select></th><th></th></tr>
           </thead>
           <tbody id="rfa-body"></tbody>
           <tfoot id="rfa-foot"></tfoot>
@@ -4181,8 +4195,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v279';
-const APP_UPDATED = '17/11/2026 23:50';
+const APP_VERSION = 'v280';
+const APP_UPDATED = '18/11/2026 08:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4739,7 +4753,7 @@ function tipoLabel(tipo){
     asistente_consulta:'Consulta al asistente IA', almacenamiento_huerfanos_eliminados:'Archivos huérfanos eliminados (almacenamiento)', almacenamiento_pdfs_comprimidos:'Archivos comprimidos (almacenamiento)',
     reg_foto_creado:'Registro fotográfico creado', reg_foto_eliminado:'Registro fotográfico eliminado', reg_foto_iniciado:'Registro fotográfico iniciado (borrador)',
     reg_foto_confirmado:'Registro fotográfico confirmado', reg_foto_descartado:'Borrador de registro fotográfico descartado', reg_foto_exportado:'Registro fotográfico exportado',
-    reg_foto_reabierto:'Registro fotográfico abierto para modificar', reg_foto_modificado:'Registro fotográfico modificado', reg_foto_modificacion_cancelada:'Modificación de registro fotográfico cancelada', reg_foto_apto_ajuste:'Registro fotográfico: apto para ajuste', reg_foto_posicion_cambiada:'Registro fotográfico: posición cambiada', reg_foto_layout_marca:'Registro fotográfico: posición bloqueada / merma / por inventariar', reg_foto_fusionado:'Registros fotográficos fusionados', reg_foto_sku_editado:'Registro fotográfico: código / descripción editados', reg_foto_costos:'Registro fotográfico: costos asignados', reg_foto_cantidades_editadas:'Registro fotográfico: cantidades editadas por el administrador (sigue confirmado)', saldos_iniciado:'Saldos: traslado iniciado', saldos_caja_creada:'Saldos: caja creada', saldos_caja_quitada:'Saldos: caja quitada', saldos_caja_cerrada:'Saldos: caja cerrada', saldos_caja_abierta:'Saldos: caja abierta de nuevo', saldos_cerrado:'Saldos: traslado cerrado', saldos_reabierto:'Saldos: traslado reabierto', saldos_eliminado:'Saldos: traslado eliminado', saldos_exportado:'Saldos: exportado a Excel', saldos_rotulos:'Saldos: rótulos impresos', saldos_guia_adjuntada:'Saldos: guía de remisión adjuntada', saldos_guia_quitada:'Saldos: guía de remisión quitada',
+    reg_foto_reabierto:'Registro fotográfico abierto para modificar', reg_foto_modificado:'Registro fotográfico modificado', reg_foto_modificacion_cancelada:'Modificación de registro fotográfico cancelada', reg_foto_apto_ajuste:'Registro fotográfico: apto para ajuste', reg_foto_posicion_cambiada:'Registro fotográfico: posición cambiada', reg_foto_layout_marca:'Registro fotográfico: posición bloqueada / merma / por inventariar', reg_foto_fusionado:'Registros fotográficos fusionados', reg_foto_sku_editado:'Registro fotográfico: código / descripción editados', reg_foto_costos:'Registro fotográfico: costos asignados', reg_foto_clasificacion:'Registro fotográfico: clasificación asignada (sobrestock / devolución tienda)', reg_foto_cantidades_editadas:'Registro fotográfico: cantidades editadas por el administrador (sigue confirmado)', saldos_iniciado:'Saldos: traslado iniciado', saldos_caja_creada:'Saldos: caja creada', saldos_caja_quitada:'Saldos: caja quitada', saldos_caja_cerrada:'Saldos: caja cerrada', saldos_caja_abierta:'Saldos: caja abierta de nuevo', saldos_cerrado:'Saldos: traslado cerrado', saldos_reabierto:'Saldos: traslado reabierto', saldos_eliminado:'Saldos: traslado eliminado', saldos_exportado:'Saldos: exportado a Excel', saldos_rotulos:'Saldos: rótulos impresos', saldos_guia_adjuntada:'Saldos: guía de remisión adjuntada', saldos_guia_quitada:'Saldos: guía de remisión quitada',
     merma_iniciado:'Merma: traslado iniciado', merma_caja_creada:'Merma: caja creada', merma_caja_quitada:'Merma: caja quitada', merma_caja_cerrada:'Merma: caja cerrada', merma_caja_abierta:'Merma: caja abierta de nuevo', merma_cerrado:'Merma: traslado cerrado', merma_reabierto:'Merma: traslado reabierto', merma_eliminado:'Merma: traslado eliminado', merma_exportado:'Merma: exportado a Excel', merma_rotulos:'Merma: rótulos impresos', merma_guia_adjuntada:'Merma: guía de remisión adjuntada', merma_guia_quitada:'Merma: guía de remisión quitada', merma_datos_anteriores_borrados:'Merma: datos del módulo anterior borrados', recepcion_creada:'Recepción creada (guía leída)', recepcion_confirmada:'Recepción confirmada', recepcion_eliminada:'Recepción eliminada', recepcion_exportada:'Recepciones exportadas (PDF / Excel)',
     ingreso:'Entrada de pallet', movimiento:'Movimiento', retiro:'Salida (pallet completo)',
     retiro_campana:'Salida (campaña)', retiro_campana_revertido:'↺ Retiro de campaña revertido', producto_agregado:'Adición de producto', transferencia:'Transferencia entre pallets',
@@ -17729,7 +17743,7 @@ function setRfSubtab(name){
   if(typeof rfCerrarDetalle === 'function') rfCerrarDetalle();
   document.body.classList.toggle('rfl-full', name === 'layout');
   document.body.classList.toggle('rfa-full', name === 'aptos');
-  if(name === 'aptos') setTimeout(rfaAltoCabecera, 0);
+  if(name === 'aptos'){ setTimeout(rfaAltoCabecera, 0); if($('rfa-kpis')) $('rfa-kpis').classList.add('min'); }
   ['nuevo','lista','reportes','layout','aptos'].forEach(n=>{ $('rfsub-'+n).classList.toggle('active', n===name); $('rfsub-panel-'+n).style.display = n===name ? 'block' : 'none'; });
   if(name === 'lista' || name === 'reportes' || name === 'layout' || name === 'aptos') rfCargar();
   else rfPrepararForm();
@@ -18633,7 +18647,7 @@ function rfaAgrupar(L){
     p.cantidad += cant; p.rfs.add(r.id); g.pos.set(k, p);
     por.set(sku, g);
   }));
-  return [...por.values()].map(g=>{ const c = rfaCosto(g.sku); return Object.assign(g, { posiciones: g.pos.size, registros: g.rfs.size, costo: c, costoTotal: c == null ? null : Math.round(c * g.cantidad * 100) / 100 }); });
+  return [...por.values()].map(g=>{ const c = rfaCosto(g.sku); return Object.assign(g, { clasif: rfaClasif(g.sku), posiciones: g.pos.size, registros: g.rfs.size, costo: c, costoTotal: c == null ? null : Math.round(c * g.cantidad * 100) / 100 }); });
 }
 function rfaFilas(){
   const q = normalizarTexto($('rfa-q').value).split(/\s+/).filter(Boolean);
@@ -18642,7 +18656,8 @@ function rfaFilas(){
     const txt = normalizarTexto(`${g.sku} ${g.descripcion} ${[...g.pos.keys()].join(' ')}`);
     return q.every(t=> txt.includes(t)) && (!fc || normalizarTexto(g.sku).includes(fc)) && (!fd || normalizarTexto(g.descripcion).includes(fd))
       && rfaNum(g.cantidad, $('rfa-f-cant').value) && rfaNum(g.posiciones, $('rfa-f-pos').value) && rfaNum(g.registros, $('rfa-f-rf').value)
-      && (!$('rfa-f-costo').value || ($('rfa-f-costo').value === 'SIN') === (g.costo == null));
+      && (!$('rfa-f-costo').value || ($('rfa-f-costo').value === 'SIN') === (g.costo == null))
+      && (!$('rfa-f-clasif').value || ($('rfa-f-clasif').value === 'SIN' ? !g.clasif : g.clasif === $('rfa-f-clasif').value));
   });
   const { campo, dir } = rfaOrden;
   G.sort((a, b)=>{ const x = a[campo] == null ? -Infinity : a[campo], y = b[campo] == null ? -Infinity : b[campo]; return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'es', { numeric: true })) * dir || a.sku.localeCompare(b.sku, 'es', { numeric: true }); });
@@ -18673,11 +18688,11 @@ function rfaPintarKpis(G){
   const pct = und ? Math.round(undCon / und * 1000) / 10 : 0, posTot = new Set(G.flatMap(g=> [...g.pos.keys()])).size;
   const top = con.slice().sort((a, b)=> (b.costoTotal || 0) - (a.costoTotal || 0)).slice(0, 5), max = top.length ? top[0].costoTotal || 1 : 1;
   if(!box.dataset.listo){
-    let min = false; try{ min = localStorage.getItem('rf:kpis-min') === '1'; }catch(e){}
-    box.classList.toggle('min', min);
-    box.innerHTML = `<button type="button" class="rfa-k-cab" data-rfa-k-toggle title="Mostrar / ocultar el detalle"><span>💰 Valorizado</span><b id="rfa-k-mini">S/ 0.00</b><span class="rfa-k-fl">▾</span></button><div class="rfa-k-cuerpo"><div class="rfa-kpi val"><span class="k-t">💰 Valorizado total</span><b class="k-v" id="rfa-k-val">S/ 0.00</b><span class="k-s" id="rfa-k-val-s"></span></div>` +
+    box.classList.add('min');   // siempre empieza minimizado (esquina inferior izquierda)
+    box.innerHTML = `<button type="button" class="rfa-k-cab" data-rfa-k-toggle title="Mostrar / ocultar el detalle"><span>💰 Valorizado</span><span class="k-mini-cl" id="rfa-k-mini-cl"></span><b id="rfa-k-mini">S/ 0.00</b><span class="rfa-k-fl">▾</span></button><div class="rfa-k-cuerpo"><div class="rfa-kpi val"><span class="k-t">💰 Valorizado total</span><b class="k-v" id="rfa-k-val">S/ 0.00</b><span class="k-s" id="rfa-k-val-s"></span></div>` +
       `<div class="rfa-kpi"><span class="k-t">📦 Unidades</span><b class="k-v" id="rfa-k-und">0</b><span class="k-s" id="rfa-k-und-s"></span></div>` +
       `<div class="rfa-kpi"><span class="k-t">🧾 Con costo</span><b class="k-v" id="rfa-k-pct">0%</b><div class="k-barra"><i id="rfa-k-barra"></i></div><span class="k-s" id="rfa-k-pct-s"></span></div>` +
+      `<div class="rfa-kpi cl"><span class="k-t">🏷 Por clasificación (del valorizado)</span><div class="k-pila" id="rfa-k-pila"></div><div id="rfa-k-cl"></div></div>` +
       `<div class="rfa-kpi top"><span class="k-t">🏆 Top 5 por valorizado</span><div id="rfa-k-top"></div></div></div>`;
     box.dataset.listo = '1';
   }
@@ -18689,6 +18704,15 @@ function rfaPintarKpis(G){
   $('rfa-k-und-s').textContent = `${anFmt(G.length)} código(s) · ${anFmt(posTot)} posición(es)`;
   $('rfa-k-barra').style.width = pct + '%'; $('rfa-k-barra').parentElement.classList.toggle('baja', pct < 80);
   $('rfa-k-pct-s').textContent = undSin ? `${anFmt(undSin)} und sin costo (${anFmt(sin)} código(s))` : 'Todas las unidades tienen costo';
+  // Valorizado y % por clasificación (sobre el valorizado total).
+  const porCl = [['SOBRESTOCK', '📦 Sobrestock', 'ss'], ['DEVOLUCION TIENDA', '↩ Devolución tienda', 'dt'], [null, '… Sin clasificar', 'sc']].map(([k, t, c])=>{
+    const L = con.filter(g=> (g.clasif || null) === k), v = Math.round(L.reduce((s, g)=> s + (g.costoTotal || 0), 0) * 100) / 100;
+    return { t, c, v, n: L.length, p: val ? Math.round(v / val * 1000) / 10 : 0 };
+  });
+  const pctTxt = p=> p.toLocaleString('es-PE') + '%';
+  $('rfa-k-pila').innerHTML = porCl.filter(x=> x.p > 0).map(x=> `<i class="${esc(x.c)}" style="width:${esc(x.p)}%" title="${esc(x.t)} ${esc(pctTxt(x.p))}"></i>`).join('');
+  $('rfa-k-cl').innerHTML = porCl.map(x=> `<div class="k-cl"><span class="k-cl-p ${esc(x.c)}"></span><span>${esc(x.t)}</span><b>${esc(rfaSoles(x.v))}</b><span class="k-cl-pct">${esc(pctTxt(x.p))}</span></div>`).join('');
+  $('rfa-k-mini-cl').textContent = `SS ${pctTxt(porCl[0].p)} · DT ${pctTxt(porCl[1].p)}`;
   $('rfa-k-top').innerHTML = top.length ? top.map(g=> `<div class="k-top" title="${esc(g.sku)} · ${esc(g.descripcion)}"><span class="k-top-c">${esc(g.sku)}</span><span class="k-top-b"><i style="width:${Math.max(3, Math.round((g.costoTotal || 0) / max * 100))}%"></i></span><span class="k-top-v">${esc(rfaSoles(g.costoTotal))}</span></div>`).join('')
     : '<span class="k-s">Sin códigos con costo</span>';
 }
@@ -18702,20 +18726,20 @@ function renderRfAptos(){
       const abierto = rfaAbierto === g.sku;
       let tr = `<tr class="rfa-fila${abierto ? ' abierta' : ''}" data-rfa-sku="${esc(g.sku)}"><td><span class="rf-rep-flecha">${abierto ? '▾' : '▸'}</span> <b>${esc(g.sku)}</b></td><td>${esc(g.descripcion)}</td>` +
         `<td class="num"><b>${esc(anFmt(g.cantidad))}</b></td><td class="num">${esc(g.posiciones)}</td><td class="num">${esc(g.registros)}</td>` +
-        (g.costo == null ? `<td class="num rfa-sin-costo" colspan="2">⚠ Sin costo</td>` : `<td class="num">${esc(rfaSoles(g.costo))}</td><td class="num"><b>${esc(rfaSoles(g.costoTotal))}</b></td>`) + `<td>${esc([...g.tiendas].join(', '))}</td></tr>`;
-      if(abierto) tr += `<tr class="rf-rep-exp"><td colspan="8">${rfaEditorHtml(g)}<div class="rf-rep-scroll"><table class="rf-rep-det"><thead><tr><th>Tienda</th><th>Posición</th><th class="num">Cantidad</th><th>Registros</th></tr></thead><tbody>` +
+        (g.costo == null ? `<td class="num rfa-sin-costo" colspan="2">⚠ Sin costo</td>` : `<td class="num">${esc(rfaSoles(g.costo))}</td><td class="num"><b>${esc(rfaSoles(g.costoTotal))}</b></td>`) + `<td>${g.clasif ? `<span class="rfa-cl ${g.clasif === 'SOBRESTOCK' ? 'ss' : 'dt'}">${esc(RFA_CLASIF_TXT[g.clasif])}</span>` : '<span class="hint">—</span>'}</td><td>${esc([...g.tiendas].join(', '))}</td></tr>`;
+      if(abierto) tr += `<tr class="rf-rep-exp"><td colspan="9">${rfaEditorHtml(g)}<div class="rf-rep-scroll"><table class="rf-rep-det"><thead><tr><th>Tienda</th><th>Posición</th><th class="num">Cantidad</th><th>Registros</th></tr></thead><tbody>` +
         [...g.pos.values()].sort((a, b)=> b.cantidad - a.cantidad || rfOrdCod(a.posicion, b.posicion)).map(p=> `<tr><td>🏬 ${esc(p.tienda)}</td><td><b>📍 ${esc(p.posicion)}</b></td><td class="num">${esc(anFmt(p.cantidad))}</td><td>${[...p.rfs].map(id=> `<button type="button" class="rfa-rf" data-rfa-ver="${esc(id)}">${esc(id)}</button>`).join(' ')}</td></tr>`).join('') +
         `</tbody></table></div></td></tr>`;
       return tr; }).join('')
-    : `<tr><td colspan="8" class="hint">${rfLista.length ? 'Ningún código cumple los filtros.' : 'Aún no hay registros.'}</td></tr>`;
-  $('rfa-foot').innerHTML = `<tr><th>${esc(anFmt(G.length))} código(s)</th><th></th><th class="num">${esc(anFmt(G.reduce((s, g)=> s + g.cantidad, 0)))}</th><th class="num">${esc(anFmt(totPos))}</th><th class="num">${esc(anFmt(totRf))}</th><th></th><th class="num">${esc(rfaSoles(G.reduce((s, g)=> s + (g.costoTotal || 0), 0)))}</th><th></th></tr>`;
+    : `<tr><td colspan="9" class="hint">${rfLista.length ? 'Ningún código cumple los filtros.' : 'Aún no hay registros.'}</td></tr>`;
+  $('rfa-foot').innerHTML = `<tr><th>${esc(anFmt(G.length))} código(s)</th><th></th><th class="num">${esc(anFmt(G.reduce((s, g)=> s + g.cantidad, 0)))}</th><th class="num">${esc(anFmt(totPos))}</th><th class="num">${esc(anFmt(totRf))}</th><th></th><th class="num">${esc(rfaSoles(G.reduce((s, g)=> s + (g.costoTotal || 0), 0)))}</th><th></th><th></th></tr>`;
   const todos = rfaAgrupar(rfaFiltrados()), sin = todos.filter(g=> g.costo == null).length;
   const soloSin = $('rfa-f-costo').value === 'SIN';
   $('rfa-costos-res').innerHTML = todos.length ? (sin ? `⚠ <b>${esc(anFmt(sin))}</b> de ${esc(anFmt(todos.length))} código(s) <b>sin costo</b> (con los filtros de arriba). ` +
       `<button type="button" class="btn ${soloSin ? 'btn-ghost' : 'btn-primary'} btn-sm" data-rfa-solo-sin>${soloSin ? '↩ Ver todos' : '👁 Ver solo los sin costo'}</button>`
     : `✔ Los ${esc(anFmt(todos.length))} código(s) tienen costo.` + (soloSin ? ` <button type="button" class="btn btn-ghost btn-sm" data-rfa-solo-sin>↩ Ver todos</button>` : '')) : '';
   rfaPintarKpis(G);
-  $('btn-rfa-costos').hidden = !rfaPuedeCosto();
+  $('btn-rfa-costos').hidden = !rfaPuedeCosto(); $('btn-rfa-clasif').hidden = !rfaPuedeCosto();
   $('rfa-pag').innerHTML = G.length > RFA_POR_PAGINA ? `<div class="vo-pag"><button type="button" data-rfa-pag="-1" ${rfaPag ? '' : 'disabled'}>‹ Anterior</button><span>${esc(rfaPag * RFA_POR_PAGINA + 1)}–${esc(Math.min(G.length, (rfaPag + 1) * RFA_POR_PAGINA))} de ${esc(G.length)} · página ${esc(rfaPag + 1)} de ${esc(pags)}</span><button type="button" data-rfa-pag="1" ${rfaPag < pags - 1 ? '' : 'disabled'}>Siguiente ›</button></div>` : '';
 }
 // ---- Editar código y descripción desde Aptos ----
@@ -18723,10 +18747,11 @@ function renderRfAptos(){
 const rfaPuedeEditar = ()=> !!(currentPermisos.admin || currentPermisos.eliminar || currentPermisos.rf_todos);
 function rfaEditorHtml(g){
   if(!rfaPuedeEditar()) return '';
-  if(rfaEditando !== g.sku) return `<div class="rfa-edit"><button type="button" class="btn btn-ghost btn-sm" data-rfa-editar="${esc(g.sku)}">✏ Editar código / descripción${rfaPuedeCosto() ? ' / costo' : ''}</button></div>`;
+  if(rfaEditando !== g.sku) return `<div class="rfa-edit"><button type="button" class="btn btn-ghost btn-sm" data-rfa-editar="${esc(g.sku)}">✏ Editar código / descripción${rfaPuedeCosto() ? ' / costo / clasificación' : ''}</button></div>`;
   return `<div class="rfa-edit"><label>Código<input id="rfa-e-sku" value="${esc(g.sku)}" maxlength="60" autocomplete="off"></label>` +
     `<label class="rfa-e-desc">Descripción<input id="rfa-e-desc" value="${esc(g.descripcion)}" maxlength="200" autocomplete="off"></label>` +
-    (rfaPuedeCosto() ? `<label>Costo unit. (S/)<input id="rfa-e-costo" class="rfa-e-costo" value="${esc(g.costo == null ? '' : g.costo)}" inputmode="decimal" autocomplete="off" placeholder="0.00"></label>` : '') +
+    (rfaPuedeCosto() ? `<label>Costo unit. (S/)<input id="rfa-e-costo" class="rfa-e-costo" value="${esc(g.costo == null ? '' : g.costo)}" inputmode="decimal" autocomplete="off" placeholder="0.00"></label>` +
+      `<label>Clasificación<select id="rfa-e-clasif"><option value="">— Sin clasificar —</option>${RFA_CLASIF.map(c=> `<option value="${esc(c)}"${g.clasif === c ? ' selected' : ''}>${esc(RFA_CLASIF_TXT[c])}</option>`).join('')}</select></label>` : '') +
     `<button type="button" class="btn btn-primary btn-sm" data-rfa-guardar="${esc(g.sku)}">💾 Guardar</button><button type="button" class="btn btn-ghost btn-sm" data-rfa-cancelar>Cancelar</button>` +
     `<span class="hint" style="width:100%;">Se cambia en ${esc(g.registros)} registro(s) (${esc(g.posiciones)} posición(es)) de esta fila. Si el código nuevo ya está en el mismo registro, se suman las cantidades.</span></div>`;
 }
@@ -18739,8 +18764,16 @@ async function rfaGuardarEdicion(viejo){
   const cTxt = $('rfa-e-costo') ? $('rfa-e-costo').value.trim() : '', costo = cTxt ? cmpNumero(cTxt) : null;
   if(cTxt && !(costo >= 0)){ showToast('El costo no es un número válido.', 'err'); return; }
   const cambiaCosto = costo != null && costo !== rfaCosto(nuevo), cambiaSku = nuevo !== viejo || desc !== g.descripcion;
-  if(!cambiaSku && !cambiaCosto){ rfaEditando = null; renderRfAptos(); return; }
+  // Clasificación: también va a Productos (del código nuevo).
+  const clasif = $('rfa-e-clasif') ? ($('rfa-e-clasif').value || null) : rfaClasif(nuevo), cambiaClasif = !!$('rfa-e-clasif') && clasif !== rfaClasif(nuevo);
+  if(!cambiaSku && !cambiaCosto && !cambiaClasif){ rfaEditando = null; renderRfAptos(); return; }
+  if(!cambiaSku && cambiaClasif && !cambiaCosto){
+    try{ await rfaGuardarClasif([{ sku: nuevo, descripcion: desc, clasif }], 'edición en Aptos'); rfaEditando = null; showToast(`Clasificación de ${nuevo}: ${clasif ? RFA_CLASIF_TXT[clasif] : 'sin clasificar'}.`, 'ok'); renderRfAptos(); }
+    catch(err){ console.error(err); showToast('No se pudo guardar la clasificación: ' + (err.message || err), 'err'); }
+    return;
+  }
   if(!cambiaSku){
+    if(cambiaClasif) try{ await rfaGuardarClasif([{ sku: nuevo, descripcion: desc, clasif }], 'edición en Aptos'); }catch(err){ console.error(err); }
     try{ await rfaGuardarCostos([{ sku: nuevo, descripcion: desc, costo }], 'edición en Aptos'); rfaEditando = null; showToast(`Costo de ${nuevo}: ${rfaSoles(costo)}.`, 'ok'); renderRfAptos(); }
     catch(err){ console.error(err); showToast('No se pudo guardar el costo: ' + (err.message || err), 'err'); }
     return;
@@ -18774,6 +18807,7 @@ async function rfaGuardarEdicion(viejo){
     }
     ok.forEach(r=> Object.assign(r, cambios.get(r.id), { cambios_sku: [...(r.cambios_sku || []), cambio] }));
     if(cambiaCosto) await rfaGuardarCostos([{ sku: nuevo, descripcion: desc, costo }], 'edición en Aptos');
+    if(cambiaClasif) await rfaGuardarClasif([{ sku: nuevo, descripcion: desc, clasif }], 'edición en Aptos');
     await logAccion('reg_foto_sku_editado', { detalle: `${viejo} → ${nuevo}${desc !== g.descripcion ? ` · descripción "${g.descripcion}" → "${desc}"` : ''} · ${ok.length} registro(s): ${ok.map(r=> r.id).join(', ').slice(0, 900)}` });
     rfaEditando = null; rfaAbierto = nuevo;
     showToast(`Código actualizado en ${ok.length} registro(s).` + (omitidos.length ? ` ${omitidos.length} sin tocar (borrador / en modificación).` : ''), 'ok');
@@ -18789,6 +18823,10 @@ function rfaCodProducto(sku){
   const k = String(sku || '').trim().toUpperCase();
   return Object.keys(productos).find(c=> c.trim().toUpperCase() === k) || null;
 }
+const RFA_CLASIF = ['SOBRESTOCK', 'DEVOLUCION TIENDA'], RFA_CLASIF_TXT = { SOBRESTOCK: '📦 Sobrestock', 'DEVOLUCION TIENDA': '↩ Devolución tienda' };
+function rfaClasif(sku){ const c = rfaCodProducto(sku), v = c ? productos[c].clasificacion : null; return RFA_CLASIF.includes(v) ? v : null; }
+// Texto pegado → uno de los dos valores (o null si no se entiende).
+function rfaClasifDe(t){ const x = normalizarTexto(t).toLowerCase().replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim(); if(!x) return null; if(/sobre ?stock|^ss$/.test(x)) return 'SOBRESTOCK'; if(/devol|^dev|tienda|^dt$/.test(x)) return 'DEVOLUCION TIENDA'; return null; }
 function rfaCosto(sku){ const c = rfaCodProducto(sku), v = c ? Number(productos[c].costo) : NaN; return v > 0 ? v : null; }
 // Lee lo pegado de Excel: columna del código (la que diga código/SKU o la primera) y del costo (la que diga costo o la última con número).
 function rfaLeerCostos(txt){
@@ -18862,14 +18900,87 @@ async function rfaAplicarCostos(){
   }catch(err){ console.error(err); showToast('No se pudieron guardar los costos: ' + (err.message || err), 'err'); }
   finally{ $('btn-rfa-costos-aplicar').disabled = false; }
 }
+// ---- Clasificación de los códigos (SOBRESTOCK / DEVOLUCION TIENDA): se guarda en Productos, como el costo ----
+function rfaLeerClasif(txt){
+  const filas = String(txt || '').split(/\r?\n/).map(l=> l.split(/\t|;/).map(c=> c.trim())).filter(f=> f.some(Boolean));
+  let iCod = 0, iCl = -1, desde = 0;
+  const cab = filas[0] || [];
+  if(cab.some(c=> /clasif|tipo|categor/i.test(c))){ iCl = cab.findIndex(c=> /clasif|tipo|categor/i.test(c)); const k = cab.findIndex(c=> /c[oó]d|sku/i.test(c)); if(k >= 0) iCod = k; desde = 1; }
+  const L = new Map(), malas = [];
+  filas.slice(desde).forEach(f=>{
+    const cod = String(f[iCod] || '').trim().toUpperCase(); if(!cod) return;
+    let v = iCl >= 0 ? rfaClasifDe(f[iCl]) : null;
+    if(iCl < 0) for(let j = f.length - 1; j > iCod; j--){ const x = rfaClasifDe(f[j]); if(x){ v = x; break; } }
+    if(!v){ if(!/^c[oó]d|^sku/i.test(cod)) malas.push(cod); return; }
+    L.set(cod, v);
+  });
+  return { L, malas };
+}
+let rfaClasifPlan = null;
+function rfaRevisarClasif(){
+  const { L, malas } = rfaLeerClasif($('rfa-clasif-txt').value);
+  if(!L.size){ $('rfa-clasif-prev').innerHTML = '<p class="msg err">No se encontró ningún código con clasificación. Pega dos columnas: código y clasificación (SOBRESTOCK o DEVOLUCION TIENDA).</p>'; $('btn-rfa-clasif-aplicar').hidden = true; return; }
+  const G = rfaAgrupar(rfaFiltrados()), porSku = new Map(G.map(g=> [g.sku, g]));
+  const iguales = [], cambian = [], nuevos = [], fuera = [];
+  L.forEach((clasif, cod)=>{
+    const g = porSku.get(cod); if(!g){ fuera.push(cod); return; }
+    const antes = rfaClasif(cod);
+    if(!antes) nuevos.push({ sku: cod, descripcion: g.descripcion, clasif });
+    else if(antes === clasif) iguales.push(cod);
+    else cambian.push({ sku: cod, descripcion: g.descripcion, clasif, antes });
+  });
+  const quedan = G.filter(g=> !g.clasif && !L.has(g.sku));
+  rfaClasifPlan = { cambios: [...cambian, ...nuevos] };
+  const lista = (arr, f)=> arr.length ? `<div class="rfa-cprev"><table>${arr.slice(0, 300).map(f).join('')}</table>${arr.length > 300 ? `<p class="hint">… y ${esc(arr.length - 300)} más</p>` : ''}</div>` : '';
+  const ss = [...L.values()].filter(v=> v === 'SOBRESTOCK').length;
+  $('rfa-clasif-prev').innerHTML = `<p><b>${esc(L.size)}</b> código(s) en el listado (${esc(ss)} sobrestock · ${esc(L.size - ss)} devolución tienda): ` +
+    `<b>${esc(iguales.length)}</b> igual(es) · <b>${esc(cambian.length)}</b> con otra clasificación (se reemplaza) · <b>${esc(nuevos.length)}</b> sin clasificar (se asigna) · <b>${esc(fuera.length)}</b> no están en la tabla (se ignoran)</p>` +
+    (malas.length ? `<p class="msg err">${esc(malas.length)} fila(s) con una clasificación que no es SOBRESTOCK ni DEVOLUCION TIENDA: ${esc(malas.slice(0, 20).join(', '))}</p>` : '') +
+    (cambian.length ? '<b>Otra clasificación</b>' + lista(cambian, x=> `<tr><td><b>${esc(x.sku)}</b></td><td>${esc(x.descripcion)}</td><td>${esc(RFA_CLASIF_TXT[x.antes])} → <b>${esc(RFA_CLASIF_TXT[x.clasif])}</b></td></tr>`) : '') +
+    (nuevos.length ? '<b>Sin clasificar → se asigna</b>' + lista(nuevos, x=> `<tr><td><b>${esc(x.sku)}</b></td><td>${esc(x.descripcion)}</td><td><b>${esc(RFA_CLASIF_TXT[x.clasif])}</b></td></tr>`) : '') +
+    (fuera.length ? `<p class="hint">No están en la tabla: ${esc(fuera.slice(0, 30).join(', '))}${fuera.length > 30 ? '…' : ''}</p>` : '') +
+    `<p>${quedan.length ? `⚠ Después de aplicar, <b>${esc(quedan.length)}</b> código(s) de la tabla seguirán <b>sin clasificar</b>.` : '✔ Después de aplicar, todos los códigos de la tabla tendrán clasificación.'}</p>`;
+  $('btn-rfa-clasif-aplicar').hidden = !rfaClasifPlan.cambios.length;
+}
+// Guarda la clasificación en Productos (crea el código con su descripción si no existe). clasif null = se quita.
+async function rfaGuardarClasif(L, origen){
+  const ts = firebase.firestore.FieldValue.serverTimestamp(), del = firebase.firestore.FieldValue.delete();
+  for(let i = 0; i < L.length; i += 400){
+    const batch = db.batch();
+    L.slice(i, i + 400).forEach(x=>{
+      const cod = rfaCodProducto(x.sku);
+      if(cod) batch.update(productosRef.doc(codigoADocId(cod)), { clasificacion: x.clasif || del, actualizado: ts });
+      else if(x.clasif) batch.set(productosRef.doc(codigoADocId(x.sku)), { descripcion: x.descripcion || '', clasificacion: x.clasif, proveedor: '', empaque1: null, empaque2: null, imagen_url: null, creado_en: ts, creado_por: currentUserEmail, creado_desde: 'registro_fotografico' });
+    });
+    await batch.commit();
+  }
+  // Se refleja al momento (el listener de Productos lo confirma después).
+  L.forEach(x=>{ const cod = rfaCodProducto(x.sku) || x.sku, pr = Object.assign({}, productos[cod] || { descripcion: x.descripcion || '' }); if(x.clasif) pr.clasificacion = x.clasif; else delete pr.clasificacion; productos[cod] = pr; });
+  await logAccion('reg_foto_clasificacion', { detalle: `${L.length} clasificación(es) desde ${origen}: ${L.slice(0, 40).map(x=> `${x.sku}=${x.clasif || 'sin clasificar'}`).join(', ')}${L.length > 40 ? '…' : ''}` });
+}
+async function rfaAplicarClasif(){
+  if(!rfaClasifPlan || !rfaClasifPlan.cambios.length) return;
+  const L = rfaClasifPlan.cambios;
+  if(!confirm(`¿Guardar ${L.length} clasificación(es) en Productos?`)) return;
+  $('btn-rfa-clasif-aplicar').disabled = true;
+  try{
+    await rfaGuardarClasif(L, 'listado pegado en Aptos');
+    rfaClasifPlan = null; $('btn-rfa-clasif-aplicar').hidden = true;
+    renderRfAptos();
+    const sin = rfaAgrupar(rfaFiltrados()).filter(g=> !g.clasif).length;
+    $('rfa-clasif-prev').innerHTML = `<p class="msg ok">✔ ${esc(L.length)} clasificación(es) guardada(s) en Productos. ${sin ? `Sin clasificar: <b>${esc(sin)}</b> código(s) (filtra «… Sin clasificar» en la columna Clasificación).` : 'Todos los códigos de la tabla tienen clasificación.'}</p>`;
+    showToast(`${L.length} clasificación(es) guardada(s).`, 'ok');
+  }catch(err){ console.error(err); showToast('No se pudo guardar la clasificación: ' + (err.message || err), 'err'); }
+  finally{ $('btn-rfa-clasif-aplicar').disabled = false; }
+}
 function rfaExcel(){
   const G = rfaFilas();
   if(!G.length){ showToast('No hay códigos para exportar con estos filtros.', 'err'); return; }
-  const resumen = G.map(g=> ({ 'Código': g.sku, 'Descripción': g.descripcion, 'Cantidad total': g.cantidad, 'Posiciones (distintas)': g.posiciones, 'Registros (RF)': g.registros, 'Costo unitario': g.costo == null ? '' : g.costo, 'Costo total': g.costoTotal == null ? '' : g.costoTotal, 'Tiendas': [...g.tiendas].join(', ') }));
-  const detalle = G.flatMap(g=> [...g.pos.values()].map(p=> ({ 'Código': g.sku, 'Descripción': g.descripcion, 'Tienda': p.tienda, 'Posición': p.posicion, 'Cantidad': p.cantidad, 'Costo unitario': g.costo == null ? '' : g.costo, 'Costo total': g.costo == null ? '' : Math.round(g.costo * p.cantidad * 100) / 100, 'Registros (RF)': [...p.rfs].join(', ') })));
+  const resumen = G.map(g=> ({ 'Código': g.sku, 'Descripción': g.descripcion, 'Cantidad total': g.cantidad, 'Posiciones (distintas)': g.posiciones, 'Registros (RF)': g.registros, 'Costo unitario': g.costo == null ? '' : g.costo, 'Costo total': g.costoTotal == null ? '' : g.costoTotal, 'Clasificación': g.clasif || '', 'Tiendas': [...g.tiendas].join(', ') }));
+  const detalle = G.flatMap(g=> [...g.pos.values()].map(p=> ({ 'Código': g.sku, 'Descripción': g.descripcion, 'Clasificación': g.clasif || '', 'Tienda': p.tienda, 'Posición': p.posicion, 'Cantidad': p.cantidad, 'Costo unitario': g.costo == null ? '' : g.costo, 'Costo total': g.costo == null ? '' : Math.round(g.costo * p.cantidad * 100) / 100, 'Registros (RF)': [...p.rfs].join(', ') })));
   const wb = XLSX.utils.book_new();
-  const ws1 = XLSX.utils.json_to_sheet(resumen); ws1['!cols'] = [14, 44, 14, 20, 14, 14, 14, 30].map(w=> ({ wch: w })); ws1['!autofilter'] = { ref: ws1['!ref'] };
-  const ws2 = XLSX.utils.json_to_sheet(detalle); ws2['!cols'] = [14, 44, 22, 16, 12, 14, 14, 30].map(w=> ({ wch: w })); ws2['!autofilter'] = { ref: ws2['!ref'] };
+  const ws1 = XLSX.utils.json_to_sheet(resumen); ws1['!cols'] = [14, 44, 14, 20, 14, 14, 14, 20, 30].map(w=> ({ wch: w })); ws1['!autofilter'] = { ref: ws1['!ref'] };
+  const ws2 = XLSX.utils.json_to_sheet(detalle); ws2['!cols'] = [14, 44, 20, 22, 16, 12, 14, 14, 30].map(w=> ({ wch: w })); ws2['!autofilter'] = { ref: ws2['!ref'] };
   XLSX.utils.book_append_sheet(wb, ws1, 'Por código'); XLSX.utils.book_append_sheet(wb, ws2, 'Detalle por posición');
   const etiqueta = ({ SI:'aptos', NO:'no_aptos', SIN:'sin_marcar' })[$('rfa-apto').value] || 'todos';
   XLSX.writeFile(wb, `registro_fotografico_${etiqueta}_${new Date().toISOString().slice(0, 10)}.xlsx`);
@@ -18884,10 +18995,10 @@ function rfaExcelUbicaciones(){
   const filas = G.map(g=>{
     const P = [...g.pos.values()].sort((a, b)=> b.cantidad - a.cantidad || String(a.posicion).localeCompare(String(b.posicion)));
     return { 'Código': g.sku, 'Descripción': g.descripcion, 'Cantidad total': g.cantidad, 'Costo unitario': g.costo == null ? '' : g.costo, 'Costo total': g.costoTotal == null ? '' : g.costoTotal,
-      'N° ubicaciones': P.length, 'Ubicaciones (posición: cantidad)': P.map(p=> `${p.posicion}: ${anFmt(p.cantidad)}`).join(' · '), 'Tiendas': [...g.tiendas].join(', ') };
+      'Clasificación': g.clasif || '', 'N° ubicaciones': P.length, 'Ubicaciones (posición: cantidad)': P.map(p=> `${p.posicion}: ${anFmt(p.cantidad)}`).join(' · '), 'Tiendas': [...g.tiendas].join(', ') };
   });
   const wb = XLSX.utils.book_new(), ws = XLSX.utils.json_to_sheet(filas);
-  ws['!cols'] = [14, 44, 14, 14, 14, 14, 70, 26].map(w=> ({ wch: w })); ws['!autofilter'] = { ref: ws['!ref'] };
+  ws['!cols'] = [14, 44, 14, 14, 14, 20, 14, 70, 26].map(w=> ({ wch: w })); ws['!autofilter'] = { ref: ws['!ref'] };
   XLSX.utils.book_append_sheet(wb, ws, 'Con ubicaciones');
   const etiqueta = ({ SI:'aptos', NO:'no_aptos', SIN:'sin_marcar' })[$('rfa-apto').value] || 'todos';
   XLSX.writeFile(wb, `registro_fotografico_${etiqueta}_ubicaciones_${new Date().toISOString().slice(0, 10)}.xlsx`);
@@ -18899,10 +19010,15 @@ $('rfsub-panel-aptos').addEventListener('click', e=>{
   if(ver){ setRfSubtab('lista'); rfSel = ver.dataset.rfaVer; setTimeout(()=> rfAbrir(ver.dataset.rfaVer), 50); return; }
   if(e.target.closest('#btn-rfa-excel')){ rfaExcel(); return; }
   if(e.target.closest('#btn-rfa-excel-ubic')){ rfaExcelUbicaciones(); return; }
-  if(e.target.closest('[data-rfa-k-toggle]')){ const b = $('rfa-kpis'), m = !b.classList.contains('min'); b.classList.toggle('min', m); try{ localStorage.setItem('rf:kpis-min', m ? '1' : '0'); }catch(err){} return; }
+  if(e.target.closest('[data-rfa-k-toggle]')){ $('rfa-kpis').classList.toggle('min'); return; }
   if(e.target.closest('[data-rfa-solo-sin]')){ $('rfa-f-costo').value = $('rfa-f-costo').value === 'SIN' ? '' : 'SIN'; rfaPag = 0; rfaAbierto = null; renderRfAptos(); return; }
   if(e.target.closest('#btn-rfa-costos')){ $('rfa-costos').hidden = !$('rfa-costos').hidden; if(!$('rfa-costos').hidden) $('rfa-costos-txt').focus(); return; }
   if(e.target.closest('#btn-rfa-costos-cerrar')){ $('rfa-costos').hidden = true; return; }
+  if(e.target.closest('#btn-rfa-clasif')){ $('rfa-clasif').hidden = !$('rfa-clasif').hidden; if(!$('rfa-clasif').hidden) $('rfa-clasif-txt').focus(); return; }
+  if(e.target.closest('#btn-rfa-clasif-cerrar')){ $('rfa-clasif').hidden = true; return; }
+  if(e.target.closest('#btn-rfa-clasif-revisar')){ rfaRevisarClasif(); return; }
+  if(e.target.closest('#btn-rfa-clasif-aplicar')){ rfaAplicarClasif(); return; }
+  if(e.target.closest('#rfa-clasif')) return;
   if(e.target.closest('#btn-rfa-costos-revisar')){ rfaRevisarCostos(); return; }
   if(e.target.closest('#btn-rfa-costos-aplicar')){ rfaAplicarCostos(); return; }
   if(e.target.closest('#rfa-costos')) return;
@@ -18910,13 +19026,13 @@ $('rfsub-panel-aptos').addEventListener('click', e=>{
   if(e.target.closest('[data-rfa-cancelar]')){ rfaEditando = null; renderRfAptos(); return; }
   const gu = e.target.closest('[data-rfa-guardar]'); if(gu){ rfaGuardarEdicion(gu.dataset.rfaGuardar); return; }
   if(e.target.closest('.rfa-edit')) return;
-  if(e.target.closest('#btn-rfa-limpiar')){ ['rfa-q','rfa-f-sku','rfa-f-desc','rfa-f-cant','rfa-f-pos','rfa-f-rf','rfa-f-costo','rfa-desde','rfa-hasta','rfa-tienda','rfa-usuario'].forEach(id=> $(id).value = ''); $('rfa-apto').value = 'SI'; $('rfa-estado').value = 'CONFIRMADO'; rfaPag = 0; renderRfAptos(); return; }
+  if(e.target.closest('#btn-rfa-limpiar')){ ['rfa-q','rfa-f-sku','rfa-f-desc','rfa-f-cant','rfa-f-pos','rfa-f-rf','rfa-f-costo','rfa-f-clasif','rfa-desde','rfa-hasta','rfa-tienda','rfa-usuario'].forEach(id=> $(id).value = ''); $('rfa-apto').value = 'SI'; $('rfa-estado').value = 'CONFIRMADO'; rfaPag = 0; renderRfAptos(); return; }
   if(e.target.closest('#btn-rfa-recargar')){ rfCargar(true); return; }
   if(th){ const c = th.dataset.rfaOrden; rfaOrden = rfaOrden.campo === c ? { campo: c, dir: -rfaOrden.dir } : { campo: c, dir: (c === 'sku' || c === 'descripcion') ? 1 : -1 }; renderRfAptos(); return; }
   if(pag){ if(!pag.disabled){ rfaPag += Number(pag.dataset.rfaPag); rfaAbierto = null; renderRfAptos(); } return; }
   if(fila){ rfaAbierto = rfaAbierto === fila.dataset.rfaSku ? null : fila.dataset.rfaSku; rfaEditando = null; renderRfAptos(); }
 });
-['rfa-apto','rfa-estado','rfa-tienda','rfa-usuario','rfa-desde','rfa-hasta','rfa-f-costo'].forEach(id=> $(id).addEventListener('change', ()=>{ rfaPag = 0; renderRfAptos(); }));
+['rfa-apto','rfa-estado','rfa-tienda','rfa-usuario','rfa-desde','rfa-hasta','rfa-f-costo','rfa-f-clasif'].forEach(id=> $(id).addEventListener('change', ()=>{ rfaPag = 0; renderRfAptos(); }));
 ['rfa-q','rfa-f-sku','rfa-f-desc','rfa-f-cant','rfa-f-pos','rfa-f-rf'].forEach(id=> $(id).addEventListener('input', ()=>{ rfaPag = 0; renderRfAptos(); }));
 
 // ---- Layout: cada posición pintada según cuántos RF tiene (gris 0, verde 1, naranja más de 1) ----

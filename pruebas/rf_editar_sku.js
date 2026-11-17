@@ -2,6 +2,7 @@
 // Cambia los registros de esa fila (con los filtros elegidos); si el código nuevo ya está en el registro, se suman.
 // Requiere los emuladores encendidos (npm run emuladores).
 const path = require('path');
+const XLSX = require('xlsx');
 const { abrirApp, limpiarEmuladores, ADMIN } = require('./app');
 
 let fallas = 0;
@@ -82,7 +83,7 @@ async function esperar(page, fn, arg, ms){
     `Costos: antes "${res0}" (filtro sin costo → ${soloSin}); al pegar: "${prev1.slice(0, 160)}…"; queda ${tras1}`);
   // Valorizado total (con los filtros): tarjetas que se actualizan solas y con número animado.
   await page.waitForFunction(()=> $('rfa-k-val').textContent === 'S/ 36.50', null, { timeout: 10000 }).catch(()=>{});
-  const kpi = await page.evaluate(()=> ({ val: $('rfa-k-val').textContent, und: $('rfa-k-und').textContent, pct: $('rfa-k-pct').textContent, top: [...document.querySelectorAll('#rfa-k-top .k-top')].map(x=> x.innerText.replace(/\s+/g, ' ').trim()).join(' | ') }));
+  const kpi = await page.evaluate(()=> ({ val: $('rfa-k-val').textContent, und: $('rfa-k-und').textContent, pct: $('rfa-k-pct').textContent, top: [...document.querySelectorAll('#rfa-k-top .k-top')].map(x=> [...x.children].map(c=> c.textContent.trim()).filter(Boolean).join(' ')).join(' | ') }));
   await page.fill('#rfa-f-sku', 'P2');
   await page.waitForFunction(()=> $('rfa-k-val').textContent === 'S/ 9.00', null, { timeout: 5000 }).catch(()=>{});
   const kpiP2 = await page.evaluate(()=> $('rfa-k-val').textContent); await page.fill('#rfa-f-sku', '');
@@ -90,14 +91,46 @@ async function esperar(page, fn, arg, ms){
   await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_aptos_valorizado.png') });
   verificar(kpi.val === 'S/ 36.50' && kpi.und === '14' && kpi.pct === '100%' && /^P1X S\/ 27\.50 \| P2 S\/ 9\.00$/.test(kpi.top) && kpiP2 === 'S/ 9.00',
     `Valorizado total ${kpi.val} · ${kpi.und} und · ${kpi.pct} con costo · top: ${kpi.top}; al filtrar P2 → ${kpiP2}`);
-  // El valorizado es un panel flotante (abajo a la izquierda) que se minimiza a una pastilla con el total.
-  const flot = await page.evaluate(()=>{ const b = $('rfa-kpis'), r = b.getBoundingClientRect(); return { pos: getComputedStyle(b).position, der: Math.round(r.left), abajo: Math.round(innerHeight - r.bottom), mini: $('rfa-k-mini').textContent }; });
+  // El valorizado es un panel flotante (abajo a la izquierda) que siempre empieza minimizado: la pastilla muestra el total
+  // y el % de sobrestock / devolución tienda; al tocarla se abre el detalle.
+  const flot = await page.evaluate(()=>{ const b = $('rfa-kpis'), r = b.getBoundingClientRect(); return { pos: getComputedStyle(b).position, izq: Math.round(r.left), abajo: Math.round(innerHeight - r.bottom), min: b.classList.contains('min'), alto: Math.round(r.height), mini: $('rfa-k-mini').textContent }; });
   await page.click('[data-rfa-k-toggle]');
-  const minimizado = await page.evaluate(()=> ({ min: $('rfa-kpis').classList.contains('min'), cuerpo: getComputedStyle(document.querySelector('.rfa-k-cuerpo')).display, alto: Math.round($('rfa-kpis').getBoundingClientRect().height), guardado: localStorage.getItem('rf:kpis-min') }));
-  await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_aptos_valorizado_min.png') });
+  const abierto = await page.evaluate(()=> ({ min: $('rfa-kpis').classList.contains('min'), cuerpo: getComputedStyle(document.querySelector('.rfa-k-cuerpo')).display }));
   await page.click('[data-rfa-k-toggle]');
-  verificar(flot.pos === 'fixed' && flot.der < 40 && flot.abajo < 80 && flot.mini === 'S/ 36.50' && minimizado.min && minimizado.cuerpo === 'none' && minimizado.alto < 60 && minimizado.guardado === '1' && !(await page.evaluate(()=> $('rfa-kpis').classList.contains('min'))),
-    `Valorizado flotante abajo a la izquierda (${flot.der}px / ${flot.abajo}px del borde); se minimiza a «💰 Valorizado ${flot.mini}» (${minimizado.alto}px) y se vuelve a abrir`);
+  verificar(flot.pos === 'fixed' && flot.izq < 40 && flot.abajo < 80 && flot.min && flot.alto < 60 && flot.mini === 'S/ 36.50' && !abierto.min && abierto.cuerpo !== 'none',
+    `Valorizado flotante abajo a la izquierda, minimizado al entrar («💰 Valorizado ${flot.mini}», ${flot.alto}px); al tocarlo se abre el detalle`);
+  // Clasificación: pegar SOBRESTOCK / DEVOLUCION TIENDA (se entienden variantes), columna, filtro, Excel e indicador.
+  await page.click('#btn-rfa-costos-cerrar').catch(()=>{});
+  await page.click('#btn-rfa-clasif');
+  await page.fill('#rfa-clasif-txt', 'CÓDIGO\tCLASIFICACIÓN\nP1X\tsobre stock\nP2\tDevolución a tienda\nZZZ\tSOBRESTOCK\nP9\tOTRA COSA');
+  await page.click('#btn-rfa-clasif-revisar');
+  const prevC = await page.evaluate(()=> $('rfa-clasif-prev').innerText.replace(/\s+/g, ' '));
+  await page.click('#btn-rfa-clasif-aplicar');
+  await esperar(page, async ()=> ((await productosRef.doc('P2').get()).data() || {}).clasificacion === 'DEVOLUCION TIENDA', null, 10000);
+  await page.waitForFunction(()=> /Sobrestock/.test(($('rfa-body').querySelector('[data-rfa-sku="P1X"]') || {}).innerText || ''), null, { timeout: 10000 }).catch(()=>{});
+  const cl = await page.evaluate(async ()=> ({ p1: ((await productosRef.doc('P1X').get()).data() || {}).clasificacion, col: [...document.querySelectorAll('#rfa-body .rfa-fila')].map(tr=> tr.dataset.rfaSku + ':' + tr.cells[7].innerText.trim()).join(' / ') }));
+  await page.selectOption('#rfa-f-clasif', 'SOBRESTOCK');
+  const soloSS = await page.evaluate(()=> [...document.querySelectorAll('#rfa-body .rfa-fila')].map(tr=> tr.dataset.rfaSku).join());
+  await page.waitForFunction(()=> $('rfa-k-val').textContent === 'S/ 27.50', null, { timeout: 5000 }).catch(()=>{});
+  const valSS = await page.evaluate(()=> $('rfa-k-val').textContent);
+  await page.selectOption('#rfa-f-clasif', '');
+  await page.waitForFunction(()=> $('rfa-k-val').textContent === 'S/ 36.50', null, { timeout: 5000 }).catch(()=>{});
+  const kcl = await page.evaluate(()=> ({ mini: $('rfa-k-mini-cl').textContent, filas: [...document.querySelectorAll('#rfa-k-cl .k-cl')].map(x=> [...x.children].map(c=> c.textContent.trim()).filter(Boolean).join(' ')).join(' | ') }));
+  const [dlC] = await Promise.all([page.waitForEvent('download'), page.click('#btn-rfa-excel')]);
+  const xlC = path.join(__dirname, 'salida', 'rf_aptos_clasif.xlsx'); await dlC.saveAs(xlC);
+  const wbC = XLSX.readFile(xlC), hc1 = XLSX.utils.sheet_to_json(wbC.Sheets['Por código']), hc2 = XLSX.utils.sheet_to_json(wbC.Sheets['Detalle por posición']);
+  const [dlU2] = await Promise.all([page.waitForEvent('download'), page.click('#btn-rfa-excel-ubic')]);
+  const xlU2 = path.join(__dirname, 'salida', 'rf_aptos_clasif_ubic.xlsx'); await dlU2.saveAs(xlU2);
+  const hu = XLSX.utils.sheet_to_json(XLSX.readFile(xlU2).Sheets['Con ubicaciones']);
+  await page.click('[data-rfa-k-toggle]'); await page.waitForTimeout(800);
+  await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_aptos_clasificacion.png') });
+  await page.click('[data-rfa-k-toggle]');
+  verificar(/4 código\(s\) en el listado \(2 sobrestock · 1 devolución tienda\)|3 código\(s\) en el listado/.test(prevC) && /OTRA|P9/.test(prevC) && cl.p1 === 'SOBRESTOCK' && /P1X:📦 Sobrestock/.test(cl.col) && /P2:↩ Devolución tienda/.test(cl.col),
+    `Pegar clasificación: "${prevC.slice(0, 150)}…"; columna ${cl.col}`);
+  verificar(soloSS === 'P1X' && valSS === 'S/ 27.50' && /Sobrestock S\/ 27\.50 75[.,]3%/.test(kcl.filas) && /Devolución tienda S\/ 9\.00 24[.,]7%/.test(kcl.filas) && /SS 75[.,]3% · DT 24[.,]7%/.test(kcl.mini) &&
+    hc1.some(x=> x['Código'] === 'P1X' && x['Clasificación'] === 'SOBRESTOCK') && hc2.some(x=> x['Código'] === 'P2' && x['Clasificación'] === 'DEVOLUCION TIENDA') && hu.some(x=> x['Código'] === 'P1X' && x['Clasificación'] === 'SOBRESTOCK'),
+    `Filtro Sobrestock → ${soloSS} (valorizado ${valSS}); indicador: ${kcl.filas}; pastilla "${kcl.mini}"; los tres Excel traen la clasificación`);
+  await page.click('#btn-rfa-clasif-cerrar');
   // Costo distinto → se reemplaza.
   if(await page.evaluate(()=> $('rfa-costos').hidden)) await page.click('#btn-rfa-costos');
   await page.fill('#rfa-costos-txt', 'P2\t4');
