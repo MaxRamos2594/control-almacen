@@ -51,6 +51,11 @@ service cloud.firestore {
       return registered()
         && (perms().get('admin', false) == true || perms().get('merma_todos', false) == true);
     }
+    // Recepciones: ve las de todos (admin o permiso "recepciones_todas").
+    function recepcionesTodas() {
+      return registered()
+        && (perms().get('admin', false) == true || perms().get('recepciones_todas', false) == true);
+    }
     // Participantes cuyos registros fotográficos puede ver (aunque los haya hecho otro usuario).
     function rfDeSuParticipante() {
       return resource.data.get('participante', '') in perms().get('rf_participantes', []);
@@ -113,6 +118,14 @@ service cloud.firestore {
       allow update: if registered() && (esDuenoRF() || saldosTodos() || canDelete());
       allow delete: if registered() && (esDuenoRF() || canDelete());
     }
+    // Recepciones (guía de remisión → validar lo que llegó): cada usuario las suyas.
+    match /recepciones/{id} {
+      allow read: if registered() && (resource == null || esDuenoRF() || recepcionesTodas());
+      allow create: if registered()
+        && (request.resource.data.get('usuario_email', '') == request.auth.token.email || recepcionesTodas());
+      allow update: if registered() && (esDuenoRF() || recepcionesTodas() || canDelete());
+      allow delete: if registered() && (esDuenoRF() || canDelete());
+    }
     // Merma: igual que Saldos.
     match /merma_traslados/{id} {
       allow read: if registered() && (resource == null || esDuenoRF() || mermaTodos());
@@ -140,7 +153,7 @@ service cloud.firestore {
     // Resto de colecciones de la app: cualquier usuario registrado.
     match /{coleccion}/{id} {
       allow read, write: if registered()
-        && !(coleccion in ['usuarios', 'movimientos', 'kardex', 'participantes_maestro', 'registros_foto', 'saldos_traslados', 'saldos_cajas', 'merma_traslados', 'merma_cajas']);
+        && !(coleccion in ['usuarios', 'movimientos', 'kardex', 'participantes_maestro', 'registros_foto', 'saldos_traslados', 'saldos_cajas', 'merma_traslados', 'merma_cajas', 'recepciones']);
     }
   }
 }

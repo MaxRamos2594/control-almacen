@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { abrirApp, limpiarEmuladores } = require('./app');
 
-const PESTANAS = ['diseno','mov','pallets','productos','inventario','toma_inventario','regfoto','kardex','merma',
+const PESTANAS = ['diseno','mov','pallets','productos','inventario','toma_inventario','regfoto','kardex','merma','recepciones',
   'retiros','campanas','rotulos','ventaonline','reportes','bitacora','usuarios','almacenamiento','asistente'];
 
 (async ()=>{

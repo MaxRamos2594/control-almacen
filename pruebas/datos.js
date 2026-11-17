@@ -33,6 +33,10 @@ async function cargarDatosEjemplo(page, texto = T){
       cajas:1, bultos:1, cajas_ids:['CM-00001'], unidades:3, fecha_creacion: new Date().toISOString() });
     await set(mermaCajasRef, 'CM-00001', { traslado_id:'TM-00001', estado:'CERRADA', usuario:'USUARIO ' + T, usuario_email:'mramos@corporaciongrit.com', unidades:3,
       items:[{ sku:'P100', descripcion:'PRODUCTO ' + T, cantidad:3, fotos:[] }] });
+    // Recepción (guía leída y confirmada), con el texto de ejemplo en cabecera y detalle.
+    await set(recepcionesRef, 'RC-00001', { correlativo:'RC-00001', nro_guia:'TG04-00000001', estado:'CONFIRMADA', fecha: fhoy, fecha_emision: fhoy, remitente:'REMITENTE ' + T, punto_partida:'ORIGEN ' + T,
+      punto_llegada:'DESTINO ' + T, motivo:'MOTIVO ' + T, observaciones:'OBS ' + T, usuario:'USUARIO ' + T, usuario_email:'mramos@corporaciongrit.com', fecha_creacion: new Date().toISOString(),
+      items:[{ item:1, codigo:'P100', descripcion:'PRODUCTO ' + T, unidad:'NIU', cantidad_guia:3, cantidad_recibida:2, fotos:[] }], cant_items:1, unidades_guia:3, unidades_recibidas:2, con_diferencia:1 });
     await set(inventarioTomasRef, 'TI-0001', Object.assign({ correlativo:'TI-0001', area:'AREA ' + T, proveedor_filtro:'PROV ' + T, total_items:1, total_lineas:1, estado:'GENERADA', imagenes:[], observaciones_pendientes:0, total_observaciones:0 }, comun));
   }, texto);
 }
