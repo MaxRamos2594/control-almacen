@@ -376,7 +376,7 @@
   .rf-pos-cambiar{margin-top:4px; border:1px solid var(--line-strong); background:#fff; border-radius:6px; padding:2px 8px; font:inherit; font-size:11.5px; cursor:pointer; align-self:flex-start;}
   #rf-det-pos input{width:100%; margin:4px 0; font-size:15px; padding:6px 8px;} .rf-det-datos .rf-pos-acc{display:flex; gap:6px; flex-wrap:wrap; background:none; padding:0;}
   .rfl-barra{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:8px;} #rfl-q{min-width:240px; flex:0 1 300px; margin:0;}
-  .rfl-nav{display:none;} .rfl-info{display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:#e8eef6; color:#2b4c6f; font-weight:800; cursor:help; font-size:13px;}
+  .rfl-nav{display:none;} .rf-nav-sec{display:none;} body.rfx-full .rf-nav-sec{display:block;} .rf-nav-tit{font-weight:800; font-size:13px; color:var(--ink-soft);} .rfl-info{display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:#e8eef6; color:#2b4c6f; font-weight:800; cursor:help; font-size:13px;}
   .rfl-fila2{display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; justify-content:space-between;}
   /* Layout en pantalla completa: el mapa ocupa toda la hoja; menú, filtros y zoom flotan comprimidos encima. */
   body.rfl-full{overflow:hidden;}
@@ -3518,6 +3518,20 @@
   </div>
 
   <div id="rfsub-panel-nuevo">
+    <!-- Menú comprimido (como en las otras secciones del registro fotográfico). -->
+    <div class="panel rf-flot-sec rf-nav-sec">
+      <div class="rf-filtros">
+        <div class="rfl-nav">
+          <button type="button" data-rfl-ir="menu" title="Menú de la app">☰</button>
+          <button type="button" class="activo" title="Nuevo registro (aquí)" disabled>📸</button>
+          <button type="button" data-rfl-ir="lista" title="Registros">🗂</button>
+          <button type="button" data-rfl-ir="reportes" title="Reportes">📊</button>
+          <button type="button" data-rfl-ir="layout" title="Layout">🗺</button>
+          <button type="button" data-rfl-ir="aptos" title="Aptos">📋</button>
+        </div>
+        <span class="rf-nav-tit">📸 Nuevo registro</span>
+      </div>
+    </div>
     <div class="rf-ok" id="rf-ok" hidden></div>
     <div class="panel rf-inicio" id="rf-inicio">
       <label class="rf-tienda-inicio">🏬 ¿Dónde haces el inventario? <select id="rf-tienda"></select></label>
@@ -4224,8 +4238,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v282';
-const APP_UPDATED = '18/11/2026 10:00';
+const APP_VERSION = 'v283';
+const APP_UPDATED = '18/11/2026 12:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4553,7 +4567,8 @@ function applyPermisosUI(){
 function switchTab(name){
   document.body.classList.toggle('rfl-full', name === 'regfoto' && $('rfsub-panel-layout').style.display === 'block');
   document.body.classList.toggle('rfa-full', name === 'regfoto' && $('rfsub-panel-aptos').style.display === 'block');
-  document.body.classList.toggle('rfx-full', name === 'regfoto' && ($('rfsub-panel-lista').style.display === 'block' || $('rfsub-panel-reportes').style.display === 'block'));
+  document.body.classList.toggle('rfx-full', name === 'regfoto' && ($('rfsub-panel-lista').style.display === 'block' || $('rfsub-panel-reportes').style.display === 'block' || $('rfsub-panel-nuevo').style.display === 'block'));
+  if(name === 'regfoto' && typeof rfNavPermisos === 'function') rfNavPermisos();
   document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
   $('tab-'+name).classList.add('active');
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
@@ -17773,7 +17788,8 @@ function setRfSubtab(name){
   if(typeof rfCerrarDetalle === 'function') rfCerrarDetalle();
   document.body.classList.toggle('rfl-full', name === 'layout');
   document.body.classList.toggle('rfa-full', name === 'aptos');
-  document.body.classList.toggle('rfx-full', name === 'lista' || name === 'reportes');
+  document.body.classList.toggle('rfx-full', name === 'lista' || name === 'reportes' || name === 'nuevo');
+  rfNavPermisos();
   if(name === 'aptos'){ setTimeout(rfaAltoCabecera, 0); if($('rfa-kpis')) $('rfa-kpis').classList.add('min'); }
   ['nuevo','lista','reportes','layout','aptos'].forEach(n=>{ $('rfsub-'+n).classList.toggle('active', n===name); $('rfsub-panel-'+n).style.display = n===name ? 'block' : 'none'; });
   if(name === 'lista' || name === 'reportes' || name === 'layout' || name === 'aptos') rfCargar();
@@ -19280,6 +19296,8 @@ function rflDetalle(id, desplazar){
     rfRepListaRf(L, false) + `<button type="button" class="btn btn-ghost btn-sm rf-rep-ocultar" data-rfl-ocultar="1">▴ Ocultar</button>`;
   if(desplazar) box.scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
+// Los menús comprimidos solo muestran las secciones que el usuario tiene permitidas (como las pestañas).
+function rfNavPermisos(){ document.querySelectorAll('#view-regfoto .rfl-nav [data-rfl-ir]').forEach(b=>{ const t = $('rfsub-' + b.dataset.rflIr); b.hidden = !!(t && t.classList.contains('hidden-perm')); }); }
 // Aptos en pantalla completa: la tabla tiene sus dos filas de títulos fijas; la segunda (filtros) va debajo de la primera.
 function rfaAltoCabecera(){ const f = document.querySelector('#rfa-tabla thead tr'); if(f) document.documentElement.style.setProperty('--rfa-th1', f.offsetHeight + 'px'); }
 window.addEventListener('resize', ()=>{ if(document.body.classList.contains('rfa-full')) rfaAltoCabecera(); });
