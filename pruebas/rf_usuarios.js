@@ -46,7 +46,7 @@ const listo = page=> page.waitForFunction(()=> $('status-text').textContent === 
   await page.evaluate(()=> participantesMaestroRef.doc('SJL').delete());
   await page.waitForFunction(()=> $('rf-tienda').options.length === 3, null, { timeout: 10000 });
   verificar(true, 'Una tienda nueva del maestro aparece al momento en "¿Dónde haces el inventario?" (y desaparece si se borra)');
-  await page.click('#btn-menu'); await page.click('#tab-usuarios');
+  await page.locator('#btn-menu:visible, .rfl-nav [data-rfl-ir="menu"]:visible').first().click(); await page.click('#tab-usuarios');   // en Registro fotográfico el menú está en la barra compacta
   await page.waitForSelector('#us-lista [data-us-email="johan@ejemplo.com"]', { timeout: 10000 });
   // Yolanda: además de lo suyo, ve los registros de CERCADO DE LIMA (de cualquier usuario).
   await page.click('#us-lista [data-us-email="yolanda@ejemplo.com"]');
