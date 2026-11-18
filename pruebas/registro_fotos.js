@@ -27,6 +27,8 @@ function camaraFalsa(){
 const MALICIOSO = `<img src=x onerror="window.__xss=(window.__xss||0)+1">`;
 
 const innerHeightOf = f=> Number(f.pan.split(',')[2]);
+// Cambia de sección del registro fotográfico: con las pestañas si se ven; si no (pantallas con menú compacto), con el menú flotante.
+async function irRf(page, n){ if(await page.isVisible('#rfsub-' + n)) return page.click('#rfsub-' + n); return page.locator(`.rfl-nav [data-rfl-ir="${n}"]:visible`).first().click(); }
 (async ()=>{
   await limpiarEmuladores();
   const { browser, page, errores } = await abrirApp({ scriptInicial: `(${detectorXss.toString()})(); (${camaraFalsa.toString()})();` });
@@ -195,7 +197,19 @@ const innerHeightOf = f=> Number(f.pan.split(',')[2]);
   verificar(/1–1 de 1 · página 1 de 1/.test(await page.textContent('#rf-pag-txt')), 'Registros: paginado de 10 en 10 (siempre visible)');
   // Los reportes (Excel y PDF) están en la pestaña "Reportes".
   verificar(await page.evaluate(()=> !document.querySelector('#rfsub-panel-lista #btn-rf-excel') && !!document.querySelector('#rfsub-panel-reportes #btn-rf-excel')), 'Excel y PDF migrados a "📊 Reportes"');
-  await cerrarDet(); await page.click('#rfsub-reportes');
+  await cerrarDet(); await irRf(page, 'reportes');
+  await page.waitForSelector('#rf-rep-resumen [data-rfr-bloque="BLOQUE A"]', { timeout: 10000 });
+  // Reportes y Registros: sin la barra de la app ni las pestañas; menú y filtros compactos, pegados arriba al bajar.
+  const compacto = sel=> page.evaluate(sel=>{ const b = document.querySelector(sel); return { rfx: document.body.classList.contains('rfx-full'), header: getComputedStyle(document.querySelector('header')).display,
+    subtabs: getComputedStyle(document.querySelector('#view-regfoto > .subtabs')).display, pos: getComputedStyle(b).position, nav: b.querySelectorAll('.rfl-nav [data-rfl-ir]').length, alto: Math.round(b.getBoundingClientRect().height) }; }, sel);
+  const cRep = await compacto('#rfsub-panel-reportes .rf-flot-sec');
+  await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_reportes_compacto.png') });
+  await irRf(page, 'lista'); const cLis = await compacto('#rfsub-panel-lista .rf-flot-sec');
+  await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_registros_compacto.png') });
+  await irRf(page, 'nuevo'); const nuevoNormal = await page.evaluate(()=> !document.body.classList.contains('rfx-full') && getComputedStyle(document.querySelector('header')).display !== 'none');
+  verificar([cRep, cLis].every(c=> c.rfx && c.header === 'none' && c.subtabs === 'none' && c.pos === 'sticky' && c.nav === 5) && cRep.alto < 160 && cLis.alto < 120 && nuevoNormal,
+    `Reportes (barra de ${cRep.alto}px) y Registros (${cLis.alto}px) con menú comprimido pegado arriba; «📸 Nuevo registro» vuelve a la vista normal`);
+  await irRf(page, 'reportes');
   await page.waitForSelector('#rf-rep-resumen [data-rfr-bloque="BLOQUE A"]', { timeout: 10000 });
   const [xl] = await Promise.all([page.waitForEvent('download'), page.click('#btn-rf-excel')]);
   const xlPath = path.join(__dirname, 'salida', 'rf_export.xlsx'); await xl.saveAs(xlPath);
@@ -224,7 +238,7 @@ const innerHeightOf = f=> Number(f.pan.split(',')[2]);
   await page.evaluate(async b64=>{ const d = await pdfjsLib.getDocument({ data: Uint8Array.from(atob(b64), c=> c.charCodeAt(0)) }).promise; const pg = await d.getPage(1), vp = pg.getViewport({ scale: 1.3 });
     const cv = document.createElement('canvas'); cv.width = vp.width; cv.height = vp.height * 0.6; await pg.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise; window.__pdfPng = cv.toDataURL('image/png'); }, fs.readFileSync(pdfPath).toString('base64'));
   fs.writeFileSync(path.join(__dirname, 'salida', 'rf_export_pdf.png'), Buffer.from((await page.evaluate(()=> window.__pdfPng)).split(',')[1], 'base64'));
-  await cerrarDet(); await page.click('#rfsub-lista');
+  await cerrarDet(); await irRf(page, 'lista');
 
   // Búsqueda y segundo registro (correlativo siguiente).
   await page.fill('#rf-q', 'pelota'); await page.waitForTimeout(150);
@@ -233,7 +247,7 @@ const innerHeightOf = f=> Number(f.pan.split(',')[2]);
   const b2 = await page.evaluate(()=> rfFiltrados().length);
   await page.fill('#rf-q', '');
   verificar(b1 === 'RF-ADM-00001' && b2 === 0, 'Buscador por SKU/descripción');
-  await cerrarDet(); await page.click('#rfsub-nuevo');
+  await cerrarDet(); await irRf(page, 'nuevo');
   verificar(await page.evaluate(()=> !$('rf-inicio').hidden && $('rf-form').hidden && !rfBorrador), 'En "Nuevo registro" espera a que se inicie el siguiente');
   await page.click('#btn-rf-iniciar');
   await page.waitForFunction(()=> !$('rf-pos-modal').hidden && $('rf-correlativo').value === 'RF-ADM-00002', null, { timeout: 15000 });
@@ -268,7 +282,7 @@ const innerHeightOf = f=> Number(f.pan.split(',')[2]);
   await page.click('#rf-pos-lista [data-rf-pos="A04"]');
   await page.waitForFunction(()=> !$('cam-modal').hidden, null, { timeout: 10000 }); await page.click('#cam-cerrar');
   await page.evaluate(()=> rfGuardarAhora());
-  await cerrarDet(); await page.click('#rfsub-lista'); await page.waitForFunction(()=> rfLista.some(r=> r.id === 'RF-ADM-00004'), null, { timeout: 15000 });
+  await cerrarDet(); await irRf(page, 'lista'); await page.waitForFunction(()=> rfLista.some(r=> r.id === 'RF-ADM-00004'), null, { timeout: 15000 });
   await page.selectOption('#rf-estado-f', 'BORRADOR');
   const borrs = await page.evaluate(()=> rfFiltrados().map(r=> r.id).join(','));
   await page.selectOption('#rf-estado-f', 'CONFIRMADO');
@@ -279,7 +293,7 @@ const innerHeightOf = f=> Number(f.pan.split(',')[2]);
   verificar(borrs === 'RF-ADM-00004' && confs === 'RF-ADM-00002,RF-ADM-00001' && cont, `Filtro por estado: borradores ${borrs} · confirmados ${confs}; el borrador se puede continuar desde su detalle`);
 
   // Reporte por bloque y por posición: comprimidos; al tocar uno se despliegan sus RF y se pueden ocultar.
-  await cerrarDet(); await page.click('#rfsub-reportes');
+  await cerrarDet(); await irRf(page, 'reportes');
   await page.waitForSelector('#rf-rep-resumen [data-rfr-bloque="BLOQUE A"]', { timeout: 10000 });
   const ids = ()=> page.evaluate(()=> [...document.querySelectorAll('#rfsub-panel-reportes [data-rfr-ver]')].map(r=> r.dataset.rfrVer).sort().join(','));
   const nTiles = ()=> page.evaluate(()=> document.querySelectorAll('#rfsub-panel-reportes .rf-rep-tile').length);
@@ -308,7 +322,7 @@ const innerHeightOf = f=> Number(f.pan.split(',')[2]);
   verificar(detPos === 'RF-ADM-00001' && posOculta && posOculta2, `Reporte por posición: A02 → ${detPos}; se oculta con «Ocultar» o tocándola otra vez; clic en un RF abre su detalle`);
 
   // Layout: gris sin RF, verde con 1, naranja con más de 1; tocar una posición muestra sus RF.
-  await cerrarDet(); await page.click('#rfsub-layout');
+  await cerrarDet(); await irRf(page, 'layout');
   await page.waitForSelector('#rfl-mapa .slot[data-id="A02"]', { timeout: 10000 });
   const clases = ()=> page.evaluate(()=> ['A01','A02','A03','A04'].map(c=>{ const el = document.querySelector(`#rfl-mapa .slot[data-id="${c}"]`); return c + ':' + (el.classList.contains('rfl-n') ? 'n' : el.classList.contains('rfl-1') ? '1' : '0'); }).join(' '));
   const lay1 = await clases();
@@ -340,11 +354,11 @@ const innerHeightOf = f=> Number(f.pan.split(',')[2]);
       hueco: Math.round(document.querySelector('#rfl-mapa .slot[data-id]').getBoundingClientRect().left - mapa.left) }; });
   await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_layout_completo.png') });
   await page.click('#rfl-flot .rfl-nav [data-rfl-ir="lista"]');
-  const sale = await page.evaluate(()=> ({ clase: document.body.classList.contains('rfl-full'), lista: $('rfsub-panel-lista').style.display, header: getComputedStyle(document.querySelector('header')).display }));
-  await page.click('#rfsub-layout');
+  const sale = await page.evaluate(()=> ({ clase: document.body.classList.contains('rfl-full'), lista: $('rfsub-panel-lista').style.display, header: getComputedStyle(document.querySelector('header')).display, rfx: document.body.classList.contains('rfx-full') }));
+  await irRf(page, 'layout');
   verificar(full.clase && full.header === 'none' && full.subtabs === 'none' && full.pan === `0,${full.pan.split(',')[2]},${full.pan.split(',')[2]}` && full.mapaAlto > innerHeightOf(full) - 5 && full.flotAlto < 140 && full.filtros === '32px' && full.zoom === 'absolute' && full.nav === 5 && full.hueco < 200 &&
-    !sale.clase && sale.lista === 'block' && sale.header !== 'none',
-    `Layout en toda la hoja (panel ${full.pan}, mapa ${full.mapaAlto}px de alto), barra flotante de ${full.flotAlto}px con menú y filtros compactos (${full.filtros}), zoom flotante; el layout empieza a la izquierda, sin hueco (${full.hueco}px); al ir a Registros vuelve la vista normal`);
+    !sale.clase && sale.lista === 'block' && sale.header === 'none' && sale.rfx,
+    `Layout en toda la hoja (panel ${full.pan}, mapa ${full.mapaAlto}px de alto), barra flotante de ${full.flotAlto}px con menú y filtros compactos (${full.filtros}), zoom flotante; el layout empieza a la izquierda, sin hueco (${full.hueco}px); al ir a Registros sale su barra compacta`);
   await page.evaluate(()=>{ rfLista = rfLista.filter(r=> r.id !== 'RF-09999'); });
   await page.selectOption('#rfl-estado', '');
   const lay3 = await clases();
@@ -424,7 +438,7 @@ const innerHeightOf = f=> Number(f.pan.split(',')[2]);
     'Confirmar cambios: queda CONFIRMADO con la cantidad nueva y quién lo modificó; la foto quitada se borra recién al confirmar');
   verificar(tras2.bd.apto_ajuste === 'SI' && tras2.bd.apto_ajuste_por === 'Administrador', 'Si lo modifica el administrador, el registro conserva su marca "apto para ajuste" (SÍ)');
   // Cancelar una modificación deja todo como estaba.
-  await cerrarDet(); await page.click('#rfsub-lista'); await page.waitForFunction(()=> rfLista.some(r=> r.id === 'RF-ADM-00002' && r.estado === 'CONFIRMADO'), null, { timeout: 10000 });
+  await cerrarDet(); await irRf(page, 'lista'); await page.waitForFunction(()=> rfLista.some(r=> r.id === 'RF-ADM-00002' && r.estado === 'CONFIRMADO'), null, { timeout: 10000 });
   await page.evaluate(()=> rfAbrir('RF-ADM-00002')); await page.click('#btn-rf-modificar');
   await page.waitForFunction(()=> !$('rf-form').hidden && $('rf-correlativo').value === 'RF-ADM-00002', null, { timeout: 15000 });
   await page.click('#rf-items [data-rf-item="0"] [data-rf-paso="1"]'); await page.evaluate(()=> rfGuardarAhora());
@@ -432,7 +446,7 @@ const innerHeightOf = f=> Number(f.pan.split(',')[2]);
   await page.waitForFunction(()=> !rfBorrador && !$('rf-inicio').hidden, null, { timeout: 10000 });
   const canc = await page.evaluate(async ()=> (await registrosFotoRef.doc('RF-ADM-00002').get()).data());
   verificar(canc.estado === 'CONFIRMADO' && canc.items[0].cantidad === 2 && !('modificando' in canc) && !('respaldo' in canc), '"↩ Cancelar cambios" deja el RF como estaba confirmado');
-  await cerrarDet(); await page.click('#rfsub-lista'); await page.waitForFunction(()=> rfLista.length >= 3, null, { timeout: 10000 });
+  await cerrarDet(); await irRf(page, 'lista'); await page.waitForFunction(()=> rfLista.length >= 3, null, { timeout: 10000 });
 
   // Eliminar (borra también las fotos).
   const paths = await page.evaluate(()=> { const r = rfLista.find(x=> x.id === 'RF-ADM-00001'); return [r.foto_posicion.path, ...r.items.flatMap(it=> it.fotos.map(f=> f.path))]; });
@@ -470,7 +484,7 @@ const innerHeightOf = f=> Number(f.pan.split(',')[2]);
   verificar(ancho <= 390 && camW >= 389, `En celular entra en la pantalla (${ancho}px) y la cámara ocupa toda la pantalla (${Math.round(camW)}px)`);
 
   // Celular: Reportes comprimidos; un bloque desplegado entra en la pantalla.
-  await cerrarDet(); await page.click('#rfsub-reportes');
+  await cerrarDet(); await irRf(page, 'reportes');
   await page.waitForSelector('#rf-rep-resumen [data-rfr-bloque="BLOQUE A"]', { timeout: 10000 });
   await page.click('#rf-rep-resumen [data-rfr-bloque="BLOQUE A"]'); await page.evaluate(()=> $('toast-container').innerHTML = ''); await page.waitForTimeout(200);
   const anchoRep = await page.evaluate(()=> document.documentElement.scrollWidth);

@@ -385,9 +385,9 @@
   body.rfl-full .rfl-panel > h3{display:none;}
   body.rfl-full .rfl-flot{position:absolute; top:8px; left:8px; right:8px; z-index:6; background:rgba(255,255,255,.97); border:1px solid var(--line); border-radius:12px; box-shadow:0 6px 18px rgba(16,24,40,.14); padding:6px 8px; display:flex; flex-direction:column; gap:5px;}
   body.rfl-full .rfl-barra{margin:0; gap:6px;}
-  body.rfl-full .rfl-nav, body.rfa-full .rfl-nav{display:inline-flex; gap:2px; background:#1b2430; border-radius:9px; padding:2px;}
-  body.rfl-full .rfl-nav button, body.rfa-full .rfl-nav button{border:none; background:none; color:#fff; font-size:15px; width:32px; height:30px; border-radius:7px; cursor:pointer;}
-  body.rfl-full .rfl-nav button:hover:not(:disabled), body.rfa-full .rfl-nav button:hover:not(:disabled){background:#2f3d4f;} body.rfl-full .rfl-nav button.activo, body.rfa-full .rfl-nav button.activo{background:#2b6cb0; cursor:default;}
+  body.rfl-full .rfl-nav, body.rfa-full .rfl-nav, body.rfx-full .rfl-nav{display:inline-flex; gap:2px; background:#1b2430; border-radius:9px; padding:2px;}
+  body.rfl-full .rfl-nav button, body.rfa-full .rfl-nav button, body.rfx-full .rfl-nav button{border:none; background:none; color:#fff; font-size:15px; width:32px; height:30px; border-radius:7px; cursor:pointer;}
+  body.rfl-full .rfl-nav button:hover:not(:disabled), body.rfa-full .rfl-nav button:hover:not(:disabled), body.rfx-full .rfl-nav button:hover:not(:disabled){background:#2f3d4f;} body.rfl-full .rfl-nav button.activo, body.rfa-full .rfl-nav button.activo, body.rfx-full .rfl-nav button.activo{background:#2b6cb0; cursor:default;}
   body.rfl-full #view-regfoto .rfl-flot select, body.rfl-full #view-regfoto .rfl-flot input{font-size:13px; min-height:0; height:32px; padding:3px 8px; margin:0; width:auto; max-width:200px;}
   body.rfl-full #view-regfoto .rfl-flot #rfl-q{min-width:180px; flex:1 1 220px; max-width:320px;}
   body.rfl-full #btn-rfl-recargar{height:32px; padding:0 10px;}
@@ -396,6 +396,16 @@
   body.rfl-full .rfl-mapa{flex:1; max-height:none; border:none; border-radius:0; padding:var(--rfl-flot-h, 96px) 8px 70px;}
   body.rfl-full .rfl-zoom{position:absolute; right:14px; bottom:14px; z-index:6; margin:0; background:rgba(255,255,255,.97); border:1px solid var(--line); border-radius:12px; box-shadow:0 6px 18px rgba(16,24,40,.18); padding:5px;}
   body.rfl-full #rfl-detalle{position:fixed; left:14px; bottom:14px; z-index:45; width:min(560px, calc(100vw - 28px)); max-height:55vh; overflow:auto; margin:0; box-shadow:0 10px 30px rgba(16,24,40,.25);}
+  /* Registros y Reportes: sin la barra de la app ni las pestañas; menú y filtros compactos, pegados arriba. */
+  body.rfx-full header, body.rfx-full #app-footer, body.rfx-full #view-regfoto > .subtabs{display:none;}
+  body.rfx-full .rf-flot-sec{position:sticky; top:6px; z-index:30; margin:6px 0 10px !important; padding:6px 8px; border-radius:12px; background:rgba(255,255,255,.97); box-shadow:0 6px 18px rgba(16,24,40,.14);}
+  body.rfx-full .rf-flot-sec > h3{display:none;}
+  body.rfx-full .rf-flot-sec .rf-filtros{gap:6px; margin:0; align-items:center;}
+  body.rfx-full #view-regfoto .rf-flot-sec .rf-filtros select, body.rfx-full #view-regfoto .rf-flot-sec .rf-filtros input{font-size:13px; min-height:0; height:32px; padding:3px 8px; margin:0; width:auto; max-width:200px;}
+  body.rfx-full #view-regfoto .rf-flot-sec #rf-q, body.rfx-full #view-regfoto .rf-flot-sec #rfr-q{min-width:180px; flex:1 1 220px; max-width:340px;}
+  body.rfx-full .rf-flot-sec .rf-filtros label{font-size:12px; display:inline-flex; align-items:center; gap:4px;}
+  body.rfx-full .rf-flot-sec .rf-rep-export{display:flex; flex-wrap:wrap; margin-top:6px; gap:6px;} body.rfx-full .rf-flot-sec .rf-rep-card{display:inline-flex; align-items:center; padding:5px 12px; gap:6px; min-height:0; width:auto;}
+  body.rfx-full .rf-flot-sec .rf-rep-card span{font-size:16px;} body.rfx-full .rf-flot-sec .rf-rep-card small{display:none;}
   /* Aptos en pantalla completa: misma idea que el Layout. */
   .rfa-info{display:none;}
   /* Valorizado: panel flotante abajo a la izquierda (los avisos salen a la derecha) (se minimiza a una pastilla con el total). */
@@ -3540,8 +3550,16 @@
   </div>
 
   <div id="rfsub-panel-lista" style="display:none;">
-    <div class="panel" style="margin-bottom:12px;">
+    <div class="panel rf-flot-sec" style="margin-bottom:12px;">
       <div class="rf-filtros">
+        <div class="rfl-nav">
+          <button type="button" data-rfl-ir="menu" title="Menú de la app">☰</button>
+          <button type="button" data-rfl-ir="nuevo" title="Nuevo registro">📸</button>
+          <button type="button" class="activo" title="Registros (aquí)" disabled>🗂</button>
+          <button type="button" data-rfl-ir="reportes" title="Reportes">📊</button>
+          <button type="button" data-rfl-ir="layout" title="Layout">🗺</button>
+          <button type="button" data-rfl-ir="aptos" title="Aptos">📋</button>
+        </div>
         <select id="rf-estado-f" title="Estado"><option value="">Todos</option><option value="CONFIRMADO">✔ Confirmados</option><option value="BORRADOR">📝 Borradores</option></select>
         <select id="rf-apto-f" title="Apto para ajuste"><option value="">⚖ Apto ajuste: todos</option><option value="SI">✔ Apto para ajuste: SÍ</option><option value="NO">✖ Apto para ajuste: NO</option><option value="SIN">… Sin marcar</option></select>
         <select id="rf-tienda-f" title="Tienda"></select><select id="rf-usuario-f" title="Usuario"></select>
@@ -3549,15 +3567,25 @@
         <label>Desde <input type="date" id="rf-desde"></label><label>Hasta <input type="date" id="rf-hasta"></label>
         <button type="button" class="btn btn-ghost btn-sm" id="btn-rf-recargar">↻ Actualizar</button>
       </div>
+    </div>
+    <div class="panel" style="margin-bottom:12px;">
       <div class="rf-lista" id="rf-lista"></div>
       <div id="rf-pag"></div>
     </div>
   </div>
 
   <div id="rfsub-panel-reportes" style="display:none;">
-    <div class="panel" style="margin-bottom:12px;">
+    <div class="panel rf-flot-sec" style="margin-bottom:12px;">
       <h3>📊 Reportes</h3>
       <div class="rf-filtros">
+        <div class="rfl-nav">
+          <button type="button" data-rfl-ir="menu" title="Menú de la app">☰</button>
+          <button type="button" data-rfl-ir="nuevo" title="Nuevo registro">📸</button>
+          <button type="button" data-rfl-ir="lista" title="Registros">🗂</button>
+          <button type="button" class="activo" title="Reportes (aquí)" disabled>📊</button>
+          <button type="button" data-rfl-ir="layout" title="Layout">🗺</button>
+          <button type="button" data-rfl-ir="aptos" title="Aptos">📋</button>
+        </div>
         <select id="rfr-estado" title="Estado"><option value="CONFIRMADO">✔ Solo confirmados</option><option value="">Todos</option><option value="BORRADOR">📝 Solo borradores</option></select>
         <select id="rfr-apto" title="Apto para ajuste"><option value="">⚖ Apto ajuste: todos</option><option value="SI">✔ Apto para ajuste: SÍ</option><option value="NO">✖ Apto para ajuste: NO</option><option value="SIN">… Sin marcar</option></select>
         <select id="rfr-tienda" title="Tienda"></select><select id="rfr-usuario" title="Usuario"></select>
@@ -4196,8 +4224,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v281';
-const APP_UPDATED = '17/11/2026 23:55';
+const APP_VERSION = 'v282';
+const APP_UPDATED = '18/11/2026 10:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4525,6 +4553,7 @@ function applyPermisosUI(){
 function switchTab(name){
   document.body.classList.toggle('rfl-full', name === 'regfoto' && $('rfsub-panel-layout').style.display === 'block');
   document.body.classList.toggle('rfa-full', name === 'regfoto' && $('rfsub-panel-aptos').style.display === 'block');
+  document.body.classList.toggle('rfx-full', name === 'regfoto' && ($('rfsub-panel-lista').style.display === 'block' || $('rfsub-panel-reportes').style.display === 'block'));
   document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
   $('tab-'+name).classList.add('active');
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
@@ -17744,6 +17773,7 @@ function setRfSubtab(name){
   if(typeof rfCerrarDetalle === 'function') rfCerrarDetalle();
   document.body.classList.toggle('rfl-full', name === 'layout');
   document.body.classList.toggle('rfa-full', name === 'aptos');
+  document.body.classList.toggle('rfx-full', name === 'lista' || name === 'reportes');
   if(name === 'aptos'){ setTimeout(rfaAltoCabecera, 0); if($('rfa-kpis')) $('rfa-kpis').classList.add('min'); }
   ['nuevo','lista','reportes','layout','aptos'].forEach(n=>{ $('rfsub-'+n).classList.toggle('active', n===name); $('rfsub-panel-'+n).style.display = n===name ? 'block' : 'none'; });
   if(name === 'lista' || name === 'reportes' || name === 'layout' || name === 'aptos') rfCargar();

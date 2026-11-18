@@ -230,11 +230,11 @@ const listo = page=> page.waitForFunction(()=> $('status-text').textContent === 
   await page.click('.rfa-flot .rfl-nav [data-rfl-ir="layout"]');
   const aLayout = await page.evaluate(()=> ({ l: document.body.classList.contains('rfl-full'), a: document.body.classList.contains('rfa-full') }));
   await page.click('#rfl-flot .rfl-nav [data-rfl-ir="lista"]');
-  const aLista = await page.evaluate(()=> ({ a: document.body.classList.contains('rfa-full'), h: getComputedStyle(document.querySelector('header')).display }));
+  const aLista = await page.evaluate(()=> ({ a: document.body.classList.contains('rfa-full'), x: document.body.classList.contains('rfx-full'), h: getComputedStyle(document.querySelector('header')).display }));
   await page.evaluate(()=> setRfSubtab('aptos')); await page.waitForFunction(()=> document.querySelectorAll('#rfa-body [data-rfa-sku]').length >= 2, null, { timeout: 10000 });
   verificar(fullA.clase && fullA.header === 'none' && fullA.subtabs === 'none' && fullA.pan.startsWith('0,') && fullA.tabla > 300 && fullA.filtro === '32px' && fullA.nav === 5 && fullA.fija === 'sticky' &&
-    aLayout.l && !aLayout.a && !aLista.a && aLista.h !== 'none',
-    `Aptos en toda la pantalla (panel ${fullA.pan}, tabla ${fullA.tabla}px con títulos fijos), menú y filtros compactos (${fullA.filtro}); 🗺 lleva al Layout y 🗂 a Registros (vista normal)`);
+    aLayout.l && !aLayout.a && !aLista.a && aLista.h === 'none' && aLista.x,
+    `Aptos en toda la pantalla (panel ${fullA.pan}, tabla ${fullA.tabla}px con títulos fijos), menú y filtros compactos (${fullA.filtro}); 🗺 lleva al Layout y 🗂 a Registros (con su barra compacta)`);
   await page.selectOption('#rfa-apto', ''); const a4 = await filasA(); await page.selectOption('#rfa-apto', 'SI');
   verificar(a1.join(' / ') === 'P1|PELOTA|15|2|3 / P9|CAJA|2|1|1' && /^2 código\(s\) 17 2 3 S\/ 0\.00$/i.test(pie) && a2.join() === 'P1|PELOTA|15|2|3' && a3[0].startsWith('P1|') && a3[1].startsWith('P9|') &&
     det.length === 2 && /A01 8 RF-/.test(det.join(' ')) && /B05 7 RF-JHN-00097/.test(det.join(' ')) &&
