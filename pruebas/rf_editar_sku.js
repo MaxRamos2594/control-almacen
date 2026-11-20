@@ -155,7 +155,12 @@ async function esperar(page, fn, arg, ms){
   await page.evaluate(async ()=>{ setRfSubtab('lista'); await rfCargar(true); rfAbrir('RF-ADM-00001'); });
   await page.waitForSelector('#btn-rf-editar-cant', { timeout: 10000 });
   await page.click('#btn-rf-editar-cant');
-  await page.fill('#rf-det-items tbody tr:nth-child(1) .rf-ei-cant', '7');
+  // Campo ± al costado: se escribe cuánto sumar o descontar y se calcula el nuevo saldo (5 + 2 = 7).
+  await page.fill('#rf-det-items tbody tr:nth-child(1) .rf-ei-delta', '-3');
+  const menos = await page.evaluate(()=> ({ cant: document.querySelector('#rf-det-items tbody tr:nth-child(1) .rf-ei-cant').value, calc: document.querySelector('#rf-det-items tbody tr:nth-child(1) .rf-ei-calc').textContent }));
+  await page.fill('#rf-det-items tbody tr:nth-child(1) .rf-ei-delta', '+2');
+  const mas = await page.evaluate(()=> ({ cant: document.querySelector('#rf-det-items tbody tr:nth-child(1) .rf-ei-cant').value, calc: document.querySelector('#rf-det-items tbody tr:nth-child(1) .rf-ei-calc').textContent }));
+  verificar(menos.cant === '2' && /5 − 3 = 2/.test(menos.calc) && mas.cant === '7' && /5 \+ 2 = 7/.test(mas.calc), `Campo ±: "−3" → ${menos.calc}; "+2" → ${mas.calc}`);
   await page.click('#rf-det-items tbody tr:nth-child(2) [data-rf-ei-quitar]');
   await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_editar_cantidades.png') });
   await page.click('[data-rf-ei-guardar]');
