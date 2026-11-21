@@ -330,7 +330,11 @@
     .alm-dos{grid-template-columns:1fr;} .alm-card b{font-size:19px;}
   }
   .rf-tienda-inicio{display:flex; flex-direction:column; gap:6px; font-weight:700; font-size:14px; margin-bottom:12px; width:100%; max-width:520px;} .rf-tienda-inicio select{font-size:16px; padding:10px 12px;}
-  .us-rf{border:1px dashed var(--line-strong); border-radius:10px; padding:10px 12px; margin:10px 0;}
+  .us-sec{border:1px solid var(--line); border-radius:12px; padding:10px 12px 12px; margin:0 0 12px; background:#fff;}
+  .us-sec > h4{margin:0 0 8px; font-size:12.5px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; color:#2b4c6f;}
+  .us-sec .us-extra{margin:6px 0;} .us-sec .us-extra > span{display:block;}
+  .us-ver-todos{display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:6px;} .us-ver-todos .us-extra{margin:0;}
+  .us-rf{background:#fafcff;}
   .rf-aviso-botones{display:flex; gap:10px; justify-content:center; flex-wrap:wrap;} #btn-rf-aviso-no{background:#fff; color:var(--ink); border:1px solid var(--line-strong);}
   .rf-vacia{display:inline-block; padding:1px 7px; border-radius:999px; background:#EEF1F5; border:1px solid #C2C7CE; color:#4A5562; font-size:10.5px; font-weight:700;}
   .rf-vacia-det{padding:10px 12px; border-radius:10px; background:#EEF1F5; border:1px dashed #9AA3AE; margin:10px 0;}
@@ -3973,30 +3977,41 @@
       <button type="button" class="us-volver" id="btn-us-volver">← Usuarios</button>
       <h3 id="us-titulo">Nuevo usuario</h3>
       <p class="hint" style="margin-bottom:10px;">Primero crea la cuenta en Firebase Console → Authentication → Add user. Luego asigna aquí sus permisos.</p>
+      <section class="us-sec"><h4>① Datos del usuario</h4>
       <div class="us-ident">
         <div class="field"><label>Correo del usuario</label><input type="email" id="us-email" placeholder="empleado@empresa.com"></div>
         <div class="field"><label>Alias / nombre para mostrar</label><input type="text" id="us-alias" class="upper" placeholder="EJ. JUAN P."></div>
       </div>
-      <p class="hint" id="us-load-hint" style="margin-bottom:10px;"></p>
+      <p class="hint" id="us-load-hint"></p>
+      </section>
+      <section class="us-sec"><h4>② Qué opciones del menú ve</h4>
       <div class="us-plantillas"><span>Plantillas rápidas:</span>
         <button type="button" data-us-plantilla="comercial">🛍 Área comercial (solo Subir voucher)</button>
         <button type="button" data-us-plantilla="todo">Todo (sin administrador)</button>
         <button type="button" data-us-plantilla="nada">Quitar todo</button>
       </div>
       <label class="us-admin"><input type="checkbox" id="us-admin"> <b>Administrador</b> — ve y hace todo, incluida esta pestaña</label>
-      <p class="hint" style="margin:12px 0 6px;">Qué puede ver: marca las opciones del menú y, dentro de cada una, sus secciones.</p>
+      <p class="hint" style="margin:10px 0 6px;">Marca las opciones del menú y, dentro de cada una, sus secciones.</p>
       <div class="us-arbol" id="us-arbol"></div>
-      <label class="us-extra"><input type="checkbox" id="us-eliminar"> Puede editar / eliminar / bloquear registros <span class="hint">(solo dentro de lo que puede ver; en Venta Online: subir y quitar vouchers)</span></label>
-      <div class="us-rf">
-        <b>📸 Registro fotográfico</b>
+      </section>
+      <section class="us-sec"><h4>③ Qué puede hacer</h4>
+      <label class="us-extra"><input type="checkbox" id="us-eliminar"> <span><b>Editar / eliminar / bloquear registros</b> <span class="hint">(solo dentro de lo que puede ver; también pega costos y clasificación en Aptos; en Venta Online sube y quita vouchers)</span></span></label>
+      <label class="us-extra"><input type="checkbox" id="us-rf-editar-cant"> <span><b>🔢 Editar cantidades de registros fotográficos confirmados</b> <span class="hint">(cambia cantidades o quita productos sin reabrir el registro: sigue confirmado y con su marca de apto; queda quién y cuándo)</span></span></label>
+      </section>
+      <section class="us-sec"><h4>④ Qué registros ve (de todos los usuarios)</h4>
+      <p class="hint" style="margin:0 0 6px;">Si no se marca, cada usuario ve solo lo suyo.</p>
+      <div class="us-ver-todos">
+        <label class="us-extra"><input type="checkbox" id="us-rf-todos"> <span><b>📸 Registro fotográfico</b> <span class="hint">(Registros, Reportes, Layout y Aptos)</span></span></label>
+        <label class="us-extra"><input type="checkbox" id="us-saldos-todos"> <span><b>📦 Saldos</b> <span class="hint">(traslados)</span></span></label>
+        <label class="us-extra"><input type="checkbox" id="us-merma-todos"> <span><b>♻ Merma</b> <span class="hint">(traslados)</span></span></label>
+        <label class="us-extra"><input type="checkbox" id="us-recepciones-todas"> <span><b>📥 Recepciones</b></span></label>
+      </div>
+      </section>
+      <section class="us-sec us-rf"><h4>⑤ Registro fotográfico</h4>
         <div class="field" style="margin:6px 0;"><label>Prefijo de su correlativo <span class="hint">(2 a 5 letras; sus registros serán RF-PREFIJO-00001…)</span></label><input type="text" id="us-rf-prefijo" class="upper" maxlength="5" placeholder="Automático: primeras letras del alias"></div>
-        <label class="us-extra" style="margin:0;"><input type="checkbox" id="us-rf-todos"> Ver los registros fotográficos de todos los usuarios <span class="hint">(en Registros, Reportes y Layout; si no, solo ve los suyos)</span></label>
-        <label class="us-extra" style="margin:0;"><input type="checkbox" id="us-saldos-todos"> Ver los traslados de saldos de todos los usuarios <span class="hint">(si no, solo ve los suyos)</span></label>
-        <label class="us-extra" style="margin:0;"><input type="checkbox" id="us-merma-todos"> Ver los traslados de merma de todos los usuarios <span class="hint">(si no, solo ve los suyos)</span></label>
-        <label class="us-extra" style="margin:0;"><input type="checkbox" id="us-recepciones-todas"> Ver las recepciones de todos los usuarios <span class="hint">(si no, solo ve las suyas)</span></label>
         <div class="us-rf-part" id="us-rf-tiendas-box"><span class="hint">Solo puede registrar en estos participantes (en «¿Dónde haces el inventario?» verá solo estos; si no marcas ninguno, ve todos):</span><div class="us-chips" id="us-rf-tiendas"></div></div>
         <div class="us-rf-part" id="us-rf-part-box"><span class="hint">Además de los suyos, ver los registros de estos participantes (de cualquier usuario):</span><div class="us-chips" id="us-rf-part"></div></div>
-      </div>
+      </section>
       <div class="us-resumen" id="us-resumen"></div>
       <button class="btn btn-primary" id="btn-guardar-usuario" style="width:100%;">Guardar permisos</button>
       <button type="button" class="btn btn-ghost" id="btn-eliminar-usuario" style="width:100%; margin-top:8px; color:#8A332A; border-color:#e3b4ae;" hidden>🗑 Eliminar usuario</button>
@@ -4240,8 +4255,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v284';
-const APP_UPDATED = '20/11/2026 10:00';
+const APP_VERSION = 'v285';
+const APP_UPDATED = '21/11/2026 10:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -19471,7 +19486,7 @@ function rfAbrir(id, desdeGrupo){
   const foto = (f, pie)=> `<div class="rf-thumb" data-rf-ver="${esc(f.url)}" data-rf-pie="${esc(pie)}"><img src="${esc(f.url)}" alt="" loading="lazy"></div>`;
   box.innerHTML = `<div class="rf-det-cab"><div><span class="hint">Registro fotográfico <span class="rf-est ${esc(rfEstadoReg(r))}">${r.modificando ? '✏ EN MODIFICACIÓN' : rfEstadoReg(r) === 'BORRADOR' ? '📝 BORRADOR' : '✔ CONFIRMADO'}</span></span><h2>${esc(r.id)}</h2></div><div class="rf-det-acc">` +
     `${rfEstadoReg(r) === 'BORRADOR' && (r.usuario_email === currentUserEmail || puede) ? `<button type="button" class="btn btn-primary btn-sm" id="btn-rf-continuar">✏ Continuar ${r.modificando ? 'modificación' : 'borrador'}</button>` : ''}` +
-    `${rfEstadoReg(r) === 'CONFIRMADO' && (r.usuario_email === currentUserEmail || puede) ? '<button type="button" class="btn btn-primary btn-sm" id="btn-rf-modificar">✏ Modificar</button>' : ''}${rfEstadoReg(r) === 'CONFIRMADO' && currentPermisos.admin && (r.items || []).length ? '<button type="button" class="btn btn-primary btn-sm" id="btn-rf-editar-cant" title="Cambiar cantidades o quitar productos sin reabrir el registro: sigue confirmado y con su marca de apto">🔢 Editar cantidades</button>' : ''}<button type="button" class="btn btn-primary btn-sm" id="btn-rf-ver-todas">🖼 Ver las ${esc(rfFotosRegistro(r).length)} fotos</button>` +
+    `${rfEstadoReg(r) === 'CONFIRMADO' && (r.usuario_email === currentUserEmail || puede) ? '<button type="button" class="btn btn-primary btn-sm" id="btn-rf-modificar">✏ Modificar</button>' : ''}${rfEstadoReg(r) === 'CONFIRMADO' && rfPuedeEditarCant() && (r.items || []).length ? '<button type="button" class="btn btn-primary btn-sm" id="btn-rf-editar-cant" title="Cambiar cantidades o quitar productos sin reabrir el registro: sigue confirmado y con su marca de apto">🔢 Editar cantidades</button>' : ''}<button type="button" class="btn btn-primary btn-sm" id="btn-rf-ver-todas">🖼 Ver las ${esc(rfFotosRegistro(r).length)} fotos</button>` +
     `<button type="button" class="btn btn-ghost btn-sm" id="btn-rf-pdf-uno">⬇ PDF</button>${puede ? '<button type="button" class="btn btn-ghost btn-sm" id="btn-rf-eliminar" style="color:#8A332A;">🗑 Eliminar</button>' : ''}</div></div>` +
     `<div class="rf-det-datos"><div><span>Participante</span><b>${esc(r.participante)}</b></div><div><span>Fecha de creación</span><b>${esc(new Date(r.fecha_creacion).toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }))}</b></div>` +
     `<div><span>Correlativo</span><b>${esc(r.id)}</b></div><div id="rf-det-pos"><span>Posición</span><b>📍 ${esc(r.posicion)}</b>${rfEstadoReg(r) === 'CONFIRMADO' && (r.usuario_email === currentUserEmail || puede) ? '<button type="button" class="rf-pos-cambiar" data-rf-cambiar-pos>✏ Cambiar</button>' : ''}</div><div><span>Generado por</span><b>${esc(r.usuario || '')}</b></div>` +
@@ -19506,8 +19521,10 @@ function rfEiHistorial(r, sku){
   });
   return filas.length ? `<div class="rf-ei-hist">${filas.slice(-3).map(t=> `<span>${esc(t)}</span>`).join('')}</div>` : '';
 }
+// Editar cantidades de registros confirmados: administrador o permiso «rf_editar_cant» (Usuarios → Registro fotográfico).
+const rfPuedeEditarCant = ()=> !!(currentPermisos.admin || currentPermisos.rf_editar_cant);
 function rfEditarCantidades(){
-  const r = rfLista.find(x=> x.id === rfSel), tb = $('rf-det-items'); if(!r || !tb || !currentPermisos.admin) return;
+  const r = rfLista.find(x=> x.id === rfSel), tb = $('rf-det-items'); if(!r || !tb || !rfPuedeEditarCant()) return;
   tb.querySelectorAll('tbody tr').forEach((tr, i)=>{
     const it = (r.items || [])[i]; if(!it) return; tr.dataset.rfEi = i;
     tr.cells[2].innerHTML = `<div class="rf-ei-fila"><input type="number" min="0" step="any" class="rf-ei-cant" value="${esc(it.cantidad)}" title="Cantidad final"><span class="rf-ei-mas">±</span><input type="text" inputmode="decimal" class="rf-ei-delta" data-rf-ei-base="${esc(Number(it.cantidad) || 0)}" placeholder="−12 / +5" title="Cantidad a descontar (−) o sumar (+): calcula el nuevo saldo"></div><span class="rf-ei-calc"></span> <button type="button" class="btn btn-ghost btn-sm" data-rf-ei-quitar title="Quitar este producto del registro" style="color:#8A332A;">🗑</button>` + rfEiHistorial(r, it.sku);
@@ -19517,7 +19534,7 @@ function rfEditarCantidades(){
   const pri = tb.querySelector('.rf-ei-delta'); if(pri) pri.focus();
 }
 async function rfGuardarCantidades(){
-  const r = rfLista.find(x=> x.id === rfSel), tb = $('rf-det-items'); if(!r || !tb || !currentPermisos.admin) return;
+  const r = rfLista.find(x=> x.id === rfSel), tb = $('rf-det-items'); if(!r || !tb || !rfPuedeEditarCant()) return;
   const filas = [...tb.querySelectorAll('tbody tr[data-rf-ei]')], nuevos = [], cambios = [], quitadas = [], porItem = [];
   for(const tr of filas){
     const it = r.items[Number(tr.dataset.rfEi)];
@@ -21557,7 +21574,7 @@ $('us-admin').addEventListener('change', ()=> $('us-rf-tiendas-box').classList.t
 $('us-rf-todos').addEventListener('change', ()=> $('us-rf-part-box').classList.toggle('bloqueado', $('us-rf-todos').checked || $('us-admin').checked));
 function usLlenar(p){
   const base = Object.assign({}, p, { admin:false });
-  $('us-admin').checked = !!p.admin; $('us-eliminar').checked = !!p.eliminar; $('us-rf-todos').checked = !!p.rf_todos; $('us-saldos-todos').checked = !!p.saldos_todos; $('us-merma-todos').checked = !!p.merma_todos; $('us-recepciones-todas').checked = !!p.recepciones_todas;
+  $('us-admin').checked = !!p.admin; $('us-eliminar').checked = !!p.eliminar; $('us-rf-todos').checked = !!p.rf_todos; $('us-rf-editar-cant').checked = !!p.rf_editar_cant; $('us-saldos-todos').checked = !!p.saldos_todos; $('us-merma-todos').checked = !!p.merma_todos; $('us-recepciones-todas').checked = !!p.recepciones_todas;
   usRfParticipantes(p.rf_participantes || [], p.rf_tiendas || []);
   usTabs().forEach(cb=>{
     const tab = cb.dataset.usTab; cb.checked = !!p.admin || permTabPermitida(base, tab);
@@ -21567,7 +21584,7 @@ function usLlenar(p){
   usRefrescar();
 }
 function usLeer(){
-  const permisos = { admin: $('us-admin').checked, eliminar: $('us-eliminar').checked, rf_todos: $('us-rf-todos').checked, saldos_todos: $('us-saldos-todos').checked, merma_todos: $('us-merma-todos').checked, recepciones_todas: $('us-recepciones-todas').checked, vo_vouchers: false, subs: {},
+  const permisos = { admin: $('us-admin').checked, eliminar: $('us-eliminar').checked, rf_todos: $('us-rf-todos').checked, rf_editar_cant: $('us-rf-editar-cant').checked, saldos_todos: $('us-saldos-todos').checked, merma_todos: $('us-merma-todos').checked, recepciones_todas: $('us-recepciones-todas').checked, vo_vouchers: false, subs: {},
     rf_participantes: [...document.querySelectorAll('#us-rf-part [data-us-rf-part]:checked')].map(x=> x.dataset.usRfPart),
     rf_tiendas: [...document.querySelectorAll('#us-rf-tiendas [data-us-rf-tienda]:checked')].map(x=> x.dataset.usRfTienda) };
   usTabs().forEach(cb=>{
