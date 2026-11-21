@@ -38,6 +38,10 @@ service cloud.firestore {
       return registered()
         && (perms().get('admin', false) == true || perms().get('rf_todos', false) == true);
     }
+    // Editar cantidades de registros fotográficos confirmados (permiso "rf_editar_cant").
+    function rfEditarCant() {
+      return registered() && perms().get('rf_editar_cant', false) == true;
+    }
     function esDuenoRF() {
       return resource.data.get('usuario_email', '') == request.auth.token.email;
     }
@@ -99,7 +103,7 @@ service cloud.firestore {
       allow read: if registered() && (resource == null || esDuenoRF() || rfTodos() || rfDeSuParticipante());
       allow create: if registered()
         && (request.resource.data.get('usuario_email', '') == request.auth.token.email || rfTodos());
-      allow update: if registered() && (esDuenoRF() || rfTodos() || canDelete());
+      allow update: if registered() && (esDuenoRF() || rfTodos() || canDelete() || rfEditarCant());
       allow delete: if registered() && (esDuenoRF() || canDelete());
     }
 

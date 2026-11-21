@@ -177,6 +177,10 @@ async function esperar(page, fn, arg, ms){
   await page.evaluate(()=>{ currentPermisos = Object.assign({}, currentPermisos, { admin:false, eliminar:false, rf_todos:false }); rfaAbierto = 'P2'; renderRfAptos(); });
   const sinBoton = await page.evaluate(()=> !document.querySelector('[data-rfa-editar]') && $('btn-rfa-costos').hidden);
   verificar(sinBoton, 'Sin permiso no aparece "Editar código / descripción"');
+  // Permiso «editar cantidades» sin ser administrador: aparece «🔢 Editar cantidades»; sin él, no.
+  const conPerm = await page.evaluate(()=>{ setRfSubtab('lista'); currentPermisos = Object.assign({}, currentPermisos, { rf_editar_cant: true }); rfAbrir('RF-ADM-00001'); const a = !!$('btn-rf-editar-cant');
+    currentPermisos = Object.assign({}, currentPermisos, { rf_editar_cant: false }); rfAbrir('RF-ADM-00001'); const b = !!$('btn-rf-editar-cant'); rfCerrarDetalle(); return a && !b; });
+  verificar(conPerm, 'Un usuario con el permiso «Editar cantidades» (sin ser administrador) ve «🔢 Editar cantidades»; sin el permiso, no');
 
   verificar(!errores.length, 'Sin errores de JavaScript' + (errores.length ? ': ' + errores.join(' | ') : ''));
   await browser.close();
