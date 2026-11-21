@@ -4267,8 +4267,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v286';
-const APP_UPDATED = '21/11/2026 12:00';
+const APP_VERSION = 'v287';
+const APP_UPDATED = '21/11/2026 14:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -17819,7 +17819,7 @@ function setRfSubtab(name){
   document.body.classList.toggle('rfa-full', name === 'aptos');
   document.body.classList.toggle('rfx-full', name === 'lista' || name === 'reportes' || name === 'nuevo');
   rfNavPermisos();
-  if(name === 'aptos'){ setTimeout(rfaAltoCabecera, 0); if($('rfa-kpis')) $('rfa-kpis').classList.add('min'); }
+  if(name === 'aptos'){ rfaTiendaDef = true; setTimeout(rfaAltoCabecera, 0); if($('rfa-kpis')) $('rfa-kpis').classList.add('min'); }
   ['nuevo','lista','reportes','layout','aptos'].forEach(n=>{ $('rfsub-'+n).classList.toggle('active', n===name); $('rfsub-panel-'+n).style.display = n===name ? 'block' : 'none'; });
   if(name === 'lista' || name === 'reportes' || name === 'layout' || name === 'aptos') rfCargar();
   else rfPrepararForm();
@@ -18740,13 +18740,17 @@ function rfaFilas(){
   G.sort((a, b)=>{ const x = a[campo] == null ? -Infinity : a[campo], y = b[campo] == null ? -Infinity : b[campo]; return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'es', { numeric: true })) * dir || a.sku.localeCompare(b.sku, 'es', { numeric: true }); });
   return G;
 }
+let rfaTiendaDef = true;
 function rfaLlenarFiltros(){
   const tiendas = [...new Set(rfLista.map(rfTiendaDe))].sort((a, b)=> a.localeCompare(b, 'es'));
   const usuarios = [...new Map(rfLista.filter(r=> r.usuario_email).map(r=> [r.usuario_email, r.usuario || r.usuario_email])).entries()].sort((a, b)=> a[1].localeCompare(b[1], 'es'));
   const vt = $('rfa-tienda').value, vu = $('rfa-usuario').value;
   $('rfa-tienda').innerHTML = '<option value="">🏬 Todas las tiendas</option>' + tiendas.map(x=> `<option value="${esc(x)}">${esc(x)}</option>`).join('');
   $('rfa-usuario').innerHTML = '<option value="">👤 Todos los usuarios</option>' + usuarios.map(([e, a])=> `<option value="${esc(e)}">${esc(a)}</option>`).join('');
-  $('rfa-tienda').value = tiendas.includes(vt) ? vt : ''; $('rfa-usuario').value = usuarios.some(([e])=> e === vu) ? vu : '';
+  // Al entrar a Aptos (y al limpiar filtros) la tienda viene en CD VENEZUELA; después se puede cambiar.
+  if(rfaTiendaDef && tiendas.includes(RF_CD)){ $('rfa-tienda').value = RF_CD; rfaTiendaDef = false; }
+  else $('rfa-tienda').value = tiendas.includes(vt) ? vt : '';
+  $('rfa-usuario').value = usuarios.some(([e])=> e === vu) ? vu : '';
 }
 // ---- Valorizado del inventario (con los filtros elegidos): tarjetas que se actualizan al filtrar ----
 // Valorizado = cantidad × costo de cada código; los que no tienen costo no suman y se cuentan aparte.
@@ -19103,7 +19107,7 @@ $('rfsub-panel-aptos').addEventListener('click', e=>{
   if(e.target.closest('[data-rfa-cancelar]')){ rfaEditando = null; renderRfAptos(); return; }
   const gu = e.target.closest('[data-rfa-guardar]'); if(gu){ rfaGuardarEdicion(gu.dataset.rfaGuardar); return; }
   if(e.target.closest('.rfa-edit')) return;
-  if(e.target.closest('#btn-rfa-limpiar')){ ['rfa-q','rfa-f-sku','rfa-f-desc','rfa-f-cant','rfa-f-pos','rfa-f-rf','rfa-f-costo','rfa-f-clasif','rfa-desde','rfa-hasta','rfa-tienda','rfa-usuario'].forEach(id=> $(id).value = ''); $('rfa-apto').value = 'SI'; $('rfa-estado').value = 'CONFIRMADO'; rfaPag = 0; renderRfAptos(); return; }
+  if(e.target.closest('#btn-rfa-limpiar')){ ['rfa-q','rfa-f-sku','rfa-f-desc','rfa-f-cant','rfa-f-pos','rfa-f-rf','rfa-f-costo','rfa-f-clasif','rfa-desde','rfa-hasta','rfa-tienda','rfa-usuario'].forEach(id=> $(id).value = ''); rfaTiendaDef = true; $('rfa-apto').value = 'SI'; $('rfa-estado').value = 'CONFIRMADO'; rfaPag = 0; renderRfAptos(); return; }
   if(e.target.closest('#btn-rfa-recargar')){ rfCargar(true); return; }
   if(th){ const c = th.dataset.rfaOrden; rfaOrden = rfaOrden.campo === c ? { campo: c, dir: -rfaOrden.dir } : { campo: c, dir: (c === 'sku' || c === 'descripcion') ? 1 : -1 }; renderRfAptos(); return; }
   if(pag){ if(!pag.disabled){ rfaPag += Number(pag.dataset.rfaPag); rfaAbierto = null; renderRfAptos(); } return; }

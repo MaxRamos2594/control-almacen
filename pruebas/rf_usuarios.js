@@ -209,6 +209,10 @@ const listo = page=> page.waitForFunction(()=> $('status-text').textContent === 
   await page.waitForFunction(()=> document.querySelectorAll('#rfa-body [data-rfa-sku]').length >= 2, null, { timeout: 10000 });
   const filasA = ()=> page.evaluate(()=> [...document.querySelectorAll('#rfa-body [data-rfa-sku]')].map(t=> [...t.cells].slice(0, 5).map(c=> c.innerText.replace(/[▸▾]/g, '').trim()).join('|')));
   const a1 = await filasA(), pie = await page.evaluate(()=> $('rfa-foot').innerText.replace(/\s+/g, ' ').trim());
+  const tiendaDef = await page.evaluate(()=> $('rfa-tienda').value);
+  await page.selectOption('#rfa-tienda', ''); await page.evaluate(()=>{ setRfSubtab('lista'); setRfSubtab('aptos'); });
+  const tiendaOtraVez = await page.evaluate(()=> $('rfa-tienda').value);
+  verificar(tiendaDef === 'CD VENEZUELA' && tiendaOtraVez === 'CD VENEZUELA', `Aptos se abre filtrado en ${tiendaDef} (también al volver a entrar)`);
   await page.fill('#rfa-f-cant', '>10'); const a2 = await filasA(); await page.fill('#rfa-f-cant', '');
   await page.click('#rfa-tabla [data-rfa-orden="sku"]'); const a3 = await filasA();
   await page.click('#rfa-body [data-rfa-sku="P1"]');
@@ -237,7 +241,7 @@ const listo = page=> page.waitForFunction(()=> $('status-text').textContent === 
   verificar(fullA.clase && fullA.header === 'none' && fullA.subtabs === 'none' && fullA.pan.startsWith('0,') && fullA.tabla > 300 && fullA.filtro === '32px' && fullA.nav === 5 && fullA.fija === 'sticky' &&
     aLayout.l && !aLayout.a && !aLista.a && aLista.h === 'none' && aLista.x,
     `Aptos en toda la pantalla (panel ${fullA.pan}, tabla ${fullA.tabla}px con títulos fijos), menú y filtros compactos (${fullA.filtro}); 🗺 lleva al Layout y 🗂 a Registros (con su barra compacta)`);
-  await page.selectOption('#rfa-apto', ''); const a4 = await filasA(); await page.selectOption('#rfa-apto', 'SI');
+  await page.selectOption('#rfa-apto', ''); await page.selectOption('#rfa-tienda', ''); const a4 = await filasA(); await page.selectOption('#rfa-apto', 'SI');
   verificar(a1.join(' / ') === 'P1|PELOTA|15|2|3 / P9|CAJA|2|1|1' && /^2 código\(s\) 17 2 3 S\/ 0\.00$/i.test(pie) && a2.join() === 'P1|PELOTA|15|2|3' && a3[0].startsWith('P1|') && a3[1].startsWith('P9|') &&
     det.length === 2 && /A01 8 RF-/.test(det.join(' ')) && /B05 7 RF-JHN-00097/.test(det.join(' ')) &&
     r1.length === 2 && r1[0]['Código'] === 'P1' && r1[0]['Cantidad total'] === 15 && r1[0]['Posiciones (distintas)'] === 2 && r2.length === 3 && a4.length === 3,
