@@ -244,6 +244,8 @@
   .rf-det-datos div{background:#f6f8fb; border-radius:8px; padding:8px 10px;} .rf-det-datos span{display:block; font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft);} .rf-det-datos b{font-size:13px;}
   .rf-det-items{width:100%; border-collapse:collapse;} .rf-det-items td, .rf-det-items th{padding:8px 6px; border-bottom:1px solid var(--line); vertical-align:top; text-align:left;}
   .rf-det-items .rf-fotos .rf-thumb{width:96px; height:96px;}
+  .rf-ei-fila{display:inline-flex; align-items:center; gap:4px;} .rf-ei-fila input{margin:0; height:38px;} .rf-ei-cant{width:110px; text-align:right;} .rf-ei-delta{width:96px; text-align:right; border-color:#7aa7d6 !important; background:#f3f8fd;}
+  .rf-ei-mas{font-weight:800; color:var(--ink-soft);} .rf-ei-calc{display:block; font-size:11px; font-weight:700; color:#1e6b3a; margin-top:2px;} .rf-ei-calc.mal{color:#b3261e;}
   .rf-ei-hist{display:flex; flex-direction:column; align-items:flex-start; gap:1px; margin-top:3px; font-size:10.5px; line-height:1.25; color:var(--ink-soft); font-weight:400; white-space:nowrap;}
   .rf-det-items tr.rf-ei-quitado td{opacity:.45; text-decoration:line-through;} .rf-det-items tr.rf-ei-quitado td:nth-child(3){opacity:1; text-decoration:none;}
   .cam-modal{position:fixed; inset:0; background:rgba(10,14,20,.88); z-index:9000; display:flex; align-items:center; justify-content:center; padding:10px;}
@@ -4238,8 +4240,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v283';
-const APP_UPDATED = '18/11/2026 12:00';
+const APP_VERSION = 'v284';
+const APP_UPDATED = '20/11/2026 10:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -19508,11 +19510,11 @@ function rfEditarCantidades(){
   const r = rfLista.find(x=> x.id === rfSel), tb = $('rf-det-items'); if(!r || !tb || !currentPermisos.admin) return;
   tb.querySelectorAll('tbody tr').forEach((tr, i)=>{
     const it = (r.items || [])[i]; if(!it) return; tr.dataset.rfEi = i;
-    tr.cells[2].innerHTML = `<input type="number" min="0" step="any" class="rf-ei-cant" value="${esc(it.cantidad)}" style="width:110px; text-align:right; margin:0;"> <button type="button" class="btn btn-ghost btn-sm" data-rf-ei-quitar title="Quitar este producto del registro" style="color:#8A332A;">🗑</button>` + rfEiHistorial(r, it.sku);
+    tr.cells[2].innerHTML = `<div class="rf-ei-fila"><input type="number" min="0" step="any" class="rf-ei-cant" value="${esc(it.cantidad)}" title="Cantidad final"><span class="rf-ei-mas">±</span><input type="text" inputmode="decimal" class="rf-ei-delta" data-rf-ei-base="${esc(Number(it.cantidad) || 0)}" placeholder="−12 / +5" title="Cantidad a descontar (−) o sumar (+): calcula el nuevo saldo"></div><span class="rf-ei-calc"></span> <button type="button" class="btn btn-ghost btn-sm" data-rf-ei-quitar title="Quitar este producto del registro" style="color:#8A332A;">🗑</button>` + rfEiHistorial(r, it.sku);
   });
   tb.tFoot.innerHTML = `<tr><th colspan="4"><div style="display:flex; gap:8px; justify-content:flex-end; align-items:center; flex-wrap:wrap;"><span class="hint">El registro sigue confirmado y ${rfApto(r) ? `con «${esc(rfAptoTxt(r))}»` : 'sin cambiar su marca'}.</span><button type="button" class="btn btn-ghost btn-sm" data-rf-ei-cancelar>Cancelar</button><button type="button" class="btn btn-primary btn-sm" data-rf-ei-guardar>💾 Guardar cambios</button></div></th></tr>`;
   const b = $('btn-rf-editar-cant'); if(b) b.disabled = true;
-  const pri = tb.querySelector('.rf-ei-cant'); if(pri){ pri.focus(); pri.select(); }
+  const pri = tb.querySelector('.rf-ei-delta'); if(pri) pri.focus();
 }
 async function rfGuardarCantidades(){
   const r = rfLista.find(x=> x.id === rfSel), tb = $('rf-det-items'); if(!r || !tb || !currentPermisos.admin) return;
@@ -19561,6 +19563,20 @@ $('rf-det-modal').addEventListener('click', e=>{
 // Esc cierra el detalle (si no hay encima una foto en grande o un aviso).
 // Se escucha en captura (antes que los demás): así se ve si había una foto o aviso abierto antes de que se cierre.
 window.addEventListener('keydown', e=>{ if(e.key === 'Escape' && rfDetAbierto() && $('rf-lightbox').hidden && $('rf-aviso').hidden && $('cam-modal').hidden) rfCerrarDetalle(); }, true);
+// Al escribir cuánto descontar (−12) o sumar (+5 o 5) se calcula el nuevo saldo en la cantidad final.
+// Si se escribe la cantidad final a mano, el ± se limpia.
+$('rf-detalle').addEventListener('input', e=>{
+  const d = e.target.closest('.rf-ei-delta'), c = e.target.closest('.rf-ei-cant');
+  if(d){
+    const fila = d.closest('td'), cant = fila.querySelector('.rf-ei-cant'), calc = fila.querySelector('.rf-ei-calc'), base = Number(d.dataset.rfEiBase) || 0;
+    const t = d.value.replace(/\s/g, '').replace(',', '.'), v = Number(t.replace(/^\+/, ''));
+    if(!t || t === '-' || t === '+'){ cant.value = base; calc.textContent = ''; calc.className = 'rf-ei-calc'; return; }
+    if(!Number.isFinite(v)){ calc.textContent = 'Número no válido'; calc.className = 'rf-ei-calc mal'; return; }
+    const nuevo = Math.round((base + v) * 1000) / 1000;
+    cant.value = nuevo; calc.className = 'rf-ei-calc' + (nuevo <= 0 ? ' mal' : '');
+    calc.textContent = `${anFmt(base)} ${v < 0 ? '−' : '+'} ${anFmt(Math.abs(v))} = ${anFmt(nuevo)}${nuevo <= 0 ? ' (debe quedar mayor a 0; para dejarlo en 0 quita el producto con 🗑)' : ''}`;
+  } else if(c){ const fila = c.closest('td'), d2 = fila.querySelector('.rf-ei-delta'), calc = fila.querySelector('.rf-ei-calc'); if(d2 && d2.value){ d2.value = ''; calc.textContent = ''; } }
+});
 $('rf-detalle').addEventListener('click', async e=>{
   // Cambiar solo la posición, ahí mismo (no se toca la marca de apto para ajuste ni el resto del registro).
   if(e.target.closest('[data-rf-cambiar-pos]')){ rfEditarPosicion(); return; }
@@ -19574,7 +19590,7 @@ $('rf-detalle').addEventListener('click', async e=>{
   if(e.target.closest('[data-rf-ei-cancelar]')){ rfAbrir(rfSel, !!rfDetGrupo); return; }
   if(e.target.closest('[data-rf-ei-guardar]')){ await rfGuardarCantidades(); return; }
   const eq = e.target.closest('[data-rf-ei-quitar]');
-  if(eq){ const tr = eq.closest('tr'), q = !tr.classList.contains('rf-ei-quitado'); tr.classList.toggle('rf-ei-quitado', q); tr.querySelector('.rf-ei-cant').disabled = q; eq.textContent = q ? '↩' : '🗑'; eq.title = q ? 'Volver a incluir' : 'Quitar este producto del registro'; return; }
+  if(eq){ const tr = eq.closest('tr'), q = !tr.classList.contains('rf-ei-quitado'); tr.classList.toggle('rf-ei-quitado', q); tr.querySelector('.rf-ei-cant').disabled = q; tr.querySelector('.rf-ei-delta').disabled = q; eq.textContent = q ? '↩' : '🗑'; eq.title = q ? 'Volver a incluir' : 'Quitar este producto del registro'; return; }
   if(e.target.closest('#btn-rf-ver-todas') || e.target.closest('#btn-rf-pdf-uno')){
     const r = rfLista.find(x=> x.id === rfSel); if(!r) return;
     if(e.target.closest('#btn-rf-pdf-uno')) rfExportarPdf([r]); else { const fs = rfFotosRegistro(r); if(fs.length) rfVerFoto(fs[0].url, fs[0].pie, fs); }
