@@ -333,6 +333,11 @@
   .us-sec{border:1px solid var(--line); border-radius:12px; padding:10px 12px 12px; margin:0 0 12px; background:#fff;}
   .us-sec > h4{margin:0 0 8px; font-size:12.5px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; color:#2b4c6f;}
   .us-sec .us-extra{margin:6px 0;} .us-sec .us-extra > span{display:block;}
+  .us-mods{display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:10px;}
+  .us-mod{border:1px solid var(--line); border-radius:10px; padding:8px 10px; background:#fafcff;} .us-mod .us-extra{margin:5px 0;}
+  .us-mod-t{font-weight:800; font-size:13.5px; margin-bottom:4px;} .us-mod-off{display:none; font-weight:600; font-size:11.5px; color:#a35f00;}
+  .us-mod.apagado{opacity:.5;} .us-mod.apagado .us-mod-off{display:inline;}
+  .us-mod[data-us-mod="regfoto"]{grid-column:1 / -1;}
   .us-ver-todos{display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:6px;} .us-ver-todos .us-extra{margin:0;}
   .us-rf{background:#fafcff;}
   .rf-aviso-botones{display:flex; gap:10px; justify-content:center; flex-wrap:wrap;} #btn-rf-aviso-no{background:#fff; color:var(--ink); border:1px solid var(--line-strong);}
@@ -3994,23 +3999,30 @@
       <p class="hint" style="margin:10px 0 6px;">Marca las opciones del menú y, dentro de cada una, sus secciones.</p>
       <div class="us-arbol" id="us-arbol"></div>
       </section>
-      <section class="us-sec"><h4>③ Qué puede hacer</h4>
+      <section class="us-sec"><h4>③ Qué puede hacer (en todo lo que ve)</h4>
       <label class="us-extra"><input type="checkbox" id="us-eliminar"> <span><b>Editar / eliminar / bloquear registros</b> <span class="hint">(solo dentro de lo que puede ver; también pega costos y clasificación en Aptos; en Venta Online sube y quita vouchers)</span></span></label>
-      <label class="us-extra"><input type="checkbox" id="us-rf-editar-cant"> <span><b>🔢 Editar cantidades de registros fotográficos confirmados</b> <span class="hint">(cambia cantidades o quita productos sin reabrir el registro: sigue confirmado y con su marca de apto; queda quién y cuándo)</span></span></label>
       </section>
-      <section class="us-sec"><h4>④ Qué registros ve (de todos los usuarios)</h4>
-      <p class="hint" style="margin:0 0 6px;">Si no se marca, cada usuario ve solo lo suyo.</p>
-      <div class="us-ver-todos">
-        <label class="us-extra"><input type="checkbox" id="us-rf-todos"> <span><b>📸 Registro fotográfico</b> <span class="hint">(Registros, Reportes, Layout y Aptos)</span></span></label>
-        <label class="us-extra"><input type="checkbox" id="us-saldos-todos"> <span><b>📦 Saldos</b> <span class="hint">(traslados)</span></span></label>
-        <label class="us-extra"><input type="checkbox" id="us-merma-todos"> <span><b>♻ Merma</b> <span class="hint">(traslados)</span></span></label>
-        <label class="us-extra"><input type="checkbox" id="us-recepciones-todas"> <span><b>📥 Recepciones</b></span></label>
+      <section class="us-sec"><h4>④ Permisos dentro de cada módulo</h4>
+      <p class="hint" style="margin:0 0 8px;">Cada módulo con lo que puede hacer y ver ahí. Se activa cuando el módulo está marcado en ②. Si no se marca «ver de todos», cada usuario ve solo lo suyo.</p>
+      <div class="us-mods">
+        <div class="us-mod" data-us-mod="regfoto"><div class="us-mod-t">📸 Registro fotográfico <span class="us-mod-off">— márcalo en ②</span></div>
+          <label class="us-extra"><input type="checkbox" id="us-rf-todos"> <span><b>Ver los registros de todos los usuarios</b> <span class="hint">(en Registros, Reportes, Layout y Aptos)</span></span></label>
+          <label class="us-extra"><input type="checkbox" id="us-rf-modificar"> <span><b>✏ Modificar registros confirmados</b> <span class="hint">(reabrirlos para cambiar posición, fotos o productos; si no se marca, no puede modificar ni los suyos)</span></span></label>
+          <label class="us-extra"><input type="checkbox" id="us-rf-editar-cant"> <span><b>🔢 Editar cantidades de registros confirmados</b> <span class="hint">(sin reabrirlos: siguen confirmados y con su marca de apto; queda quién y cuándo)</span></span></label>
+          <div class="field" style="margin:6px 0;"><label>Prefijo de su correlativo <span class="hint">(2 a 5 letras; sus registros serán RF-PREFIJO-00001…)</span></label><input type="text" id="us-rf-prefijo" class="upper" maxlength="5" placeholder="Automático: primeras letras del alias"></div>
+          <div class="us-rf-part" id="us-rf-tiendas-box"><span class="hint">Solo puede registrar en estos participantes (en «¿Dónde haces el inventario?» verá solo estos; si no marcas ninguno, ve todos):</span><div class="us-chips" id="us-rf-tiendas"></div></div>
+          <div class="us-rf-part" id="us-rf-part-box"><span class="hint">Además de los suyos, ver los registros de estos participantes (de cualquier usuario):</span><div class="us-chips" id="us-rf-part"></div></div>
+        </div>
+        <div class="us-mod" data-us-mod="saldos"><div class="us-mod-t">📦 Saldos <span class="us-mod-off">— márcalo en ②</span></div>
+          <label class="us-extra"><input type="checkbox" id="us-saldos-todos"> <span><b>Ver los traslados de saldos de todos los usuarios</b></span></label>
+        </div>
+        <div class="us-mod" data-us-mod="merma"><div class="us-mod-t">♻ Merma <span class="us-mod-off">— márcalo en ②</span></div>
+          <label class="us-extra"><input type="checkbox" id="us-merma-todos"> <span><b>Ver los traslados de merma de todos los usuarios</b></span></label>
+        </div>
+        <div class="us-mod" data-us-mod="recepciones"><div class="us-mod-t">📥 Recepciones <span class="us-mod-off">— márcalo en ②</span></div>
+          <label class="us-extra"><input type="checkbox" id="us-recepciones-todas"> <span><b>Ver las recepciones de todos los usuarios</b></span></label>
+        </div>
       </div>
-      </section>
-      <section class="us-sec us-rf"><h4>⑤ Registro fotográfico</h4>
-        <div class="field" style="margin:6px 0;"><label>Prefijo de su correlativo <span class="hint">(2 a 5 letras; sus registros serán RF-PREFIJO-00001…)</span></label><input type="text" id="us-rf-prefijo" class="upper" maxlength="5" placeholder="Automático: primeras letras del alias"></div>
-        <div class="us-rf-part" id="us-rf-tiendas-box"><span class="hint">Solo puede registrar en estos participantes (en «¿Dónde haces el inventario?» verá solo estos; si no marcas ninguno, ve todos):</span><div class="us-chips" id="us-rf-tiendas"></div></div>
-        <div class="us-rf-part" id="us-rf-part-box"><span class="hint">Además de los suyos, ver los registros de estos participantes (de cualquier usuario):</span><div class="us-chips" id="us-rf-part"></div></div>
       </section>
       <div class="us-resumen" id="us-resumen"></div>
       <button class="btn btn-primary" id="btn-guardar-usuario" style="width:100%;">Guardar permisos</button>
@@ -4255,8 +4267,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v285';
-const APP_UPDATED = '21/11/2026 10:00';
+const APP_VERSION = 'v286';
+const APP_UPDATED = '21/11/2026 12:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -18532,6 +18544,7 @@ $('rf-aviso').addEventListener('click', e=>{ if(e.target.id === 'rf-aviso') rfCe
 // Al confirmar de nuevo queda CONFIRMADO con quién lo modificó; "Cancelar cambios" deja lo que estaba.
 // Las fotos que se quitan no se borran hasta confirmar (por si se cancela).
 async function rfModificar(id){
+  const rr = rfLista.find(x=> x.id === id); if(rr && !rfPuedeModificar(rr)){ showToast('No tienes permiso para modificar registros confirmados.', 'err'); return; }
   try{
     if(rfBorrador && rfBorrador.id !== id){ await rfGuardarAhora(); rfLimpiarForm(); }
     const ref = registrosFotoRef.doc(id), ahora = new Date().toISOString(); let datos = null;
@@ -19486,10 +19499,10 @@ function rfAbrir(id, desdeGrupo){
   const foto = (f, pie)=> `<div class="rf-thumb" data-rf-ver="${esc(f.url)}" data-rf-pie="${esc(pie)}"><img src="${esc(f.url)}" alt="" loading="lazy"></div>`;
   box.innerHTML = `<div class="rf-det-cab"><div><span class="hint">Registro fotográfico <span class="rf-est ${esc(rfEstadoReg(r))}">${r.modificando ? '✏ EN MODIFICACIÓN' : rfEstadoReg(r) === 'BORRADOR' ? '📝 BORRADOR' : '✔ CONFIRMADO'}</span></span><h2>${esc(r.id)}</h2></div><div class="rf-det-acc">` +
     `${rfEstadoReg(r) === 'BORRADOR' && (r.usuario_email === currentUserEmail || puede) ? `<button type="button" class="btn btn-primary btn-sm" id="btn-rf-continuar">✏ Continuar ${r.modificando ? 'modificación' : 'borrador'}</button>` : ''}` +
-    `${rfEstadoReg(r) === 'CONFIRMADO' && (r.usuario_email === currentUserEmail || puede) ? '<button type="button" class="btn btn-primary btn-sm" id="btn-rf-modificar">✏ Modificar</button>' : ''}${rfEstadoReg(r) === 'CONFIRMADO' && rfPuedeEditarCant() && (r.items || []).length ? '<button type="button" class="btn btn-primary btn-sm" id="btn-rf-editar-cant" title="Cambiar cantidades o quitar productos sin reabrir el registro: sigue confirmado y con su marca de apto">🔢 Editar cantidades</button>' : ''}<button type="button" class="btn btn-primary btn-sm" id="btn-rf-ver-todas">🖼 Ver las ${esc(rfFotosRegistro(r).length)} fotos</button>` +
+    `${rfEstadoReg(r) === 'CONFIRMADO' && rfPuedeModificar(r) ? '<button type="button" class="btn btn-primary btn-sm" id="btn-rf-modificar">✏ Modificar</button>' : ''}${rfEstadoReg(r) === 'CONFIRMADO' && rfPuedeEditarCant() && (r.items || []).length ? '<button type="button" class="btn btn-primary btn-sm" id="btn-rf-editar-cant" title="Cambiar cantidades o quitar productos sin reabrir el registro: sigue confirmado y con su marca de apto">🔢 Editar cantidades</button>' : ''}<button type="button" class="btn btn-primary btn-sm" id="btn-rf-ver-todas">🖼 Ver las ${esc(rfFotosRegistro(r).length)} fotos</button>` +
     `<button type="button" class="btn btn-ghost btn-sm" id="btn-rf-pdf-uno">⬇ PDF</button>${puede ? '<button type="button" class="btn btn-ghost btn-sm" id="btn-rf-eliminar" style="color:#8A332A;">🗑 Eliminar</button>' : ''}</div></div>` +
     `<div class="rf-det-datos"><div><span>Participante</span><b>${esc(r.participante)}</b></div><div><span>Fecha de creación</span><b>${esc(new Date(r.fecha_creacion).toLocaleString('es-PE', { dateStyle:'short', timeStyle:'short' }))}</b></div>` +
-    `<div><span>Correlativo</span><b>${esc(r.id)}</b></div><div id="rf-det-pos"><span>Posición</span><b>📍 ${esc(r.posicion)}</b>${rfEstadoReg(r) === 'CONFIRMADO' && (r.usuario_email === currentUserEmail || puede) ? '<button type="button" class="rf-pos-cambiar" data-rf-cambiar-pos>✏ Cambiar</button>' : ''}</div><div><span>Generado por</span><b>${esc(r.usuario || '')}</b></div>` +
+    `<div><span>Correlativo</span><b>${esc(r.id)}</b></div><div id="rf-det-pos"><span>Posición</span><b>📍 ${esc(r.posicion)}</b>${rfEstadoReg(r) === 'CONFIRMADO' && rfPuedeModificar(r) ? '<button type="button" class="rf-pos-cambiar" data-rf-cambiar-pos>✏ Cambiar</button>' : ''}</div><div><span>Generado por</span><b>${esc(r.usuario || '')}</b></div>` +
     `<div><span>Confirmado por</span><b>${esc(r.confirmado_por ? `${r.confirmado_por} · ${rfFechaTxt(r.confirmado_en)}` : rfEstadoReg(r) === 'BORRADOR' ? 'Pendiente (borrador)' : '—')}</b></div></div>` +
     rfBloqueApto(r) +
     `<span class="rf-lbl">📷 Foto de la posición</span><div class="rf-fotos" style="margin-bottom:12px;">${r.foto_posicion ? foto(r.foto_posicion, `Posición ${r.posicion}`).replace('class="rf-thumb"', 'class="rf-thumb" style="width:160px; height:160px;"') : '—'}</div>` +
@@ -19523,6 +19536,9 @@ function rfEiHistorial(r, sku){
 }
 // Editar cantidades de registros confirmados: administrador o permiso «rf_editar_cant» (Usuarios → Registro fotográfico).
 const rfPuedeEditarCant = ()=> !!(currentPermisos.admin || currentPermisos.rf_editar_cant);
+// «✏ Modificar» (y cambiar la posición) de un registro confirmado: admin / editar-eliminar, o el permiso «rf_modificar».
+// Sin ese permiso guardado (usuarios de antes), cada uno puede modificar los suyos, como siempre; si se quita, ya no.
+const rfPuedeModificar = r=> !!(currentPermisos.admin || currentPermisos.eliminar || currentPermisos.rf_modificar === true || (currentPermisos.rf_modificar !== false && r.usuario_email === currentUserEmail));
 function rfEditarCantidades(){
   const r = rfLista.find(x=> x.id === rfSel), tb = $('rf-det-items'); if(!r || !tb || !rfPuedeEditarCant()) return;
   tb.querySelectorAll('tbody tr').forEach((tr, i)=>{
@@ -21572,9 +21588,12 @@ function usRfParticipantes(marcados, tiendas){
 }
 $('us-admin').addEventListener('change', ()=> $('us-rf-tiendas-box').classList.toggle('bloqueado', $('us-admin').checked));
 $('us-rf-todos').addEventListener('change', ()=> $('us-rf-part-box').classList.toggle('bloqueado', $('us-rf-todos').checked || $('us-admin').checked));
+// Los permisos de cada módulo se atenúan si el módulo no está marcado en el menú (②).
+function usModulos(){ document.querySelectorAll('#view-usuarios .us-mod').forEach(m=>{ const cb = document.querySelector(`#us-arbol [data-us-tab="${m.dataset.usMod}"]`); m.classList.toggle('apagado', !$('us-admin').checked && !(cb && cb.checked)); }); }
+$('us-arbol').addEventListener('change', usModulos); $('us-admin').addEventListener('change', usModulos);
 function usLlenar(p){
   const base = Object.assign({}, p, { admin:false });
-  $('us-admin').checked = !!p.admin; $('us-eliminar').checked = !!p.eliminar; $('us-rf-todos').checked = !!p.rf_todos; $('us-rf-editar-cant').checked = !!p.rf_editar_cant; $('us-saldos-todos').checked = !!p.saldos_todos; $('us-merma-todos').checked = !!p.merma_todos; $('us-recepciones-todas').checked = !!p.recepciones_todas;
+  $('us-admin').checked = !!p.admin; $('us-eliminar').checked = !!p.eliminar; $('us-rf-todos').checked = !!p.rf_todos; $('us-rf-editar-cant').checked = !!p.rf_editar_cant; $('us-rf-modificar').checked = !!p.admin || p.rf_modificar !== false; $('us-saldos-todos').checked = !!p.saldos_todos; $('us-merma-todos').checked = !!p.merma_todos; $('us-recepciones-todas').checked = !!p.recepciones_todas;
   usRfParticipantes(p.rf_participantes || [], p.rf_tiendas || []);
   usTabs().forEach(cb=>{
     const tab = cb.dataset.usTab; cb.checked = !!p.admin || permTabPermitida(base, tab);
@@ -21582,9 +21601,10 @@ function usLlenar(p){
     usSubs(tab).forEach(x=> x.checked = !lista || lista.includes(x.dataset.usSub));
   });
   usRefrescar();
+  usModulos();
 }
 function usLeer(){
-  const permisos = { admin: $('us-admin').checked, eliminar: $('us-eliminar').checked, rf_todos: $('us-rf-todos').checked, rf_editar_cant: $('us-rf-editar-cant').checked, saldos_todos: $('us-saldos-todos').checked, merma_todos: $('us-merma-todos').checked, recepciones_todas: $('us-recepciones-todas').checked, vo_vouchers: false, subs: {},
+  const permisos = { admin: $('us-admin').checked, eliminar: $('us-eliminar').checked, rf_todos: $('us-rf-todos').checked, rf_editar_cant: $('us-rf-editar-cant').checked, rf_modificar: $('us-rf-modificar').checked, saldos_todos: $('us-saldos-todos').checked, merma_todos: $('us-merma-todos').checked, recepciones_todas: $('us-recepciones-todas').checked, vo_vouchers: false, subs: {},
     rf_participantes: [...document.querySelectorAll('#us-rf-part [data-us-rf-part]:checked')].map(x=> x.dataset.usRfPart),
     rf_tiendas: [...document.querySelectorAll('#us-rf-tiendas [data-us-rf-tienda]:checked')].map(x=> x.dataset.usRfTienda) };
   usTabs().forEach(cb=>{

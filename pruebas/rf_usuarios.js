@@ -64,12 +64,13 @@ const listo = page=> page.waitForFunction(()=> $('status-text').textContent === 
   const repetido = await page.textContent('#us-msg');
   await page.fill('#us-rf-prefijo', 'J1'); await page.click('#btn-guardar-usuario');
   const invalido = await page.textContent('#us-msg');
-  await page.fill('#us-rf-prefijo', 'jhn'); await page.check('#us-rf-todos'); await page.check('#us-rf-editar-cant'); await page.click('#btn-guardar-usuario');
+  await page.fill('#us-rf-prefijo', 'jhn'); await page.check('#us-rf-todos'); await page.check('#us-rf-editar-cant'); await page.uncheck('#us-rf-modificar'); await page.click('#btn-guardar-usuario');
   await esperar(page, async ()=> ((await usuariosRef.doc('johan@ejemplo.com').get()).data() || {}).rf_prefijo === 'JHN', null, 10000);
   const johanDoc = await page.evaluate(async ()=> (await usuariosRef.doc('johan@ejemplo.com').get()).data());
   verificar(/YOL ya lo usa YOLANDA/.test(repetido) && /de 2 a 5 letras/.test(invalido) && johanDoc.rf_prefijo === 'JHN' && johanDoc.permisos.rf_todos === true && johanDoc.permisos.reg_fotos === true && johanDoc.permisos.rf_editar_cant === true &&
-    (await page.evaluate(()=> [...document.querySelectorAll('#view-usuarios .us-sec > h4')].map(h=> h.textContent.trim()).join(' | '))) === '① Datos del usuario | ② Qué opciones del menú ve | ③ Qué puede hacer | ④ Qué registros ve (de todos los usuarios) | ⑤ Registro fotográfico',
-    `Usuarios ordenado en 5 secciones; prefijo repetido y prefijo con números rechazados; JOHAN queda con JHN, "ver todos" y «editar cantidades» (${repetido.slice(0, 40)}…)`);
+    (await page.evaluate(()=> [...document.querySelectorAll('#view-usuarios .us-sec > h4')].map(h=> h.textContent.trim()).join(' | '))) === '① Datos del usuario | ② Qué opciones del menú ve | ③ Qué puede hacer (en todo lo que ve) | ④ Permisos dentro de cada módulo' &&
+    johanDoc.permisos.rf_modificar === false && (await page.evaluate(()=> [...document.querySelectorAll('#view-usuarios .us-mod')].map(m=> m.dataset.usMod + (m.classList.contains('apagado') ? ':off' : ':on')).join())) === 'regfoto:on,saldos:off,merma:off,recepciones:off',
+    `Usuarios: permisos dentro de cada módulo (solo el registro fotográfico activo para JOHAN; «Modificar» quitado); prefijo repetido y prefijo con números rechazados; JOHAN queda con JHN, "ver todos" y «editar cantidades» (${repetido.slice(0, 40)}…)`);
   // Dos alias que empiezan igual (USUARIO INVENTARIO 1 y 2 → USU): el segundo recibe solo un prefijo libre (UI).
   const nuevoUsuario = async (email, alias, tiendas = [])=>{
     await page.waitForTimeout(800);   // tras guardar se recarga la lista y se vuelve a abrir el usuario anterior

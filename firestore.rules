@@ -42,6 +42,10 @@ service cloud.firestore {
     function rfEditarCant() {
       return registered() && perms().get('rf_editar_cant', false) == true;
     }
+    // Modificar (reabrir) registros fotográficos confirmados de otros usuarios (permiso "rf_modificar").
+    function rfModificar() {
+      return registered() && perms().get('rf_modificar', false) == true;
+    }
     function esDuenoRF() {
       return resource.data.get('usuario_email', '') == request.auth.token.email;
     }
@@ -103,7 +107,7 @@ service cloud.firestore {
       allow read: if registered() && (resource == null || esDuenoRF() || rfTodos() || rfDeSuParticipante());
       allow create: if registered()
         && (request.resource.data.get('usuario_email', '') == request.auth.token.email || rfTodos());
-      allow update: if registered() && (esDuenoRF() || rfTodos() || canDelete() || rfEditarCant());
+      allow update: if registered() && (esDuenoRF() || rfTodos() || canDelete() || rfEditarCant() || rfModificar());
       allow delete: if registered() && (esDuenoRF() || canDelete());
     }
 

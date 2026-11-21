@@ -181,6 +181,11 @@ async function esperar(page, fn, arg, ms){
   const conPerm = await page.evaluate(()=>{ setRfSubtab('lista'); currentPermisos = Object.assign({}, currentPermisos, { rf_editar_cant: true }); rfAbrir('RF-ADM-00001'); const a = !!$('btn-rf-editar-cant');
     currentPermisos = Object.assign({}, currentPermisos, { rf_editar_cant: false }); rfAbrir('RF-ADM-00001'); const b = !!$('btn-rf-editar-cant'); rfCerrarDetalle(); return a && !b; });
   verificar(conPerm, 'Un usuario con el permiso «Editar cantidades» (sin ser administrador) ve «🔢 Editar cantidades»; sin el permiso, no');
+  // Permiso «Modificar registros confirmados»: sin guardar (usuarios de antes) modifica los suyos; si se quita, ya no; si se da, también los de otros.
+  const modif = await page.evaluate(()=>{ const ver = p=>{ currentPermisos = Object.assign({}, currentPermisos, { rf_modificar: p }); rfAbrir('RF-ADM-00001'); return !!$('btn-rf-modificar') && !!document.querySelector('[data-rf-cambiar-pos]'); };
+    const r = { antes: ver(undefined), quitado: ver(false), dado: ver(true) }; const reg = rfLista.find(x=> x.id === 'RF-ADM-00001'), dueno = reg.usuario_email;
+    reg.usuario_email = 'otro@ejemplo.com'; r.otroSin = ver(undefined); r.otroCon = ver(true); reg.usuario_email = dueno; rfCerrarDetalle(); return r; });
+  verificar(modif.antes && !modif.quitado && modif.dado && !modif.otroSin && modif.otroCon, `Permiso «✏ Modificar»: ${JSON.stringify(modif)}`);
 
   verificar(!errores.length, 'Sin errores de JavaScript' + (errores.length ? ': ' + errores.join(' | ') : ''));
   await browser.close();
