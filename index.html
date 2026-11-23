@@ -244,6 +244,16 @@
   .rf-det-datos div{background:#f6f8fb; border-radius:8px; padding:8px 10px;} .rf-det-datos span{display:block; font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft);} .rf-det-datos b{font-size:13px;}
   .rf-det-items{width:100%; border-collapse:collapse;} .rf-det-items td, .rf-det-items th{padding:8px 6px; border-bottom:1px solid var(--line); vertical-align:top; text-align:left;}
   .rf-det-items .rf-fotos .rf-thumb{width:96px; height:96px;}
+  .rfj-cod{border:1px solid var(--line); border-radius:12px; padding:8px 10px; margin:0 0 10px; background:#fff;} .rfj-cod.nohay{background:#fff6f5; border-color:#e3b4ae;}
+  .rfj-cab{display:flex; flex-wrap:wrap; gap:4px 12px; align-items:center; margin-bottom:6px;} .rfj-cab > b{font-family:var(--mono); font-size:15px;}
+  .rfj-ped{background:#1b2430; color:#fff; border-radius:999px; padding:2px 10px; font-size:12px; font-weight:800;}
+  .rfj-est{font-size:12px; font-weight:800; padding:2px 9px; border-radius:999px;} .rfj-est.ok{background:#e8f5ec; color:#1e6b3a;} .rfj-est.pend{background:#fff3cd; color:#8a5a00;} .rfj-est.mal{background:#fdecea; color:#b3261e;}
+  .rfj-tab{width:100%; border-collapse:collapse; font-size:13px;} .rfj-tab th, .rfj-tab td{padding:6px 8px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top;} .rfj-tab .num{text-align:right;}
+  .rfj-tab th{font-size:11px; text-transform:uppercase; letter-spacing:.03em; color:var(--ink-soft);} .rfj-tab tr.usada{background:#f1f7ff;}
+  .rfj-in{display:inline-flex; gap:6px; align-items:center;} #view-regfoto .rfj-in input{width:110px; min-height:0; height:36px; font-size:15px; font-weight:700; text-align:right; margin:0; border-color:#7aa7d6; background:#f3f8fd;}
+  .rfj-saldo{font-size:15px; font-family:var(--mono);} .rfj-saldo.mal{color:#b3261e;} .rfj-saldo.cero{color:#a35f00;}
+  .rfj-tab .rf-ei-hist{align-items:flex-end;}
+  .rfj-acciones{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;}
   .rf-ei-fila{display:inline-flex; align-items:center; gap:4px;} .rf-ei-fila input{margin:0; height:38px;} .rf-ei-cant{width:110px; text-align:right;} .rf-ei-delta{width:96px; text-align:right; border-color:#7aa7d6 !important; background:#f3f8fd;}
   .rf-ei-mas{font-weight:800; color:var(--ink-soft);} .rf-ei-calc{display:block; font-size:11px; font-weight:700; color:#1e6b3a; margin-top:2px;} .rf-ei-calc.mal{color:#b3261e;}
   .rf-ei-hist{display:flex; flex-direction:column; align-items:flex-start; gap:1px; margin-top:3px; font-size:10.5px; line-height:1.25; color:var(--ink-soft); font-weight:400; white-space:nowrap;}
@@ -3526,6 +3536,7 @@
     <button id="rfsub-reportes">📊 Reportes</button>
     <button id="rfsub-layout">🗺 Layout</button>
     <button id="rfsub-aptos">📋 Aptos</button>
+    <button id="rfsub-ajustes">🔧 Ajustes</button>
   </div>
 
   <div id="rfsub-panel-nuevo">
@@ -3538,7 +3549,7 @@
           <button type="button" data-rfl-ir="lista" title="Registros">🗂</button>
           <button type="button" data-rfl-ir="reportes" title="Reportes">📊</button>
           <button type="button" data-rfl-ir="layout" title="Layout">🗺</button>
-          <button type="button" data-rfl-ir="aptos" title="Aptos">📋</button>
+          <button type="button" data-rfl-ir="aptos" title="Aptos">📋</button><button type="button" data-rfl-ir="ajustes" title="Ajustes de cantidades">🔧</button>
         </div>
         <span class="rf-nav-tit">📸 Nuevo registro</span>
       </div>
@@ -3583,7 +3594,7 @@
           <button type="button" class="activo" title="Registros (aquí)" disabled>🗂</button>
           <button type="button" data-rfl-ir="reportes" title="Reportes">📊</button>
           <button type="button" data-rfl-ir="layout" title="Layout">🗺</button>
-          <button type="button" data-rfl-ir="aptos" title="Aptos">📋</button>
+          <button type="button" data-rfl-ir="aptos" title="Aptos">📋</button><button type="button" data-rfl-ir="ajustes" title="Ajustes de cantidades">🔧</button>
         </div>
         <select id="rf-estado-f" title="Estado"><option value="">Todos</option><option value="CONFIRMADO">✔ Confirmados</option><option value="BORRADOR">📝 Borradores</option></select>
         <select id="rf-apto-f" title="Apto para ajuste"><option value="">⚖ Apto ajuste: todos</option><option value="SI">✔ Apto para ajuste: SÍ</option><option value="NO">✖ Apto para ajuste: NO</option><option value="SIN">… Sin marcar</option></select>
@@ -3609,7 +3620,7 @@
           <button type="button" data-rfl-ir="lista" title="Registros">🗂</button>
           <button type="button" class="activo" title="Reportes (aquí)" disabled>📊</button>
           <button type="button" data-rfl-ir="layout" title="Layout">🗺</button>
-          <button type="button" data-rfl-ir="aptos" title="Aptos">📋</button>
+          <button type="button" data-rfl-ir="aptos" title="Aptos">📋</button><button type="button" data-rfl-ir="ajustes" title="Ajustes de cantidades">🔧</button>
         </div>
         <select id="rfr-estado" title="Estado"><option value="CONFIRMADO">✔ Solo confirmados</option><option value="">Todos</option><option value="BORRADOR">📝 Solo borradores</option></select>
         <select id="rfr-apto" title="Apto para ajuste"><option value="">⚖ Apto ajuste: todos</option><option value="SI">✔ Apto para ajuste: SÍ</option><option value="NO">✖ Apto para ajuste: NO</option><option value="SIN">… Sin marcar</option></select>
@@ -3653,7 +3664,7 @@
           <button type="button" data-rfl-ir="lista" title="Registros">🗂</button>
           <button type="button" data-rfl-ir="reportes" title="Reportes">📊</button>
           <button type="button" data-rfl-ir="layout" title="Layout">🗺</button>
-          <button type="button" class="activo" title="Aptos (aquí)" disabled>📋</button>
+          <button type="button" class="activo" title="Aptos (aquí)" disabled>📋</button><button type="button" data-rfl-ir="ajustes" title="Ajustes de cantidades">🔧</button>
         </div>
         <select id="rfa-apto" title="Apto para ajuste"><option value="SI">✔ Aptos para ajuste</option><option value="NO">✖ No aptos</option><option value="SIN">… Sin marcar</option><option value="">Todos</option></select>
         <select id="rfa-estado" title="Estado"><option value="CONFIRMADO">✔ Solo confirmados</option><option value="">Todos los estados</option></select>
@@ -3706,7 +3717,7 @@
             <button type="button" data-rfl-ir="lista" title="Registros">🗂</button>
             <button type="button" data-rfl-ir="reportes" title="Reportes">📊</button>
             <button type="button" class="activo" title="Layout (aquí)" disabled>🗺</button>
-            <button type="button" data-rfl-ir="aptos" title="Aptos">📋</button>
+            <button type="button" data-rfl-ir="aptos" title="Aptos">📋</button><button type="button" data-rfl-ir="ajustes" title="Ajustes de cantidades">🔧</button>
           </div>
           <select id="rfl-estado" title="Qué registros se cuentan"><option value="CONFIRMADO">✔ Solo confirmados</option><option value="">Todos (incluye borradores)</option></select>
           <select id="rfl-usuario" title="De qué usuario"></select>
@@ -3726,6 +3737,34 @@
       <div class="rfl-mapa" id="rfl-mapa"></div>
     </div>
     <div class="panel" id="rfl-detalle" style="display:none;"></div>
+  </div>
+  <div id="rfsub-panel-ajustes" style="display:none;">
+    <div class="panel rf-flot-sec">
+      <div class="rf-filtros">
+        <div class="rfl-nav">
+          <button type="button" data-rfl-ir="menu" title="Menú de la app">☰</button>
+          <button type="button" data-rfl-ir="nuevo" title="Nuevo registro">📸</button>
+          <button type="button" data-rfl-ir="lista" title="Registros">🗂</button>
+          <button type="button" data-rfl-ir="reportes" title="Reportes">📊</button>
+          <button type="button" data-rfl-ir="layout" title="Layout">🗺</button>
+          <button type="button" data-rfl-ir="aptos" title="Aptos">📋</button>
+          <button type="button" class="activo" title="Ajustes (aquí)" disabled>🔧</button>
+        </div>
+        <span class="rf-nav-tit">🔧 Ajustar cantidades de registros aptos</span>
+        <select id="rfj-tienda" title="Tienda"></select>
+      </div>
+    </div>
+    <div class="panel" style="margin-bottom:12px;">
+      <h3>🔧 Ajustar cantidades de registros aptos</h3>
+      <p class="hint" style="margin-bottom:8px;">1) Copia de Excel dos columnas: <b>código</b> y <b>cantidad a descontar</b> (lo que hay que restar). 2) <b>Validar</b>: sale cada código con sus posiciones en los registros confirmados y aptos. 3) En cada posición escribe cuánto restar (<b>−</b>) o sumar (<b>+</b>), o toca <b>⤵ Aquí</b> para poner lo que falta, y mira el saldo. 4) <b>Grabar</b>: siguen confirmados y aptos, y queda quién, cuándo y cuánto.</p>
+      <textarea id="rfj-txt" rows="6" style="width:100%; box-sizing:border-box; font-family:var(--mono);" placeholder="CÓDIGO&#9;CANTIDAD&#10;P100&#9;120&#10;LIB-0297&#9;50"></textarea>
+      <div class="rfa-acciones"><button type="button" class="btn btn-primary" id="btn-rfj-validar">🔍 Validar</button><button type="button" class="btn btn-ghost btn-sm" id="btn-rfj-limpiar">✕ Limpiar</button></div>
+      <div class="msg" id="rfj-msg"></div>
+    </div>
+    <div class="panel" id="rfj-res-box" hidden>
+      <div id="rfj-res"></div>
+      <div class="rf-acciones rfj-acciones"><span class="hint" id="rfj-resumen"></span><button type="button" class="btn btn-primary" id="btn-rfj-grabar" disabled>💾 Grabar ajustes</button></div>
+    </div>
   </div>
   <div class="rf-det-modal" id="rf-det-modal" hidden>
     <div class="rf-det-caja" role="dialog" aria-modal="true" aria-label="Detalle del registro fotográfico">
@@ -4267,8 +4306,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v287';
-const APP_UPDATED = '21/11/2026 14:00';
+const APP_VERSION = 'v288';
+const APP_UPDATED = '23/11/2026 10:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -4584,6 +4623,7 @@ function applyPermisosUI(){
   $('prod-form-panel').classList.toggle('hidden-perm', !map.productos);
   $('fusion-panel').classList.toggle('hidden-perm', !(admin || !!p.eliminar));
   $('pm-form').classList.toggle('hidden-perm', !admin);
+  if(!(admin || p.rf_editar_cant)) $('rfsub-ajustes').classList.add('hidden-perm');
   $('btn-pm-agregar-todos').classList.toggle('hidden-perm', !admin);
   const activeBtn = document.querySelector('nav.tabs button.active');
   const activeTab = activeBtn ? activeBtn.dataset.tab : null;
@@ -4596,7 +4636,7 @@ function applyPermisosUI(){
 function switchTab(name){
   document.body.classList.toggle('rfl-full', name === 'regfoto' && $('rfsub-panel-layout').style.display === 'block');
   document.body.classList.toggle('rfa-full', name === 'regfoto' && $('rfsub-panel-aptos').style.display === 'block');
-  document.body.classList.toggle('rfx-full', name === 'regfoto' && ($('rfsub-panel-lista').style.display === 'block' || $('rfsub-panel-reportes').style.display === 'block' || $('rfsub-panel-nuevo').style.display === 'block'));
+  document.body.classList.toggle('rfx-full', name === 'regfoto' && ($('rfsub-panel-lista').style.display === 'block' || $('rfsub-panel-reportes').style.display === 'block' || $('rfsub-panel-nuevo').style.display === 'block' || $('rfsub-panel-ajustes').style.display === 'block'));
   if(name === 'regfoto' && typeof rfNavPermisos === 'function') rfNavPermisos();
   document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
   $('tab-'+name).classList.add('active');
@@ -17817,11 +17857,11 @@ function setRfSubtab(name){
   if(typeof rfCerrarDetalle === 'function') rfCerrarDetalle();
   document.body.classList.toggle('rfl-full', name === 'layout');
   document.body.classList.toggle('rfa-full', name === 'aptos');
-  document.body.classList.toggle('rfx-full', name === 'lista' || name === 'reportes' || name === 'nuevo');
+  document.body.classList.toggle('rfx-full', name === 'lista' || name === 'reportes' || name === 'nuevo' || name === 'ajustes');
   rfNavPermisos();
   if(name === 'aptos'){ rfaTiendaDef = true; setTimeout(rfaAltoCabecera, 0); if($('rfa-kpis')) $('rfa-kpis').classList.add('min'); }
-  ['nuevo','lista','reportes','layout','aptos'].forEach(n=>{ $('rfsub-'+n).classList.toggle('active', n===name); $('rfsub-panel-'+n).style.display = n===name ? 'block' : 'none'; });
-  if(name === 'lista' || name === 'reportes' || name === 'layout' || name === 'aptos') rfCargar();
+  ['nuevo','lista','reportes','layout','aptos','ajustes'].forEach(n=>{ $('rfsub-'+n).classList.toggle('active', n===name); $('rfsub-panel-'+n).style.display = n===name ? 'block' : 'none'; });
+  if(name === 'lista' || name === 'reportes' || name === 'layout' || name === 'aptos' || name === 'ajustes') rfCargar();
   else rfPrepararForm();
 }
 $('rfsub-nuevo').addEventListener('click', ()=> setRfSubtab('nuevo'));
@@ -17829,6 +17869,7 @@ $('rfsub-lista').addEventListener('click', ()=> setRfSubtab('lista'));
 $('rfsub-reportes').addEventListener('click', ()=> setRfSubtab('reportes'));
 $('rfsub-layout').addEventListener('click', ()=> setRfSubtab('layout'));
 $('rfsub-aptos').addEventListener('click', ()=> setRfSubtab('aptos'));
+$('rfsub-ajustes').addEventListener('click', ()=> setRfSubtab('ajustes'));
 $('tab-regfoto').addEventListener('click', ()=>{ if($('rfsub-panel-nuevo').style.display !== 'none') rfPrepararForm(); else rfCargar(); });
 
 // ---- Fotos: achicar antes de subir ----
@@ -18693,6 +18734,7 @@ function rfSiReportes(){
   if($('rfsub-panel-reportes').style.display !== 'none') renderRfReportes();
   if($('rfsub-panel-layout').style.display !== 'none') renderRfLayout();
   if($('rfsub-panel-aptos').style.display !== 'none') renderRfAptos();
+  if($('rfsub-panel-ajustes').style.display !== 'none') rfjLlenarTiendas();
 }
 // ---- Aptos: listado tipo Excel por código (suma de cantidad y posiciones distintas) ----
 let rfaOrden = { campo: 'cantidad', dir: -1 }, rfaPag = 0, rfaAbierto = null, rfaEditando = null;
@@ -18894,6 +18936,142 @@ async function rfaGuardarEdicion(viejo){
     showToast(`Código actualizado en ${ok.length} registro(s).` + (omitidos.length ? ` ${omitidos.length} sin tocar (borrador / en modificación).` : ''), 'ok');
     renderRfAptos(); renderRfLista(); rfSiReportes();
   }catch(err){ console.error(err); showToast('No se pudo guardar: ' + (err.message || err), 'err'); }
+}
+// ---- 🔧 Ajustes: descontar (o sumar) cantidades de registros aptos pegando un listado de Excel ----
+// Se pega «código · cantidad a descontar»; al validar sale cada código con sus posiciones (de los registros confirmados
+// y aptos para ajuste) y ahí mismo, en la fila, se escribe cuánto restar o sumar en cada posición y se ve el saldo.
+// Al grabar se actualizan los registros (siguen confirmados y aptos) y queda el historial («✏ 5,000 → 4,880 · quién · cuándo»).
+let rfjPlan = [];   // [{ cod, pedido, desc, filas:[{ rid, idx, pos, tienda, cant }], falta }]
+const rfjNum = t=>{ const x = String(t == null ? '' : t).trim().replace(/\s/g, '').replace(/^\+/, ''); if(!x) return NaN; return Number(/,\d{1,2}$/.test(x) && !/\./.test(x) ? x.replace(',', '.') : x.replace(/,/g, '')); };
+function rfjLeer(txt){
+  const filas = String(txt || '').split(/\r?\n/).map(l=> l.split(/\t|;/).map(c=> c.trim())).filter(f=> f.some(Boolean));
+  let desde = 0, iC = 0, iQ = 1; const cab = filas[0] || [];
+  if(cab.some(c=> /cant|unid|descont|ajust/i.test(c))){ iQ = cab.findIndex(c=> /cant|unid|descont|ajust/i.test(c)); const k = cab.findIndex(c=> /c[oó]d|sku/i.test(c)); iC = k >= 0 ? k : 0; desde = 1; }
+  const L = new Map(), malas = [];
+  filas.slice(desde).forEach(f=>{
+    const cod = String(f[iC] || '').trim().toUpperCase(); if(!cod) return;
+    let q = rfjNum(f[iQ]); if(!Number.isFinite(q) && f.length > 2) for(let j = f.length - 1; j > iC; j--){ const x = rfjNum(f[j]); if(Number.isFinite(x)){ q = x; break; } }
+    if(!Number.isFinite(q) || q === 0){ malas.push(cod); return; }
+    L.set(cod, (L.get(cod) || 0) + Math.abs(q));   // lo pegado es lo que se descuenta
+  });
+  return { L, malas };
+}
+// Registros donde se puede ajustar: confirmados, aptos para ajuste, de la tienda elegida.
+function rfjRegistros(){ const t = $('rfj-tienda').value; return rfLista.filter(r=> rfEstadoReg(r) === 'CONFIRMADO' && !r.modificando && rfApto(r) === 'SI' && (!t || rfTiendaDe(r) === t)); }
+function rfjLlenarTiendas(){
+  const sel = $('rfj-tienda'), v = sel.value, L = [...new Set(rfLista.map(rfTiendaDe))].sort((a, b)=> a.localeCompare(b, 'es'));
+  sel.innerHTML = '<option value="">🏬 Todas las tiendas</option>' + L.map(x=> `<option value="${esc(x)}">${esc(x)}</option>`).join('');
+  sel.value = sel.dataset.listo ? (L.includes(v) ? v : '') : (L.includes(RF_CD) ? RF_CD : ''); sel.dataset.listo = '1';
+}
+function rfjValidar(proponer = true){
+  const { L, malas } = rfjLeer($('rfj-txt').value);
+  if(!L.size){ showMsg('rfj-msg', 'err', 'Pega dos columnas de Excel: código y cantidad a descontar (por ejemplo «P100 ⇥ 120»).'); $('rfj-res-box').hidden = true; return; }
+  const regs = rfjRegistros();
+  rfjPlan = [...L.entries()].map(([cod, q])=>{
+    const filas = [];
+    regs.forEach(r=> (r.items || []).forEach((it, idx)=>{ if(String(it.sku || '').trim().toUpperCase() === cod) filas.push({ rid: r.id, idx, pos: r.posicion || '—', tienda: rfTiendaDe(r), cant: Number(it.cantidad) || 0, desc: it.descripcion || '' }); }));
+    filas.sort((a, b)=> b.cant - a.cant || rfOrdCod(a.pos, b.pos));
+    return { cod, pedido: q, desc: (filas[0] && filas[0].desc) || '', filas };
+  });
+  // Con una sola posición se propone ahí mismo lo pedido (sin pasar de lo que hay).
+  rfjPlan.forEach(c=>{ c.filas.forEach(f=> f.delta = ''); if(proponer && c.filas.length === 1){ const f = c.filas[0]; f.delta = c.pedido > 0 ? -Math.min(c.pedido, f.cant) : c.pedido < 0 ? -c.pedido : ''; } });
+  const sin = rfjPlan.filter(c=> !c.filas.length).length;
+  showMsg('rfj-msg', sin ? 'err' : 'ok', `${rfjPlan.length} código(s) en el listado · ${rfjPlan.length - sin} en aptos${sin ? ` · ${sin} no están en los registros aptos` : ''}${malas.length ? ` · ${malas.length} fila(s) sin cantidad válida: ${malas.slice(0, 15).join(', ')}` : ''}.`);
+  renderRfj();
+}
+// «Pedido» positivo = descontar; negativo = sumar.
+const rfjPedTxt = q=> q > 0 ? `Descontar ${anFmt(q)}` : `Sumar ${anFmt(-q)}`;
+function rfjAsignado(c){ return c.filas.reduce((s, f)=> s + (Number.isFinite(rfjNum(f.delta)) ? rfjNum(f.delta) : 0), 0); }
+function rfjEstado(c){
+  const asig = rfjAsignado(c), falta = Math.round((-c.pedido - asig) * 1000) / 1000;   // pedido 120 → se espera −120
+  return { asig, falta, ok: falta === 0, txt: falta === 0 ? '✓ Completo' : (-c.pedido < 0 ? (falta < 0 ? `Falta descontar ${anFmt(-falta)}` : `Se descuenta ${anFmt(falta)} de más`) : (falta > 0 ? `Falta sumar ${anFmt(falta)}` : `Se suma ${anFmt(-falta)} de más`)) };
+}
+function renderRfj(){
+  const box = $('rfj-res'); $('rfj-res-box').hidden = !rfjPlan.length;
+  box.innerHTML = rfjPlan.map((c, ci)=>{
+    if(!c.filas.length) return `<div class="rfj-cod nohay"><div class="rfj-cab"><b>${esc(c.cod)}</b><span class="rfj-ped">${esc(rfjPedTxt(c.pedido))}</span><span class="rfj-est mal">✖ No está en los registros aptos${$('rfj-tienda').value ? ` de ${esc($('rfj-tienda').value)}` : ''}</span></div></div>`;
+    const tot = c.filas.reduce((s, f)=> s + f.cant, 0), e = rfjEstado(c);
+    return `<div class="rfj-cod" data-rfj-c="${ci}"><div class="rfj-cab"><b>${esc(c.cod)}</b><span>${esc(c.desc)}</span><span class="rfj-ped">${esc(rfjPedTxt(c.pedido))}</span>` +
+      `<span class="hint">En aptos: <b>${esc(anFmt(tot))}</b> und en ${esc(c.filas.length)} posición(es)</span><span class="rfj-est ${e.ok ? 'ok' : 'pend'}" data-rfj-est="${ci}">${esc(e.txt)}</span></div>` +
+      `<table class="rfj-tab"><thead><tr><th>Posición</th><th>Registro</th><th class="num">Actual</th><th>Restar (−) / sumar (+)</th><th class="num">Saldo</th></tr></thead><tbody>` +
+      c.filas.map((f, fi)=>{ const r = rfLista.find(x=> x.id === f.rid), d = rfjNum(f.delta), saldo = Number.isFinite(d) ? Math.round((f.cant + d) * 1000) / 1000 : f.cant;
+        return `<tr data-rfj-f="${ci}:${fi}" class="${Number.isFinite(d) && d !== 0 ? 'usada' : ''}"><td><b>📍 ${esc(f.pos)}</b>${f.tienda !== RF_CD ? `<span class="hint"> · ${esc(f.tienda)}</span>` : ''}</td><td><span class="rfa-rf">${esc(f.rid)}</span></td>` +
+          `<td class="num"><b>${esc(anFmt(f.cant))}</b></td><td><div class="rfj-in"><input type="text" inputmode="decimal" class="rfj-delta" data-rfj-delta="${ci}:${fi}" value="${esc(f.delta)}" placeholder="−120 / +5">` +
+          `<button type="button" class="btn btn-ghost btn-sm" data-rfj-usar="${ci}:${fi}" title="Poner aquí lo que falta del pedido">⤵ Aquí</button></div></td>` +
+          `<td class="num"><b class="rfj-saldo ${saldo < 0 ? 'mal' : saldo === 0 ? 'cero' : ''}" data-rfj-saldo="${ci}:${fi}">${esc(anFmt(saldo))}</b>${saldo === 0 && Number.isFinite(d) && d !== 0 ? '<span class="hint"> (se quita)</span>' : ''}${r ? rfEiHistorial(r, c.cod) : ''}</td></tr>`; }).join('') +
+      `</tbody></table></div>`;
+  }).join('');
+  rfjResumen();
+}
+function rfjResumen(){
+  const cambios = rfjPlan.flatMap(c=> c.filas.filter(f=> Number.isFinite(rfjNum(f.delta)) && rfjNum(f.delta) !== 0)), malos = rfjPlan.flatMap(c=> c.filas.filter(f=> Number.isFinite(rfjNum(f.delta)) && f.cant + rfjNum(f.delta) < 0));
+  const pend = rfjPlan.filter(c=> c.filas.length && !rfjEstado(c).ok).length, suma = cambios.reduce((s, f)=> s + rfjNum(f.delta), 0);
+  $('rfj-resumen').innerHTML = `<b>${esc(cambios.length)}</b> posición(es) a ajustar · total <b>${esc(suma > 0 ? '+' : '')}${esc(anFmt(suma))}</b> und` + (pend ? ` · <span class="rfj-est pend">${esc(pend)} código(s) sin completar lo pedido</span>` : '') + (malos.length ? ` · <span class="rfj-est mal">${esc(malos.length)} saldo(s) negativo(s)</span>` : '');
+  $('btn-rfj-grabar').disabled = !cambios.length || !!malos.length;
+}
+$('rfsub-panel-ajustes').addEventListener('input', e=>{
+  const inp = e.target.closest('[data-rfj-delta]'); if(!inp) return;
+  const [ci, fi] = inp.dataset.rfjDelta.split(':').map(Number), c = rfjPlan[ci], f = c.filas[fi]; f.delta = inp.value;
+  const d = rfjNum(f.delta), saldo = Number.isFinite(d) ? Math.round((f.cant + d) * 1000) / 1000 : f.cant, el = document.querySelector(`[data-rfj-saldo="${ci}:${fi}"]`);
+  el.textContent = Number.isFinite(d) || !f.delta ? anFmt(saldo) : '¿?'; el.className = 'rfj-saldo ' + (!Number.isFinite(d) && f.delta ? 'mal' : saldo < 0 ? 'mal' : saldo === 0 ? 'cero' : '');
+  inp.closest('tr').classList.toggle('usada', Number.isFinite(d) && d !== 0);
+  const est = rfjEstado(c), eEl = document.querySelector(`[data-rfj-est="${ci}"]`); eEl.textContent = est.txt; eEl.className = 'rfj-est ' + (est.ok ? 'ok' : 'pend');
+  rfjResumen();
+});
+$('rfsub-panel-ajustes').addEventListener('click', e=>{
+  if(e.target.closest('#btn-rfj-validar')){ rfjValidar(true); return; }
+  if(e.target.closest('#btn-rfj-limpiar')){ $('rfj-txt').value = ''; rfjPlan = []; renderRfj(); showMsg('rfj-msg', 'ok', ''); return; }
+  if(e.target.closest('#btn-rfj-grabar')){ rfjGrabar(); return; }
+  const u = e.target.closest('[data-rfj-usar]');
+  if(u){ const [ci, fi] = u.dataset.rfjUsar.split(':').map(Number), c = rfjPlan[ci], f = c.filas[fi];
+    f.delta = ''; const resto = -c.pedido - rfjAsignado(c), d = resto < 0 ? -Math.min(-resto, f.cant) : resto;
+    f.delta = d || ''; renderRfj(); const inp = document.querySelector(`[data-rfj-delta="${ci}:${fi}"]`); if(inp) inp.focus(); return; }
+});
+$('rfj-tienda').addEventListener('change', ()=>{ if(rfjPlan.length) rfjValidar(true); });
+async function rfjGrabar(){
+  if(!rfPuedeEditarCant()){ showToast('No tienes permiso para editar cantidades.', 'err'); return; }
+  const cambios = rfjPlan.flatMap(c=> c.filas.filter(f=> Number.isFinite(rfjNum(f.delta)) && rfjNum(f.delta) !== 0).map(f=> Object.assign({ cod: c.cod, d: rfjNum(f.delta) }, f)));
+  if(!cambios.length) return;
+  const porReg = new Map(); cambios.forEach(x=>{ if(!porReg.has(x.rid)) porReg.set(x.rid, []); porReg.get(x.rid).push(x); });
+  const quitan = cambios.filter(x=> x.cant + x.d === 0).length, pend = rfjPlan.filter(c=> c.filas.length && !rfjEstado(c).ok);
+  if(!confirm(`¿Grabar ${cambios.length} ajuste(s) en ${porReg.size} registro(s)?` + (quitan ? `\n\n${quitan} producto(s) quedan en 0 y se quitan del registro.` : '') + (pend.length ? `\n\n⚠ ${pend.length} código(s) no completan lo pedido: ${pend.slice(0, 10).map(c=> c.cod).join(', ')}` : '') + '\n\nLos registros siguen confirmados y aptos.')) return;
+  const btn = $('btn-rfj-grabar'); btn.disabled = true;
+  const ahora = new Date().toISOString(), ok = [], fallas = [];
+  for(const [rid, L] of porReg){
+    try{
+      let nuevos = null, porItem = [], quitadas = [];
+      await db.runTransaction(async tx=>{
+        const ref = registrosFotoRef.doc(rid), snap = await tx.get(ref);
+        if(!snap.exists) throw new Error('el registro ya no existe');
+        const d = snap.data(); if(d.estado !== 'CONFIRMADO') throw new Error('ya no está confirmado');
+        const items = (d.items || []).map(it=> Object.assign({}, it)); porItem = []; quitadas = [];
+        L.forEach(x=>{
+          let i = x.idx; if(!items[i] || String(items[i].sku || '').trim().toUpperCase() !== x.cod) i = items.findIndex(it=> String(it.sku || '').trim().toUpperCase() === x.cod);
+          if(i < 0) throw new Error(`${x.cod} ya no está en el registro`);
+          const de = Number(items[i].cantidad) || 0, a = Math.round((de + x.d) * 1000) / 1000;
+          if(a < 0) throw new Error(`${x.cod}: el saldo quedaría negativo (${anFmt(a)})`);
+          items[i].cantidad = a; porItem.push({ sku: items[i].sku, de, a });
+        });
+        items.filter(it=> Number(it.cantidad) === 0).forEach(it=> quitadas.push(...(it.fotos || []).map(f=> f.path).filter(Boolean)));
+        nuevos = items.filter(it=> Number(it.cantidad) > 0);
+        if(!nuevos.length) throw new Error('quedaría sin productos (para eso elimina el registro)');
+        tx.update(ref, { items: nuevos, cant_items: nuevos.length, unidades: nuevos.reduce((s, it)=> s + (Number(it.cantidad) || 0), 0), skus: nuevos.map(it=> it.sku), actualizado_en: ahora,
+          ajustes_admin: firebase.firestore.FieldValue.arrayUnion({ por: currentUserAlias, email: currentUserEmail || '', en: ahora, origen: 'ajuste desde listado', items: porItem,
+            detalle: porItem.map(x=> x.a === 0 ? `${x.sku} quitado` : `${x.sku}: ${anFmt(x.de)} → ${anFmt(x.a)}`).join('; ') }) });
+      });
+      quitadas.forEach(pa=> storage.ref().child(pa).delete().catch(()=>{}));
+      const r = rfLista.find(x=> x.id === rid);
+      if(r) Object.assign(r, { items: nuevos, cant_items: nuevos.length, unidades: nuevos.reduce((s, it)=> s + (Number(it.cantidad) || 0), 0), skus: nuevos.map(it=> it.sku), actualizado_en: ahora,
+        ajustes_admin: [...(r.ajustes_admin || []), { por: currentUserAlias, email: currentUserEmail || '', en: ahora, origen: 'ajuste desde listado', items: porItem, detalle: porItem.map(x=> x.a === 0 ? `${x.sku} quitado` : `${x.sku}: ${anFmt(x.de)} → ${anFmt(x.a)}`).join('; ') }] });
+      ok.push(`${rid} (${porItem.map(x=> `${x.sku} ${anFmt(x.de)}→${anFmt(x.a)}`).join(', ')})`);
+    }catch(err){ console.error(err); fallas.push(`${rid}: ${err.message}`); }
+  }
+  if(ok.length) await logAccion('reg_foto_cantidades_editadas', { detalle: `Ajuste desde listado (siguen confirmados y aptos): ${ok.join(' · ').slice(0, 1500)}` });
+  renderRfLista(); rfSiReportes();
+  rfjValidar(false);   // se vuelve a listar con los saldos nuevos y el historial debajo de cada posición (sin proponer de nuevo)
+  showMsg('rfj-msg', fallas.length ? 'err' : 'ok', `✔ ${ok.length} registro(s) actualizado(s). Abajo se ven los saldos nuevos y el historial.` + (fallas.length ? ` ✖ No se pudo: ${fallas.join(' · ')}` : ''));
+  showToast(`${ok.length} registro(s) ajustado(s).`, fallas.length ? 'err' : 'ok');
+  btn.disabled = false; rfjResumen();
 }
 // ---- Costos de los códigos (se guardan en Productos) ----
 const rfaPuedeCosto = ()=> !!(currentPermisos.admin || currentPermisos.eliminar);

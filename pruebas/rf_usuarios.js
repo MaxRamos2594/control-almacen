@@ -238,7 +238,7 @@ const listo = page=> page.waitForFunction(()=> $('status-text').textContent === 
   await page.click('#rfl-flot .rfl-nav [data-rfl-ir="lista"]');
   const aLista = await page.evaluate(()=> ({ a: document.body.classList.contains('rfa-full'), x: document.body.classList.contains('rfx-full'), h: getComputedStyle(document.querySelector('header')).display }));
   await page.evaluate(()=> setRfSubtab('aptos')); await page.waitForFunction(()=> document.querySelectorAll('#rfa-body [data-rfa-sku]').length >= 2, null, { timeout: 10000 });
-  verificar(fullA.clase && fullA.header === 'none' && fullA.subtabs === 'none' && fullA.pan.startsWith('0,') && fullA.tabla > 300 && fullA.filtro === '32px' && fullA.nav === 5 && fullA.fija === 'sticky' &&
+  verificar(fullA.clase && fullA.header === 'none' && fullA.subtabs === 'none' && fullA.pan.startsWith('0,') && fullA.tabla > 300 && fullA.filtro === '32px' && fullA.nav === 6 && fullA.fija === 'sticky' &&
     aLayout.l && !aLayout.a && !aLista.a && aLista.h === 'none' && aLista.x,
     `Aptos en toda la pantalla (panel ${fullA.pan}, tabla ${fullA.tabla}px con títulos fijos), menú y filtros compactos (${fullA.filtro}); 🗺 lleva al Layout y 🗂 a Registros (con su barra compacta)`);
   await page.selectOption('#rfa-apto', ''); await page.selectOption('#rfa-tienda', ''); const a4 = await filasA(); await page.selectOption('#rfa-apto', 'SI');
