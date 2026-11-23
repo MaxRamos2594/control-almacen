@@ -206,9 +206,9 @@ async function irRf(page, n){ if(await page.isVisible('#rfsub-' + n)) return pag
   await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_reportes_compacto.png') });
   await irRf(page, 'lista'); const cLis = await compacto('#rfsub-panel-lista .rf-flot-sec');
   await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_registros_compacto.png') });
-  await irRf(page, 'nuevo'); const nuevoNormal = await page.evaluate(()=> document.body.classList.contains('rfx-full') && getComputedStyle(document.querySelector('header')).display === 'none' && getComputedStyle(document.querySelector('#rfsub-panel-nuevo .rf-nav-sec')).position === 'sticky' && document.querySelectorAll('#rfsub-panel-nuevo .rfl-nav [data-rfl-ir]:not([hidden])').length === 5);
+  await irRf(page, 'nuevo'); const nuevoNormal = await page.evaluate(()=> document.body.classList.contains('rfx-full') && getComputedStyle(document.querySelector('header')).display === 'none' && getComputedStyle(document.querySelector('#rfsub-panel-nuevo .rf-nav-sec')).position === 'sticky' && document.querySelectorAll('#rfsub-panel-nuevo .rfl-nav [data-rfl-ir]:not([hidden])').length === 6);
   await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_nuevo_compacto.png') });
-  verificar([cRep, cLis].every(c=> c.rfx && c.header === 'none' && c.subtabs === 'none' && c.pos === 'sticky' && c.nav === 5) && cRep.alto < 160 && cLis.alto < 120 && nuevoNormal,
+  verificar([cRep, cLis].every(c=> c.rfx && c.header === 'none' && c.subtabs === 'none' && c.pos === 'sticky' && c.nav === 6) && cRep.alto < 160 && cLis.alto < 120 && nuevoNormal,
     `Reportes (barra de ${cRep.alto}px) y Registros (${cLis.alto}px) con menú comprimido pegado arriba; «📸 Nuevo registro» también con el menú comprimido`);
   await irRf(page, 'reportes');
   await page.waitForSelector('#rf-rep-resumen [data-rfr-bloque="BLOQUE A"]', { timeout: 10000 });
@@ -357,7 +357,7 @@ async function irRf(page, n){ if(await page.isVisible('#rfsub-' + n)) return pag
   await page.click('#rfl-flot .rfl-nav [data-rfl-ir="lista"]');
   const sale = await page.evaluate(()=> ({ clase: document.body.classList.contains('rfl-full'), lista: $('rfsub-panel-lista').style.display, header: getComputedStyle(document.querySelector('header')).display, rfx: document.body.classList.contains('rfx-full') }));
   await irRf(page, 'layout');
-  verificar(full.clase && full.header === 'none' && full.subtabs === 'none' && full.pan === `0,${full.pan.split(',')[2]},${full.pan.split(',')[2]}` && full.mapaAlto > innerHeightOf(full) - 5 && full.flotAlto < 140 && full.filtros === '32px' && full.zoom === 'absolute' && full.nav === 5 && full.hueco < 200 &&
+  verificar(full.clase && full.header === 'none' && full.subtabs === 'none' && full.pan === `0,${full.pan.split(',')[2]},${full.pan.split(',')[2]}` && full.mapaAlto > innerHeightOf(full) - 5 && full.flotAlto < 140 && full.filtros === '32px' && full.zoom === 'absolute' && full.nav === 6 && full.hueco < 200 &&
     !sale.clase && sale.lista === 'block' && sale.header === 'none' && sale.rfx,
     `Layout en toda la hoja (panel ${full.pan}, mapa ${full.mapaAlto}px de alto), barra flotante de ${full.flotAlto}px con menú y filtros compactos (${full.filtros}), zoom flotante; el layout empieza a la izquierda, sin hueco (${full.hueco}px); al ir a Registros sale su barra compacta`);
   await page.evaluate(()=>{ rfLista = rfLista.filter(r=> r.id !== 'RF-09999'); });
