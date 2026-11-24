@@ -123,7 +123,7 @@ const listo = page=> page.waitForFunction(()=> $('status-text').textContent === 
       ajeno: await err(registrosFotoRef.doc('RF-XYZ-00001').set({ usuario_email:'otro@ejemplo.com', estado:'BORRADOR' })) };
   });
   const aptoYol = await page.evaluate(()=>{ rfAbrir('RF-ADM-00002'); return { valor: ($('rf-apto-valor') || {}).textContent, botones: document.querySelectorAll('#rf-detalle [data-rf-apto]').length, puede: rfPuedeMarcarApto() }; });
-  const alcance = await page.evaluate(()=>{ setRfSubtab('layout'); renderRfLayout(); return ($('rfl-resumen').querySelector('.rf-alcance') || {}).textContent || ''; });
+  const alcance = await page.evaluate(()=>{ setRfSubtab('layout'); $('rfl-apto').value = ''; renderRfLayout(); return ($('rfl-resumen').querySelector('.rf-alcance') || {}).textContent || ''; });
   await page.evaluate(()=> setRfSubtab('lista'));
   verificar(/Ves tus registros y los de CERCADO DE LIMA\. Para ver los de otros usuarios/.test(alcance), `Aviso de qué registros ve Yolanda: "${alcance.slice(0, 70)}…"`);
   verificar(aptoYol.valor === 'SIN MARCAR' && aptoYol.botones === 0 && !aptoYol.puede, 'Yolanda (sin "ver todos" ni editar) ve "Apto para ajuste: SIN MARCAR" pero no puede marcarlo');
@@ -174,7 +174,7 @@ const listo = page=> page.waitForFunction(()=> $('status-text').textContent === 
     `Apto para ajuste: Johan marca; filtro SÍ → ${fSi}, NO → ${fNo}, sin marcar → ${fSin}; resumen "${resApto}"; filtro en Registros → ${lSi}`);
   await page.evaluate(()=> setRfSubtab('reportes'));
   // Layout del CD: los registros de tiendas no se pintan.
-  await page.evaluate(()=>{ setRfSubtab('layout'); $('rfl-estado').value = ''; renderRfLayout(); });
+  await page.evaluate(()=>{ setRfSubtab('layout'); $('rfl-estado').value = ''; $('rfl-apto').value = ''; renderRfLayout(); });
   const layout = await page.evaluate(()=> [...rflConteo().entries()].filter(([k])=> k).map(([k, L])=> k + ':' + L.map(r=> r.id).join('+')).join(' '));
   verificar(layout === 'A01:RF-ADM-00001', `Layout del CD con "Todos": solo cuenta registros del CD (${layout}); GÓNDOLA 3 de COMAS no entra`);
   // Filtro de usuario en el Layout: todos los usuarios o uno solo.

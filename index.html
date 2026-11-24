@@ -4306,8 +4306,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v288';
-const APP_UPDATED = '23/11/2026 10:00';
+const APP_VERSION = 'v289';
+const APP_UPDATED = '24/11/2026 10:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -17859,6 +17859,8 @@ function setRfSubtab(name){
   document.body.classList.toggle('rfa-full', name === 'aptos');
   document.body.classList.toggle('rfx-full', name === 'lista' || name === 'reportes' || name === 'nuevo' || name === 'ajustes');
   rfNavPermisos();
+  // El Layout se abre siempre filtrado en «Aptos para ajuste» (se puede cambiar mientras se mira).
+  if(name === 'layout' && $('rfl-apto')) $('rfl-apto').value = 'SI';
   if(name === 'aptos'){ rfaTiendaDef = true; setTimeout(rfaAltoCabecera, 0); if($('rfa-kpis')) $('rfa-kpis').classList.add('min'); }
   ['nuevo','lista','reportes','layout','aptos','ajustes'].forEach(n=>{ $('rfsub-'+n).classList.toggle('active', n===name); $('rfsub-panel-'+n).style.display = n===name ? 'block' : 'none'; });
   if(name === 'lista' || name === 'reportes' || name === 'layout' || name === 'aptos' || name === 'ajustes') rfCargar();
