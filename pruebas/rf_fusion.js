@@ -39,7 +39,7 @@ async function esperar(page, fn, arg, ms){
       items:[{ sku:'P9', descripcion:'MUÑECA', cantidad:6, fotos:[] }, { sku:'P3', descripcion:'AUTO', cantidad:1, fotos:[] }], cant_items:2, unidades:7, skus:['P9','P3'] }));
   }, ADMIN.email);
   await page.waitForFunction(()=> !!posiciones['A04'] && !!bloques['B1'], null, { timeout: 10000 });
-  await page.evaluate(()=>{ switchTab('regfoto'); setRfSubtab('layout'); });
+  await page.evaluate(()=>{ switchTab('regfoto'); setRfSubtab('layout'); $('rfl-apto').value = ''; renderRfLayout(); });
   await page.waitForFunction(()=> document.querySelector('#rfl-mapa .slot[data-id="A03"].rfl-n'), null, { timeout: 15000 });
 
   // 0) Filtro por producto (código o descripción, sin importar tildes): solo se pintan las posiciones con ese producto.

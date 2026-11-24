@@ -323,7 +323,8 @@ async function irRf(page, n){ if(await page.isVisible('#rfsub-' + n)) return pag
   verificar(detPos === 'RF-ADM-00001' && posOculta && posOculta2, `Reporte por posición: A02 → ${detPos}; se oculta con «Ocultar» o tocándola otra vez; clic en un RF abre su detalle`);
 
   // Layout: gris sin RF, verde con 1, naranja con más de 1; tocar una posición muestra sus RF.
-  await cerrarDet(); await irRf(page, 'layout');
+  await cerrarDet(); await irRf(page, 'layout'); const aptoDef = await page.evaluate(()=> $('rfl-apto').value); await page.evaluate(()=>{ $('rfl-apto').value = ''; renderRfLayout(); });
+  verificar(aptoDef === 'SI', `El Layout se abre filtrado en «Aptos para ajuste» (${aptoDef})`);
   await page.waitForSelector('#rfl-mapa .slot[data-id="A02"]', { timeout: 10000 });
   const clases = ()=> page.evaluate(()=> ['A01','A02','A03','A04'].map(c=>{ const el = document.querySelector(`#rfl-mapa .slot[data-id="${c}"]`); return c + ':' + (el.classList.contains('rfl-n') ? 'n' : el.classList.contains('rfl-1') ? '1' : '0'); }).join(' '));
   const lay1 = await clases();
@@ -356,7 +357,7 @@ async function irRf(page, n){ if(await page.isVisible('#rfsub-' + n)) return pag
   await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_layout_completo.png') });
   await page.click('#rfl-flot .rfl-nav [data-rfl-ir="lista"]');
   const sale = await page.evaluate(()=> ({ clase: document.body.classList.contains('rfl-full'), lista: $('rfsub-panel-lista').style.display, header: getComputedStyle(document.querySelector('header')).display, rfx: document.body.classList.contains('rfx-full') }));
-  await irRf(page, 'layout');
+  await irRf(page, 'layout'); await page.evaluate(()=>{ $('rfl-apto').value = ''; renderRfLayout(); });
   verificar(full.clase && full.header === 'none' && full.subtabs === 'none' && full.pan === `0,${full.pan.split(',')[2]},${full.pan.split(',')[2]}` && full.mapaAlto > innerHeightOf(full) - 5 && full.flotAlto < 140 && full.filtros === '32px' && full.zoom === 'absolute' && full.nav === 6 && full.hueco < 200 &&
     !sale.clase && sale.lista === 'block' && sale.header === 'none' && sale.rfx,
     `Layout en toda la hoja (panel ${full.pan}, mapa ${full.mapaAlto}px de alto), barra flotante de ${full.flotAlto}px con menú y filtros compactos (${full.filtros}), zoom flotante; el layout empieza a la izquierda, sin hueco (${full.hueco}px); al ir a Registros sale su barra compacta`);
