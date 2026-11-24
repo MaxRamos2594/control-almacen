@@ -4306,8 +4306,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v289';
-const APP_UPDATED = '24/11/2026 10:00';
+const APP_VERSION = 'v290';
+const APP_UPDATED = '24/11/2026 11:30';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -19344,6 +19344,10 @@ function renderRfLayout(){
   // (los nichos se dibujan de derecha a izquierda y, sin esto, lo que sobra a la izquierda queda fuera de alcance).
   const primera = !$('rfl-mapa').querySelector('.rfl-lienzo'), mapa = $('rfl-mapa'), desdeDer = mapa.scrollWidth - mapa.scrollLeft - mapa.clientWidth;
   mapa.innerHTML = `<div class="rfl-lienzo" id="rfl-lienzo">${buildBloquesMarkup(true, false).replace(/ id="slot-[^"]*"/g, '')}</div>`;
+  // Igual que en Movimientos: filas calzadas y columnas de solo piso (X1, X2…) alineadas cruzando el pasillo,
+  // para que el layout quede compacto. Se mide sin zoom (antes de rflAplicarZoom).
+  const lienzo = $('rfl-lienzo');
+  if(lienzo.offsetWidth){ alinearFilas(lienzo); alinearSoloPiso(lienzo); }
   rflAplicarZoom();
   // Al abrir se ve el lado derecho (donde empieza el almacén); al repintar se mantiene donde estaba.
   requestAnimationFrame(()=>{ mapa.scrollLeft = primera ? mapa.scrollWidth : Math.max(0, mapa.scrollWidth - mapa.clientWidth - desdeDer); });

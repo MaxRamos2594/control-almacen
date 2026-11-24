@@ -98,6 +98,17 @@ function verificar(condicion, texto){
   verificar(cerca(mov.x01, mov.a03) && cerca(mov.x06, mov.ab01), 'En Movimientos también: X101 junto a A03 y X106 junto a AB01');
   await page.locator('#mov-bloques').screenshot({ path: path.join(__dirname, 'salida', 'columna_piso_mov.png') });
 
+  // Y en el Layout del Registro fotográfico (mismo dibujo, compacto como en Movimientos)
+  await page.evaluate(()=>{ switchTab('regfoto'); setRfSubtab('layout'); $('rfl-apto').value = ''; rflZoom = 1; renderRfLayout(); });
+  await page.waitForTimeout(700);
+  const rf = await page.evaluate(()=>{
+    const cont = document.getElementById('rfl-mapa');
+    const fila = id=>{ const s = cont.querySelector(`.slot[data-id="${id}"]`); if(!s) return null; const q = s.getBoundingClientRect(); return (q.top+q.bottom)/2; };
+    return { x01: fila('X101'), a03: fila('A03'), x06: fila('X106'), ab01: fila('AB01') };
+  });
+  verificar(cerca(rf.x01, rf.a03) && cerca(rf.x06, rf.ab01), `En el Layout del registro fotográfico también: X101 junto a A03 y X106 junto a AB01 (${JSON.stringify(rf)})`);
+  await page.locator('#rfl-mapa').screenshot({ path: path.join(__dirname, 'salida', 'columna_piso_rf.png') });
+
   const datosDespues = await page.evaluate(()=> JSON.stringify({ posiciones, pallets, nichos }));
   verificar(datosAntes === datosDespues, 'Ninguna posición, pallet ni nicho cambió (solo dibujo)');
 
