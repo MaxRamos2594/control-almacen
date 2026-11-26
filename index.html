@@ -470,6 +470,15 @@
   body.rfa-full #rfa-pag{flex:0 0 auto;}
   body.rfa-full #view-regfoto #rfa-tabla .rfa-filtros-col input, body.rfa-full #view-regfoto #rfa-tabla .rfa-filtros-col select{min-height:0; height:28px; padding:3px 7px; font-size:12px;}
   @media (max-width:700px){ body.rfl-full .rfl-leyenda{display:none;} body.rfl-full #view-regfoto .rfl-flot select{max-width:140px;} }
+  .rfj-modal{position:fixed; inset:0; z-index:1000; background:rgba(16,24,40,.45); display:flex; align-items:center; justify-content:center; padding:16px;}
+  .rfj-modal[hidden]{display:none;}
+  .rfj-modal-caja{background:#fff; border-radius:14px; box-shadow:0 18px 50px rgba(16,24,40,.35); padding:22px 22px 18px; width:min(560px, 100%); max-height:85vh; overflow:auto; text-align:center;}
+  .rfj-modal-ico{width:56px; height:56px; margin:0 auto 8px; border-radius:50%; background:#2E9E5B; color:#fff; font-size:30px; line-height:56px; font-weight:800;}
+  .rfj-modal-ico.mal{background:#C62828;} .rfj-modal-ico.medio{background:#F26B0F;}
+  .rfj-modal-caja h3{margin:0 0 10px; font-size:19px;}
+  .rfj-modal-caja table{width:100%; border-collapse:collapse; font-size:12.5px; margin:6px 0 10px; text-align:left;} .rfj-modal-caja th, .rfj-modal-caja td{padding:4px 6px; border-bottom:1px solid var(--line);} .rfj-modal-caja td.num{text-align:right; font-family:var(--mono); white-space:nowrap;}
+  .rfj-modal-falla{background:#fdecea; color:#8e1c1c; border-radius:8px; padding:8px 10px; font-size:12.5px; text-align:left; margin-bottom:10px;}
+  #btn-rfj-modal-ok{min-width:140px; font-size:15px;}
   .rfl-leyenda{display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--ink-soft);} .rfl-leyenda span{display:inline-flex; align-items:center; gap:5px;}
   .rfl-leyenda i{display:inline-block; width:14px; height:14px; border-radius:3px; border:1px solid;}
   .rfl-resumen{display:flex; flex-wrap:wrap; gap:8px; align-items:center;} .rfl-k{padding:4px 10px; border-radius:999px; font-size:12.5px; border:1px solid;}
@@ -3765,6 +3774,14 @@
       <div id="rfj-res"></div>
       <div class="rf-acciones rfj-acciones"><span class="hint" id="rfj-resumen"></span><button type="button" class="btn btn-primary" id="btn-rfj-grabar" disabled>💾 Grabar ajustes</button></div>
     </div>
+    <div class="rfj-modal" id="rfj-modal" hidden>
+      <div class="rfj-modal-caja" role="dialog" aria-modal="true" aria-labelledby="rfj-modal-tit">
+        <div class="rfj-modal-ico" id="rfj-modal-ico">✔</div>
+        <h3 id="rfj-modal-tit">Cantidad ajustada</h3>
+        <div id="rfj-modal-cuerpo"></div>
+        <button type="button" class="btn btn-primary" id="btn-rfj-modal-ok">Aceptar</button>
+      </div>
+    </div>
   </div>
   <div class="rf-det-modal" id="rf-det-modal" hidden>
     <div class="rf-det-caja" role="dialog" aria-modal="true" aria-label="Detalle del registro fotográfico">
@@ -4306,8 +4323,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v291';
-const APP_UPDATED = '25/11/2026 09:00';
+const APP_VERSION = 'v292';
+const APP_UPDATED = '26/11/2026 09:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -19041,8 +19058,8 @@ async function rfjGrabar(){
   const porReg = new Map(); cambios.forEach(x=>{ if(!porReg.has(x.rid)) porReg.set(x.rid, []); porReg.get(x.rid).push(x); });
   const quitan = cambios.filter(x=> x.cant + x.d === 0).length, pend = rfjPlan.filter(c=> c.filas.length && !rfjEstado(c).ok);
   if(!confirm(`¿Grabar ${cambios.length} ajuste(s) en ${porReg.size} registro(s)?` + (quitan ? `\n\n${quitan} producto(s) quedan en 0 y se quitan del registro.` : '') + (pend.length ? `\n\n⚠ ${pend.length} código(s) no completan lo pedido: ${pend.slice(0, 10).map(c=> c.cod).join(', ')}` : '') + '\n\nLos registros siguen confirmados y aptos.')) return;
-  const btn = $('btn-rfj-grabar'); btn.disabled = true;
-  const ahora = new Date().toISOString(), ok = [], fallas = [];
+  const btn = $('btn-rfj-grabar'); btn.disabled = true; btn.textContent = '⏳ Grabando…';
+  const ahora = new Date().toISOString(), ok = [], fallas = [], hechos = [];
   for(const [rid, L] of porReg){
     try{
       let nuevos = null, porItem = [], quitadas = [];
@@ -19070,15 +19087,33 @@ async function rfjGrabar(){
       if(r) Object.assign(r, { items: nuevos, cant_items: nuevos.length, unidades: nuevos.reduce((s, it)=> s + (Number(it.cantidad) || 0), 0), skus: nuevos.map(it=> it.sku), actualizado_en: ahora,
         ajustes_admin: [...(r.ajustes_admin || []), { por: currentUserAlias, email: currentUserEmail || '', en: ahora, origen: 'ajuste desde listado', items: porItem, detalle: porItem.map(x=> x.a === 0 ? `${x.sku} quitado` : `${x.sku}: ${anFmt(x.de)} → ${anFmt(x.a)}`).join('; ') }] });
       ok.push(`${rid} (${porItem.map(x=> `${x.sku} ${anFmt(x.de)}→${anFmt(x.a)}`).join(', ')})`);
+      porItem.forEach(x=> hechos.push({ cod: x.sku, pos: (L.find(y=> y.cod === String(x.sku || '').trim().toUpperCase()) || L[0]).pos, rid, de: x.de, a: x.a }));
     }catch(err){ console.error(err); fallas.push(`${rid}: ${err.message}`); }
   }
   if(ok.length) await logAccion('reg_foto_cantidades_editadas', { detalle: `Ajuste desde listado (siguen confirmados y aptos): ${ok.join(' · ').slice(0, 1500)}` });
   renderRfLista(); rfSiReportes();
   rfjValidar(false);   // se vuelve a listar con los saldos nuevos y el historial debajo de cada posición (sin proponer de nuevo)
   showMsg('rfj-msg', fallas.length ? 'err' : 'ok', `✔ ${ok.length} registro(s) actualizado(s). Abajo se ven los saldos nuevos y el historial.` + (fallas.length ? ` ✖ No se pudo: ${fallas.join(' · ')}` : ''));
-  showToast(`${ok.length} registro(s) ajustado(s).`, fallas.length ? 'err' : 'ok');
-  btn.disabled = false; rfjResumen();
+  btn.textContent = '💾 Grabar ajustes'; btn.disabled = false; rfjResumen();
+  rfjAviso(hechos, fallas);
 }
+// Aviso al centro al terminar de grabar; con «Aceptar» se blanquea todo (si no hubo fallas) para empezar otro ajuste.
+function rfjAviso(hechos, fallas){
+  const ico = $('rfj-modal-ico'), todo = hechos.length && !fallas.length;
+  ico.className = 'rfj-modal-ico' + (todo ? '' : hechos.length ? ' medio' : ' mal'); ico.textContent = todo ? '✔' : hechos.length ? '!' : '✖';
+  $('rfj-modal-tit').textContent = todo ? 'Cantidad ajustada' : hechos.length ? 'Ajuste grabado en parte' : 'No se pudo grabar el ajuste';
+  const suma = hechos.reduce((t, h)=> t + (h.a - h.de), 0);
+  $('rfj-modal-cuerpo').innerHTML = (hechos.length ? `<p class="hint" style="margin:0 0 6px;"><b>${esc(hechos.length)}</b> posición(es) ajustada(s) · total <b>${esc(suma > 0 ? '+' : '')}${esc(anFmt(suma))}</b> und. Siguen confirmados y aptos.</p>` +
+      `<table><thead><tr><th>Código</th><th>Posición</th><th>Registro</th><th class="num">De → a</th></tr></thead><tbody>` +
+      hechos.map(h=> `<tr><td><b>${esc(h.cod)}</b></td><td>📍 ${esc(h.pos)}</td><td>${esc(h.rid)}</td><td class="num">${esc(anFmt(h.de))} → <b>${esc(h.a === 0 ? '0 (se quita)' : anFmt(h.a))}</b></td></tr>`).join('') + `</tbody></table>` : '') +
+    (fallas.length ? `<div class="rfj-modal-falla">✖ No se pudo: ${esc(fallas.join(' · '))}</div>` : '');
+  $('rfj-modal').dataset.limpiar = todo ? '1' : '';
+  $('rfj-modal').hidden = false; $('btn-rfj-modal-ok').focus();
+}
+$('btn-rfj-modal-ok').addEventListener('click', ()=>{
+  const m = $('rfj-modal'); m.hidden = true;
+  if(m.dataset.limpiar){ $('rfj-txt').value = ''; rfjPlan = []; renderRfj(); showMsg('rfj-msg', 'ok', ''); $('rfj-txt').focus(); }
+});
 // ---- Costos de los códigos (se guardan en Productos) ----
 const rfaPuedeCosto = ()=> !!(currentPermisos.admin || currentPermisos.eliminar);
 const rfaSoles = n=> 'S/ ' + Number(n || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
