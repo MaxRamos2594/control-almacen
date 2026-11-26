@@ -64,6 +64,14 @@ async function esperar(page, fn, arg, ms){
   verificar(d.r1.estado === 'CONFIRMADO' && d.r1.apto_ajuste === 'SI' && it1 === 'P1:4880' && d.r1.unidades === 4880 && d.r2.items[0].cantidad === 300 && d.r4.items[0].cantidad === 50 &&
     (d.r1.ajustes_admin || []).some(a=> a.origen === 'ajuste desde listado' && /P1: 5,000 → 4,880/.test(a.detalle) && /P2 quitado/.test(a.detalle)) && /✏ 5,000 → 4,880 · Administrador/.test(d.hist) && d.deltaTras === '' && d.log === 1,
     `Grabar: RF-ADM-00001 queda ${it1} (sigue CONFIRMADO y apto ${d.r1.apto_ajuste}); A02 y COMAS sin tocar; historial "${d.hist.slice(0, 70)}"; no vuelve a proponer el ajuste`);
+  // Aviso al centro «Cantidad ajustada» con lo grabado; «Aceptar» blanquea todo.
+  const aviso = await page.evaluate(()=> ({ visible: !$('rfj-modal').hidden, tit: $('rfj-modal-tit').textContent, filas: [...document.querySelectorAll('#rfj-modal-cuerpo tbody tr')].map(t=> t.textContent.replace(/\s+/g, ' ').trim()) }));
+  await page.screenshot({ path: path.join(__dirname, 'salida', 'rf_ajustes_aviso.png') });
+  verificar(aviso.visible && aviso.tit === 'Cantidad ajustada' && aviso.filas.length === 2 && aviso.filas.some(f=> /P1.*A01.*5,000 → 4,880/.test(f)) && aviso.filas.some(f=> /P2.*0 \(se quita\)/.test(f)),
+    `Al grabar sale el aviso «${aviso.tit}» con lo ajustado: ${aviso.filas.join(' | ')}`);
+  await page.click('#btn-rfj-modal-ok');
+  const tras = await page.evaluate(()=> ({ oculto: $('rfj-modal').hidden, txt: $('rfj-txt').value, res: $('rfj-res-box').hidden, filas: document.querySelectorAll('#rfj-res .rfj-cod').length }));
+  verificar(tras.oculto && tras.txt === '' && tras.res && tras.filas === 0, '«Aceptar» cierra el aviso y deja todo en blanco para otro ajuste');
   // En el detalle del registro se ve el mismo historial.
   await page.evaluate(()=>{ setRfSubtab('lista'); rfAbrir('RF-ADM-00001'); });
   const det = await page.evaluate(()=> $('rf-detalle').innerText.replace(/\s+/g, ' '));
