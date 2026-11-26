@@ -109,6 +109,20 @@ function verificar(condicion, texto){
   verificar(cerca(rf.x01, rf.a03) && cerca(rf.x06, rf.ab01), `En el Layout del registro fotográfico también: X101 junto a A03 y X106 junto a AB01 (${JSON.stringify(rf)})`);
   await page.locator('#rfl-mapa').screenshot({ path: path.join(__dirname, 'salida', 'columna_piso_rf.png') });
 
+  // Fila C volteada con nichos compactos: la letra (AB, AC) va abajo, debajo de sus posiciones.
+  await page.evaluate(()=> bloquesRef.doc('BC').update({ nicho_compacto: true }));
+  await page.waitForFunction(()=> bloques['BC'].nicho_compacto === true, null, { timeout: 15000 });
+  await page.evaluate(()=> renderRfLayout());
+  await page.waitForTimeout(500);
+  const letra = await page.evaluate(()=>{
+    const n = document.querySelector('#rfl-mapa .nicho[data-letra="AB"]'), l = n.querySelector('.nicho-label').getBoundingClientRect();
+    const filas = [...n.querySelectorAll('.nicho-row')].map(r=> r.getBoundingClientRect().bottom);
+    const a = document.querySelector('#rfl-mapa .nicho[data-letra="A"]');
+    return { abajo: l.top >= Math.max(...filas) - 1, aArriba: !a.querySelector('.nicho-label-abajo') };
+  });
+  verificar(letra.abajo, 'Fila C volteada y compacta: la letra AB va debajo de sus posiciones');
+  await page.locator('#rfl-mapa').screenshot({ path: path.join(__dirname, 'salida', 'columna_piso_rf_letra.png') });
+
   const datosDespues = await page.evaluate(()=> JSON.stringify({ posiciones, pallets, nichos }));
   verificar(datosAntes === datosDespues, 'Ninguna posición, pallet ni nicho cambió (solo dibujo)');
 

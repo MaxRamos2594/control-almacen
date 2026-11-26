@@ -677,7 +677,7 @@
   .nicho-section-label{font-size:8px; color:var(--ink-soft); text-align:center; text-transform:uppercase; margin:3px 0 2px;}
   .nicho-row{display:flex; gap:3px; margin-bottom:3px;}
   .nicho-row:last-child{margin-bottom:0;}
-  .nicho-label.nicho-label-arriba{margin:0 0 4px;}
+  .nicho-label.nicho-label-arriba{margin:0 0 4px;} .nicho-label.nicho-label-abajo{margin:4px 0 0;}
   .nicho-label{text-align:center; font-family:var(--mono); font-size:11px; font-weight:700; color:#fff; background:var(--frame-blue); border-radius:3px; margin-top:5px; padding:2px 0;}
   .nicho.reorden-abajo{display:flex; flex-direction:column;}
   .nicho.reorden-abajo > .nicho-reorder{order:2; margin:4px 0 0;}
@@ -4306,8 +4306,8 @@ const $ = (id) => document.getElementById(id);
 function esc(v){
   return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-const APP_VERSION = 'v290';
-const APP_UPDATED = '24/11/2026 11:30';
+const APP_VERSION = 'v291';
+const APP_UPDATED = '25/11/2026 09:00';
 function pintarVersionesEnPantalla(){
   const el = document.getElementById('footer-version-label');
   if(el) el.textContent = `Versión ${APP_VERSION} · Subida: ${APP_UPDATED}`;
@@ -5578,7 +5578,7 @@ function renderBloqueForms(){
         </select>
       </div>` : ''}
       <div class="hint" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin:4px 0 6px;">
-        <label style="display:flex; align-items:center; gap:4px;" title="La letra del nicho va arriba y las filas de rack y piso quedan seguidas, sin etiquetas en medio. Solo cambia el dibujo."><input type="checkbox" data-nicho-compacto="${esc(id)}" ${b.nicho_compacto ? 'checked' : ''} style="width:auto;"> Nichos compactos</label>
+        <label style="display:flex; align-items:center; gap:4px;" title="La letra del nicho va arriba (abajo si la fila está volteada) y las filas de rack y piso quedan seguidas, sin etiquetas en medio. Solo cambia el dibujo."><input type="checkbox" data-nicho-compacto="${esc(id)}" ${b.nicho_compacto ? 'checked' : ''} style="width:auto;"> Nichos compactos</label>
       </div>
       ${!esAnexado && sortBloquesEntries().filter(([cid,c])=>!c.anexado_a).findIndex(([cid])=>cid===id) > 0 && nichosDelBloque.length ? (()=>{
         const al = b.alinear_fila || {};
@@ -6122,6 +6122,7 @@ function sortBloquesEntries(){
 // defecto mientras el anexado no tenga uno propio guardado.
 function nichosHTMLDeBloque(bid, volteadoFila, interactive, showReorder){
   const compacto = !!(bloques[bid] && bloques[bid].nicho_compacto);
+  const alFila = bloques[bid] && bloques[bid].alinear_fila, letraAbajoVolteada = !(alFila && alFila.nicho && alFila.fila === -1);
   const nichosDelBloque = Object.entries(nichos).filter(([l,n])=>n.bloque_id===bid)
     .sort((a,b2)=> (a[1].pos_visual ?? a[1].orden) - (b2[1].pos_visual ?? b2[1].orden));
   const fn = interactive ? slotHTML : slotReadonlyHTML;
@@ -6162,7 +6163,10 @@ function nichosHTMLDeBloque(bid, volteadoFila, interactive, showReorder){
     const pisoHTML = esSoloRack ? '' : (compacto ? '' : `<div class="nicho-section-label">Piso</div>`) + pisoRows.join('');
     // Compacto: la letra va arriba y rack y piso quedan seguidos, con el mismo
     // paso entre filas de posiciones (sirve para alinearlas con otra fila).
-    const cuerpoHTML = compacto ? (`<div class="nicho-label nicho-label-arriba">${esc(letraVisual)}</div>` + ((!esSoloPiso && volteadoFila) ? pisoHTML + rackHTML : rackHTML + pisoHTML))
+    // En una fila volteada (espejo de la de arriba) la letra va abajo, salvo que la
+    // fila esté alineada por su título con la de arriba (ahí la letra sigue arriba).
+    const cuerpoHTML = compacto ? ((!esSoloPiso && volteadoFila && letraAbajoVolteada) ? pisoHTML + rackHTML + `<div class="nicho-label nicho-label-abajo">${esc(letraVisual)}</div>`
+        : `<div class="nicho-label nicho-label-arriba">${esc(letraVisual)}</div>` + ((!esSoloPiso && volteadoFila) ? pisoHTML + rackHTML : rackHTML + pisoHTML))
       : (!esSoloPiso && volteadoFila) ? (pisoHTML + `<div class="nicho-label">${esc(letraVisual)}</div>` + rackHTML) : (rackHTML + `<div class="nicho-label">${esc(letraVisual)}</div>` + pisoHTML);
     // Alinea cada nicho contra el borde de la fila donde de verdad está su
     // rack: si está volteado (piso arriba), el rack queda al FONDO de su
